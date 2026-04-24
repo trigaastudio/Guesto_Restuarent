@@ -1,20 +1,21 @@
-/* ─── Layout ─────────────────────────────────────────── */
+
 .home-container {
   min-height: 100vh;
-  background: #f1f5f9;
+  background: var(--bg);
   display: flex;
   flex-direction: column;
   font-family: 'Inter', sans-serif;
 }
 
-/* ─── Navbar ─────────────────────────────────────────── */
+
 .home-nav {
-  background: white;
+  background: var(--nav-bg);
   padding: 12px 32px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 1px 10px rgba(0,0,0,0.05);
+  box-shadow: var(--shadow-sm);
+  border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -25,7 +26,7 @@
   align-items: center;
   gap: 12px;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--nav-text);
   font-size: 17px;
 }
 
@@ -33,6 +34,12 @@
   height: 38px;
   width: auto;
   object-fit: contain;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .logout-btn {
@@ -44,17 +51,15 @@
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s;
   font-family: inherit;
   white-space: nowrap;
 }
 
 .logout-btn:hover {
   background: #fee2e2;
-  transform: translateY(-1px);
 }
 
-/* ─── Content ─────────────────────────────────────────── */
+
 .home-content {
   flex: 1;
   padding: 40px 20px;
@@ -63,34 +68,34 @@
   align-items: flex-start;
 }
 
-/* ─── Card ───────────────────────────────────────────── */
+
 .welcome-card {
-  background: white;
+  background: var(--card-bg);
   padding: 44px 40px;
   border-radius: 24px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.05);
+  box-shadow: var(--shadow-md);
   width: 100%;
   max-width: 580px;
   text-align: center;
-  border: 1px solid #f1f5f9;
+  border: 1px solid var(--card-border);
 }
 
 .welcome-card h1 {
   font-size: 28px;
   font-weight: 800;
-  color: #1e293b;
+  color: var(--text-primary);
   margin: 0 0 10px;
 }
 
-.welcome-card > p {
-  color: #64748b;
+.welcome-card>p {
+  color: var(--text-secondary);
   font-size: 15px;
   margin: 0 0 28px;
 }
 
-/* ─── User Details ───────────────────────────────────── */
+
 .user-details {
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--border);
   padding-top: 24px;
   display: flex;
   flex-direction: column;
@@ -100,7 +105,7 @@
 
 .user-details p {
   font-size: 14px;
-  color: #475569;
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -108,27 +113,63 @@
 }
 
 .user-details strong {
-  color: #1e293b;
+  color: var(--text-primary);
   min-width: 60px;
   display: inline-block;
   font-weight: 700;
 }
 
-/* ─── Responsive ─────────────────────────────────────── */
+
 @media (max-width: 768px) {
-  .home-nav { padding: 12px 20px; }
-  .nav-brand { font-size: 15px; }
-  .nav-logo { height: 32px; }
-  .home-content { padding: 24px 16px; }
-  .welcome-card { padding: 32px 24px; }
-  .welcome-card h1 { font-size: 24px; }
+  .home-nav {
+    padding: 12px 20px;
+  }
+
+  .nav-brand {
+    font-size: 15px;
+  }
+
+  .nav-logo {
+    height: 32px;
+  }
+
+  .home-content {
+    padding: 24px 16px;
+  }
+
+  .welcome-card {
+    padding: 32px 24px;
+  }
+
+  .welcome-card h1 {
+    font-size: 24px;
+  }
 }
 
 @media (max-width: 480px) {
-  .home-nav { padding: 10px 16px; }
-  .nav-brand span { display: none; }
-  .logout-btn { padding: 7px 14px; font-size: 12px; }
-  .welcome-card { padding: 28px 18px; border-radius: 18px; }
-  .welcome-card h1 { font-size: 22px; }
-  .welcome-card > p { font-size: 14px; }
+  .home-nav {
+    padding: 10px 16px;
+  }
+
+  .nav-brand span {
+    display: none;
+  }
+
+  .logout-btn {
+    padding: 7px 14px;
+    font-size: 12px;
+  }
+
+  .welcome-card {
+    padding: 28px 18px;
+    border-radius: 18px;
+  }
+
+  .welcome-card h1 {
+    font-size: 22px;
+  }
+
+  .welcome-card>p {
+    font-size: 14px;
+  }
 }

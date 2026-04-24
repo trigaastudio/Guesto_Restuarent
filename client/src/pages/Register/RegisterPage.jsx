@@ -6,9 +6,11 @@ import InputField from '../../components/InputField/InputField';
 import Button from '../../components/Button/Button';
 import './RegisterPage.css';
 import registerImg from '../../assets/register.png';
-import logoImg from '../../assets/logo.png';
+import logoBlack from '../../assets/logo-black.png';
+import logoWhite from '../../assets/logo-whites.png';
+import { useTheme } from '../../context/ThemeContext';
 
-/* ── Icons ─────────────────────────────────────────── */
+
 const UserIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="18" height="18">
     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -36,8 +38,24 @@ const LockIcon = () => (
   </svg>
 );
 
+const SunIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="18" height="18">
+    <circle cx="12" cy="12" r="5" />
+    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+  </svg>
+);
+
+const MoonIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="18" height="18">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+  </svg>
+);
+
 const RegisterPage = () => {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
+
+  const logoSrc = theme === 'dark' ? logoWhite : logoBlack;
 
   const [fields, setFields] = useState({
     name: '',
@@ -53,7 +71,7 @@ const RegisterPage = () => {
   const [success, setSuccess] = useState(false);
   const [apiError, setApiError] = useState('');
 
-  // Prevent accessing register if already authenticated
+
   React.useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -126,8 +144,18 @@ const RegisterPage = () => {
         </div>
         <div className="register-right">
           <div className="register-form-card">
-            <div className="logo-container">
-              <img src={logoImg} alt="GuestO Logo" className="brand-logo" />
+            <div className="register-form-topbar">
+              <div className="logo-container">
+                <img src={logoSrc} alt="GuestO Logo" className="brand-logo" />
+              </div>
+              <button
+                className="theme-toggle-btn"
+                onClick={toggleTheme}
+                title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                aria-label="Toggle theme"
+              >
+                {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+              </button>
             </div>
             <div className="form-header">
               <h1 className="form-title">Create Account</h1>

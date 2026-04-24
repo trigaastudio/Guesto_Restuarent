@@ -8,14 +8,14 @@ dotenv.config();
 
 const app = express();
 
-// Connect to Database
+
 connectDB();
 
-// Middleware
+
 app.use(cors());
 app.use(express.json());
 
-// No-cache middleware
+
 app.use((req, res, next) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.set('Pragma', 'no-cache');
@@ -24,10 +24,10 @@ app.use((req, res, next) => {
   next();
 });
 
-// Routes
+
 app.use('/api/auth', authRoutes);
 
-// Health Check
+
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'Server is running' });
 });

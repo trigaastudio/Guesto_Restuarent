@@ -2,8 +2,8 @@ import axios from 'axios';
 
 const BASE_URL = 'http://localhost:5000';
 
-// All requests carry no-cache headers so the browser
-// never serves a stale response from its cache
+
+
 const noCacheHeaders = {
   'Cache-Control': 'no-cache, no-store, must-revalidate',
   'Pragma': 'no-cache',
@@ -15,7 +15,7 @@ const api = axios.create({
   headers: noCacheHeaders,
 });
 
-// Attach JWT token to every request automatically
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -24,13 +24,14 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// If the server returns 401, the token is invalid/expired — log the user out
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.clear();
-      // Hard redirect — clears history so back button cannot return to protected pages
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+
       window.location.replace('/login');
     }
     return Promise.reject(error);

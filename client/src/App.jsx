@@ -3,27 +3,30 @@ import RegisterPage from './pages/Register/RegisterPage';
 import LoginPage from './pages/Login/LoginPage';
 import HomePage from './pages/Home/HomePage';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
+import { ThemeProvider } from './context/ThemeContext';
 import './index.css';
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Default route → Login */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
+          {}
+          <Route path="/" element={<Navigate to="/login" replace />} />
 
-        {/* Public routes */}
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/login" element={<LoginPage />} />
+          {}
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/login" element={<LoginPage />} />
 
-        {/* Protected routes — require valid token */}
-        <Route path="/home" element={
-          <ProtectedRoute>
-            <HomePage />
-          </ProtectedRoute>
-        } />
-      </Routes>
-    </BrowserRouter>
+          {}
+          <Route path="/home" element={
+            <ProtectedRoute>
+              <HomePage />
+            </ProtectedRoute>
+          } />
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 

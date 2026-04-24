@@ -9,7 +9,7 @@
 .input-label {
   font-size: 11px;
   font-weight: 800;
-  color: #64748b;
+  color: var(--input-label);
   text-transform: uppercase;
   letter-spacing: 0.8px;
   margin-left: 2px;
@@ -24,7 +24,7 @@
 .input-icon {
   position: absolute;
   left: 14px;
-  color: #94a3b8;
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   pointer-events: none;
@@ -38,26 +38,39 @@
 .custom-input {
   width: 100%;
   padding: 12px 14px 12px 44px;
-  border: 1.5px solid #e2e8f0;
+  border: 1.5px solid var(--border-input);
   border-radius: 12px;
-  background: #f8fafc;
+  background: var(--bg-input);
   font-size: 14px;
   font-weight: 500;
-  color: #1e293b;
-  transition: all 0.2s;
+  color: var(--text-primary);
   outline: none;
-  min-width: 0; /* prevents overflow in grid */
+  min-width: 0;
+  
 }
 
 .custom-input::placeholder {
-  color: #94a3b8;
+  color: var(--text-muted);
   font-weight: 400;
 }
 
 .custom-input:focus {
   border-color: #f59e0b;
-  background: white;
+  background: var(--bg-input);
   box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.1);
+}
+
+
+.custom-input:-webkit-autofill,
+.custom-input:-webkit-autofill:hover,
+.custom-input:-webkit-autofill:focus,
+.custom-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 9999px var(--bg-input) inset !important;
+  box-shadow: 0 0 0 9999px var(--bg-input) inset !important;
+  -webkit-text-fill-color: var(--text-primary) !important;
+  caret-color: var(--text-primary);
+  border-color: var(--border-input) !important;
+  transition: background-color 99999s ease-in-out 0s;
 }
 
 .error-input {
@@ -77,10 +90,11 @@
   margin-left: 2px;
 }
 
-/* ─── Responsive ─────────────────────────────────────── */
+
 @media (max-width: 600px) {
   .custom-input {
-    font-size: 16px; /* prevents iOS zoom on focus */
+    font-size: 16px;
+    
     padding: 13px 14px 13px 44px;
   }
 }

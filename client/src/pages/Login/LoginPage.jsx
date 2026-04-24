@@ -5,9 +5,11 @@ import InputField from '../../components/InputField/InputField';
 import Button from '../../components/Button/Button';
 import './LoginPage.css';
 import registerImg from '../../assets/register.png';
-import logoImg from '../../assets/logo.png';
+import logoBlack from '../../assets/logo-black.png';
+import logoWhite from '../../assets/logo-whites.png';
+import { useTheme } from '../../context/ThemeContext';
 
-/* ── Icons ─────────────────────────────────────────── */
+
 const MailIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="18" height="18">
     <rect x="2" y="4" width="20" height="16" rx="2" />
@@ -31,12 +33,28 @@ const GoogleIcon = () => (
   </svg>
 );
 
+const SunIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="18" height="18">
+    <circle cx="12" cy="12" r="5" />
+    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+  </svg>
+);
+
+const MoonIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="18" height="18">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+  </svg>
+);
+
 const LoginPage = () => {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
   const [fields, setFields] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState('');
+
+  const logoSrc = theme === 'dark' ? logoWhite : logoBlack;
 
   React.useEffect(() => {
     const token = localStorage.getItem('token');
@@ -89,18 +107,29 @@ const LoginPage = () => {
   return (
     <div className="login-page-wrapper">
       <div className="login-container page-fade-in">
-        {/* Left Side */}
+        {}
         <div className="login-left">
           <div className="hero-image-wrapper hero-fade-in">
             <img src={registerImg} alt="Login Hero" className="hero-img" />
           </div>
         </div>
 
-        {/* Right Side */}
+        {}
         <div className="login-right">
           <div className="login-form-card">
-            <div className="logo-container">
-              <img src={logoImg} alt="GuestO" className="brand-logo" />
+            {}
+            <div className="login-form-topbar">
+              <div className="logo-container">
+                <img src={logoSrc} alt="GuestO" className="brand-logo" />
+              </div>
+              <button
+                className="theme-toggle-btn"
+                onClick={toggleTheme}
+                title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                aria-label="Toggle theme"
+              >
+                {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+              </button>
             </div>
 
             <div className="form-header">
