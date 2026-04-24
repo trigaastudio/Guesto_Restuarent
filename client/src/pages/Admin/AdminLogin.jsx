@@ -1,25 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { User, Lock, ArrowRight, Eye, EyeOff, Sun, Moon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '../../context/ThemeContext';
 
 const AdminLogin = () => {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
   const [showPassword, setShowPassword] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme) return savedTheme === 'dark';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
-  });
-
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [isDarkMode]);
+  const isDarkMode = theme === 'dark';
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -30,7 +18,7 @@ const AdminLogin = () => {
     <div className="min-h-screen bg-bg-default flex flex-col items-center justify-center p-4 relative transition-colors duration-300">
       {/* Theme Toggle */}
       <button
-        onClick={() => setIsDarkMode(!isDarkMode)}
+        onClick={toggleTheme}
         className="absolute top-8 right-8 p-3 bg-bg-card rounded-full border border-border-light text-text-sub hover:text-primary transition-all shadow-sm"
       >
         {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}

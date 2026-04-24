@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -25,27 +25,15 @@ import {
   PieChart as PieChartIcon,
   BarChart3
 } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
 
 const AdminDashboard = () => {
+  const { theme, toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState('Overview');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme) return savedTheme === 'dark';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
-  });
+  const isDarkMode = theme === 'dark';
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [isDarkMode]);
 
   const handleLogout = () => {
     navigate('/admin/login');
@@ -202,7 +190,7 @@ const AdminDashboard = () => {
 
           <div className="flex items-center space-x-2 sm:space-x-6">
             <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
+              onClick={toggleTheme}
               className="p-2 text-text-sub hover:text-primary hover:bg-bg-muted rounded-lg transition-all"
             >
               {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}

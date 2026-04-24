@@ -4,9 +4,6 @@ import api from '../../api/axiosInstance';
 import InputField from '../../components/InputField/InputField';
 import Button from '../../components/Button/Button';
 import './LoginPage.css';
-import registerImg from '../../assets/register.png';
-import logoBlack from '../../assets/logo-black.png';
-import logoWhite from '../../assets/logo-whites.png';
 import { useTheme } from '../../context/ThemeContext';
 
 
@@ -54,7 +51,7 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState('');
 
-  const logoSrc = theme === 'dark' ? logoWhite : logoBlack;
+  const logoSrc = theme === 'dark' ? "/logo-light.png" : "/logo-dark.png";
 
   React.useEffect(() => {
     const token = localStorage.getItem('token');
@@ -107,17 +104,17 @@ const LoginPage = () => {
   return (
     <div className="login-page-wrapper">
       <div className="login-container page-fade-in">
-        {}
+        { }
         <div className="login-left">
           <div className="hero-image-wrapper hero-fade-in">
-            <img src={registerImg} alt="Login Hero" className="hero-img" />
+            <img src="/register.png" alt="Login Hero" className="hero-img" />
           </div>
         </div>
 
-        {}
+        { }
         <div className="login-right">
           <div className="login-form-card">
-            {}
+            { }
             <div className="login-form-topbar">
               <div className="logo-container">
                 <img src={logoSrc} alt="GuestO" className="brand-logo" />

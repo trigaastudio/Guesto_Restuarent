@@ -5,11 +5,7 @@ import Swal from 'sweetalert2';
 import InputField from '../../components/InputField/InputField';
 import Button from '../../components/Button/Button';
 import './RegisterPage.css';
-import registerImg from '../../assets/register.png';
-import logoBlack from '../../assets/logo-black.png';
-import logoWhite from '../../assets/logo-whites.png';
 import { useTheme } from '../../context/ThemeContext';
-
 
 const UserIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="18" height="18">
@@ -55,7 +51,7 @@ const RegisterPage = () => {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
 
-  const logoSrc = theme === 'dark' ? logoWhite : logoBlack;
+  const logoSrc = theme === 'dark' ? "/logo-light.png" : "/logo-dark.png";
 
   const [fields, setFields] = useState({
     name: '',
@@ -139,7 +135,7 @@ const RegisterPage = () => {
       <div className="register-container page-fade-in">
         <div className="register-left">
           <div className="hero-image-wrapper hero-fade-in">
-            <img src={registerImg} alt="Register Hero" className="hero-img" />
+            <img src="/register.png" alt="Register Hero" className="hero-img" />
           </div>
         </div>
         <div className="register-right">
@@ -245,6 +241,10 @@ const RegisterPage = () => {
               <Button type="submit" loading={loading} className="register-btn">
                 Create Account
               </Button>
+
+              <p className="auth-footer-text">
+                Already have an account? <Link to="/login">Login here</Link>
+              </p>
             </form>
 
             {success && (
