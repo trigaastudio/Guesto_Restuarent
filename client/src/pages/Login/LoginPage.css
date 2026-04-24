@@ -1,0 +1,260 @@
+
+.login-page-wrapper {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--bg);
+  background-image: linear-gradient(135deg, var(--bg) 0%, var(--bg-secondary) 100%);
+  padding: 16px;
+}
+
+
+.login-container {
+  display: flex;
+  width: 100%;
+  max-width: 1100px;
+  background: var(--card-bg);
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--card-border);
+  min-height: 560px;
+}
+
+
+.login-left {
+  flex: 1.1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  padding: 40px;
+}
+
+.hero-image-wrapper {
+  width: 100%;
+  max-width: 520px;
+}
+
+.hero-img {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.12));
+}
+
+
+.login-right {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 36px;
+  background: transparent;
+}
+
+.login-form-card {
+  width: 100%;
+  max-width: 420px;
+}
+
+
+.login-form-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+
+.logo-container {
+  display: flex;
+  justify-content: center;
+  flex: 1;
+}
+
+.brand-logo {
+  height: 56px;
+  width: auto;
+  object-fit: contain;
+}
+
+
+.form-header {
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.form-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.form-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+
+.api-error-message {
+  background: #fef2f2;
+  color: #b91c1c;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 18px;
+  text-align: center;
+  border: 1px solid #fee2e2;
+}
+
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+}
+
+
+.form-options {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -8px;
+  margin-bottom: 20px;
+}
+
+.form-options a {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.form-options a:hover {
+  color: #f59e0b;
+  text-decoration: underline;
+}
+
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--divider);
+}
+
+.divider span {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--divider-text);
+  letter-spacing: 1px;
+}
+
+
+.google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px;
+  background: var(--google-btn-bg);
+  border: 1.5px solid var(--google-btn-border);
+  border-radius: 12px;
+  color: var(--google-btn-text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.google-btn:hover {
+  background: var(--google-btn-hover);
+  border-color: var(--border-input);
+  box-shadow: var(--shadow-sm);
+}
+
+
+.auth-footer-text {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.auth-footer-text a {
+  color: #f59e0b;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.auth-footer-text a:hover {
+  text-decoration: underline;
+}
+
+
+@media (max-width: 1024px) {
+  .login-left {
+    display: none;
+  }
+
+  .login-container {
+    max-width: 480px;
+    border-radius: 24px;
+    box-shadow: var(--shadow-md);
+  }
+
+  .login-right {
+    padding: 36px 30px;
+  }
+}
+
+
+@media (max-width: 600px) {
+  .login-page-wrapper {
+    padding: 12px;
+    align-items: flex-start;
+    padding-top: 32px;
+  }
+
+  .login-container {
+    border-radius: 20px;
+    max-width: 100%;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .login-right {
+    padding: 28px 20px;
+  }
+
+  .form-title {
+    font-size: 22px;
+  }
+
+  .brand-logo {
+    height: 48px;
+  }
+}
+
+
+@media (max-width: 360px) {
+  .login-right {
+    padding: 20px 14px;
+  }
+
+  .form-title {
+    font-size: 20px;
+  }
+}
