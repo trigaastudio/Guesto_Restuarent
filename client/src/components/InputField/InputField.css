@@ -37,7 +37,7 @@
 
 .custom-input {
   width: 100%;
-  padding: 12px 14px 12px 44px;
+  padding: 12px 48px 12px 44px;
   border: 1.5px solid var(--border-input);
   border-radius: 12px;
   background: var(--bg-input);
@@ -46,18 +46,38 @@
   color: var(--text-primary);
   outline: none;
   min-width: 0;
-  
+  transition: all 0.2s;
 }
 
 .custom-input::placeholder {
   color: var(--text-muted);
   font-weight: 400;
+  opacity: 1; /* For cross-browser support */
 }
 
 .custom-input:focus {
   border-color: #f59e0b;
   background: var(--bg-input);
   box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.1);
+}
+
+.password-toggle {
+  position: absolute;
+  right: 14px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.password-toggle:hover {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.05);
 }
 
 

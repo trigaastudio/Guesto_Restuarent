@@ -1,7 +1,5 @@
 import React, { useEffect } from 'react';
 import './HomePage.css';
-import logoBlack from '../../assets/logo-black.png';
-import logoWhite from '../../assets/logo-whites.png';
 import { useTheme } from '../../context/ThemeContext';
 
 const SunIcon = () => (
@@ -36,7 +34,7 @@ const HomePage = () => {
     window.location.replace('/login');
   };
 
-  const logoSrc = theme === 'dark' ? logoWhite : logoBlack;
+  const logoSrc = theme === 'dark' ? "/logo-light.png" : "/logo-dark.png";
 
   return (
     <div className="home-container">

@@ -1,4 +1,7 @@
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import AdminLogin from './pages/Admin/AdminLogin';
+import AdminDashboard from './pages/Admin/AdminDashboard';
 import RegisterPage from './pages/Register/RegisterPage';
 import LoginPage from './pages/Login/LoginPage';
 import HomePage from './pages/Home/HomePage';
@@ -11,14 +14,16 @@ function App() {
     <ThemeProvider>
       <BrowserRouter>
         <Routes>
-          {}
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          {/* Admin Routes */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
 
-          {}
+          {/* General Routes */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
 
-          {}
+          {/* Protected Routes */}
           <Route path="/home" element={
             <ProtectedRoute>
               <HomePage />
