@@ -1,0 +1,63 @@
+@import "tailwindcss";
+@import "@fontsource/inter";
+
+@theme {
+  --color-primary: #C96A0A;
+  --color-primary-light: #E88A1A;
+  --color-primary-dark: #A35405;
+  
+  --color-bg-default: #F6F1EA;
+  --color-bg-card: #FFFFFF;
+  --color-bg-muted: #EFE7DD;
+  
+  --color-text-main: #2D2D2D;
+  --color-text-sub: #6B6B6B;
+  --color-text-dim: #9CA3AF;
+  
+  --color-border-main: #E5E5E5;
+  --color-border-light: #F1F1F1;
+  
+  --color-status-on: #16A34A;
+  --color-status-off: #DC2626;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --color-bg-default: #F6F1EA;
+    --color-bg-card: #FFFFFF;
+    --color-bg-muted: #EFE7DD;
+    --color-text-main: #2D2D2D;
+    --color-text-sub: #6B6B6B;
+    --color-text-dim: #9CA3AF;
+    --color-border-main: #E5E5E5;
+    --color-border-light: #F1F1F1;
+  }
+
+  .dark {
+    --color-bg-default: #121212;
+    --color-bg-card: #1E1E1E;
+    --color-bg-muted: #2A2A2A;
+    --color-text-main: #F5F5F5;
+    --color-text-sub: #A0A0A0;
+    --color-text-dim: #666666;
+    --color-border-main: #333333;
+    --color-border-light: #2A2A2A;
+  }
+
+  body {
+    @apply bg-bg-default text-text-main font-sans transition-colors duration-300;
+    scrollbar-gutter: stable;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
