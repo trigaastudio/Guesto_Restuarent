@@ -48,7 +48,7 @@ const AdminDashboard = () => {
   }, [isDarkMode]);
 
   const handleLogout = () => {
-    navigate('/login');
+    navigate('/admin/login');
   };
 
   const metrics = [

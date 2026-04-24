@@ -23,7 +23,7 @@ const AdminLogin = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    navigate('/dashboard');
+    navigate('/admin/dashboard');
   };
 
   return (
