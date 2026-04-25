@@ -1,5 +1,8 @@
 import jwt from 'jsonwebtoken';
 import userRepository from '../repositories/userRepository.js';
+import mailSender from '../Utilities/mailSender.js';
+
+const otps = new Map();
 
 class AuthService {
   generateToken(id) {
@@ -8,21 +11,84 @@ class AuthService {
     });
   }
 
+  async sendOTP(email) {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 5 * 60 * 1000;
+    otps.set(email, { otp, expiresAt });
+    
+    const title = "Verification Code for GuestO";
+    const body = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+        <h2 style="color: #f59e0b; text-align: center;">Welcome to GuestO!</h2>
+        <p>Your verification code is:</p>
+        <div style="background: #f3f4f6; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px; border-radius: 8px;">
+          ${otp}
+        </div>
+        <p>This code will expire in 5 minutes.</p>
+      </div>
+    `;
+    await mailSender(email, title, body);
+    return true;
+  }
+
+  async verifyOTP(email, otp) {
+    const data = otps.get(email);
+    if (!data) return false;
+    if (Date.now() > data.expiresAt) {
+      otps.delete(email);
+      return false;
+    }
+    if (data.otp === otp) {
+      otps.delete(email);
+      return true;
+    }
+    return false;
+  }
+
+  async googleLogin(token) {
+    try {
+      const response = await fetch(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${token}`);
+      const payload = await response.json();
+
+      if (!payload || payload.error || !payload.email) {
+        throw new Error(payload?.error_description || 'Invalid Google token');
+      }
+
+      const { email, name } = payload;
+      let user = await userRepository.findByEmail(email);
+
+      if (!user) {
+        user = await userRepository.create({
+          name,
+          email,
+          password: Math.random().toString(36).slice(-10),
+          role: 'user',
+          isActive: true
+        });
+      }
+
+      if (user.role !== 'user') {
+        const error = new Error('Access denied. Admin accounts cannot use Google login here.');
+        error.statusCode = 403;
+        throw error;
+      }
+
+      return user;
+    } catch (error) {
+      throw new Error(error.message || 'Google authentication failed');
+    }
+  }
+
   async register(userData) {
     const { email, phone } = userData;
-
-   
     const existingUserByEmail = await userRepository.findByEmail(email);
     if (existingUserByEmail) {
       throw new Error('User with this email already exists');
     }
-
     const existingUserByPhone = await userRepository.findByPhone(phone);
     if (existingUserByPhone) {
       throw new Error('User with this phone number already exists');
     }
-
-   
     return await userRepository.create(userData);
   }
 
@@ -31,18 +97,15 @@ class AuthService {
     if (!user) {
       throw new Error('Invalid email or password');
     }
-
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       throw new Error('Invalid email or password');
     }
-
     if (user.role !== 'user') {
       const error = new Error('Access denied. Admin accounts cannot log in from the user portal.');
       error.statusCode = 403;
       throw error;
     }
-
     return user;
   }
 }
