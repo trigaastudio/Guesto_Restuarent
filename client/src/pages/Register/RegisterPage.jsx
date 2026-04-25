@@ -6,6 +6,7 @@ import InputField from '../../components/InputField/InputField';
 import Button from '../../components/Button/Button';
 import './RegisterPage.css';
 import { useTheme } from '../../context/ThemeContext';
+import OTPModal from '../../components/OTPModal/OTPModal';
 
 const UserIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="18" height="18">
@@ -68,6 +69,9 @@ const RegisterPage = () => {
   const [apiError, setApiError] = useState('');
 
 
+  const [showOTP, setShowOTP] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
+
   React.useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -105,30 +109,88 @@ const RegisterPage = () => {
 
     setLoading(true);
     try {
-      const response = await api.post('/api/auth/register', {
-        name: fields.name,
-        email: fields.email,
-        phone: fields.phone,
-        password: fields.password
+      // Step 1: Send OTP
+      const response = await api.post('/api/auth/send-otp', {
+        email: fields.email
       });
 
       if (response.data.success) {
-        Swal.fire({
-          title: 'Success!',
-          text: 'Account created successfully. Please login.',
-          icon: 'success',
-          confirmButtonColor: '#f59e0b',
-        }).then(() => {
-          navigate('/login', { replace: true });
-        });
+        setShowOTP(true);
       }
     } catch (err) {
-      console.error('Registration Error:', err);
-      setApiError(err.response?.data?.message || 'Something went wrong. Please try again.');
+      console.error('OTP Send Error:', err);
+      setApiError(err.response?.data?.message || 'Failed to send OTP. Please try again.');
     } finally {
       setLoading(false);
     }
   };
+
+  const handleVerifyOTP = async (otp) => {
+    setOtpLoading(true);
+    setApiError('');
+    try {
+      // Step 2: Verify OTP and Register
+      const response = await api.post('/api/auth/verify-otp', {
+        email: fields.email,
+        otp,
+        userData: {
+          name: fields.name,
+          email: fields.email,
+          phone: fields.phone,
+          password: fields.password
+        }
+      });
+
+      if (response.data.success) {
+        setShowOTP(false);
+        // Save token and user data to log them in immediately
+        localStorage.setItem('token', response.data.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.data));
+
+        Swal.fire({
+          title: 'Welcome!',
+          text: 'Your account has been verified and created successfully.',
+          icon: 'success',
+          showConfirmButton: false,
+          timer: 2000,
+        }).then(() => {
+          navigate('/home', { replace: true });
+        });
+
+      }
+    } catch (err) {
+      console.error('Verification Error:', err);
+      Swal.fire({
+        title: 'Verification Failed',
+        text: 'The code you entered is incorrect or has expired. Please check your email and try again.',
+        icon: 'warning',
+        confirmButtonColor: '#f59e0b',
+        background: 'var(--card-bg)',
+        color: 'var(--text-primary)',
+      });
+    } finally {
+
+      setOtpLoading(false);
+    }
+  };
+
+
+  const handleResendOTP = async () => {
+    try {
+      await api.post('/api/auth/send-otp', { email: fields.email });
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: 'OTP Resent',
+        showConfirmButton: false,
+        timer: 3000
+      });
+    } catch (err) {
+      setApiError('Failed to resend OTP');
+    }
+  };
+
 
   return (
     <div className="register-page-wrapper">
@@ -259,6 +321,16 @@ const RegisterPage = () => {
           </div>
         </div>
       </div>
+
+      {showOTP && (
+        <OTPModal
+          email={fields.email}
+          loading={otpLoading}
+          onVerify={handleVerifyOTP}
+          onResend={handleResendOTP}
+          onClose={() => setShowOTP(false)}
+        />
+      )}
     </div>
   );
 };

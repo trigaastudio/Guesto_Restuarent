@@ -47,6 +47,15 @@
     --border-input: var(--color-border-light);
     --input-label: var(--color-text-secondary);
     --primary: var(--color-primary);
+    --google-btn-bg: #FFFFFF;
+    --google-btn-border: #E5E7EB;
+    --google-btn-text: #374151;
+    --google-btn-hover: #F9FAFB;
+    --divider: #E5E7EB;
+    --divider-text: #9CA3AF;
+    --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --card-border: var(--border);
   }
 
   .dark, [data-theme="dark"] {
@@ -70,7 +79,17 @@
     --border-input: var(--color-border-light);
     --input-label: var(--color-text-secondary);
     --primary: var(--color-primary);
+    --google-btn-bg: #2A2A2A;
+    --google-btn-border: #333333;
+    --google-btn-text: #F5F5F5;
+    --google-btn-hover: #333333;
+    --divider: #333333;
+    --divider-text: #666666;
+    --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --card-border: #333333;
   }
+
 
   body {
     @apply bg-background text-text-primary font-sans transition-colors duration-300;

@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useGoogleLogin } from '@react-oauth/google';
 import api from '../../api/axiosInstance';
 import InputField from '../../components/InputField/InputField';
 import Button from '../../components/Button/Button';
 import './LoginPage.css';
 import { useTheme } from '../../context/ThemeContext';
-
 
 const MailIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="18" height="18">
@@ -58,6 +58,30 @@ const LoginPage = () => {
     if (token) navigate('/home', { replace: true });
   }, [navigate]);
 
+  const googleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setLoading(true);
+      setApiError('');
+      try {
+        const response = await api.post('/api/auth/google', {
+          token: tokenResponse.access_token
+        });
+        if (response.data.success) {
+          localStorage.setItem('token', response.data.data.token);
+          localStorage.setItem('user', JSON.stringify(response.data.data));
+          navigate('/home', { replace: true });
+        }
+      } catch (err) {
+        setApiError(err.response?.data?.message || 'Google Login failed. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    },
+    onError: () => {
+      setApiError('Google Login failed. Please try again.');
+    }
+  });
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFields((prev) => ({ ...prev, [name]: value }));
@@ -104,17 +128,14 @@ const LoginPage = () => {
   return (
     <div className="login-page-wrapper">
       <div className="login-container page-fade-in">
-        { }
         <div className="login-left">
           <div className="hero-image-wrapper hero-fade-in">
             <img src="/register.png" alt="Login Hero" className="hero-img" />
           </div>
         </div>
 
-        { }
         <div className="login-right">
           <div className="login-form-card">
-            { }
             <div className="login-form-topbar">
               <div className="logo-container">
                 <img src={logoSrc} alt="GuestO" className="brand-logo" />
@@ -159,9 +180,14 @@ const LoginPage = () => {
 
               <div className="divider"><span>OR</span></div>
 
-              <button type="button" className="google-btn">
+              <button 
+                type="button" 
+                className="google-btn"
+                onClick={() => googleLogin()}
+                disabled={loading}
+              >
                 <GoogleIcon />
-                <span>Sign in with Google</span>
+                <span>{loading ? 'Processing...' : 'Sign in with Google'}</span>
               </button>
 
               <p className="auth-footer-text">
@@ -176,3 +202,5 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
+
+
