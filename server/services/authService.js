@@ -14,7 +14,7 @@ class AuthService {
   async sendOTP(email) {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = Date.now() + 5 * 60 * 1000;
-    otps.set(email, { otp, expiresAt });
+    otps.set(email.toLowerCase(), { otp, expiresAt });
     
     const title = "Verification Code for GuestO";
     const body = `
@@ -32,13 +32,13 @@ class AuthService {
   }
 
   async verifyOTP(email, otp) {
-    const data = otps.get(email);
+    const data = otps.get(email.toLowerCase());
     if (!data) return false;
     if (Date.now() > data.expiresAt) {
       otps.delete(email);
       return false;
     }
-    if (data.otp === otp) {
+    if (data.otp.toString().trim() === otp.toString().trim()) {
       otps.delete(email);
       return true;
     }
@@ -79,16 +79,28 @@ class AuthService {
     }
   }
 
+  async checkExistingUser(email) {
+    return await userRepository.findByEmail(email);
+  }
+
   async register(userData) {
     const { email, phone } = userData;
+    
+    console.log(`🔍 Checking registration for Email: "${email}" and Phone: "${phone}"`);
+
     const existingUserByEmail = await userRepository.findByEmail(email);
     if (existingUserByEmail) {
+      console.log(`❌ Match found for email: ${email}`);
       throw new Error('User with this email already exists');
     }
+
     const existingUserByPhone = await userRepository.findByPhone(phone);
     if (existingUserByPhone) {
+      console.log(`❌ Match found for phone: ${phone}`);
       throw new Error('User with this phone number already exists');
     }
+
+    console.log(`✅ No existing user found. Creating new user...`);
     return await userRepository.create(userData);
   }
 

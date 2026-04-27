@@ -5,7 +5,7 @@ dotenv.config();
 
 const testConnection = async () => {
   try {
-    console.log('Testing connection to:', process.env.MONGODB_URI.split('@')[1]); // Log host only for privacy
+    console.log('Testing connection to:', process.env.MONGODB_URI.split('@')[1]);
     await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
     console.log('Success!');
     process.exit(0);
