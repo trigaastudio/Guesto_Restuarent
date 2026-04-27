@@ -76,6 +76,15 @@ class AuthController {
   async sendOTP(req, res) {
     try {
       const { email } = req.body;
+      
+      const existingUser = await authService.checkExistingUser(email);
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'User with this email already exists'
+        });
+      }
+
       await authService.sendOTP(email);
       res.status(200).json({
         success: true,
