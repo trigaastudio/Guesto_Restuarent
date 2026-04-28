@@ -40,6 +40,7 @@ class AuthService {
     }
     if (data.otp.toString().trim() === otp.toString().trim()) {
       otps.delete(email.toLowerCase());
+
       return true;
     }
     return false;
@@ -123,11 +124,11 @@ class AuthService {
     }
     
     if (requiredRole === 'user' && user.role !== 'user') {
+
       const error = new Error('Access denied. Admin accounts cannot log in from the user portal.');
       error.statusCode = 403;
       throw error;
     }
-
     return user;
   }
 }
