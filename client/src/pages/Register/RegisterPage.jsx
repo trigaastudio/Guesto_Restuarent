@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../../api/axiosInstance';
-import { showAlert, showToast } from '../../utils/sweetAlert';
+import Swal from 'sweetalert2';
 import InputField from '../../components/InputField/InputField';
 import Button from '../../components/Button/Button';
 import './RegisterPage.css';
@@ -67,6 +67,7 @@ const RegisterPage = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [apiError, setApiError] = useState('');
+
 
   const [showOTP, setShowOTP] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
@@ -146,7 +147,7 @@ const RegisterPage = () => {
         localStorage.setItem('token', response.data.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.data));
 
-        showAlert({
+        Swal.fire({
           title: 'Welcome!',
           text: 'Your account has been verified and created successfully.',
           icon: 'success',
@@ -155,27 +156,41 @@ const RegisterPage = () => {
         }).then(() => {
           navigate('/home', { replace: true });
         });
+
       }
     } catch (err) {
       console.error('Verification Error:', err);
-      showAlert({
+      Swal.fire({
         title: 'Verification Failed',
         text: 'The code you entered is incorrect or has expired. Please check your email and try again.',
         icon: 'warning',
+        confirmButtonColor: '#f59e0b',
+        background: 'var(--card-bg)',
+        color: 'var(--text-primary)',
       });
     } finally {
+
       setOtpLoading(false);
     }
   };
 
+
   const handleResendOTP = async () => {
     try {
       await api.post('/api/auth/send-otp', { email: fields.email });
-      showToast('success', 'OTP Resent');
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: 'OTP Resent',
+        showConfirmButton: false,
+        timer: 3000
+      });
     } catch (err) {
       setApiError('Failed to resend OTP');
     }
   };
+
 
   return (
     <div className="register-page-wrapper">

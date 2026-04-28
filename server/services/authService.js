@@ -35,11 +35,11 @@ class AuthService {
     const data = otps.get(email.toLowerCase());
     if (!data) return false;
     if (Date.now() > data.expiresAt) {
-      otps.delete(email);
+      otps.delete(email.toLowerCase());
       return false;
     }
     if (data.otp.toString().trim() === otp.toString().trim()) {
-      otps.delete(email);
+      otps.delete(email.toLowerCase());
       return true;
     }
     return false;
@@ -104,22 +104,26 @@ class AuthService {
     return await userRepository.create(userData);
   }
 
+  // Updated to handle both User and Admin logins
   async login(email, password, requiredRole = 'user') {
     const user = await userRepository.findByEmailWithPassword(email);
     if (!user) {
       throw new Error('Invalid email or password');
     }
-
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       throw new Error('Invalid email or password');
     }
-
-    if (requiredRole && user.role !== requiredRole) {
-      const errorMessage = requiredRole === 'admin' 
-        ? 'Access denied. Only admin accounts can log in here.' 
-        : 'Access denied. Admin accounts cannot log in from the user portal.';
-      const error = new Error(errorMessage);
+    
+    // Role validation
+    if (requiredRole === 'admin' && user.role !== 'admin') {
+      const error = new Error('Access denied. Not an administrator.');
+      error.statusCode = 403;
+      throw error;
+    }
+    
+    if (requiredRole === 'user' && user.role !== 'user') {
+      const error = new Error('Access denied. Admin accounts cannot log in from the user portal.');
       error.statusCode = 403;
       throw error;
     }
