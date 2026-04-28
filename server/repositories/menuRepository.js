@@ -6,15 +6,15 @@ class MenuRepository {
   }
 
   async findAll() {
-    return await Menu.find().populate("category").sort({ createdAt: -1 });
+    return await Menu.find().populate("category").populate("variants.size").sort({ createdAt: -1 });
   }
 
   async findById(id) {
-    return await Menu.findById(id).populate("category");
+    return await Menu.findById(id).populate("category").populate("variants.size");
   }
 
   async update(id, data) {
-    return await Menu.findByIdAndUpdate(id, data, { new: true });
+    return await Menu.findByIdAndUpdate(id, data, { returnDocument: 'after' });
   }
 
   async delete(id) {

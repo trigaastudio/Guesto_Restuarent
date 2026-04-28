@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Search, Image as ImageIcon, Filter, CheckCircle2, XCircle, AlertCircle, Loader2, ArrowUpDown } from 'lucide-react';
 import axios from 'axios';
+import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
@@ -20,12 +21,14 @@ const MenuSection = () => {
     description: '',
     offerPrice: 0,
     hasOffer: false,
-    sizes: [{ size: 'Normal', price: 0 }],
+    variants: [],
     image: '',
     foodType: 'veg',
-    stockStatus: 'available',
+    totalStock: 0,
     isBlocked: false
   });
+
+  const [allSizes, setAllSizes] = useState([]);
 
   const [isUploading, setIsUploading] = useState(false);
 
@@ -39,12 +42,14 @@ const MenuSection = () => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [menuRes, catRes] = await Promise.all([
+      const [menuRes, catRes, sizeRes] = await Promise.all([
         axios.get(`${API_BASE_URL}/menu`),
-        axios.get(`${API_BASE_URL}/categories`)
+        axios.get(`${API_BASE_URL}/categories`),
+        axios.get(`${API_BASE_URL}/sizes`)
       ]);
       setMenus(menuRes.data);
       setCategories(catRes.data.filter(c => c.isActive));
+      setAllSizes(sizeRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -56,7 +61,11 @@ const MenuSection = () => {
     if (menu) {
       setCurrentMenu({
         ...menu,
-        category: menu.category._id || menu.category
+        category: menu.category?._id || menu.category,
+        variants: menu.variants?.map(v => ({
+          size: v.size?._id || v.size,
+          price: v.price
+        })) || []
       });
       setIsEditing(true);
     } else {
@@ -66,10 +75,10 @@ const MenuSection = () => {
         description: '',
         offerPrice: 0,
         hasOffer: false,
-        sizes: [{ size: 'Normal', price: 0 }],
+        variants: [],
         image: '',
         foodType: 'veg',
-        stockStatus: 'available',
+        totalStock: 0,
         isBlocked: false
       });
       setIsEditing(false);
@@ -79,7 +88,12 @@ const MenuSection = () => {
 
   const handleSave = async () => {
     if (!currentMenu.name || !currentMenu.category) {
-      alert('Name and Category are required');
+      showToast('warning', 'Name and Category are required');
+      return;
+    }
+
+    if (currentMenu.variants.length === 0) {
+      showToast('warning', 'At least one size variant is required');
       return;
     }
 
@@ -91,20 +105,28 @@ const MenuSection = () => {
       }
       fetchData();
       setIsModalOpen(false);
+      showToast('success', `Menu item ${isEditing ? 'updated' : 'created'} successfully!`);
     } catch (error) {
       console.error('Error saving menu item:', error);
-      alert('Failed to save menu item.');
+      showAlert({
+        icon: 'error',
+        title: 'Save Failed',
+        text: error.response?.data?.message || 'Failed to save menu item.'
+      });
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this menu item?')) {
+    const result = await showDeleteConfirmation('Delete Menu Item?', 'Are you sure you want to delete this menu item?');
+    
+    if (result.isConfirmed) {
       try {
         await axios.delete(`${API_BASE_URL}/menu/${id}`);
         fetchData();
+        showToast('success', 'Menu item deleted successfully');
       } catch (error) {
         console.error('Error deleting menu item:', error);
-        alert('Failed to delete menu item.');
+        showToast('error', 'Failed to delete menu item');
       }
     }
   };
@@ -112,20 +134,20 @@ const MenuSection = () => {
   const handleAddSize = () => {
     setCurrentMenu({
       ...currentMenu,
-      sizes: [...currentMenu.sizes, { size: '', price: 0 }]
+      variants: [...currentMenu.variants, { size: '', price: 0 }]
     });
   };
 
   const handleRemoveSize = (index) => {
-    const newSizes = [...currentMenu.sizes];
-    newSizes.splice(index, 1);
-    setCurrentMenu({ ...currentMenu, sizes: newSizes });
+    const newVariants = [...currentMenu.variants];
+    newVariants.splice(index, 1);
+    setCurrentMenu({ ...currentMenu, variants: newVariants });
   };
 
   const handleSizeChange = (index, field, value) => {
-    const newSizes = [...currentMenu.sizes];
-    newSizes[index][field] = value;
-    setCurrentMenu({ ...currentMenu, sizes: newSizes });
+    const newVariants = [...currentMenu.variants];
+    newVariants[index][field] = field === 'price' ? (value === '' ? '' : parseFloat(value)) : value;
+    setCurrentMenu({ ...currentMenu, variants: newVariants });
   };
 
   const handleImageUpload = async (e) => {
@@ -152,8 +174,21 @@ const MenuSection = () => {
       setCurrentMenu({ ...currentMenu, image: data.url });
     } catch (error) {
       console.error('Error uploading image:', error);
-      const errorMsg = error.message || 'Failed to upload image. Please check your Cloudinary configuration.';
-      alert(`Upload Error: ${errorMsg}`);
+      let errorMsg = error.message || 'Failed to upload image.';
+      
+      if (errorMsg.includes('File too large')) {
+        showAlert({
+          icon: 'error',
+          title: 'File Too Large',
+          text: 'The image size exceeds the 2MB limit. Please upload a smaller file.',
+        });
+      } else {
+        showAlert({
+          icon: 'error',
+          title: 'Upload Error',
+          text: errorMsg,
+        });
+      }
     } finally {
       setIsUploading(false);
     }
@@ -176,8 +211,8 @@ const MenuSection = () => {
         valA = a.category?.name || '';
         valB = b.category?.name || '';
       } else if (sortConfig.key === 'price') {
-        valA = a.sizes[0]?.price || 0;
-        valB = b.sizes[0]?.price || 0;
+        valA = a.variants?.[0]?.price || 0;
+        valB = b.variants?.[0]?.price || 0;
       }
 
       if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -192,7 +227,8 @@ const MenuSection = () => {
                          (m.category?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = categoryFilter === 'all' || m.category?._id === categoryFilter;
     const matchesType = typeFilter === 'all' || m.foodType === typeFilter;
-    const matchesStock = stockFilter === 'all' || m.stockStatus === stockFilter;
+    const matchesStock = stockFilter === 'all' || 
+                        (stockFilter === 'available' ? m.totalStock > 0 : m.totalStock === 0);
     
     return matchesSearch && matchesCategory && matchesType && matchesStock;
   });
@@ -287,7 +323,7 @@ const MenuSection = () => {
                   </div>
                 </th>
                 <th className="px-6 py-4">Stock</th>
-                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4">Visibility</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
@@ -342,9 +378,9 @@ const MenuSection = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="space-y-0.5">
-                        {menu.sizes.map((s, idx) => (
+                        {menu.variants?.map((v, idx) => (
                           <p key={idx} className="text-[10px] text-text-secondary">
-                            <span className="font-semibold">{s.size}:</span> ₹{s.price}
+                            <span className="font-semibold">{v.size?.name || 'Unknown'}:</span> ₹{v.price}
                           </p>
                         ))}
                         {menu.hasOffer && (
@@ -353,12 +389,17 @@ const MenuSection = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`flex items-center space-x-1 text-[10px] font-bold uppercase ${
-                        menu.stockStatus === 'available' ? 'text-status-available' : 'text-status-unavailable'
-                      }`}>
-                        <div className={`w-1.5 h-1.5 rounded-full ${menu.stockStatus === 'available' ? 'bg-status-available' : 'bg-status-unavailable'}`} />
-                        <span>{menu.stockStatus}</span>
-                      </span>
+                      <div className="space-y-1">
+                        <p className="font-bold text-text-primary">
+                          {menu.totalStock || 0} 
+                          <span className="text-[10px] text-text-muted uppercase ml-1">
+                            {menu.variants?.[0]?.size?.unit || 'Units'}
+                          </span>
+                        </p>
+                        {menu.totalStock === 0 && (
+                          <span className="text-[10px] font-bold text-status-unavailable uppercase">Out of Stock</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
@@ -467,73 +508,75 @@ const MenuSection = () => {
                     </label>
                   </div>
                 </div>
-                <div className="space-y-3">
-                  <label className="text-sm font-semibold text-text-secondary">Stock Status</label>
-                  <div className="flex space-x-4">
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <input 
-                        type="radio" 
-                        name="stockStatus" 
-                        value="available" 
-                        checked={currentMenu.stockStatus === 'available'} 
-                        onChange={(e) => setCurrentMenu({...currentMenu, stockStatus: e.target.value})}
-                        className="text-primary focus:ring-primary"
-                      />
-                      <span className="text-sm text-text-primary">Available</span>
-                    </label>
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <input 
-                        type="radio" 
-                        name="stockStatus" 
-                        value="out-of-stock" 
-                        checked={currentMenu.stockStatus === 'out-of-stock'} 
-                        onChange={(e) => setCurrentMenu({...currentMenu, stockStatus: e.target.value})}
-                        className="text-primary focus:ring-primary"
-                      />
-                      <span className="text-sm text-text-primary">Out of Stock</span>
-                    </label>
-                  </div>
+              </div>
+              <div className="bg-background-muted/30 p-4 rounded-2xl border border-border-light space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-semibold text-text-secondary">Total Stock</label>
+                  {currentMenu.variants?.[0]?.size && (
+                    <span className="text-[10px] font-bold text-text-muted uppercase">
+                      In {allSizes.find(s => s._id === currentMenu.variants[0].size)?.unit || 'Base Units'}
+                    </span>
+                  )}
                 </div>
+                <input
+                  type="number"
+                  value={currentMenu.totalStock === 0 ? '' : currentMenu.totalStock}
+                  onChange={(e) => setCurrentMenu({...currentMenu, totalStock: e.target.value === '' ? 0 : parseInt(e.target.value)})}
+                  className="w-full px-4 py-2 bg-background-card rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm"
+                  placeholder="Total base units (e.g. total pieces)"
+                />
+                <p className="text-[10px] text-text-muted italic">* Stock is tracked in base units (e.g. pieces)</p>
               </div>
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-semibold text-text-secondary">Sizes & Pricing</label>
+                  <label className="text-sm font-semibold text-text-secondary">Size Variants & Pricing</label>
                   <button 
                     onClick={handleAddSize}
                     className="text-xs font-bold text-primary hover:underline flex items-center space-x-1"
                   >
                     <Plus size={14} />
-                    <span>Add Size</span>
+                    <span>Add Variant</span>
                   </button>
                 </div>
                 <div className="space-y-3">
-                  {currentMenu.sizes.map((size, index) => (
-                    <div key={index} className="flex items-center space-x-3 bg-background-muted/30 p-3 rounded-xl border border-border-light">
-                      <input
-                        type="text"
-                        placeholder="Size (e.g. Full)"
-                        value={size.size}
-                        onChange={(e) => handleSizeChange(index, 'size', e.target.value)}
-                        className="flex-1 px-3 py-1.5 bg-background-card rounded-lg border border-border-main text-sm"
-                      />
+                  {currentMenu.variants.map((variant, index) => (
+                    <div key={index} className="flex items-center space-x-3 group/size bg-background-muted/30 p-3 rounded-xl border border-border-light">
+                      <div className="flex-1">
+                        <select
+                          value={variant.size}
+                          onChange={(e) => handleSizeChange(index, 'size', e.target.value)}
+                          className="w-full px-3 py-1.5 bg-background-card rounded-lg border border-border-main focus:border-primary outline-none transition-all text-sm"
+                        >
+                          <option value="">Select Size</option>
+                          {allSizes.filter(s => s.isActive || s._id === variant.size).map(s => (
+                            <option key={s._id} value={s._id}>{s.name} ({s.value} {s.unit})</option>
+                          ))}
+                        </select>
+                      </div>
                       <div className="relative w-32">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm">₹</span>
                         <input
                           type="number"
                           placeholder="Price"
-                          value={size.price}
+                          value={variant.price === 0 ? '' : variant.price}
                           onChange={(e) => handleSizeChange(index, 'price', e.target.value)}
-                          className="w-full pl-7 pr-3 py-1.5 bg-background-card rounded-lg border border-border-main text-sm"
+                          className="w-full pl-7 pr-3 py-1.5 bg-background-card rounded-lg border border-border-main text-sm outline-none focus:border-primary"
                         />
                       </div>
-                      {currentMenu.sizes.length > 1 && (
-                        <button onClick={() => handleRemoveSize(index)} className="text-status-unavailable hover:bg-status-off/10 p-1.5 rounded-lg">
-                          <Trash2 size={16} />
-                        </button>
-                      )}
+                      <button 
+                        onClick={() => handleRemoveSize(index)}
+                        className="p-1.5 text-text-muted hover:text-status-unavailable hover:bg-status-off/10 rounded-md transition-all"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </div>
                   ))}
+                  {currentMenu.variants.length === 0 && (
+                    <p className="text-xs text-text-muted italic text-center py-4 bg-background-muted/30 rounded-xl border border-dashed border-border-light">
+                      No variants added. Click "Add Variant" to set sizes and prices.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -558,8 +601,8 @@ const MenuSection = () => {
                       <input
                         type="number"
                         placeholder="Offer Price"
-                        value={currentMenu.offerPrice}
-                        onChange={(e) => setCurrentMenu({...currentMenu, offerPrice: e.target.value})}
+                        value={currentMenu.offerPrice === 0 ? '' : currentMenu.offerPrice}
+                        onChange={(e) => setCurrentMenu({...currentMenu, offerPrice: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
                         className="w-full pl-7 pr-3 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all"
                       />
                     </div>

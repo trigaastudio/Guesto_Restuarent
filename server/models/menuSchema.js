@@ -31,14 +31,16 @@ hasOffer: {
   default: false
 },
 
-  sizes: [
+  variants: [
     {
       size: {
-        type: String,
-        trim: true
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Size",
+        required: true
       },
       price: {
         type: Number,
+        required: true,
         min: 0
       }
     }
@@ -54,10 +56,10 @@ hasOffer: {
     default: "veg"
   },
 
-  stockStatus: {
-    type: String,
-    enum: ["available", "out-of-stock"],
-    default: "available"
+  totalStock: {
+    type: Number,
+    required: true,
+    default: 0
   },
 
   isBlocked: {

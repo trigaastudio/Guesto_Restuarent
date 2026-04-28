@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../../api/axiosInstance';
-import Swal from 'sweetalert2';
+import { showAlert } from '../../utils/sweetAlert';
 import InputField from '../../components/InputField/InputField';
 import Button from '../../components/Button/Button';
 import './RegisterPage.css';
@@ -113,11 +113,10 @@ const RegisterPage = () => {
       });
 
       if (response.data.success) {
-        Swal.fire({
+        showAlert({
           title: 'Success!',
           text: 'Account created successfully. Please login.',
           icon: 'success',
-          confirmButtonColor: '#f59e0b',
         }).then(() => {
           navigate('/login', { replace: true });
         });

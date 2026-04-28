@@ -23,23 +23,36 @@ import {
   BookOpen,
   LineChart,
   PieChart as PieChartIcon,
-  BarChart3
+  BarChart3,
+  RefreshCw
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import CategorySection from './sections/CategorySection';
 import MenuSection from './sections/MenuSection';
+import SizeSection from './sections/SizeSection';
 
 const AdminDashboard = () => {
   const { theme, toggleTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState('Overview');
+  const [activeTab, setActiveTab] = useState(localStorage.getItem('adminActiveTab') || 'Overview');
+  const [refreshKey, setRefreshKey] = useState(0);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isDarkMode = theme === 'dark';
   const navigate = useNavigate();
 
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    localStorage.setItem('adminActiveTab', tab);
+  };
+
+  const handleRefresh = () => {
+    setRefreshKey(prev => prev + 1);
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('adminActiveTab');
     navigate('/admin/login', { replace: true });
   };
 
@@ -125,13 +138,14 @@ const AdminDashboard = () => {
               { name: 'Overview', icon: LayoutDashboard },
               { name: 'Staff Management', icon: Users },
               { name: 'Categories', icon: BookOpen },
+              { name: 'Global Sizes', icon: Settings },
               { name: 'Menu Editor', icon: UtensilsCrossed },
               { name: 'Settings', icon: Settings },
             ].map((item) => (
               <button
                 key={item.name}
                 onClick={() => {
-                  setActiveTab(item.name);
+                  handleTabChange(item.name);
                   if (window.innerWidth < 1024) setIsMobileMenuOpen(false);
                 }}
                 title={isSidebarCollapsed && !isMobileMenuOpen ? item.name : ''}
@@ -199,6 +213,13 @@ const AdminDashboard = () => {
               className="p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all"
             >
               {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+            <button 
+              onClick={handleRefresh}
+              className="p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all group"
+              title="Refresh Data"
+            >
+              <RefreshCw size={20} className={`${refreshKey > 0 ? 'animate-spin-once' : ''} group-hover:rotate-180 transition-transform duration-500`} />
             </button>
             <button className="relative text-text-secondary hover:text-primary transition-all p-2 bg-background-muted/30 rounded-lg group">
               <Bell size={22} className="group-hover:rotate-12 transition-transform" />
@@ -382,8 +403,9 @@ const AdminDashboard = () => {
             </>
           )}
 
-          {activeTab === 'Categories' && <CategorySection />}
-          {activeTab === 'Menu Editor' && <MenuSection />}
+          {activeTab === 'Categories' && <CategorySection key={`cat-${refreshKey}`} />}
+          {activeTab === 'Global Sizes' && <SizeSection key={`size-${refreshKey}`} />}
+          {activeTab === 'Menu Editor' && <MenuSection key={`menu-${refreshKey}`} />}
           
           {activeTab === 'Staff Management' && (
             <div className="flex items-center justify-center h-64 border-2 border-dashed border-border-light rounded-2xl">
