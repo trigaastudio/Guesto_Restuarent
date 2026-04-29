@@ -6,6 +6,8 @@ import AdminDashboard from './pages/Admin/AdminDashboard';
 import RegisterPage from './pages/Register/RegisterPage';
 import LoginPage from './pages/Login/LoginPage';
 import HomePage from './pages/Home/HomePage';
+import StaffLogin from './pages/Staff/StaffLogin';
+import KitchenDashboard from './pages/Kitchen/KitchenDashboard';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 import { ThemeProvider } from './context/ThemeContext';
 import './index.css';
@@ -19,6 +21,10 @@ function App() {
             {/* Admin Routes */}
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
+
+            {/* Staff Routes */}
+            <Route path="/staff/login" element={<StaffLogin />} />
+            <Route path="/kitchen/dashboard" element={<KitchenDashboard />} />
 
             {/* General Routes */}
             <Route path="/" element={<Navigate to="/login" replace />} />

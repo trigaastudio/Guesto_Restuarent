@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Search, Loader2, ArrowUpDown, XCircle } from 'lucide-react';
 import axios from 'axios';
+import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
@@ -10,10 +11,35 @@ const SizeSection = () => {
   const [currentSize, setCurrentSize] = useState({ name: '', unit: '', value: 1, isActive: true });
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
 
   useEffect(() => {
     fetchSizes();
   }, []);
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortedData = (data) => {
+    return [...data].sort((a, b) => {
+      const valA = a[sortConfig.key];
+      const valB = b[sortConfig.key];
+      if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  };
+
+  const filteredSizes = getSortedData(sizes).filter(s => 
+    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    s.unit.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const fetchSizes = async () => {
     setIsLoading(true);
@@ -38,7 +64,7 @@ const SizeSection = () => {
 
   const handleSave = async () => {
     if (!currentSize.name.trim() || !currentSize.unit.trim() || !currentSize.value) {
-      alert('All fields are required');
+      showToast('warning', 'All fields are required');
       return;
     }
 
@@ -50,20 +76,27 @@ const SizeSection = () => {
       }
       fetchSizes();
       setIsModalOpen(false);
+      showToast('success', `Size ${isEditing ? 'updated' : 'created'} successfully!`);
     } catch (error) {
       console.error('Error saving size:', error);
-      alert(error.response?.data?.message || 'Failed to save size');
+      showToast('error', error.response?.data?.message || 'Failed to save size');
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this size? This might affect menu items using it.')) {
+    const result = await showDeleteConfirmation(
+      'Delete Size?',
+      'Are you sure you want to delete this size? This might affect menu items using it.'
+    );
+    
+    if (result.isConfirmed) {
       try {
         await axios.delete(`${API_BASE_URL}/sizes/${id}`);
         fetchSizes();
+        showToast('success', 'Size deleted successfully');
       } catch (error) {
         console.error('Error deleting size:', error);
-        alert('Failed to delete size');
+        showToast('error', 'Failed to delete size');
       }
     }
   };
@@ -85,13 +118,41 @@ const SizeSection = () => {
       </div>
 
       <div className="bg-background-card rounded-2xl border border-border-light shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-border-light bg-background-muted/30">
+          <div className="relative max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={16} />
+            <input
+              type="text"
+              placeholder="Search sizes..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-background-card rounded-lg border border-border-main focus:border-primary transition-all outline-none text-xs"
+            />
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-background-muted/50 text-text-secondary uppercase text-[10px] font-bold tracking-widest border-b border-border-light">
               <tr>
-                <th className="px-6 py-4">Size Name</th>
-                <th className="px-6 py-4">Base Unit</th>
-                <th className="px-6 py-4">Multiplier Value</th>
+                <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('name')}>
+                  <div className="flex items-center space-x-1">
+                    <span>Size Name</span>
+                    <ArrowUpDown size={12} className={sortConfig.key === 'name' ? 'text-primary' : 'text-text-muted'} />
+                  </div>
+                </th>
+                <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('unit')}>
+                  <div className="flex items-center space-x-1">
+                    <span>Unit</span>
+                    <ArrowUpDown size={12} className={sortConfig.key === 'unit' ? 'text-primary' : 'text-text-muted'} />
+                  </div>
+                </th>
+                <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('value')}>
+                  <div className="flex items-center space-x-1">
+                    <span>Value</span>
+                    <ArrowUpDown size={12} className={sortConfig.key === 'value' ? 'text-primary' : 'text-text-muted'} />
+                  </div>
+                </th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
@@ -99,22 +160,23 @@ const SizeSection = () => {
             <tbody className="divide-y divide-border-light">
               {isLoading ? (
                 <tr>
-                  <td colSpan="4" className="px-6 py-12 text-center">
-                    <Loader2 className="animate-spin text-primary mx-auto" size={32} />
+                  <td colSpan="5" className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center space-y-2">
+                      <Loader2 className="animate-spin text-primary" size={32} />
+                      <p className="text-text-secondary font-medium">Loading sizes...</p>
+                    </div>
                   </td>
                 </tr>
-              ) : sizes.length === 0 ? (
+              ) : filteredSizes.length === 0 ? (
                 <tr>
-                  <td colSpan="4" className="px-6 py-12 text-center text-text-muted italic">
-                    No sizes defined.
-                  </td>
+                  <td colSpan="5" className="px-6 py-12 text-center text-text-muted italic">No sizes found</td>
                 </tr>
               ) : (
-                sizes.map((size) => (
-                  <tr key={size._id} className="hover:bg-background-muted/30 transition-colors">
-                    <td className="px-6 py-4 font-bold text-text-primary">{size.name}</td>
+                filteredSizes.map((size) => (
+                  <tr key={size._id} className="hover:bg-background-muted/30 transition-colors group">
+                    <td className="px-6 py-4 font-semibold text-text-primary">{size.name}</td>
                     <td className="px-6 py-4 text-text-secondary">{size.unit}</td>
-                    <td className="px-6 py-4 font-medium text-primary">{size.value}</td>
+                    <td className="px-6 py-4 font-bold text-text-primary">{size.value}</td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
                         size.isActive ? 'bg-status-on/10 text-status-available' : 'bg-status-off/10 text-status-unavailable'

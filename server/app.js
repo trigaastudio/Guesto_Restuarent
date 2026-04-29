@@ -1,5 +1,6 @@
 import express from 'express';
 import dotenv from 'dotenv';
+// Force restart to apply schema changes
 import cors from 'cors';
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
@@ -7,6 +8,8 @@ import categoryRoutes from './routes/categoryRoutes.js';
 import menuRoutes from './routes/menuRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import sizeRoutes from './routes/sizeRoutes.js';
+import orderRoutes from './routes/orderRoutes.js';
+import staffRoutes from './routes/staffRoutes.js';
 
 dotenv.config();
 
@@ -34,16 +37,26 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/menu', menuRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/sizes', sizeRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/staff', staffRoutes);
 
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'Server is running' });
 });
 
-const PORT = process.env.PORT || 5000;
+import http from 'http';
+import * as socketIO from './socket.js';
 
-app.listen(PORT, () => {
+const PORT = process.env.PORT || 5000;
+const server = http.createServer(app);
+
+// Initialize Socket.io
+socketIO.init(server);
+
+server.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
 });
 
+export { app, server };
 export default app;

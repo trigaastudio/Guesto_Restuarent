@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Search, Image as ImageIcon, Filter, CheckCircle2, XCircle, AlertCircle, Loader2, ArrowUpDown } from 'lucide-react';
 import axios from 'axios';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
+import ImageCropper from '../../../components/ImageCropper/ImageCropper';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
@@ -34,6 +35,10 @@ const MenuSection = () => {
 
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Crop State
+  const [showCropper, setShowCropper] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -150,12 +155,24 @@ const MenuSection = () => {
     setCurrentMenu({ ...currentMenu, variants: newVariants });
   };
 
-  const handleImageUpload = async (e) => {
+  const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImageToCrop(reader.result);
+      setShowCropper(true);
+    };
+    reader.readAsDataURL(file);
+    // Reset input
+    e.target.value = '';
+  };
+
+  const handleCropComplete = async (croppedFile) => {
+    setShowCropper(false);
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append('image', croppedFile);
 
     setIsUploading(true);
     try {
@@ -222,6 +239,7 @@ const MenuSection = () => {
     return sorted;
   };
 
+  // Filter menu items based on search and selected filters
   const filteredMenus = getSortedData(menus).filter(m => {
     const matchesSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (m.category?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
@@ -232,6 +250,36 @@ const MenuSection = () => {
     
     return matchesSearch && matchesCategory && matchesType && matchesStock;
   });
+
+  const [selectedSizes, setSelectedSizes] = useState({});
+
+  useEffect(() => {
+    if (menus.length > 0) {
+      const initialSizes = {};
+      menus.forEach(menu => {
+        if (menu.variants?.length > 0) {
+          initialSizes[menu._id] = menu.variants[0].size?._id || menu.variants[0].size;
+        }
+      });
+      setSelectedSizes(initialSizes);
+    }
+  }, [menus]);
+
+  const handleRowSizeChange = (menuId, sizeId) => {
+    setSelectedSizes(prev => ({ ...prev, [menuId]: sizeId }));
+  };
+
+  const getCalculatedStock = (menu) => {
+    const selectedSizeId = selectedSizes[menu._id];
+    if (!selectedSizeId) return menu.totalStock || 0;
+
+    const variant = menu.variants?.find(v => (v.size?._id || v.size) === selectedSizeId);
+    if (!variant || !variant.size) return menu.totalStock || 0;
+
+    // Use the multiplier value from the size object
+    const multiplier = variant.size.value || 1;
+    return Math.floor((menu.totalStock || 0) / multiplier);
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -302,10 +350,10 @@ const MenuSection = () => {
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-background-muted/50 text-text-secondary uppercase text-[10px] font-bold tracking-widest border-b border-border-light">
               <tr>
-                <th className="px-6 py-4 w-16 text-center">S.No</th>
-                <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors group" onClick={() => handleSort('name')}>
+                <th className="px-4 py-4 w-12 text-center">#</th>
+                <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors group min-w-[200px]" onClick={() => handleSort('name')}>
                   <div className="flex items-center space-x-1">
-                    <span>Item</span>
+                    <span>Menu Item</span>
                     <ArrowUpDown size={12} className={`opacity-0 group-hover:opacity-100 transition-opacity ${sortConfig.key === 'name' ? 'opacity-100 text-primary' : ''}`} />
                   </div>
                 </th>
@@ -315,15 +363,15 @@ const MenuSection = () => {
                     <ArrowUpDown size={12} className={`opacity-0 group-hover:opacity-100 transition-opacity ${sortConfig.key === 'category' ? 'opacity-100 text-primary' : ''}`} />
                   </div>
                 </th>
-                <th className="px-6 py-4">Type</th>
-                <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors group" onClick={() => handleSort('price')}>
+                <th className="px-6 py-4 text-center">Type</th>
+                <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors group min-w-[120px]" onClick={() => handleSort('price')}>
                   <div className="flex items-center space-x-1">
-                    <span>Price/Sizes</span>
+                    <span>Pricing</span>
                     <ArrowUpDown size={12} className={`opacity-0 group-hover:opacity-100 transition-opacity ${sortConfig.key === 'price' ? 'opacity-100 text-primary' : ''}`} />
                   </div>
                 </th>
-                <th className="px-6 py-4">Stock</th>
-                <th className="px-6 py-4">Visibility</th>
+                <th className="px-6 py-4 text-center">Inventory</th>
+                <th className="px-6 py-4 text-center">Status</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
@@ -345,80 +393,112 @@ const MenuSection = () => {
                 </tr>
               ) : (
                 filteredMenus.map((menu, index) => (
-                  <tr key={menu._id} className="hover:bg-background-muted/30 transition-colors group">
-                    <td className="px-6 py-4 text-center font-medium text-text-muted">{index + 1}</td>
+                  <tr key={menu._id} className="hover:bg-background-muted/30 transition-colors group align-middle">
+                    <td className="px-4 py-4 text-center font-medium text-text-muted">{index + 1}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-lg bg-background-muted overflow-hidden shrink-0 border border-border-light">
+                        <div className="w-12 h-12 rounded-xl bg-background-muted overflow-hidden shrink-0 border border-border-light shadow-sm">
                           {menu.image ? (
                             <img src={menu.image} alt={menu.name} className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-text-muted">
-                              <ImageIcon size={16} />
+                              <ImageIcon size={20} />
                             </div>
                           )}
                         </div>
-                        <div>
-                          <p className="font-bold text-text-primary">{menu.name}</p>
-                          <p className="text-[10px] text-text-muted truncate max-w-[150px]">{menu.description}</p>
+                        <div className="flex flex-col">
+                          <p className="font-bold text-text-primary leading-tight">{menu.name}</p>
+                          <p className="text-[10px] text-text-muted mt-0.5 line-clamp-1 max-w-[180px]">{menu.description}</p>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-xs font-medium text-text-secondary bg-background-muted px-2 py-1 rounded-md border border-border-light">
+                      <span className="text-[11px] font-bold text-text-secondary bg-background-muted/50 px-2.5 py-1 rounded-full border border-border-light">
                         {menu.category?.name || 'Uncategorized'}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                        menu.foodType === 'veg' ? 'bg-status-on/10 text-status-available' : 'bg-status-off/10 text-status-unavailable'
-                      }`}>
-                        {menu.foodType}
-                      </span>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex justify-center">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border ${
+                          menu.foodType === 'veg' 
+                            ? 'bg-status-on/5 text-status-available border-status-on/20' 
+                            : 'bg-status-off/5 text-status-unavailable border-status-off/20'
+                        }`}>
+                          {menu.foodType}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="space-y-0.5">
-                        {menu.variants?.map((v, idx) => (
-                          <p key={idx} className="text-[10px] text-text-secondary">
-                            <span className="font-semibold">{v.size?.name || 'Unknown'}:</span> ₹{v.price}
-                          </p>
-                        ))}
+                      <div className="flex flex-col space-y-2">
+                        {menu.variants?.length > 0 ? (
+                          <div className="relative">
+                            <select
+                              value={selectedSizes[menu._id] || ''}
+                              onChange={(e) => handleRowSizeChange(menu._id, e.target.value)}
+                              className="w-full bg-background-muted/50 border border-border-light rounded-lg px-2 py-1 text-[11px] font-bold text-text-primary outline-none focus:border-primary/50 transition-all cursor-pointer"
+                            >
+                              {menu.variants.map((v, idx) => (
+                                <option key={idx} value={v.size?._id || v.size}>
+                                  {v.size?.name || 'Size'}: ₹{v.price}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-text-muted italic">No variants</span>
+                        )}
+                        
                         {menu.hasOffer && (
-                          <p className="text-[10px] text-status-available font-bold">Offer: ₹{menu.offerPrice}</p>
+                          <div className="flex items-center space-x-1.5 px-2 py-0.5 bg-status-on/5 border border-status-on/10 rounded-md w-fit">
+                            <span className="text-[9px] text-status-available font-bold uppercase">Offer:</span>
+                            <span className="text-[11px] text-status-available font-black">₹{menu.offerPrice}</span>
+                          </div>
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="space-y-1">
-                        <p className="font-bold text-text-primary">
-                          {menu.totalStock || 0} 
-                          <span className="text-[10px] text-text-muted uppercase ml-1">
-                            {menu.variants?.[0]?.size?.unit || 'Units'}
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex flex-col items-center">
+                        {menu.totalStock > 0 ? (
+                          <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300">
+                            <span className="text-sm font-black text-text-primary">
+                              {getCalculatedStock(menu)}
+                            </span>
+                            <span className="text-[9px] text-text-muted font-bold uppercase tracking-tighter">
+                              {menu.variants?.find(v => (v.size?._id || v.size) === selectedSizes[menu._id])?.size?.name || 'Units'} Available
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-[9px] font-black text-status-unavailable uppercase bg-status-off/10 px-2 py-1 rounded border border-status-off/20">
+                            Out of Stock
                           </span>
-                        </p>
-                        {menu.totalStock === 0 && (
-                          <span className="text-[10px] font-bold text-status-unavailable uppercase">Out of Stock</span>
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
-                        !menu.isBlocked ? 'bg-status-on/10 text-status-available' : 'bg-status-off/10 text-status-unavailable'
-                      }`}>
-                        {!menu.isBlocked ? 'Live' : 'Blocked'}
-                      </span>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex justify-center">
+                        <span className={`flex items-center space-x-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                          !menu.isBlocked 
+                            ? 'bg-status-on/10 text-status-available border-status-on/30' 
+                            : 'bg-status-off/10 text-status-unavailable border-status-off/30'
+                        }`}>
+                          <div className={`w-1.5 h-1.5 rounded-full ${!menu.isBlocked ? 'bg-status-available animate-pulse' : 'bg-status-unavailable'}`} />
+                          <span>{!menu.isBlocked ? 'Live' : 'Hidden'}</span>
+                        </span>
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end space-x-2">
+                      <div className="flex items-center justify-end space-x-1">
                         <button 
                           onClick={() => handleOpenModal(menu)}
-                          className="p-2 text-text-secondary hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                          className="p-2 text-text-secondary hover:text-primary hover:bg-primary/10 rounded-xl transition-all duration-200"
+                          title="Edit Item"
                         >
                           <Edit2 size={16} />
                         </button>
                         <button 
                           onClick={() => handleDelete(menu._id)}
-                          className="p-2 text-text-secondary hover:text-status-unavailable hover:bg-status-off/10 rounded-lg transition-colors"
+                          className="p-2 text-text-secondary hover:text-status-unavailable hover:bg-status-off/10 rounded-xl transition-all duration-200"
+                          title="Delete Item"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -685,6 +765,14 @@ const MenuSection = () => {
             </div>
           </div>
         </div>
+      )}
+      {showCropper && (
+        <ImageCropper
+          image={imageToCrop}
+          onCropComplete={handleCropComplete}
+          onCancel={() => setShowCropper(false)}
+          aspect={1}
+        />
       )}
     </div>
   );

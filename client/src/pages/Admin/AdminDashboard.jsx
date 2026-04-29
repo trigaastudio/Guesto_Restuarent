@@ -30,6 +30,8 @@ import { useTheme } from '../../context/ThemeContext';
 import CategorySection from './sections/CategorySection';
 import MenuSection from './sections/MenuSection';
 import SizeSection from './sections/SizeSection';
+import OrderSection from './sections/OrderSection';
+import StaffManagement from './sections/StaffManagement';
 
 const AdminDashboard = () => {
   const { theme, toggleTheme } = useTheme();
@@ -115,7 +117,7 @@ const AdminDashboard = () => {
 
         {/* Inner Content with overflow handling */}
         <div className="flex-1 flex flex-col overflow-x-hidden no-scrollbar relative">
-          <div className={`p-6 border-b border-border-light flex items-center justify-center relative ${isSidebarCollapsed ? 'lg:justify-center' : 'lg:justify-between'}`}>
+          <div className="p-6 border-b border-border-light flex items-center justify-center relative">
             <img
               src={
                 (isSidebarCollapsed && !isMobileMenuOpen)
@@ -136,6 +138,7 @@ const AdminDashboard = () => {
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto no-scrollbar">
             {[
               { name: 'Overview', icon: LayoutDashboard },
+              { name: 'Counter Orders', icon: ShoppingCart },
               { name: 'Staff Management', icon: Users },
               { name: 'Categories', icon: BookOpen },
               { name: 'Global Sizes', icon: Settings },
@@ -150,8 +153,8 @@ const AdminDashboard = () => {
                 }}
                 title={isSidebarCollapsed && !isMobileMenuOpen ? item.name : ''}
                 className={`w-full flex items-center rounded-xl transition-all duration-200 p-3 group ${activeTab === item.name
-                    ? 'bg-primary text-white shadow-lg shadow-primary/20 font-semibold'
-                    : 'text-text-secondary hover:bg-background-muted hover:text-text-primary'
+                  ? 'bg-primary text-white shadow-lg shadow-primary/20 font-semibold'
+                  : 'text-text-secondary hover:bg-background-muted hover:text-text-primary'
                   } ${(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'}`}
               >
                 <item.icon size={20} className="shrink-0 transition-transform duration-300 group-hover:scale-110" />
@@ -214,7 +217,7 @@ const AdminDashboard = () => {
             >
               {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
             </button>
-            <button 
+            <button
               onClick={handleRefresh}
               className="p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all group"
               title="Refresh Data"
@@ -242,177 +245,241 @@ const AdminDashboard = () => {
         {/* Dashboard Content */}
         <div className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-8">
           {activeTab === 'Overview' && (
-            <>
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
               {/* Welcome Section */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-2xl font-bold text-text-primary">Restaurant Overview</h2>
-                  <p className="text-text-secondary text-sm">Key performance metrics and trend analysis.</p>
+                  <h2 className="text-3xl font-black text-text-primary tracking-tight">Dashboard</h2>
+                  <p className="text-text-secondary text-sm font-medium">Welcome back! Here's what's happening today.</p>
                 </div>
-                <div className="flex space-x-2">
-                  <button className="bg-background-card border border-border-main text-text-primary px-4 py-2 rounded-xl text-sm font-semibold hover:bg-background-muted transition-colors">
-                    Export Table
+                {/* <div className="flex items-center space-x-3">
+                  <div className="flex -space-x-2 mr-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="w-8 h-8 rounded-full border-2 border-background-card bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
+                        U{i}
+                      </div>
+                    ))}
+                    <div className="w-8 h-8 rounded-full border-2 border-background-card bg-background-muted flex items-center justify-center text-[10px] font-bold text-text-muted">
+                      +5
+                    </div>
+                  </div>
+                  <button className="p-2.5 bg-background-card border border-border-main text-text-secondary rounded-xl hover:bg-background-muted transition-all">
+                    <Bell size={20} />
                   </button>
-                  <button className="bg-primary text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-lg shadow-primary/20 hover:bg-primary-light transition-all">
-                    Update Data
+                  <button className="p-2.5 bg-background-card border border-border-main text-text-secondary rounded-xl hover:bg-background-muted transition-all">
+                    <Settings size={20} />
                   </button>
+                </div> */}
+              </div>
+
+              {/* Top High-Level Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Pending Orders Card */}
+                <div className="bg-background-card p-6 rounded-3xl border border-border-light shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-2 bg-orange-500/10 text-orange-500 rounded-lg">
+                        <ShoppingCart size={18} />
+                      </div>
+                      <span className="text-sm font-bold text-text-secondary">Pending Orders</span>
+                    </div>
+                    <ChevronRight size={16} className="text-text-muted group-hover:translate-x-1 transition-transform" />
+                  </div>
+                  <div className="flex items-end space-x-4">
+                    <span className="text-4xl font-black text-text-primary">25</span>
+                    <div className="flex items-center space-x-1 mb-1.5 text-status-available text-[11px] font-bold">
+                      <span>47%</span>
+                      <span className="text-text-muted font-normal uppercase">Cleared</span>
+                    </div>
+                  </div>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
+                </div>
+
+                {/* Orders in Progress Card */}
+                <div className="bg-background-card p-6 rounded-3xl border border-border-light shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg">
+                        <Clock size={18} />
+                      </div>
+                      <span className="text-sm font-bold text-text-secondary">Orders in Progress</span>
+                    </div>
+                    <ChevronRight size={16} className="text-text-muted group-hover:translate-x-1 transition-transform" />
+                  </div>
+                  <div className="flex items-end space-x-4">
+                    <span className="text-4xl font-black text-text-primary">17</span>
+                  </div>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
+                </div>
+
+                {/* Available Tables Card */}
+                <div className="bg-background-card p-6 rounded-3xl border border-border-light shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-2 bg-primary/10 text-primary rounded-lg">
+                        <LayoutDashboard size={18} />
+                      </div>
+                      <span className="text-sm font-bold text-text-secondary">Available Tables</span>
+                    </div>
+                    <ChevronRight size={16} className="text-text-muted group-hover:translate-x-1 transition-transform" />
+                  </div>
+                  <div className="flex items-end space-x-4">
+                    <div className="flex items-baseline space-x-1">
+                      <span className="text-4xl font-black text-text-primary">3</span>
+                      <span className="text-xl font-bold text-text-muted">/12</span>
+                    </div>
+                    <div className="flex items-center space-x-1 mb-1.5 text-status-available text-[11px] font-bold">
+                      <span>87%</span>
+                      <span className="text-text-muted font-normal uppercase">Booked</span>
+                    </div>
+                  </div>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
                 </div>
               </div>
 
-              {/* Data Tables Section */}
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                {/* Recent Orders Table */}
-                <div className="bg-background-card rounded-2xl border border-border-light shadow-sm overflow-hidden flex flex-col">
-                  <div className="p-6 border-b border-border-light flex items-center justify-between">
+              {/* Main Analytics Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Total Revenue Chart Card */}
+                <div className="lg:col-span-2 bg-background-card rounded-[2.5rem] border border-border-light shadow-sm overflow-hidden flex flex-col">
+                  <div className="p-8 border-b border-border-light flex items-center justify-between">
                     <div>
-                      <h3 className="font-bold text-text-primary text-lg">Recent Orders</h3>
-                      <p className="text-text-secondary text-xs">Live status of incoming orders</p>
+                      <h3 className="font-black text-text-primary text-xl">Total Revenue</h3>
+                      <p className="text-text-secondary text-xs font-medium">Sales Overview</p>
                     </div>
+                    <div className="flex items-center space-x-2 bg-background-muted/50 p-1 rounded-xl border border-border-light">
+                      <button className="px-3 py-1.5 rounded-lg text-xs font-bold bg-background-card text-text-primary shadow-sm border border-border-light">This Week</button>
+                      <button className="px-3 py-1.5 rounded-lg text-xs font-bold text-text-muted hover:text-text-primary transition-colors">This Month</button>
+                    </div>
+                  </div>
+                  <div className="flex-1 p-8 flex flex-col items-center justify-center min-h-[300px] bg-gradient-to-b from-transparent to-primary/5 relative">
+                    {/* Mock Bar Chart */}
+                    <div className="flex items-end space-x-4 w-full h-full max-h-[200px] justify-between">
+                      {[40, 70, 45, 90, 65, 30, 50].map((height, i) => (
+                        <div key={i} className="flex-1 flex flex-col items-center space-y-3 group">
+                          <div
+                            className={`w-full max-w-[40px] rounded-t-xl transition-all duration-500 relative ${i === 3 ? 'bg-primary' : 'bg-background-muted group-hover:bg-primary/20'}`}
+                            style={{ height: `${height}%` }}
+                          >
+                            {i === 3 && (
+                              <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-xl animate-bounce">
+                                ₹598.00
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-[10px] font-bold text-text-muted uppercase">
+                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i]}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Business Data Sidebar */}
+                <div className="space-y-6">
+                  <div className="bg-background-card p-8 rounded-[2.5rem] border border-border-light shadow-sm flex flex-col h-full">
+                    <div className="flex items-center justify-between mb-8">
+                      <h3 className="font-black text-text-primary text-xl">Business Data</h3>
+                      <div className="flex items-center space-x-1 text-text-muted">
+                        <Clock size={14} />
+                        <span className="text-[10px] font-bold uppercase">This Week</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-6">
+                      {[
+                        { label: 'Number of Customers', value: '197', icon: Users, color: 'bg-purple-500/10 text-purple-500' },
+                        { label: 'Total Orders', value: '270', icon: ShoppingCart, color: 'bg-blue-500/10 text-blue-500' },
+                        { label: 'Average Order Values', value: '₹ 109.00', icon: BarChart3, color: 'bg-primary/10 text-primary' },
+                      ].map((item) => (
+                        <div key={item.label} className="group cursor-pointer">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-bold text-text-muted uppercase tracking-tight">{item.label}</span>
+                            <ChevronRight size={14} className="text-text-muted opacity-0 group-hover:opacity-100 transition-all" />
+                          </div>
+                          <div className={`flex items-center space-x-4 p-4 rounded-2xl border border-transparent transition-all group-hover:border-border-light ${item.color}`}>
+                            <item.icon size={20} />
+                            <span className="text-2xl font-black">{item.value}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Section: Recent Activity and Top Dishes */}
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                {/* Recent Activity */}
+                <div className="bg-background-card rounded-[2.5rem] border border-border-light shadow-sm overflow-hidden p-8">
+                  <div className="flex items-center justify-between mb-8">
+                    <h3 className="font-black text-text-primary text-xl">Recent Activity</h3>
                     <button className="text-primary text-xs font-bold hover:underline">View All</button>
                   </div>
-                  <div className="overflow-x-auto flex-1">
-                    <table className="w-full text-left text-sm whitespace-nowrap">
-                      <thead className="bg-background-muted/50 text-text-secondary uppercase text-[10px] font-bold tracking-widest">
-                        <tr>
-                          <th className="px-6 py-4">Order ID</th>
-                          <th className="px-6 py-4">Customer</th>
-                          <th className="px-6 py-4">Type</th>
-                          <th className="px-6 py-4">Amount</th>
-                          <th className="px-6 py-4">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border-light">
-                        {recentOrders.map((order) => (
-                          <tr key={order.id} className="hover:bg-background-muted/30 transition-colors group">
-                            <td className="px-6 py-4">
-                              <p className="font-bold text-text-primary">{order.id}</p>
-                              <p className="text-[10px] text-text-muted">{order.time}</p>
-                            </td>
-                            <td className="px-6 py-4">
-                              <p className="font-medium text-text-primary">{order.customer}</p>
-                              <p className="text-[10px] text-text-muted truncate max-w-[120px]">{order.items}</p>
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className="text-[10px] font-medium text-text-secondary bg-background-muted px-2 py-0.5 rounded-md border border-border-light">
-                                {order.type}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 font-bold text-text-primary">{order.amount}</td>
-                            <td className="px-6 py-4">
-                              <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                                order.status === 'Delivered' ? 'bg-status-on/10 text-status-available' :
-                                order.status === 'Preparing' ? 'bg-amber-500/10 text-amber-500' :
-                                'bg-primary/10 text-primary'
-                              }`}>
-                                {order.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="space-y-6">
+                    {[
+                      { id: '#4587', action: 'Status Changed', time: '9min', status: 'Completed', amount: '109.00', statusColor: 'bg-status-on/10 text-status-available' },
+                      { id: '#4587', action: 'Status Changed', time: '9min', status: 'Pending', amount: '109.00', statusColor: 'bg-orange-500/10 text-orange-500' },
+                    ].map((activity, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-4 rounded-2xl hover:bg-background-muted transition-colors border border-transparent hover:border-border-light">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 rounded-xl bg-background-muted flex items-center justify-center overflow-hidden border border-border-light">
+                            <img src="/placeholder-dish.png" alt="Dish" className="w-full h-full object-cover opacity-50" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-text-primary">{activity.action}</p>
+                            <p className="text-[11px] text-text-muted font-medium">₹ {activity.amount} • {activity.id} • <Clock size={10} className="inline mb-0.5" /> Wait {activity.time}</p>
+                          </div>
+                        </div>
+                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${activity.statusColor}`}>
+                          {activity.status}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                {/* Menu Stock Alerts Table */}
-                <div className="bg-background-card rounded-2xl border border-border-light shadow-sm overflow-hidden flex flex-col">
-                  <div className="p-6 border-b border-border-light flex items-center justify-between">
-                    <div>
-                      <h3 className="font-bold text-text-primary text-lg">Menu Stock Alerts</h3>
-                      <p className="text-text-secondary text-xs">Portions remaining for popular dishes</p>
-                    </div>
-                    <button className="text-primary text-xs font-bold hover:underline">Update Menu</button>
-                  </div>
-                  <div className="overflow-x-auto flex-1">
-                    <table className="w-full text-left text-sm whitespace-nowrap">
-                      <thead className="bg-background-muted/50 text-text-secondary uppercase text-[10px] font-bold tracking-widest">
-                        <tr>
-                          <th className="px-6 py-4">Menu Item</th>
-                          <th className="px-6 py-4">Portions Left</th>
-                          <th className="px-6 py-4">Daily Goal</th>
-                          <th className="px-6 py-4">Availability</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border-light">
-                        {lowStockItems.map((item) => (
-                          <tr key={item.item} className="hover:bg-background-muted/30 transition-colors">
-                            <td className="px-6 py-4">
-                              <p className="font-bold text-text-primary">{item.item}</p>
-                              <p className="text-[10px] text-text-muted uppercase">{item.category}</p>
-                            </td>
-                            <td className="px-6 py-4 text-text-primary font-medium">{item.stock}</td>
-                            <td className="px-6 py-4 text-text-secondary">{item.threshold}</td>
-                            <td className="px-6 py-4">
-                              <span className={`${
-                                item.status === 'Critical' ? 'text-status-unavailable' : 'text-amber-500'
-                              } flex items-center space-x-1 font-bold text-[10px] uppercase tracking-wider`}>
-                                <AlertCircle size={12} />
-                                <span>{item.status}</span>
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-
-              {/* Metrics Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 lg:gap-6">
-                {metrics.map((metric) => (
-                  <div key={metric.label} className="bg-background-card p-5 rounded-2xl border border-border-light shadow-sm hover:shadow-md transition-all group">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className={`p-2.5 rounded-xl bg-background-muted group-hover:scale-110 transition-transform ${metric.color}`}>
-                        <metric.icon size={20} />
-                      </div>
-                      <TrendingUp className="text-status-available shrink-0" size={14} />
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">{metric.label}</p>
-                      <p className="text-2xl font-bold text-text-primary">{metric.value}</p>
-                      <p className="text-text-muted text-[10px] italic">{metric.description}</p>
+                {/* Top Dishes */}
+                <div className="bg-background-card rounded-[2.5rem] border border-border-light shadow-sm overflow-hidden p-8">
+                  <div className="flex items-center justify-between mb-8">
+                    <h3 className="font-black text-text-primary text-xl">Top Dishes</h3>
+                    <div className="flex items-center space-x-1 text-text-muted">
+                      <Clock size={14} />
+                      <span className="text-[10px] font-bold uppercase">This Week</span>
                     </div>
                   </div>
-                ))}
-              </div>
-
-              {/* Charts Section */}
-              <div className="space-y-6">
-                <h3 className="text-lg font-bold text-text-primary border-l-4 border-primary pl-4">Analytics Visualization</h3>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {charts.map((chart) => (
-                    <div key={chart.name} className="bg-background-card rounded-2xl border border-border-light shadow-sm overflow-hidden flex flex-col">
-                      <div className="p-4 bg-background-muted/50 border-b border-border-light flex items-center justify-between">
-                        <span className="font-bold text-sm text-text-primary">{chart.name}</span>
-                        <chart.icon size={16} className="text-primary" />
-                      </div>
-                      <div className="flex-1 p-6 flex flex-col items-center justify-center min-h-[200px] border-b border-border-light relative overflow-hidden group">
-                        <div className="absolute inset-x-8 inset-y-12 bg-primary/5 rounded-lg border border-dashed border-primary/20 flex flex-col items-center justify-center p-4">
-                          <chart.icon size={48} className="text-primary/20 mb-2 group-hover:scale-110 transition-transform" />
-                          <p className="text-[10px] text-text-muted font-medium uppercase tracking-widest">{chart.type}</p>
+                  <div className="space-y-6">
+                    {[
+                      { name: 'Twice Cooked Pork', orders: '960' },
+                      { name: 'Fish Flavored Pork', orders: '863' },
+                      { name: 'Pork Ribs Rice', orders: '884' },
+                    ].map((dish, idx) => (
+                      <div key={idx} className="flex items-center justify-between group">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 rounded-xl bg-background-muted flex items-center justify-center overflow-hidden border border-border-light group-hover:scale-105 transition-transform">
+                            <img src="/placeholder-dish.png" alt="Dish" className="w-full h-full object-cover opacity-50" />
+                          </div>
+                          <span className="font-bold text-text-primary text-sm group-hover:text-primary transition-colors">{dish.name}</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xl font-black text-text-primary">{dish.orders}</span>
+                          <span className="text-[10px] font-bold text-text-muted uppercase">Orders</span>
                         </div>
                       </div>
-                      <div className="p-4 bg-background-card">
-                        <p className="text-xs text-text-secondary leading-relaxed italic">{chart.purpose}</p>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
-            </>
+            </div>
           )}
 
+          {activeTab === 'Counter Orders' && <OrderSection key={`order-${refreshKey}`} />}
           {activeTab === 'Categories' && <CategorySection key={`cat-${refreshKey}`} />}
           {activeTab === 'Global Sizes' && <SizeSection key={`size-${refreshKey}`} />}
           {activeTab === 'Menu Editor' && <MenuSection key={`menu-${refreshKey}`} />}
-          
-          {activeTab === 'Staff Management' && (
-            <div className="flex items-center justify-center h-64 border-2 border-dashed border-border-light rounded-2xl">
-              <p className="text-text-secondary font-medium italic">Staff Management section coming soon...</p>
-            </div>
-          )}
-          
+
+          {activeTab === 'Staff Management' && <StaffManagement key={`staff-${refreshKey}`} />}
+
           {activeTab === 'Settings' && (
             <div className="flex items-center justify-center h-64 border-2 border-dashed border-border-light rounded-2xl">
               <p className="text-text-secondary font-medium italic">Settings section coming soon...</p>

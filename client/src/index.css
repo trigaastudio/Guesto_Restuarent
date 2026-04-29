@@ -5,18 +5,18 @@
   --color-primary: #C96A0A;
   --color-primary-light: #E88A1A;
   --color-primary-dark: #A35405;
-  
+
   --color-background: #F6F1EA;
   --color-background-card: #FFFFFF;
   --color-background-muted: #EFE7DD;
-  
+
   --color-text-primary: #2D2D2D;
   --color-text-secondary: #6B6B6B;
   --color-text-muted: #9CA3AF;
-  
+
   --color-border: #E5E5E5;
   --color-border-light: #F1F1F1;
-  
+
   --color-status-available: #16A34A;
   --color-status-unavailable: #DC2626;
 
@@ -58,7 +58,8 @@
     --card-border: var(--border);
   }
 
-  .dark, [data-theme="dark"] {
+  .dark,
+  [data-theme="dark"] {
     --color-background: #121212;
     --color-background-card: #1E1E1E;
     --color-background-muted: #2A2A2A;
@@ -74,7 +75,7 @@
     --card-bg: var(--color-background-card);
     --text-primary: var(--color-text-primary);
     --text-secondary: var(--color-text-secondary);
-    --text-muted: #888888; 
+    --text-muted: #888888;
     --border: var(--color-border);
     --border-input: var(--color-border-light);
     --input-label: var(--color-text-secondary);
@@ -99,6 +100,7 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -111,6 +113,7 @@
     opacity: 0;
     transform: translateY(15px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -124,9 +127,15 @@
 .hero-fade-in {
   animation: fadeInUp 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
+
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .animate-spin-once {

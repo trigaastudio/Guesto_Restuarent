@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, CheckCircle, XCircle, Search, Loader2, ArrowUpDown, Filter, Image as ImageIcon } from 'lucide-react';
 import axios from 'axios';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
+import ImageCropper from '../../../components/ImageCropper/ImageCropper';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
@@ -16,6 +17,10 @@ const CategorySection = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Crop State
+  const [showCropper, setShowCropper] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState(null);
 
   useEffect(() => {
     fetchCategories();
@@ -49,12 +54,24 @@ const CategorySection = () => {
     setIsModalOpen(true);
   };
 
-  const handleImageUpload = async (e) => {
+  const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImageToCrop(reader.result);
+      setShowCropper(true);
+    };
+    reader.readAsDataURL(file);
+    // Reset input
+    e.target.value = '';
+  };
+
+  const handleCropComplete = async (croppedFile) => {
+    setShowCropper(false);
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append('image', croppedFile);
 
     setIsUploading(true);
     try {
@@ -226,7 +243,7 @@ const CategorySection = () => {
             <tbody className="divide-y divide-border-light">
               {isLoading ? (
                 <tr>
-                  <td colSpan="4" className="px-6 py-12 text-center">
+                  <td colSpan="7" className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center space-y-2">
                       <Loader2 className="animate-spin text-primary" size={32} />
                       <p className="text-text-secondary font-medium">Loading categories...</p>
@@ -235,7 +252,7 @@ const CategorySection = () => {
                 </tr>
               ) : filteredCategories.length === 0 ? (
                 <tr>
-                  <td colSpan="4" className="px-6 py-12 text-center">
+                  <td colSpan="7" className="px-6 py-12 text-center">
                     <p className="text-text-muted italic">No categories found.</p>
                   </td>
                 </tr>
@@ -384,6 +401,14 @@ const CategorySection = () => {
             </div>
           </div>
         </div>
+      )}
+      {showCropper && (
+        <ImageCropper
+          image={imageToCrop}
+          onCropComplete={handleCropComplete}
+          onCancel={() => setShowCropper(false)}
+          aspect={1}
+        />
       )}
     </div>
   );

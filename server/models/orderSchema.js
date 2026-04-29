@@ -57,71 +57,47 @@ const orderSchema = new mongoose.Schema({
         ref: "Menu",
         required: true
       },
+      name: String,
       size: String,
+      image: {
+        type: String,
+        default: ''
+      },
       quantity: {
         type: Number,
         required: true,
         min: 1
       },
-      price: {
+      unitPrice: {
         type: Number,
         required: true,
         min: 0
+      },
+      totalPrice: {
+        type: Number,
+        required: true,
+        min: 0
+      },
+      kitchenStatus: {
+        type: String,
+        enum: ["pending", "preparing", "delayed", "ready"],
+        default: "pending"
       }
     }
   ],
 
- 
   customerDetails: {
-
-    
     name: {
       type: String,
-      required: function () {
-        return this.orderType === "takeaway" || this.orderType === "delivery";
-      }
+      default: "Walk-in"
     },
-
-
-    phone: {
-      type: String,
-      required: function () {
-        return this.orderType === "takeaway" || this.orderType === "delivery";
-      }
-    },
-
-
-    address: {
-      type: String,
-      required: function () {
-        return this.orderType === "delivery";
-      }
-    },
-
-
+    phone: String,
+    address: String,
     location: {
-      lat: {
-        type: Number,
-        required: function () {
-          return this.orderType === "delivery";
-        }
-      },
-      lng: {
-        type: Number,
-        required: function () {
-          return this.orderType === "delivery";
-        }
-      }
+      lat: Number,
+      lng: Number
     },
-
-
-    remarks: {
-      type: String,
-      required: function () {
-        return this.orderType === "takeaway";
-      }
-    }
-
+    remarks: String
   },
 
   subtotal: {
@@ -148,22 +124,29 @@ const orderSchema = new mongoose.Schema({
     type: String,
     enum: [
       "pending",
-      "approved",
+      "confirmed",
       "preparing",
       "ready",
-      "served",
-      "picked",
-      "out-for-delivery",
-      "delivered",
       "completed",
       "cancelled"
     ],
     default: "pending"
   },
 
+  kitchenStatus: {
+    type: String,
+    enum: ["pending", "preparing", "delayed", "ready"],
+    default: "pending"
+  },
+
+  isLocked: {
+    type: Boolean,
+    default: false
+  },
+
   paymentStatus: {
     type: String,
-    enum: ["pending", "paid", "failed"],
+    enum: ["pending", "paid", "failed", "refunded"],
     default: "pending"
   },
 
@@ -174,4 +157,26 @@ const orderSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
-export default mongoose.model("Order", orderSchema);
+// Pre-save hook to derive kitchenStatus and handle locking
+orderSchema.pre('save', async function () {
+  if (this.items && this.items.length > 0) {
+    const statuses = this.items.map(i => i.kitchenStatus);
+    
+    if (statuses.every(s => s === "ready")) {
+      this.kitchenStatus = "ready";
+    } else if (statuses.some(s => s === "delayed")) {
+      this.kitchenStatus = "delayed";
+    } else if (statuses.some(s => s === "preparing" || s === "ready")) {
+      this.kitchenStatus = "preparing";
+    } else {
+      this.kitchenStatus = "pending";
+    }
+
+    // Automatic locking logic
+    if (this.kitchenStatus !== "pending") {
+      this.isLocked = true;
+    }
+  }
+});
+
+export default mongoose.model("Order", orderSchema);

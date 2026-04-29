@@ -131,6 +131,16 @@ const AdminLogin = () => {
               </>
             )}
           </button>
+
+          <div className="pt-4 border-t border-border-light text-center">
+            <button 
+              type="button"
+              onClick={() => navigate('/staff/login')}
+              className="text-[10px] font-black text-text-muted hover:text-primary uppercase tracking-widest transition-colors"
+            >
+              Are you Kitchen or Waiter? Staff Login
+            </button>
+          </div>
         </form>
       </div>
 
