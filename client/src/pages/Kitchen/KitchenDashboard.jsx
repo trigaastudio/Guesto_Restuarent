@@ -72,7 +72,7 @@ const StatusDropdown = ({ value, onChange }) => {
 };
 
 const TABS = [
-  { name: 'Counter / Takeaway', icon: ShoppingCart, type: 'takeaway' },
+  { name: 'Counter', icon: ShoppingCart, type: 'takeaway' },
   { name: 'Dine In', icon: UtensilsCrossed, type: 'dine-in' },
   { name: 'Delivery', icon: Bike, type: 'delivery' },
 ];
@@ -104,9 +104,9 @@ const KitchenDashboard = () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/orders`);
       const allOrders = response.data.data || [];
-      // Show all active orders — kitchen staff removes manually by marking 'completed'
+      // Show only confirmed and ready orders in the kitchen panel
       const kitchenOrders = allOrders.filter(o =>
-        o.status !== 'completed' && o.status !== 'cancelled'
+        o.status === 'confirmed' || o.status === 'ready'
       );
 
       // Detect new orders for notifications and sound

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Search, Image as ImageIcon, Filter, CheckCircle2, XCircle, AlertCircle, Loader2, ArrowUpDown } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, Image as ImageIcon, Filter, CheckCircle2, XCircle, AlertCircle, Loader2, ArrowUpDown, RotateCcw } from 'lucide-react';
 import axios from 'axios';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 import ImageCropper from '../../../components/ImageCropper/ImageCropper';
@@ -241,8 +241,9 @@ const MenuSection = () => {
 
   // Filter menu items based on search and selected filters
   const filteredMenus = getSortedData(menus).filter(m => {
-    const matchesSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (m.category?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const searchLower = (searchTerm || '').toLowerCase();
+    const matchesSearch = (m.name || '').toLowerCase().includes(searchLower) ||
+                         (m.category?.name || '').toLowerCase().includes(searchLower);
     const matchesCategory = categoryFilter === 'all' || m.category?._id === categoryFilter;
     const matchesType = typeFilter === 'all' || m.foodType === typeFilter;
     const matchesStock = stockFilter === 'all' || 
@@ -342,6 +343,19 @@ const MenuSection = () => {
                 <option value="available" className="bg-background-card text-text-primary">Available</option>
                 <option value="out-of-stock" className="bg-background-card text-text-primary">Out of Stock</option>
               </select>
+              <button
+                onClick={() => { setSearchTerm(''); setCategoryFilter('all'); setTypeFilter('all'); setStockFilter('all'); }}
+                disabled={!searchTerm && categoryFilter === 'all' && typeFilter === 'all' && stockFilter === 'all'}
+                className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${
+                  !searchTerm && categoryFilter === 'all' && typeFilter === 'all' && stockFilter === 'all'
+                    ? 'bg-background-muted/50 text-text-muted/30 border-border-light cursor-not-allowed'
+                    : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white'
+                }`}
+                title="Clear All Filters"
+              >
+                <RotateCcw size={12} />
+                <span className="text-[10px] font-black uppercase tracking-wider">Clear Filters</span>
+              </button>
             </div>
           </div>
         </div>

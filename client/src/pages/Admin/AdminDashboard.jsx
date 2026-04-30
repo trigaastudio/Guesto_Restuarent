@@ -138,11 +138,11 @@ const AdminDashboard = () => {
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto no-scrollbar">
             {[
               { name: 'Overview', icon: LayoutDashboard },
-              { name: 'Counter Orders', icon: ShoppingCart },
-              { name: 'Staff Management', icon: Users },
+              { name: 'Orders', icon: ShoppingCart },
+              { name: 'Staff', icon: Users },
               { name: 'Categories', icon: BookOpen },
-              { name: 'Global Sizes', icon: Settings },
-              { name: 'Menu Editor', icon: UtensilsCrossed },
+              { name: 'Sizes', icon: Settings },
+              { name: 'Menu', icon: UtensilsCrossed },
               { name: 'Settings', icon: Settings },
             ].map((item) => (
               <button
@@ -473,12 +473,12 @@ const AdminDashboard = () => {
             </div>
           )}
 
-          {activeTab === 'Counter Orders' && <OrderSection key={`order-${refreshKey}`} />}
+          {activeTab === 'Orders' && <OrderSection key={`order-${refreshKey}`} />}
           {activeTab === 'Categories' && <CategorySection key={`cat-${refreshKey}`} />}
-          {activeTab === 'Global Sizes' && <SizeSection key={`size-${refreshKey}`} />}
-          {activeTab === 'Menu Editor' && <MenuSection key={`menu-${refreshKey}`} />}
+          {activeTab === 'Sizes' && <SizeSection key={`size-${refreshKey}`} />}
+          {activeTab === 'Menu' && <MenuSection key={`menu-${refreshKey}`} />}
 
-          {activeTab === 'Staff Management' && <StaffManagement key={`staff-${refreshKey}`} />}
+          {activeTab === 'Staff' && <StaffManagement key={`staff-${refreshKey}`} />}
 
           {activeTab === 'Settings' && (
             <div className="flex items-center justify-center h-64 border-2 border-dashed border-border-light rounded-2xl">

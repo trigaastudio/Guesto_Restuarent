@@ -3,7 +3,8 @@ import {
   Plus, Search, Filter, Eye, Edit2, Trash2, Clock,
   CheckCircle2, XCircle, AlertCircle, Loader2, ArrowUpDown,
   ShoppingCart, User, Phone, CreditCard, ChevronRight,
-  MoreVertical, Printer, Package, Utensils
+  MoreVertical, Printer, Package, Utensils, RotateCcw,
+  Copy, MapPin, ExternalLink
 } from 'lucide-react';
 import axios from 'axios';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
@@ -11,6 +12,24 @@ import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/swe
 const API_BASE_URL = 'http://localhost:5000/api';
 
 const OrderSection = () => {
+  const handleCopyForWhatsApp = (order) => {
+    const itemsText = order.items.map(item => `- ${item.name} (${item.size}) x${item.quantity}`).join('\n');
+    const text = `*ORDER: ${order.orderNumber}*\n` +
+                 `--------------------------\n` +
+                 `👤 *Customer:* ${order.customerDetails?.name}\n` +
+                 `📞 *Phone:* ${order.customerDetails?.phone || 'N/A'}\n` +
+                 `🏠 *Address:* ${order.customerDetails?.address || 'N/A'}\n` +
+                 `--------------------------\n` +
+                 `📦 *Items:*\n${itemsText}\n` +
+                 `--------------------------\n` +
+                 `💰 *Total:* ₹${order.totalAmount}\n` +
+                 `💳 *Payment:* ${order.paymentMethod?.toUpperCase()} (${order.paymentStatus?.toUpperCase()})\n` +
+                 (order.customerDetails?.location ? `\n📍 *Location:* https://www.google.com/maps?q=${order.customerDetails.location.lat},${order.customerDetails.location.lng}` : '');
+    
+    navigator.clipboard.writeText(text);
+    showToast('success', 'Copied for WhatsApp!');
+  };
+
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -20,13 +39,17 @@ const OrderSection = () => {
   const [posSearchTerm, setPosSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState('takeaway');
   const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
 
   // POS State
   const [cart, setCart] = useState([]);
   const [customer, setCustomer] = useState({ name: 'Walk-in', phone: '' });
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [cashReceived, setCashReceived] = useState('');
   const [menuItems, setMenuItems] = useState([]);
+  const [posOrderType, setPosOrderType] = useState('takeaway');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
 
   useEffect(() => {
     fetchOrders();
@@ -107,14 +130,25 @@ const OrderSection = () => {
           </div>
           <div class="divider"></div>
           <div class="payment-info">
-            <div style="display: flex; justify-content: space-between;">
-              <span>CASH RECEIVED :</span>
-              <span>${order.paymentStatus === 'paid' ? order.totalAmount.toFixed(2) : '0.00'}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; margin-top: 3px;">
-              <span>${order.paymentStatus === 'paid' ? 'CHANGE' : 'DUE'} :</span>
-              <span>0.00</span>
-            </div>
+            ${order.paymentMethod === 'cash' ? `
+              <div style="display: flex; justify-content: space-between;">
+                <span>CASH RECEIVED :</span>
+                <span>${(order.cashReceived || 0).toFixed(2)}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-top: 3px;">
+                <span>CHANGE :</span>
+                <span>${(order.balance || 0).toFixed(2)}</span>
+              </div>
+            ` : `
+              <div style="display: flex; justify-content: space-between;">
+                <span>PAYMENT METHOD :</span>
+                <span style="text-transform: uppercase;">${order.paymentMethod}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-top: 3px;">
+                <span>STATUS :</span>
+                <span style="text-transform: uppercase;">${order.paymentStatus}</span>
+              </div>
+            `}
           </div>
           <div class="divider"></div>
           <div style="text-align: center; font-size: 11px; margin-top: 10px;">
@@ -162,7 +196,15 @@ const OrderSection = () => {
 
       if (selectedOrder) {
         // Adding items to existing order
-        const response = await axios.patch(`${API_BASE_URL}/orders/${selectedOrder._id}/add-items`, { items: cart });
+        const currentTotal = (selectedOrder.totalAmount || 0) + cart.reduce((acc, item) => acc + item.totalPrice, 0);
+        const cash = parseFloat(cashReceived) || selectedOrder.cashReceived || 0;
+        const balance = cash - currentTotal;
+
+        const response = await axios.patch(`${API_BASE_URL}/orders/${selectedOrder._id}/add-items`, { 
+          items: cart,
+          cashReceived: cash,
+          balance: balance
+        });
         if (response.data.success) {
           showToast('success', 'Items added to order');
           setIsModalOpen(false);
@@ -174,13 +216,20 @@ const OrderSection = () => {
       }
 
       const orderData = {
-        customerDetails: customer,
+        customerDetails: {
+          ...customer,
+          address: posOrderType === 'delivery' ? deliveryAddress : ''
+        },
         items: cart,
+        orderType: posOrderType,
+        orderSource: 'admin',
         paymentMethod,
         subtotal,
         tax: 0,
         discount: 0,
-        totalAmount: subtotal
+        totalAmount: subtotal,
+        cashReceived: parseFloat(cashReceived) || 0,
+        balance: (parseFloat(cashReceived) || 0) - subtotal
       };
 
       const response = await axios.post(`${API_BASE_URL}/orders/counter`, orderData);
@@ -241,6 +290,7 @@ const OrderSection = () => {
   };
 
   const [editCustomer, setEditCustomer] = useState({ name: '', phone: '' });
+  const [editCashReceived, setEditCashReceived] = useState('');
 
   useEffect(() => {
     if (selectedOrder) {
@@ -248,14 +298,24 @@ const OrderSection = () => {
         name: selectedOrder.customerDetails?.name || '',
         phone: selectedOrder.customerDetails?.phone || ''
       });
+      setEditCashReceived(selectedOrder.cashReceived || '');
     }
   }, [selectedOrder]);
 
-  const handleUpdateCustomerDetails = async () => {
+  const handleUpdatePaymentDetails = async () => {
     try {
-      const response = await axios.patch(`${API_BASE_URL}/orders/${selectedOrder._id}/status`, { customerDetails: editCustomer });
+      const subtotal = selectedOrder.totalAmount || 0;
+      const cash = parseFloat(editCashReceived) || 0;
+      const balance = cash - subtotal;
+      
+      const response = await axios.patch(`${API_BASE_URL}/orders/${selectedOrder._id}/status`, { 
+        customerDetails: editCustomer,
+        cashReceived: cash,
+        balance: balance
+      });
+      
       if (response.data.success) {
-        showToast('success', 'Customer details updated');
+        showToast('success', 'Order details updated');
         setOrders(orders.map(o => o._id === selectedOrder._id ? response.data.data : o));
         setSelectedOrder(response.data.data);
       }
@@ -265,7 +325,8 @@ const OrderSection = () => {
   };
 
   const addToCart = (item, variant) => {
-    const existingIndex = cart.findIndex(c => c.menuItem === item._id && c.size === variant.size.name);
+    const sizeName = variant.size?.name || 'Standard';
+    const existingIndex = cart.findIndex(c => c.menuItem === item._id && c.size === sizeName);
 
     if (existingIndex > -1) {
       const newCart = [...cart];
@@ -277,7 +338,7 @@ const OrderSection = () => {
         menuItem: item._id,
         name: item.name,
         image: item.image || '',
-        size: variant.size.name,
+        size: sizeName,
         quantity: 1,
         unitPrice: variant.price,
         totalPrice: variant.price
@@ -339,12 +400,14 @@ const OrderSection = () => {
   };
 
   const filteredOrders = getSortedData(orders).filter(o => {
-    const matchesSearch = o.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const searchLower = (searchTerm || '').toLowerCase();
+    const matchesSearch = (o.orderNumber || '').toLowerCase().includes(searchLower) ||
       (o.customerDetails?.phone || '').includes(searchTerm) ||
-      (o.customerDetails?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+      (o.customerDetails?.name || '').toLowerCase().includes(searchLower);
     const matchesStatus = statusFilter === 'all' || o.status === statusFilter;
     const matchesPayment = paymentFilter === 'all' || o.paymentStatus === paymentFilter;
-    return matchesSearch && matchesStatus && matchesPayment;
+    const matchesType = o.orderType === activeTab;
+    return matchesSearch && matchesStatus && matchesPayment && matchesType;
   });
 
   const getStatusColor = (status) => {
@@ -365,16 +428,51 @@ const OrderSection = () => {
       <div className="print:hidden space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-black text-text-primary tracking-tight">Counter Orders</h2>
-            <p className="text-text-secondary text-sm">Monitor POS orders and operational status</p>
+            <h2 className="text-2xl font-black text-text-primary tracking-tight">Order Management</h2>
+            <p className="text-text-secondary text-sm">Monitor all orders and operational status</p>
           </div>
           <button
-            onClick={() => { setSelectedOrder(null); setCart([]); setPosSearchTerm(''); setIsModalOpen(true); }}
+            onClick={() => { 
+              setSelectedOrder(null); 
+              setCart([]); 
+              setPosSearchTerm(''); 
+              setCashReceived(''); 
+              setPosOrderType(activeTab === 'all' ? 'takeaway' : activeTab);
+              setDeliveryAddress('');
+              setCustomer({ name: 'Walk-in', phone: '' });
+              setIsModalOpen(true); 
+            }}
             className="bg-primary text-white px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-primary/20 hover:bg-primary-light transition-all flex items-center space-x-2"
           >
             <Plus size={18} />
             <span>New Order</span>
           </button>
+        </div>
+
+        <div className="flex items-center space-x-2 bg-background-card p-1.5 rounded-2xl border border-border-light w-fit">
+          {[
+            { id: 'takeaway', label: 'Counter', icon: ShoppingCart },
+            { id: 'dine-in', label: 'Dine In', icon: Utensils },
+            { id: 'delivery', label: 'Delivery', icon: ChevronRight }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                activeTab === tab.id 
+                  ? 'bg-primary text-white shadow-lg shadow-primary/20' 
+                  : 'text-text-muted hover:bg-background-muted hover:text-text-primary'
+              }`}
+            >
+              <tab.icon size={14} />
+              <span>{tab.label}</span>
+              <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[8px] ${
+                activeTab === tab.id ? 'bg-white/20' : 'bg-background-muted'
+              }`}>
+                {orders.filter(o => o.orderType === tab.id).length}
+              </span>
+            </button>
+          ))}
         </div>
 
         <div className="bg-background-card rounded-[2rem] border border-border-light shadow-sm overflow-hidden">
@@ -413,6 +511,19 @@ const OrderSection = () => {
                   <option value="failed">Failed</option>
                   <option value="refunded">Refunded</option>
                 </select>
+                <button
+                  onClick={() => { setSearchTerm(''); setStatusFilter('all'); setPaymentFilter('all'); }}
+                  disabled={!searchTerm && statusFilter === 'all' && paymentFilter === 'all'}
+                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${
+                    !searchTerm && statusFilter === 'all' && paymentFilter === 'all'
+                      ? 'bg-background-muted/50 text-text-muted/30 border-border-light cursor-not-allowed'
+                      : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white'
+                  }`}
+                  title="Clear All Filters"
+                >
+                  <RotateCcw size={12} />
+                  <span className="text-[10px] font-black uppercase tracking-wider">Clear Filters</span>
+                </button>
               </div>
             </div>
           </div>
@@ -425,6 +536,12 @@ const OrderSection = () => {
                     <div className="flex items-center space-x-1">
                       <span>Order #</span>
                       <ArrowUpDown size={12} className={sortConfig.key === 'orderNumber' ? 'text-primary' : 'text-text-muted'} />
+                    </div>
+                  </th>
+                  <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('createdAt')}>
+                    <div className="flex items-center space-x-1">
+                      <span>Date & Time</span>
+                      <ArrowUpDown size={12} className={sortConfig.key === 'createdAt' ? 'text-primary' : 'text-text-muted'} />
                     </div>
                   </th>
                   <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('customer')}>
@@ -449,7 +566,7 @@ const OrderSection = () => {
               <tbody className="divide-y divide-border-light">
                 {isLoading ? (
                   <tr>
-                    <td colSpan="8" className="px-6 py-12 text-center">
+                    <td colSpan="9" className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center space-y-2">
                         <Loader2 className="animate-spin text-primary" size={32} />
                         <p className="text-text-secondary font-medium">Loading orders...</p>
@@ -458,12 +575,18 @@ const OrderSection = () => {
                   </tr>
                 ) : filteredOrders.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="px-6 py-12 text-center text-text-muted italic">No orders found</td>
+                    <td colSpan="9" className="px-6 py-12 text-center text-text-muted italic">No orders found</td>
                   </tr>
                 ) : (
                   filteredOrders.map((order) => (
                     <tr key={order._id} className="hover:bg-background-muted/30 transition-colors group">
                       <td className="px-6 py-4 font-black text-text-primary">{order.orderNumber}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col">
+                          <span className="text-xs font-bold text-text-primary">{new Date(order.createdAt).toLocaleDateString('en-GB')}</span>
+                          <span className="text-[10px] text-text-muted">{new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                      </td>
                       <td className="px-6 py-4 font-bold text-text-secondary">
                         <div className="flex flex-col">
                           <span>{order.customerDetails?.name}</span>
@@ -511,9 +634,19 @@ const OrderSection = () => {
                           <button
                             onClick={() => { setSelectedOrder(order); setIsDetailsModalOpen(true); }}
                             className="p-2 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all"
+                            title="View Details"
                           >
                             <Eye size={18} />
                           </button>
+                          {activeTab === 'delivery' && (
+                            <button
+                              onClick={() => handleCopyForWhatsApp(order)}
+                              className="p-2 hover:bg-emerald-500/10 text-text-secondary hover:text-emerald-500 rounded-lg transition-all"
+                              title="Copy for WhatsApp"
+                            >
+                              <Copy size={18} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -537,7 +670,16 @@ const OrderSection = () => {
                 </p>
               </div>
               <div className="flex items-center space-x-3">
-                <button onClick={() => setIsDetailsModalOpen(false)} className="text-text-muted hover:text-text-primary">
+                {selectedOrder.orderType === 'delivery' && (
+                  <button
+                    onClick={() => handleCopyForWhatsApp(selectedOrder)}
+                    className="flex items-center space-x-2 px-4 py-2 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-emerald-500/20 shadow-sm"
+                  >
+                    <Copy size={14} />
+                    <span>Copy for WhatsApp</span>
+                  </button>
+                )}
+                <button onClick={() => setIsDetailsModalOpen(false)} className="p-2 hover:bg-background-muted rounded-xl text-text-muted transition-colors">
                   <XCircle size={24} />
                 </button>
               </div>
@@ -584,6 +726,30 @@ const OrderSection = () => {
                     <option value="refunded">Refunded</option>
                   </select>
                 </div>
+                {selectedOrder.paymentMethod === 'cash' && (
+                  <>
+                    <div className="space-y-1 pt-4">
+                      <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Cash Received</p>
+                      <input
+                        type="number"
+                        value={editCashReceived}
+                        onChange={(e) => setEditCashReceived(e.target.value)}
+                        className="bg-transparent text-sm font-black text-text-primary outline-none w-full border-b border-border-light focus:border-primary transition-all"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-1 pt-4">
+                      <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">
+                        {(parseFloat(editCashReceived) || 0) < selectedOrder.totalAmount ? 'Due Amount' : 'Balance / Change'}
+                      </p>
+                      <p className={`text-sm font-black ${
+                        (parseFloat(editCashReceived) || 0) < selectedOrder.totalAmount ? 'text-status-unavailable' : 'text-primary'
+                      }`}>
+                        ₹{((parseFloat(editCashReceived) || 0) - selectedOrder.totalAmount).toFixed(2)}
+                      </p>
+                    </div>
+                  </>
+                )}
                 <div className="space-y-1 pt-4">
                   <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Order Status</p>
                   <select
@@ -597,11 +763,50 @@ const OrderSection = () => {
                     <option value="cancelled">Cancelled</option>
                   </select>
                 </div>
+
+                {selectedOrder.orderType === 'delivery' && selectedOrder.customerDetails?.address && (
+                  <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 space-y-2 mt-4">
+                    <p className="text-[10px] text-primary font-bold uppercase tracking-widest flex items-center space-x-1">
+                      <MapPin size={12} />
+                      <span>Delivery Address</span>
+                    </p>
+                    <p className="text-xs font-bold text-text-primary leading-relaxed">
+                      {selectedOrder.customerDetails.address}
+                    </p>
+                    {selectedOrder.customerDetails.location && (
+                      <div className="space-y-2 pt-2">
+                        <a 
+                          href={`https://www.google.com/maps?q=${selectedOrder.customerDetails.location.lat},${selectedOrder.customerDetails.location.lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center space-x-1 text-[10px] font-black text-primary uppercase hover:underline"
+                        >
+                          <ExternalLink size={12} />
+                          <span>View on Google Maps</span>
+                        </a>
+                        <div className="w-full h-40 rounded-xl overflow-hidden border border-border-light shadow-inner">
+                          <iframe
+                            title="Order Location"
+                            width="100%"
+                            height="100%"
+                            frameBorder="0"
+                            scrolling="no"
+                            marginHeight="0"
+                            marginWidth="0"
+                            src={`https://maps.google.com/maps?q=${selectedOrder.customerDetails.location.lat},${selectedOrder.customerDetails.location.lng}&z=15&output=embed`}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex items-end justify-end pt-4">
                   {(editCustomer.name !== (selectedOrder.customerDetails?.name || '') ||
-                    editCustomer.phone !== (selectedOrder.customerDetails?.phone || '')) && (
+                    editCustomer.phone !== (selectedOrder.customerDetails?.phone || '') ||
+                    editCashReceived !== (selectedOrder.cashReceived || '')) && (
                       <button
-                        onClick={handleUpdateCustomerDetails}
+                        onClick={handleUpdatePaymentDetails}
                         className="bg-primary text-white text-[9px] font-black uppercase px-4 py-2 rounded-xl shadow-lg shadow-primary/20 hover:scale-105 transition-all"
                       >
                         Save Changes
@@ -615,7 +820,7 @@ const OrderSection = () => {
                   <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Order Items</p>
                   {!selectedOrder.isLocked && selectedOrder.status === 'confirmed' && (
                     <button
-                      onClick={() => { setIsModalOpen(true); }}
+                      onClick={() => { setCashReceived(selectedOrder.cashReceived || ''); setIsModalOpen(true); }}
                       className="text-[10px] font-black text-primary uppercase hover:underline flex items-center space-x-1"
                     >
                       <Plus size={12} />
@@ -635,11 +840,15 @@ const OrderSection = () => {
                   {selectedOrder.items.map((item) => (
                     <div key={item._id} className="flex items-center justify-between p-4 bg-background-muted/20 rounded-2xl border border-border-light hover:border-primary/20 transition-all">
                       <div className="flex items-center space-x-4">
-                        <div className="w-10 h-10 bg-background-card rounded-lg flex items-center justify-center border border-border-light">
-                          <Utensils size={18} className="text-primary/50" />
+                        <div className="w-12 h-12 bg-background-card rounded-xl flex items-center justify-center border border-border-light overflow-hidden shrink-0">
+                          {item.image ? (
+                            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <Package size={20} className="text-primary/40" />
+                          )}
                         </div>
-                        <div>
-                          <p className="font-bold text-text-primary text-sm">{item.name}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-text-primary text-sm truncate">{item.name}</p>
                           <p className="text-[10px] text-text-muted font-bold uppercase">
                             {item.size} • ₹{item.unitPrice} x {item.quantity}
                           </p>
@@ -722,7 +931,10 @@ const OrderSection = () => {
               </div>
               <div className="flex-1 overflow-y-auto p-6 grid grid-cols-2 lg:grid-cols-3 gap-4 no-scrollbar">
                 {menuItems
-                  .filter(item => item.name.toLowerCase().includes(posSearchTerm.toLowerCase()))
+                  .filter(item => {
+                    const searchLower = (posSearchTerm || '').toLowerCase();
+                    return (item.name || '').toLowerCase().includes(searchLower);
+                  })
                   .map(item => (
                     <div key={item._id} className="bg-background-muted/30 p-3 rounded-2xl border border-border-light hover:border-primary/30 transition-all group">
                       <div className="w-full aspect-square bg-background-card rounded-xl mb-3 overflow-hidden border border-border-light">
@@ -790,6 +1002,19 @@ const OrderSection = () => {
                       className="bg-transparent text-xs font-bold text-text-primary outline-none w-full"
                     />
                   </div>
+                  {posOrderType === 'delivery' && (
+                    <div className="flex flex-col space-y-2 animate-in fade-in slide-in-from-top-1 duration-300">
+                      <div className="flex items-start space-x-3 bg-background-card p-2 rounded-xl border border-border-light">
+                        <MapPin size={14} className="text-text-muted mt-1" />
+                        <textarea
+                          placeholder="Delivery Address"
+                          value={deliveryAddress}
+                          onChange={e => setDeliveryAddress(e.target.value)}
+                          className="bg-transparent text-xs font-bold text-text-primary outline-none w-full min-h-[60px] resize-none"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -822,30 +1047,97 @@ const OrderSection = () => {
                 )}
               </div>
 
-              <div className="p-6 bg-background-card border-t border-border-light space-y-4">
+              <div className="p-4 bg-background-card border-t border-border-light space-y-3">
                 <div className="flex items-center justify-between text-text-primary">
-                  <span className="font-bold text-sm">Total Amount</span>
-                  <span className="text-2xl font-black">₹{cart.reduce((acc, i) => acc + i.totalPrice, 0)}</span>
+                  <span className="font-bold text-xs uppercase tracking-wider">Total Amount</span>
+                  <span className="text-xl font-black">₹{cart.reduce((acc, i) => acc + i.totalPrice, 0) + (selectedOrder?.totalAmount || 0)}</span>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {['cash', 'upi', 'card'].map(m => (
+
+                {paymentMethod === 'cash' && (
+                  <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-center justify-between p-2 bg-background-muted rounded-xl border border-border-light">
+                      <span className="text-[10px] font-bold text-text-secondary uppercase">Cash</span>
+                      <div className="relative w-28">
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted text-[10px]">₹</span>
+                        <input
+                          type="number"
+                          value={cashReceived}
+                          onChange={(e) => setCashReceived(e.target.value)}
+                          className="w-full pl-5 pr-2 py-1 bg-background-card rounded-lg text-xs font-black outline-none border border-transparent focus:border-primary"
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5">
+                      {[10, 50, 100, 500].map(amt => (
+                        <button
+                          key={amt}
+                          onClick={() => setCashReceived((prev) => (parseFloat(prev) || 0) + amt)}
+                          className="px-2 py-1 bg-background-muted text-[10px] font-bold text-text-secondary rounded-lg border border-border-light hover:border-primary hover:text-primary transition-all"
+                        >
+                          +{amt}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setCashReceived(cart.reduce((acc, i) => acc + i.totalPrice, 0) + (selectedOrder?.totalAmount || 0))}
+                        className="px-2 py-1 bg-primary/10 text-[9px] font-bold text-primary rounded-lg border border-primary/20 hover:bg-primary hover:text-white transition-all"
+                      >
+                        Exact
+                      </button>
+                    </div>
+
+                    <div className={`flex items-center justify-between p-2 rounded-xl border transition-all ${
+                      (parseFloat(cashReceived) || 0) < (cart.reduce((acc, i) => acc + i.totalPrice, 0) + (selectedOrder?.totalAmount || 0))
+                        ? 'bg-status-off/5 border-status-unavailable/20'
+                        : 'bg-primary/5 border-primary/20'
+                    }`}>
+                      <span className={`text-[10px] font-bold uppercase ${
+                        (parseFloat(cashReceived) || 0) < (cart.reduce((acc, i) => acc + i.totalPrice, 0) + (selectedOrder?.totalAmount || 0))
+                          ? 'text-status-unavailable'
+                          : 'text-primary'
+                      }`}>
+                        {(parseFloat(cashReceived) || 0) < (cart.reduce((acc, i) => acc + i.totalPrice, 0) + (selectedOrder?.totalAmount || 0)) ? 'Due' : 'Change'}
+                      </span>
+                      <span className={`text-base font-black ${
+                        (parseFloat(cashReceived) || 0) < (cart.reduce((acc, i) => acc + i.totalPrice, 0) + (selectedOrder?.totalAmount || 0))
+                          ? 'text-status-unavailable'
+                          : 'text-primary'
+                      }`}>
+                        ₹{((parseFloat(cashReceived) || 0) - (cart.reduce((acc, i) => acc + i.totalPrice, 0) + (selectedOrder?.totalAmount || 0))).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+                  {[
+                    { id: 'cash', label: 'Cash' },
+                    { id: 'upi', label: 'UPI' },
+                    { id: 'card', label: 'Card' },
+                    { id: 'cod', label: 'COD' },
+                    { id: 'online', label: 'Online' }
+                  ].map(m => (
                     <button
-                      key={m}
-                      onClick={() => setPaymentMethod(m)}
-                      className={`py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${paymentMethod === m
+                      key={m.id}
+                      onClick={() => {
+                        setPaymentMethod(m.id);
+                        if (m.id !== 'cash') setCashReceived('');
+                      }}
+                      className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border ${paymentMethod === m.id
                         ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20'
                         : 'bg-background-muted text-text-muted border-border-light hover:border-primary/50'
                         }`}
                     >
-                      {m}
+                      {m.label}
                     </button>
                   ))}
                 </div>
                 <button
                   onClick={handleCreateOrder}
                   disabled={isSubmitting}
-                  className={`w-full py-4 rounded-[1.5rem] font-black text-sm uppercase tracking-widest shadow-xl transition-all ${isSubmitting
-                    ? 'bg-background-muted text-text-muted cursor-not-allowed'
+                  className={`w-full py-3 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl transition-all ${isSubmitting
+                    ? 'bg-background-muted text-text-muted cursor-not-allowed opacity-50'
                     : 'bg-primary text-white shadow-primary/20 hover:scale-[1.02] active:scale-95'
                     }`}
                 >

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, CheckCircle, XCircle, Search, Loader2, ArrowUpDown, Filter, Image as ImageIcon } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle, XCircle, Search, Loader2, ArrowUpDown, Filter, Image as ImageIcon, RotateCcw } from 'lucide-react';
 import axios from 'axios';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 import ImageCropper from '../../../components/ImageCropper/ImageCropper';
@@ -168,7 +168,8 @@ const CategorySection = () => {
   };
 
   const filteredCategories = getSortedData(categories).filter(c => {
-    const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const searchLower = (searchTerm || '').toLowerCase();
+    const matchesSearch = (c.name || '').toLowerCase().includes(searchLower);
     const matchesStatus = statusFilter === 'all' || 
       (statusFilter === 'active' && c.isActive) || 
       (statusFilter === 'inactive' && !c.isActive);
@@ -214,6 +215,16 @@ const CategorySection = () => {
               <option value="active" className="bg-background-card text-text-primary">Active</option>
               <option value="inactive" className="bg-background-card text-text-primary">Inactive</option>
             </select>
+            {(searchTerm || statusFilter !== 'all') && (
+              <button
+                onClick={() => { setSearchTerm(''); setStatusFilter('all'); }}
+                className="flex items-center space-x-1 px-3 py-1.5 bg-background-muted text-text-muted hover:text-primary rounded-lg border border-border-light transition-all"
+                title="Clear Filters"
+              >
+                <RotateCcw size={12} />
+                <span className="text-[10px] font-black uppercase tracking-wider">Clear</span>
+              </button>
+            )}
           </div>
         </div>
 

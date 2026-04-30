@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Search, Loader2, ArrowUpDown, XCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, Loader2, ArrowUpDown, XCircle, RotateCcw } from 'lucide-react';
 import axios from 'axios';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 
@@ -36,10 +36,11 @@ const SizeSection = () => {
     });
   };
 
-  const filteredSizes = getSortedData(sizes).filter(s => 
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.unit.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredSizes = getSortedData(sizes).filter(s => {
+    const searchLower = (searchTerm || '').toLowerCase();
+    return (s.name || '').toLowerCase().includes(searchLower) ||
+           (s.unit || '').toLowerCase().includes(searchLower);
+  });
 
   const fetchSizes = async () => {
     setIsLoading(true);
@@ -129,6 +130,16 @@ const SizeSection = () => {
               className="w-full pl-9 pr-4 py-2 bg-background-card rounded-lg border border-border-main focus:border-primary transition-all outline-none text-xs"
             />
           </div>
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="mt-4 flex items-center space-x-1 px-3 py-1.5 bg-background-muted text-text-muted hover:text-primary rounded-lg border border-border-light transition-all w-fit"
+              title="Clear Filters"
+            >
+              <RotateCcw size={12} />
+              <span className="text-[10px] font-black uppercase tracking-wider">Clear</span>
+            </button>
+          )}
         </div>
 
         <div className="overflow-x-auto">

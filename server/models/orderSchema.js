@@ -25,7 +25,7 @@ const orderSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: function () {
-      return this.orderType === "delivery";
+      return this.orderType === "delivery" && this.orderSource === "online";
     }
   },
 
@@ -153,6 +153,14 @@ const orderSchema = new mongoose.Schema({
   paymentMethod: {
     type: String,
     enum: ["cash", "upi", "card", "online", "cod"]
+  },
+  cashReceived: {
+    type: Number,
+    default: 0
+  },
+  balance: {
+    type: Number,
+    default: 0
   }
 
 }, { timestamps: true });
