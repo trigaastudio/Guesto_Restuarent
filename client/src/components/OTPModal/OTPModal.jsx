@@ -23,7 +23,6 @@ const OTPModal = ({ email, onVerify, onResend, onClose, loading }) => {
 
     setOtp([...otp.map((d, idx) => (idx === index ? element.value : d))]);
 
-    // Focus next input
     if (element.nextSibling && element.value) {
       element.nextSibling.focus();
     }

@@ -70,7 +70,6 @@ const AdminDashboard = () => {
 
   return (
     <div className={`flex h-screen bg-background text-text-primary overflow-hidden transition-colors duration-300`}>
-      {/* Sidebar Overlay for Mobile */}
       {isMobileMenuOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -78,14 +77,12 @@ const AdminDashboard = () => {
         />
       )}
 
-      {/* Sidebar */}
       <aside className={`
         fixed inset-y-0 left-0 z-50 bg-background-card border-border flex flex-col transition-all duration-300 ease-in-out transform
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         ${isSidebarCollapsed ? 'lg:w-22' : 'lg:w-64'}
         w-64
       `}>
-        {/* Toggle Button for Desktop - Moved to aside level to avoid overflow clipping */}
         <button
           onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           className={`
@@ -96,7 +93,6 @@ const AdminDashboard = () => {
           <ChevronRight size={14} />
         </button>
 
-        {/* Inner Content with overflow handling */}
         <div className="flex-1 flex flex-col overflow-x-hidden no-scrollbar relative">
           <div className={`p-6 border-b border-border-light flex items-center justify-center relative ${isSidebarCollapsed ? 'lg:justify-center' : 'lg:justify-between'}`}>
             <img
@@ -163,9 +159,7 @@ const AdminDashboard = () => {
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'lg:ml-22' : 'lg:ml-64'}`}>
-        {/* Header */}
         <header className="h-20 bg-background-card border-b border-border-main flex items-center justify-between px-4 lg:px-8 shrink-0">
           <div className="flex items-center space-x-4">
             <button
@@ -213,9 +207,7 @@ const AdminDashboard = () => {
           </div>
         </header>
 
-        {/* Dashboard Content */}
         <div className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-8">
-          {/* Welcome Section */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-2xl font-bold text-text-primary">Restaurant Overview</h2>
@@ -231,9 +223,7 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* Data Tables Section */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-            {/* Recent Orders Table */}
             <div className="bg-background-card rounded-2xl border border-border-light shadow-sm overflow-hidden flex flex-col">
               <div className="p-6 border-b border-border-light flex items-center justify-between">
                 <div>
@@ -286,7 +276,6 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            {/* Menu Stock Alerts Table */}
             <div className="bg-background-card rounded-2xl border border-border-light shadow-sm overflow-hidden flex flex-col">
               <div className="p-6 border-b border-border-light flex items-center justify-between">
                 <div>
@@ -330,7 +319,6 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* Metrics Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 lg:gap-6">
             {metrics.map((metric) => (
               <div key={metric.label} className="bg-background-card p-5 rounded-2xl border border-border-light shadow-sm hover:shadow-md transition-all group">
@@ -349,7 +337,6 @@ const AdminDashboard = () => {
             ))}
           </div>
 
-          {/* Charts Section Description (from image) */}
           <div className="space-y-6">
             <h3 className="text-lg font-bold text-text-primary border-l-4 border-primary pl-4">Analytics Visualization</h3>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -360,7 +347,6 @@ const AdminDashboard = () => {
                     <chart.icon size={16} className="text-primary" />
                   </div>
                   <div className="flex-1 p-6 flex flex-col items-center justify-center min-h-[200px] border-b border-border-light relative overflow-hidden group">
-                    {/* Placeholder visualization */}
                     <div className="absolute inset-x-8 inset-y-12 bg-primary/5 rounded-lg border border-dashed border-primary/20 flex flex-col items-center justify-center p-4">
                       <chart.icon size={48} className="text-primary/20 mb-2 group-hover:scale-110 transition-transform" />
                       <p className="text-[10px] text-text-muted font-medium uppercase tracking-widest">{chart.type}</p>

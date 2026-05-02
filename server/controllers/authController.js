@@ -50,7 +50,12 @@ class AuthController {
 
   async googleLogin(req, res) {
     try {
+      console.log('📬 Received Google login request...');
       const { token } = req.body;
+      if (!token) {
+        console.error('❌ No token provided in request body');
+        return res.status(400).json({ success: false, message: 'No token provided' });
+      }
       const user = await authService.googleLogin(token);
       
       res.status(200).json({
@@ -75,17 +80,9 @@ class AuthController {
 
   async sendOTP(req, res) {
     try {
-      const { email } = req.body;
+      const { email, phone } = req.body;
       
-      const existingUser = await authService.checkExistingUser(email);
-      if (existingUser) {
-        return res.status(400).json({
-          success: false,
-          message: 'User with this email already exists'
-        });
-      }
-
-      await authService.sendOTP(email);
+      await authService.sendOTP(email, phone);
       res.status(200).json({
         success: true,
         message: 'OTP sent to your email'

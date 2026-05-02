@@ -9,6 +9,11 @@ const userSchema = new mongoose.Schema({
     trim: true 
   },
 
+  avatar: {
+    type: String,
+    default: ""
+  },
+
   email: {
     type: String,
     required: [true, "Email is required"],
@@ -36,54 +41,21 @@ const userSchema = new mongoose.Schema({
     trim: true 
   },
 
-  address: {
+  addresses: [{
+    name: { type: String, trim: true },
+    phone: { type: String, trim: true },
+    address: { type: String, trim: true },
+    location: { type: String, trim: true },
     type: {
       type: String,
       enum: ["home", "office"],
       default: "home"
     },
-
-    street: {
-      type: String,
-      trim: true
-    },
-
     isDefault: {
       type: Boolean,
       default: false
-    },
-  
-    area: {
-      type: String,
-      trim: true
-    },
-
-    city: {
-      type: String,
-      trim: true
-    },
-
-    state: {
-      type: String,
-      trim: true
-    },
-
-    pincode: {
-      type: String,
-      trim: true
-    },
-
-    country: {
-      type: String,
-      default: "India"
-    },
-
-
-    location: {
-      lat: Number,
-      lng: Number
     }
-  },
+  }],
 
   isActive: { 
     type: Boolean, 

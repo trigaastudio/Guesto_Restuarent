@@ -5,18 +5,18 @@
   --color-primary: #C96A0A;
   --color-primary-light: #E88A1A;
   --color-primary-dark: #A35405;
-  
+
   --color-background: #F6F1EA;
   --color-background-card: #FFFFFF;
   --color-background-muted: #EFE7DD;
-  
+
   --color-text-primary: #2D2D2D;
   --color-text-secondary: #6B6B6B;
   --color-text-muted: #9CA3AF;
-  
+
   --color-border: #E5E5E5;
   --color-border-light: #F1F1F1;
-  
+
   --color-status-available: #16A34A;
   --color-status-unavailable: #DC2626;
 
@@ -36,7 +36,6 @@
     --color-border: #E5E5E5;
     --color-border-light: #F1F1F1;
 
-    /* Responsive/Legacy Mappings for existing components */
     --bg: var(--color-background);
     --bg-secondary: var(--color-background-muted);
     --card-bg: var(--color-background-card);
@@ -58,7 +57,8 @@
     --card-border: var(--border);
   }
 
-  .dark, [data-theme="dark"] {
+  .dark,
+  [data-theme="dark"] {
     --color-background: #121212;
     --color-background-card: #1E1E1E;
     --color-background-muted: #2A2A2A;
@@ -68,13 +68,12 @@
     --color-border: #333333;
     --color-border-light: #2A2A2A;
 
-    /* Dark Mode Legacy Mappings */
     --bg: var(--color-background);
     --bg-secondary: var(--color-background-muted);
     --card-bg: var(--color-background-card);
     --text-primary: var(--color-text-primary);
     --text-secondary: var(--color-text-secondary);
-    --text-muted: #888888; 
+    --text-muted: #888888;
     --border: var(--color-border);
     --border-input: var(--color-border-light);
     --input-label: var(--color-text-secondary);
@@ -99,18 +98,19 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
 }
 
-/* Animations from develop branch */
 @keyframes fadeInUp {
   from {
     opacity: 0;
     transform: translateY(15px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -123,4 +123,22 @@
 
 .hero-fade-in {
   animation: fadeInUp 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-15px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
 }

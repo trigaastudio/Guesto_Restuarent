@@ -3,6 +3,17 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
+import menuRoutes from './routes/menuRoutes.js';
+import categoryRoutes from './routes/categoryRoutes.js';
+import cartRoutes from './routes/cartRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import orderRoutes from './routes/orderRoutes.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 
 dotenv.config();
 
@@ -14,6 +25,7 @@ connectDB();
 
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
 app.use((req, res, next) => {
@@ -26,6 +38,13 @@ app.use((req, res, next) => {
 
 
 app.use('/api/auth', authRoutes);
+app.use('/api/menus', menuRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/orders', orderRoutes);
+
+
 
 
 app.get('/health', (req, res) => {

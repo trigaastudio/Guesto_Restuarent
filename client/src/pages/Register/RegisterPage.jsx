@@ -2,57 +2,11 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../../api/axiosInstance';
 import Swal from 'sweetalert2';
-import InputField from '../../components/InputField/InputField';
-import Button from '../../components/Button/Button';
-import './RegisterPage.css';
-import { useTheme } from '../../context/ThemeContext';
+import { User, Mail, Phone, Lock, CheckCircle2, ArrowRight } from 'lucide-react';
 import OTPModal from '../../components/OTPModal/OTPModal';
-
-const UserIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="18" height="18">
-    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-    <circle cx="12" cy="7" r="4" />
-  </svg>
-);
-
-const MailIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="18" height="18">
-    <rect x="2" y="4" width="20" height="16" rx="2" />
-    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-  </svg>
-);
-
-const PhoneIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="18" height="18">
-    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.15 11.9 19.79 19.79 0 0 1 1.07 3.27 2 2 0 0 1 3.05 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-  </svg>
-);
-
-const LockIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="18" height="18">
-    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-  </svg>
-);
-
-const SunIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="18" height="18">
-    <circle cx="12" cy="12" r="5" />
-    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-  </svg>
-);
-
-const MoonIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="18" height="18">
-    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-  </svg>
-);
 
 const RegisterPage = () => {
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useTheme();
-
-  const logoSrc = theme === 'dark' ? "/logo-light.png" : "/logo-dark.png";
 
   const [fields, setFields] = useState({
     name: '',
@@ -65,18 +19,13 @@ const RegisterPage = () => {
 
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
   const [apiError, setApiError] = useState('');
-
-
   const [showOTP, setShowOTP] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
 
   React.useEffect(() => {
     const token = localStorage.getItem('token');
-    if (token) {
-      navigate('/home', { replace: true });
-    }
+    if (token) navigate('/home', { replace: true });
   }, [navigate]);
 
   const handleChange = (e) => {
@@ -109,17 +58,15 @@ const RegisterPage = () => {
 
     setLoading(true);
     try {
-      // Step 1: Send OTP
       const response = await api.post('/api/auth/send-otp', {
-        email: fields.email
+        email: fields.email,
+        phone: fields.phone
       });
-
       if (response.data.success) {
         setShowOTP(true);
       }
     } catch (err) {
-      console.error('OTP Send Error:', err);
-      setApiError(err.response?.data?.message || 'Failed to send OTP. Please try again.');
+      setApiError(err.response?.data?.message || 'Failed to send OTP.');
     } finally {
       setLoading(false);
     }
@@ -129,7 +76,6 @@ const RegisterPage = () => {
     setOtpLoading(true);
     setApiError('');
     try {
-      // Step 2: Verify OTP and Register
       const response = await api.post('/api/auth/verify-otp', {
         email: fields.email,
         otp,
@@ -143,37 +89,35 @@ const RegisterPage = () => {
 
       if (response.data.success) {
         setShowOTP(false);
-        // Save token and user data to log them in immediately
         localStorage.setItem('token', response.data.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.data));
+        window.dispatchEvent(new Event('cart-refresh'));
 
         Swal.fire({
-          title: 'Welcome!',
-          text: 'Your account has been verified and created successfully.',
+          title: 'Verified!',
+          text: 'Welcome to the Guesto family.',
           icon: 'success',
           showConfirmButton: false,
           timer: 2000,
+          background: '#800000',
+          color: '#FFFFFF'
         }).then(() => {
           navigate('/home', { replace: true });
         });
-
       }
     } catch (err) {
-      console.error('Verification Error:', err);
       Swal.fire({
         title: 'Verification Failed',
-        text: 'The code you entered is incorrect or has expired. Please check your email and try again.',
-        icon: 'warning',
-        confirmButtonColor: '#f59e0b',
-        background: 'var(--card-bg)',
-        color: 'var(--text-primary)',
+        text: err.response?.data?.message || 'Incorrect code.',
+        icon: 'error',
+        confirmButtonColor: '#DA9133',
+        background: '#800000',
+        color: '#FFFFFF'
       });
     } finally {
-
       setOtpLoading(false);
     }
   };
-
 
   const handleResendOTP = async () => {
     try {
@@ -184,143 +128,202 @@ const RegisterPage = () => {
         icon: 'success',
         title: 'OTP Resent',
         showConfirmButton: false,
-        timer: 3000
+        timer: 3000,
+        background: '#800000',
+        color: '#FFFFFF'
       });
     } catch (err) {
       setApiError('Failed to resend OTP');
     }
   };
 
-
   return (
-    <div className="register-page-wrapper">
-      <div className="register-container page-fade-in">
-        <div className="register-left">
-          <div className="hero-image-wrapper hero-fade-in">
-            <img src="/register.png" alt="Register Hero" className="hero-img" />
-          </div>
-        </div>
-        <div className="register-right">
-          <div className="register-form-card">
-            <div className="register-form-topbar">
-              <div className="logo-container">
-                <img src={logoSrc} alt="GuestO Logo" className="brand-logo" />
-              </div>
-              <button
-                className="theme-toggle-btn"
-                onClick={toggleTheme}
-                title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-                aria-label="Toggle theme"
-              >
-                {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-              </button>
-            </div>
-            <div className="form-header">
-              <h1 className="form-title">Create Account</h1>
-              <p className="form-subtitle">Begin your journey with GuestO</p>
-            </div>
+    <div className="min-h-[100dvh] w-full bg-[#D10000] flex flex-col relative overflow-x-hidden font-sans select-none text-white pb-10">
 
-            {apiError && <div className="api-error-message">{apiError}</div>}
-
-            <form onSubmit={handleSubmit} className="register-form">
-              <InputField
-                id="name"
-                name="name"
-                label="FULL NAME"
-                placeholder="Alexander Dupont"
-                value={fields.name}
-                onChange={handleChange}
-                icon={<UserIcon />}
-                error={errors.name}
-              />
-
-              <InputField
-                id="email"
-                name="email"
-                type="email"
-                label="EMAIL ADDRESS"
-                placeholder="alex@editorial.com"
-                value={fields.email}
-                onChange={handleChange}
-                icon={<MailIcon />}
-                error={errors.email}
-              />
-
-              <InputField
-                id="phone"
-                name="phone"
-                type="tel"
-                label="PHONE NUMBER"
-                placeholder="+1 (555) 000-0000"
-                value={fields.phone}
-                onChange={handleChange}
-                icon={<PhoneIcon />}
-                error={errors.phone}
-              />
-
-              <div className="password-grid">
-                <InputField
-                  id="password"
-                  name="password"
-                  type="password"
-                  label="PASSWORD"
-                  placeholder="••••••••"
-                  value={fields.password}
-                  onChange={handleChange}
-                  icon={<LockIcon />}
-                  error={errors.password}
-                />
-
-                <InputField
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  label="CONFIRM PASSWORD"
-                  placeholder="••••••••"
-                  value={fields.confirmPassword}
-                  onChange={handleChange}
-                  icon={<LockIcon />}
-                  error={errors.confirmPassword}
-                />
-              </div>
-
-              <div className="terms-checkbox-group">
-                <label className="checkbox-container">
-                  <input
-                    type="checkbox"
-                    name="agreed"
-                    checked={fields.agreed}
-                    onChange={handleChange}
-                  />
-                  <span className="checkmark"></span>
-                  <span className="checkbox-label-text">
-                    I agree to the <Link to="/terms">Terms of Service</Link> and <Link to="/privacy">Privacy Policy</Link>.
-                  </span>
-                </label>
-                {errors.agreed && <p className="error-message">{errors.agreed}</p>}
-              </div>
-
-              <Button type="submit" loading={loading} className="register-btn">
-                Create Account
-              </Button>
-
-              <p className="auth-footer-text">
-                Already have an account? <Link to="/login">Login here</Link>
-              </p>
-            </form>
-
-            {success && (
-              <div className="success-overlay">
-                <div className="success-content">
-                  <h2>Welcome aboard!</h2>
-                  <p>Your account has been created successfully.</p>
-                  <Button onClick={() => setSuccess(false)}>Dismiss</Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+      {/* Background Image with Vibrant Red Studio Overlay */}
+      <div className="fixed inset-0 z-0">
+        <img
+          src="/heroSection/hero.png"
+          alt="Guesto Restaurant"
+          className="w-full h-full object-cover object-center lg:object-[center_35%] opacity-30 md:opacity-40 animate-slow-zoom brightness-75 contrast-125"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#FF0000]/95 via-[#D10000]/90 to-[#800000]/95 z-10 mix-blend-multiply"></div>
       </div>
+
+      {/* Header / Logo */}
+      <header className="relative w-full px-6 md:px-12 py-6 z-30">
+        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
+          <img src="/logo-light.png" alt="Guesto Restaurant" className="h-8 md:h-10 object-contain" />
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col items-center justify-center px-6 relative z-20 w-full pt-4">
+
+        {/* Register Card */}
+        <div className="w-full max-w-xl page-fade-in">
+          <div className="backdrop-blur-3xl bg-white/10 border border-white/20 p-6 md:p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden group">
+
+            {/* Decorative Glow */}
+            <div className="absolute -top-24 -right-24 w-48 h-48 bg-white/10 rounded-full blur-[70px]"></div>
+
+            <div className="space-y-6 relative z-10">
+              <div className="space-y-2 text-center">
+                <h1 className="text-3xl md:text-4xl font-black tracking-tight uppercase text-white">
+                  Join <span className="opacity-90">Guesto</span>
+                </h1>
+                <p className="text-white/70 text-sm font-medium uppercase tracking-widest">Create an account to begin your journey</p>
+              </div>
+
+              {apiError && (
+                <div className="bg-red-500/20 border border-red-500/30 text-white px-4 py-3 rounded-2xl text-xs font-bold text-center animate-shake">
+                  {apiError}
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">Full Name</label>
+                    <div className="relative group">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 group-focus-within:text-white transition-colors" size={16} />
+                      <input
+                        type="text" name="name" placeholder="John Doe"
+                        value={fields.name} onChange={handleChange}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all text-white placeholder:text-white/30"
+                      />
+                    </div>
+                    {errors.name && <p className="text-[10px] text-white font-bold ml-1">{errors.name}</p>}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">Phone Number</label>
+                    <div className="relative group">
+                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 group-focus-within:text-white transition-colors" size={16} />
+                      <input
+                        type="tel" name="phone" placeholder="+123 456 7890"
+                        value={fields.phone} onChange={handleChange}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all text-white placeholder:text-white/30"
+                      />
+                    </div>
+                    {errors.phone && <p className="text-[10px] text-white font-bold ml-1">{errors.phone}</p>}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">Email Address</label>
+                  <div className="relative group">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 group-focus-within:text-white transition-colors" size={16} />
+                    <input
+                      type="email" name="email" placeholder="alex@example.com"
+                      value={fields.email} onChange={handleChange}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all text-white placeholder:text-white/30"
+                    />
+                  </div>
+                  {errors.email && <p className="text-[10px] text-white font-bold ml-1">{errors.email}</p>}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">Password</label>
+                    <div className="relative group">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 group-focus-within:text-white transition-colors" size={16} />
+                      <input
+                        type="password" name="password" placeholder="••••••••"
+                        value={fields.password} onChange={handleChange}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all text-white placeholder:text-white/30"
+                      />
+                    </div>
+                    {errors.password && <p className="text-[10px] text-white font-bold ml-1">{errors.password}</p>}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">Confirm Password</label>
+                    <div className="relative group">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 group-focus-within:text-white transition-colors" size={16} />
+                      <input
+                        type="password" name="confirmPassword" placeholder="••••••••"
+                        value={fields.confirmPassword} onChange={handleChange}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all text-white placeholder:text-white/30"
+                      />
+                    </div>
+                    {errors.confirmPassword && <p className="text-[10px] text-white font-bold ml-1">{errors.confirmPassword}</p>}
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 py-2">
+                  <div className="relative flex items-center">
+                    <input
+                      type="checkbox" name="agreed"
+                      checked={fields.agreed} onChange={handleChange}
+                      className="w-5 h-5 bg-white/5 border border-white/20 rounded cursor-pointer checked:bg-[#DA9133] transition-all appearance-none"
+                    />
+                    {fields.agreed && <CheckCircle2 size={12} className="absolute left-1 text-white pointer-events-none" />}
+                  </div>
+                  <p className="text-[10px] md:text-xs text-white/50 font-medium">
+                    I agree to the <Link to="/terms" className="text-[#DA9133] hover:underline">Terms of Service</Link> and <Link to="/privacy" className="text-[#DA9133] hover:underline">Privacy Policy</Link>.
+                  </p>
+                  {errors.agreed && <p className="text-[10px] text-white font-bold">{errors.agreed}</p>}
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-[#DA9133] hover:bg-[#C27D29] text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-xl shadow-black/20 disabled:opacity-50 disabled:cursor-not-allowed group flex items-center justify-center gap-2"
+                >
+                  {loading ? 'Creating Account...' : (
+                    <>
+                      Create Account
+                      <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                    </>
+                  )}
+                </button>
+              </form>
+
+              <p className="text-center text-xs font-medium text-white/50">
+                Already have an account?{' '}
+                <Link to="/login" className="text-[#DA9133] hover:text-[#C27D29] font-black underline underline-offset-4 decoration-[#DA9133]/30">
+                  Login here
+                </Link>
+              </p>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="mt-auto w-full px-6 py-8 relative z-30 text-center">
+        <p className="text-[10px] font-black text-white/30 uppercase tracking-widest">
+          © 2024 Guesto Restaurant Group. Join the Culinary Revolution.
+        </p>
+      </footer>
+
+      {/* Custom Styles */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        @keyframes slow-zoom {
+          0% { transform: scale(1); }
+          100% { transform: scale(1.05); }
+        }
+        .animate-slow-zoom {
+          animation: slow-zoom 20s ease-out infinite alternate;
+        }
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .page-fade-in {
+          animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-5px); }
+          75% { transform: translateX(5px); }
+        }
+        .animate-shake {
+          animation: shake 0.4s ease-in-out;
+        }
+      `}} />
 
       {showOTP && (
         <OTPModal
