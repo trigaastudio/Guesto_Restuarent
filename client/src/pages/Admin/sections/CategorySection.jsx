@@ -95,7 +95,7 @@ const CategorySection = () => {
         showAlert({
           icon: 'error',
           title: 'File Too Large',
-          text: 'The image size exceeds the 2MB limit. Please upload a smaller file.',
+          text: 'The image size exceeds the 3MB limit. Please upload a smaller file.',
         });
       } else {
         showAlert({

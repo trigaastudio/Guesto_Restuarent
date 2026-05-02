@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Plus, Search, Filter, Eye, Edit2, Trash2, Clock,
   CheckCircle2, XCircle, AlertCircle, Loader2, ArrowUpDown,
@@ -7,9 +7,11 @@ import {
   Copy, MapPin, ExternalLink
 } from 'lucide-react';
 import axios from 'axios';
+import { io } from 'socket.io-client';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 
 const API_BASE_URL = 'http://localhost:5000/api';
+const SOCKET_URL = 'http://localhost:5000';
 
 const OrderSection = () => {
   const handleCopyForWhatsApp = (order) => {
@@ -50,10 +52,27 @@ const OrderSection = () => {
   const [menuItems, setMenuItems] = useState([]);
   const [posOrderType, setPosOrderType] = useState('takeaway');
   const [deliveryAddress, setDeliveryAddress] = useState('');
+  const socketRef = useRef();
 
   useEffect(() => {
     fetchOrders();
     fetchMenu();
+
+    // Socket Setup for Real-time updates
+    socketRef.current = io(SOCKET_URL);
+    socketRef.current.on('ordersUpdated', () => {
+      fetchOrders(true);
+    });
+
+    // Polling fallback every 30 seconds
+    const pollInterval = setInterval(() => {
+      fetchOrders(true);
+    }, 30000);
+
+    return () => {
+      if (socketRef.current) socketRef.current.disconnect();
+      clearInterval(pollInterval);
+    };
   }, []);
 
   const handlePrintKOT = (order) => {
@@ -69,6 +88,9 @@ const OrderSection = () => {
         <td style="width: 25%; text-align: right;">${item.totalPrice.toFixed(2)}</td>
       </tr>
     `).join('');
+
+    // Static QR from public folder
+    const qrCodeUrl = '/QR-guestoPayment.jpeg';
 
     printWindow.document.write(`
       <html>
@@ -93,6 +115,8 @@ const OrderSection = () => {
             table { width: 100%; border-collapse: collapse; }
             .total-section { font-weight: bold; font-size: 16px; display: flex; justify-content: space-between; margin-top: 5px; }
             .payment-info { font-size: 13px; margin-top: 10px; }
+            .qr-section { text-align: center; margin-top: 20px; }
+            .qr-label { font-size: 10px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
           </style>
         </head>
         <body onload="window.print(); window.close();">
@@ -150,9 +174,17 @@ const OrderSection = () => {
               </div>
             `}
           </div>
+          
+          ${order.orderType === 'delivery' ? `
+            <div class="qr-section">
+              <div class="qr-label">Scan to Pay</div>
+              <img src="${qrCodeUrl}" style="width: 120px; height: 120px; border: 1px solid #000; padding: 5px;" />
+            </div>
+          ` : ''}
+
           <div class="divider"></div>
           <div style="text-align: center; font-size: 11px; margin-top: 10px;">
-            THANK YOU FOR VISITING!
+            ${order.orderType === 'delivery' ? 'THANK YOU FOR ORDER!' : 'THANK YOU FOR VISITING!'}
           </div>
         </body>
       </html>
@@ -160,14 +192,14 @@ const OrderSection = () => {
     printWindow.document.close();
   };
 
-  const fetchOrders = async () => {
-    setIsLoading(true);
+  const fetchOrders = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       const response = await axios.get(`${API_BASE_URL}/orders`);
       setOrders(response.data.data);
     } catch (error) {
       console.error('Error fetching orders:', error);
-      showToast('error', 'Failed to fetch orders');
+      if (!silent) showToast('error', 'Failed to fetch orders');
     } finally {
       setIsLoading(false);
     }
@@ -325,7 +357,7 @@ const OrderSection = () => {
   };
 
   const addToCart = (item, variant) => {
-    const sizeName = variant.size?.name || 'Standard';
+    const sizeName = variant.size || 'Standard';
     const existingIndex = cart.findIndex(c => c.menuItem === item._id && c.size === sizeName);
 
     if (existingIndex > -1) {
@@ -948,7 +980,7 @@ const OrderSection = () => {
                             onClick={() => addToCart(item, v)}
                             className="px-2 py-1 bg-primary text-white text-[9px] font-black rounded-lg hover:bg-primary-light transition-colors"
                           >
-                            {v.size?.name}: ₹{v.price}
+                            {v.size}: ₹{v.price}
                           </button>
                         ))}
                       </div>

@@ -6,11 +6,11 @@ class MenuRepository {
   }
 
   async findAll() {
-    return await Menu.find().populate("category").populate("variants.size").sort({ createdAt: -1 });
+    return await Menu.find().populate("category").sort({ createdAt: -1 });
   }
 
   async findById(id) {
-    return await Menu.findById(id).populate("category").populate("variants.size");
+    return await Menu.findById(id).populate("category");
   }
 
   async update(id, data) {

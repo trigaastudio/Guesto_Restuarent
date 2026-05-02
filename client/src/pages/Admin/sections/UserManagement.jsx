@@ -1,0 +1,375 @@
+import React, { useState, useEffect } from 'react';
+import { Plus, Edit2, Trash2, Search, User, Mail, Phone, Power, Loader2, ArrowUpDown, XCircle, Ban, CheckCircle } from 'lucide-react';
+import axios from 'axios';
+import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
+
+const API_BASE_URL = 'http://localhost:5000/api';
+
+const UserManagement = () => {
+  const [userList, setUserList] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
+
+  const [currentUser, setCurrentUser] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    password: '',
+    isActive: true
+  });
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    setIsLoading(true);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/users`);
+      setUserList(response.data.data);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      showToast('error', 'Failed to fetch user list');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOpenModal = (user = null) => {
+    if (user) {
+      setCurrentUser({
+        ...user,
+        password: '' // Don't show hashed password
+      });
+      setIsEditing(true);
+    } else {
+      setCurrentUser({
+        name: '',
+        email: '',
+        phone: '',
+        password: '',
+        isActive: true
+      });
+      setIsEditing(false);
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!currentUser.name || !currentUser.email || (!isEditing && !currentUser.password)) {
+      showToast('warning', 'Please fill all required fields');
+      return;
+    }
+
+    try {
+      if (isEditing) {
+        const updateData = { ...currentUser };
+        if (!updateData.password) delete updateData.password;
+        
+        await axios.put(`${API_BASE_URL}/users/${currentUser._id}`, updateData);
+        showToast('success', 'User updated successfully');
+      } else {
+        await axios.post(`${API_BASE_URL}/users`, currentUser);
+        showToast('success', 'User created successfully');
+      }
+      fetchUsers();
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error('Error saving user:', error);
+      showAlert({
+        icon: 'error',
+        title: 'Save Failed',
+        text: error.response?.data?.message || 'Failed to save user details'
+      });
+    }
+  };
+
+  const handleDelete = async (id) => {
+    const result = await showDeleteConfirmation('Remove User?', 'This action cannot be undone. User data will be permanently deleted.');
+    if (result.isConfirmed) {
+      try {
+        await axios.delete(`${API_BASE_URL}/users/${id}`);
+        showToast('success', 'User removed successfully');
+        fetchUsers();
+      } catch (error) {
+        showToast('error', 'Failed to remove user');
+      }
+    }
+  };
+
+  const handleToggleStatus = async (id) => {
+    try {
+      const response = await axios.patch(`${API_BASE_URL}/users/${id}/toggle-status`);
+      showToast('success', response.data.message);
+      fetchUsers();
+    } catch (error) {
+      showToast('error', 'Failed to update user status');
+    }
+  };
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const filteredUsers = userList.filter(u => {
+    const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (u.phone && u.phone.includes(searchTerm));
+    const matchesStatus = statusFilter === 'all' || 
+                         (statusFilter === 'active' && u.isActive) || 
+                         (statusFilter === 'blocked' && !u.isActive);
+    return matchesSearch && matchesStatus;
+  }).sort((a, b) => {
+    if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-black text-text-primary tracking-tight">User Management</h2>
+          <p className="text-text-secondary text-sm">Manage your customers and app users</p>
+        </div>
+        <button
+          onClick={() => handleOpenModal()}
+          className="bg-primary text-white px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-primary/20 hover:bg-primary-light transition-all flex items-center space-x-2"
+        >
+          <Plus size={18} />
+          <span>Add New User</span>
+        </button>
+      </div>
+
+      <div className="bg-background-card rounded-[2rem] border border-border-light shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-border-light bg-background-muted/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
+            <input
+              type="text"
+              placeholder="Search by name, email or phone..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-background-card rounded-lg border border-border-main focus:border-primary transition-all outline-none text-sm"
+            />
+          </div>
+          <div className="flex items-center space-x-4">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="bg-background-card text-text-primary border border-border-main rounded-lg px-3 py-1.5 text-xs outline-none"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active Only</option>
+              <option value="blocked">Blocked Only</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm whitespace-nowrap">
+            <thead className="bg-background-muted/50 text-text-secondary uppercase text-[10px] font-black tracking-widest border-b border-border-light">
+              <tr>
+                <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('name')}>
+                  <div className="flex items-center space-x-1">
+                    <span>User</span>
+                    <ArrowUpDown size={12} className={sortConfig.key === 'name' ? 'text-primary' : 'text-text-muted'} />
+                  </div>
+                </th>
+                <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('email')}>
+                  <div className="flex items-center space-x-1">
+                    <span>Email</span>
+                    <ArrowUpDown size={12} className={sortConfig.key === 'email' ? 'text-primary' : 'text-text-muted'} />
+                  </div>
+                </th>
+                <th className="px-6 py-4">Phone</th>
+                <th className="px-6 py-4 text-center">Status</th>
+                <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('createdAt')}>
+                   <div className="flex items-center space-x-1 justify-center">
+                    <span>Joined</span>
+                    <ArrowUpDown size={12} className={sortConfig.key === 'createdAt' ? 'text-primary' : 'text-text-muted'} />
+                  </div>
+                </th>
+                <th className="px-6 py-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border-light">
+              {isLoading ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-12 text-center">
+                    <Loader2 className="animate-spin text-primary mx-auto" size={32} />
+                  </td>
+                </tr>
+              ) : filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-12 text-center text-text-muted italic">No users found</td>
+                </tr>
+              ) : (
+                filteredUsers.map((user) => (
+                  <tr key={user._id} className="hover:bg-background-muted/30 transition-colors group">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${user.isActive ? 'bg-primary/10 text-primary' : 'bg-status-off/10 text-status-unavailable'}`}>
+                          {user.name.charAt(0)}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className={`font-bold ${user.isActive ? 'text-text-primary' : 'text-text-muted line-through'}`}>{user.name}</span>
+                          <span className="text-[10px] text-text-muted uppercase">ID: {user._id.slice(-6)}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-text-secondary">{user.email}</td>
+                    <td className="px-6 py-4 text-text-secondary text-xs">
+                      <div className="flex items-center space-x-1">
+                        <Phone size={10} />
+                        <span>{user.phone || 'N/A'}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
+                        user.isActive ? 'bg-status-on/10 text-status-available border-status-on/20' : 'bg-status-off/10 text-status-unavailable border-status-off/20'
+                      }`}>
+                        {user.isActive ? 'Active' : 'Blocked'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center text-text-muted text-[10px]">
+                      {new Date(user.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end space-x-1">
+                        <button 
+                          onClick={() => handleToggleStatus(user._id)} 
+                          className={`p-2 rounded-lg transition-all ${user.isActive ? 'hover:bg-status-off/10 text-text-secondary hover:text-status-unavailable' : 'hover:bg-status-on/10 text-text-secondary hover:text-status-available'}`}
+                          title={user.isActive ? "Block User" : "Unblock User"}
+                        >
+                          {user.isActive ? <Ban size={18} /> : <CheckCircle size={18} />}
+                        </button>
+                        <button onClick={() => handleOpenModal(user)} className="p-2 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all" title="Edit User">
+                          <Edit2 size={18} />
+                        </button>
+                        <button onClick={() => handleDelete(user._id)} className="p-2 hover:bg-status-off/10 text-text-secondary hover:text-status-unavailable rounded-lg transition-all" title="Delete User">
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* User Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-hidden">
+          <div className="bg-background-card w-full max-w-lg rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-6 border-b border-border-light flex items-center justify-between">
+              <h3 className="text-xl font-black text-text-primary">{isEditing ? 'Edit User' : 'Add New User'}</h3>
+              <button onClick={() => setIsModalOpen(false)} className="text-text-muted hover:text-text-primary transition-all">
+                <XCircle size={24} />
+              </button>
+            </div>
+            
+            <div className="p-8 space-y-6">
+              <div className="space-y-1.5">
+                <label className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Full Name</label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={14} />
+                  <input
+                    type="text"
+                    value={currentUser.name}
+                    onChange={(e) => setCurrentUser({...currentUser, name: e.target.value})}
+                    className="w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold"
+                    placeholder="Enter full name"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Email Address</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={14} />
+                    <input
+                      type="email"
+                      value={currentUser.email}
+                      onChange={(e) => setCurrentUser({...currentUser, email: e.target.value})}
+                      className="w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold"
+                      placeholder="email@example.com"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Phone Number</label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={14} />
+                    <input
+                      type="text"
+                      value={currentUser.phone}
+                      onChange={(e) => setCurrentUser({...currentUser, phone: e.target.value})}
+                      className="w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold"
+                      placeholder="10-digit number"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Password</label>
+                <input
+                  type="password"
+                  value={currentUser.password}
+                  onChange={(e) => setCurrentUser({...currentUser, password: e.target.value})}
+                  className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold"
+                  placeholder={isEditing ? "Leave blank to keep same" : "Min 6 chars"}
+                />
+              </div>
+
+              <div className="flex items-center space-x-3 pt-2">
+                <button
+                  onClick={() => setCurrentUser({...currentUser, isActive: !currentUser.isActive})}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                    currentUser.isActive ? 'bg-primary' : 'bg-text-muted'
+                  }`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    currentUser.isActive ? 'translate-x-6' : 'translate-x-1'
+                  }`} />
+                </button>
+                <span className="text-xs font-bold text-text-primary uppercase tracking-widest">
+                  {currentUser.isActive ? 'Account Active' : 'Account Blocked'}
+                </span>
+              </div>
+            </div>
+
+            <div className="p-8 bg-background-muted/30 border-t border-border-light flex space-x-4">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="flex-1 px-6 py-3 border border-border-main text-text-primary rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-background-card transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                className="flex-1 px-6 py-3 bg-primary text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
+              >
+                {isEditing ? 'Update User' : 'Create User'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default UserManagement;

@@ -52,7 +52,7 @@ const RegisterPage = () => {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
 
-  const logoSrc = theme === 'dark' ? "/logo-light.png" : "/logo-dark.png";
+  const logoSrc = theme === 'dark' ? "/logo-golden.png" : "/logo-dark.png";
 
   const [fields, setFields] = useState({
     name: '',

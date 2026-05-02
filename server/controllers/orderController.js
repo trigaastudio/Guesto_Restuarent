@@ -1,7 +1,6 @@
 import Order from '../models/orderSchema.js';
 import Counter from '../models/counterSchema.js';
 import Menu from '../models/menuSchema.js';
-import Size from '../models/sizeSchema.js';
 import { getIO } from '../socket.js';
 
 const getNextOrderNumber = async () => {
@@ -13,29 +12,48 @@ const getNextOrderNumber = async () => {
   return `ORD-${counter.seq.toString().padStart(4, '0')}`;
 };
 
-const restoreStock = async (items) => {
+const handleStock = async (items, type = 'reduce') => {
   for (const item of items) {
     try {
-      const sizeDoc = await Size.findOne({ name: item.size });
-      const multiplier = sizeDoc ? sizeDoc.value : 1;
-      const restoreAmount = item.quantity * multiplier;
+      const menuDoc = await Menu.findById(item.menuItem);
+      if (!menuDoc) continue;
 
+      const variant = menuDoc.variants.find(v => v.size === item.size);
+      const multiplier = variant && variant.stockValue ? variant.stockValue : 1;
+      const amount = item.quantity * multiplier;
+      const factor = type === 'reduce' ? -1 : 1;
+
+      // Update main item stock
       await Menu.findByIdAndUpdate(item.menuItem, {
-        $inc: { totalStock: restoreAmount }
+        $inc: { totalStock: factor * amount }
       });
+
+      // Update included items stock
+      if (variant && variant.includedItems && variant.includedItems.length > 0) {
+        for (const included of variant.includedItems) {
+          const includedReduction = item.quantity * included.quantity;
+          await Menu.findByIdAndUpdate(included.menuItem, {
+            $inc: { totalStock: factor * includedReduction }
+          });
+        }
+      }
     } catch (error) {
-      console.error(`Error restoring stock for item ${item.menuItem}:`, error);
+      console.error(`Error handling stock for item ${item.menuItem}:`, error);
     }
   }
+};
+
+const restoreStock = async (items) => {
+  await handleStock(items, 'restore');
 };
 
 class OrderController {
   async createCounterOrder(req, res) {
     try {
       const { customerDetails, items, orderType, paymentMethod, subtotal, tax, discount, totalAmount, cashReceived, balance } = req.body;
-      
+
       const orderNumber = await getNextOrderNumber();
-      
+
       // Auto-set payment status for cash
       let paymentStatus = 'pending';
       if (paymentMethod === 'cash' && cashReceived >= totalAmount) {
@@ -44,7 +62,7 @@ class OrderController {
 
       const newOrder = new Order({
         orderNumber,
-        orderType: orderType || 'takeaway', 
+        orderType: orderType || 'takeaway',
         orderSource: 'admin',
         status: 'confirmed',
         customerDetails: {
@@ -64,22 +82,14 @@ class OrderController {
         paymentMethod,
         cashReceived: cashReceived || 0,
         balance: balance || 0,
-        paymentStatus, 
+        paymentStatus,
         status: 'confirmed'
       });
 
       await newOrder.save();
 
       // Reduce Stock
-      for (const item of items) {
-        const sizeDoc = await Size.findOne({ name: item.size });
-        const multiplier = sizeDoc ? sizeDoc.value : 1;
-        const reductionAmount = item.quantity * multiplier;
-
-        await Menu.findByIdAndUpdate(item.menuItem, {
-          $inc: { totalStock: -reductionAmount }
-        });
-      }
+      await handleStock(items, 'reduce');
 
       res.status(201).json({ success: true, data: newOrder });
       getIO().emit('ordersUpdated');
@@ -173,7 +183,7 @@ class OrderController {
 
       item.kitchenStatus = kitchenStatus;
       await order.save();
-      
+
       // Emit socket event for real-time update
       getIO().emit('ordersUpdated');
 
@@ -201,17 +211,17 @@ class OrderController {
       }
 
       order.items.push(...items.map(item => ({ ...item, kitchenStatus: 'pending' })));
-      
+
       // Recalculate Totals
       const newSubtotal = order.items.reduce((acc, item) => acc + item.totalPrice, 0);
       order.subtotal = newSubtotal;
       order.totalAmount = newSubtotal + (order.tax || 0) - (order.discount || 0);
-      
+
       // Update cash details if provided or recalculate
       if (req.body.cashReceived !== undefined) {
         order.cashReceived = req.body.cashReceived;
       }
-      
+
       if (order.paymentMethod === 'cash') {
         order.balance = (order.cashReceived || 0) - order.totalAmount;
       }
@@ -219,15 +229,7 @@ class OrderController {
       await order.save();
 
       // Reduce Stock for new items
-      for (const item of items) {
-        const sizeDoc = await Size.findOne({ name: item.size });
-        const multiplier = sizeDoc ? sizeDoc.value : 1;
-        const reductionAmount = item.quantity * multiplier;
-
-        await Menu.findByIdAndUpdate(item.menuItem, {
-          $inc: { totalStock: -reductionAmount }
-        });
-      }
+      await handleStock(items, 'reduce');
 
       res.json({ success: true, data: order });
     } catch (error) {
@@ -249,21 +251,15 @@ class OrderController {
       const item = order.items.id(itemId);
       if (item) {
         // Restore Stock
-        const sizeDoc = await Size.findOne({ name: item.size });
-        const multiplier = sizeDoc ? sizeDoc.value : 1;
-        const restoreAmount = item.quantity * multiplier;
-
-        await Menu.findByIdAndUpdate(item.menuItem, {
-          $inc: { totalStock: restoreAmount }
-        });
+        await handleStock([item], 'restore');
 
         order.items.pull(itemId);
-        
+
         // Recalculate Totals
         const newSubtotal = order.items.reduce((acc, item) => acc + item.totalPrice, 0);
         order.subtotal = newSubtotal;
         order.totalAmount = newSubtotal + (order.tax || 0) - (order.discount || 0);
-        
+
         // Recalculate Balance if it's a cash payment
         if (order.paymentMethod === 'cash' && order.cashReceived > 0) {
           order.balance = order.cashReceived - order.totalAmount;

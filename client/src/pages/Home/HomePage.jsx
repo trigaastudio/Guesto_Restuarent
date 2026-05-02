@@ -34,7 +34,7 @@ const HomePage = () => {
     window.location.replace('/login');
   };
 
-  const logoSrc = theme === 'dark' ? "/logo-light.png" : "/logo-dark.png";
+  const logoSrc = theme === 'dark' ? "/logo-golden.png" : "/logo-dark.png";
 
   return (
     <div className="home-container">

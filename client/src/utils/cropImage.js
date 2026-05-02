@@ -60,11 +60,11 @@ export default async function getCroppedImg(imageSrc, pixelCrop, rotation = 0) {
   return new Promise((resolve) => {
     canvas.toBlob((file) => {
       resolve(URL.createObjectURL(file));
-    }, 'image/jpeg');
+    }, 'image/png');
   });
 }
 
-export async function getCroppedImgFile(imageSrc, pixelCrop, rotation = 0, fileName = 'cropped_image.jpg') {
+export async function getCroppedImgFile(imageSrc, pixelCrop, rotation = 0, fileName = 'cropped_image.png') {
   const image = await createImage(imageSrc);
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
@@ -97,8 +97,8 @@ export async function getCroppedImgFile(imageSrc, pixelCrop, rotation = 0, fileN
 
   return new Promise((resolve) => {
     canvas.toBlob((blob) => {
-      const file = new File([blob], fileName, { type: 'image/jpeg' });
+      const file = new File([blob], fileName, { type: 'image/png' });
       resolve(file);
-    }, 'image/jpeg');
+    }, 'image/png');
   });
 }

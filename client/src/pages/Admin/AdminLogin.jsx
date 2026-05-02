@@ -56,7 +56,7 @@ const AdminLogin = () => {
 
       {/* Logo Section */}
       <div className="mb-12 text-center flex flex-col items-center animate-in fade-in slide-in-from-top-4 duration-700">
-        <img src={isDarkMode ? "/logo-light.png" : "/logo-dark.png"} alt="GuestO Logo" className="h-16 w-auto mb-2" />
+        <img src={isDarkMode ? "/logo-golden.png" : "/logo-dark.png"} alt="GuestO Logo" className="h-16 w-auto mb-2" />
       </div>
 
       {/* Login Card */}

@@ -165,13 +165,13 @@ const KitchenDashboard = () => {
     const printWindow = window.open('', '_blank');
     const itemsHtml = order.items.map(item => `
       <tr>
-        <td colspan="4" style="text-transform: uppercase; font-weight: bold; padding-top: 8px;">${item.name} (${item.size})</td>
+        <td style="text-transform: uppercase; font-weight: bold; padding: 8px 0; font-size: 16px;">${item.name}</td>
       </tr>
       <tr>
-        <td style="width: 40%;"></td>
-        <td style="width: 15%; text-align: left;">${item.quantity} P</td>
-        <td style="width: 20%; text-align: right;">${item.unitPrice.toFixed(2)}</td>
-        <td style="width: 25%; text-align: right;">${item.totalPrice.toFixed(2)}</td>
+        <td style="padding-bottom: 8px; font-weight: bold;">
+          <span style="font-size: 14px;">[ ${item.size} ]</span> 
+          <span style="font-size: 18px; margin-left: 20px;">x ${item.quantity}</span>
+        </td>
       </tr>
     `).join('');
 
@@ -184,70 +184,44 @@ const KitchenDashboard = () => {
             body { 
               font-family: 'Courier New', Courier, monospace; 
               width: 80mm; 
-              padding: 15px; 
+              padding: 10px; 
               margin: 0; 
               color: #000;
               font-size: 14px;
               line-height: 1.2;
             }
-            .header { text-align: center; margin-bottom: 15px; }
-            .restaurant-name { font-size: 18px; font-weight: bold; margin-bottom: 2px; }
-            .details { font-size: 13px; margin-bottom: 2px; }
-            .divider { border-top: 1px dashed #000; margin: 8px 0; }
-            .info-grid { display: grid; grid-template-cols: 1fr 1fr; margin-bottom: 10px; font-weight: bold; }
+            .header { text-align: center; margin-bottom: 10px; }
+            .kot-title { font-size: 24px; font-weight: 900; margin-bottom: 5px; border: 2px solid #000; display: inline-block; padding: 2px 10px; }
+            .restaurant-name { font-size: 14px; font-weight: bold; margin-bottom: 2px; }
+            .divider { border-top: 1px dashed #000; margin: 5px 0; }
+            .info-grid { display: grid; grid-template-cols: 1fr 1fr; margin-bottom: 5px; font-weight: bold; }
             table { width: 100%; border-collapse: collapse; }
-            .total-section { font-weight: bold; font-size: 16px; display: flex; justify-content: space-between; margin-top: 5px; }
-            .payment-info { font-size: 13px; margin-top: 10px; }
           </style>
         </head>
         <body onload="window.print(); window.close();">
           <div class="header">
+            <div class="kot-title">KOT</div>
             <div class="restaurant-name">GUESTO RESTAURENT</div>
-            <div class="details">Chammannur,Athirthi</div>
-            <div class="details">MOB: 7034805085, 9947649007</div>
           </div>
           <div class="divider"></div>
           <div class="info-grid">
-            <div>BILL NO:${order.orderNumber.split('-')[1] || order.orderNumber}</div>
-            <div style="text-align: right;">DATE: ${new Date(order.createdAt).toLocaleDateString('en-GB')}</div>
-            <div></div>
-            <div style="text-align: right;">TIME: ${new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+            <div>ORDER:${order.orderNumber.split('-')[1] || order.orderNumber}</div>
+            <div style="text-align: right;">${new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+            <div>TYPE:${order.orderType.toUpperCase()}</div>
+            <div style="text-align: right;">${new Date(order.createdAt).toLocaleDateString('en-GB')}</div>
           </div>
           <div class="divider"></div>
           <table>
-            <thead>
-              <tr style="font-weight: bold;">
-                <th style="width: 40%; text-align: left;">ITEM</th>
-                <th style="width: 15%; text-align: left;">QTY</th>
-                <th style="width: 20%; text-align: right;">PRICE</th>
-                <th style="width: 25%; text-align: right;">AMOUNT</th>
-              </tr>
-            </thead>
             <tbody>
-              <tr><td colspan="4"><div class="divider"></div></td></tr>
               ${itemsHtml}
             </tbody>
           </table>
           <div class="divider"></div>
-          <div class="total-section">
-            <span>TOTAL :</span>
-            <span>${order.totalAmount.toFixed(2)}</span>
+          <div style="text-align: center; font-weight: bold; margin-top: 10px;">
+            --- END OF KOT ---
           </div>
-          <div class="divider"></div>
-          <div class="payment-info">
-            <div style="display: flex; justify-content: space-between;">
-              <span>CASH RECEIVED :</span>
-              <span>${order.paymentStatus === 'paid' ? order.totalAmount.toFixed(2) : '0.00'}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; margin-top: 3px;">
-              <span>${order.paymentStatus === 'paid' ? 'CHANGE' : 'DUE'} :</span>
-              <span>0.00</span>
-            </div>
-          </div>
-          <div class="divider"></div>
-          <div style="text-align: center; font-size: 11px; margin-top: 10px;">
-            THANK YOU FOR VISITING!
-          </div>
+        </body>
+      </html>
         </body>
       </html>
     `);
@@ -347,7 +321,7 @@ const KitchenDashboard = () => {
               src={
                 (isSidebarCollapsed && !isMobileMenuOpen)
                   ? '/browser-icon.png'
-                  : (isDarkMode ? '/logo-light.png' : '/logo-dark.png')
+                  : (isDarkMode ? '/logo-golden.png' : '/logo-dark.png')
               }
               alt="Logo"
               className={`${(isSidebarCollapsed && !isMobileMenuOpen) ? 'h-8' : 'h-10'} w-auto transition-all duration-500`}

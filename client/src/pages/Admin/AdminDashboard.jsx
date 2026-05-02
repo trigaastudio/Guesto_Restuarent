@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -24,14 +25,18 @@ import {
   LineChart,
   PieChart as PieChartIcon,
   BarChart3,
-  RefreshCw
+  UserCheck,
+  Layers,
+  Filter,
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import CategorySection from './sections/CategorySection';
 import MenuSection from './sections/MenuSection';
-import SizeSection from './sections/SizeSection';
 import OrderSection from './sections/OrderSection';
 import StaffManagement from './sections/StaffManagement';
+import UserManagement from './sections/UserManagement';
 
 const AdminDashboard = () => {
   const { theme, toggleTheme } = useTheme();
@@ -41,6 +46,27 @@ const AdminDashboard = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isDarkMode = theme === 'dark';
   const navigate = useNavigate();
+  const [stats, setStats] = useState(null);
+  const [isStatsLoading, setIsStatsLoading] = useState(true);
+  const [chartTimeframe, setChartTimeframe] = useState('week'); // 'week' or 'month'
+
+  useEffect(() => {
+    if (activeTab === 'Overview') {
+      fetchDashboardStats();
+    }
+  }, [activeTab, refreshKey]);
+
+  const fetchDashboardStats = async () => {
+    setIsStatsLoading(true);
+    try {
+      const response = await axios.get('http://localhost:5000/api/dashboard/stats');
+      setStats(response.data.data);
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+    } finally {
+      setIsStatsLoading(false);
+    }
+  };
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -58,14 +84,14 @@ const AdminDashboard = () => {
     navigate('/admin/login', { replace: true });
   };
 
-  const metrics = [
-    { label: 'Total Revenue', value: '₹124,592', description: 'Lifetime earnings', icon: DollarSign, color: 'text-primary' },
-    { label: 'Today Revenue', value: '₹1,240', description: 'Daily earnings', icon: TrendingUp, color: 'text-status-available' },
-    { label: 'Total Orders', value: '4,821', description: 'Order count', icon: ShoppingCart, color: 'text-blue-500' },
-    { label: 'Customers', value: '1,204', description: 'Unique customers', icon: Users, color: 'text-purple-500' },
-    { label: 'Menu Items', value: '84', description: 'Catalogue size', icon: BookOpen, color: 'text-amber-500' },
-    { label: 'Avg Order Value', value: '₹25.80', description: 'Average spend', icon: BarChart3, color: 'text-pink-500' },
-  ];
+  const metrics = stats ? [
+    { label: 'Total Revenue', value: `₹${stats.metrics.totalRevenue.toLocaleString()}`, description: 'Lifetime earnings', icon: DollarSign, color: 'text-primary' },
+    { label: 'Today Revenue', value: `₹${stats.metrics.todayRevenue.toLocaleString()}`, description: 'Daily earnings', icon: TrendingUp, color: 'text-status-available' },
+    { label: 'Total Orders', value: stats.metrics.totalOrders.toString(), description: 'Order count', icon: ShoppingCart, color: 'text-blue-500' },
+    { label: 'Customers', value: stats.metrics.totalCustomers.toString(), description: 'Unique customers', icon: Users, color: 'text-purple-500' },
+    { label: 'Menu Items', value: stats.metrics.totalMenuItems.toString(), description: 'Catalogue size', icon: BookOpen, color: 'text-amber-500' },
+    { label: 'Avg Order Value', value: `₹${stats.metrics.avgOrderValue.toFixed(2)}`, description: 'Average spend', icon: BarChart3, color: 'text-pink-500' },
+  ] : [];
 
   const recentOrders = [
     { id: '#ORD-7234', customer: 'Anwar Sadat', items: 'Chicken Biryani, Lime Soda', type: 'Dine-in', amount: '₹450', status: 'Pending', time: '5 mins ago' },
@@ -122,7 +148,7 @@ const AdminDashboard = () => {
               src={
                 (isSidebarCollapsed && !isMobileMenuOpen)
                   ? "/browser-icon.png"
-                  : (isDarkMode ? "/logo-light.png" : "/logo-dark.png")
+                  : (isDarkMode ? "/logo-golden.png" : "/logo-dark.png")
               }
               alt="Logo"
               className={`${(isSidebarCollapsed && !isMobileMenuOpen) ? 'h-8' : 'h-10'} w-auto transition-all duration-500`}
@@ -139,10 +165,10 @@ const AdminDashboard = () => {
             {[
               { name: 'Overview', icon: LayoutDashboard },
               { name: 'Orders', icon: ShoppingCart },
-              { name: 'Staff', icon: Users },
-              { name: 'Categories', icon: BookOpen },
-              { name: 'Sizes', icon: Settings },
+              { name: 'Staff', icon: UserCheck },
+              { name: 'Categories', icon: Filter },
               { name: 'Menu', icon: UtensilsCrossed },
+              { name: 'Users', icon: Users },
               { name: 'Settings', icon: Settings },
             ].map((item) => (
               <button
@@ -246,239 +272,244 @@ const AdminDashboard = () => {
         <div className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-8">
           {activeTab === 'Overview' && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-              {/* Welcome Section */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-3xl font-black text-text-primary tracking-tight">Dashboard</h2>
-                  <p className="text-text-secondary text-sm font-medium">Welcome back! Here's what's happening today.</p>
+              {isStatsLoading && !stats ? (
+                <div className="flex flex-col items-center justify-center h-96 space-y-4">
+                  <Loader2 className="animate-spin text-primary" size={48} />
+                  <p className="text-text-secondary font-bold animate-pulse">Loading real-time analytics...</p>
                 </div>
-                {/* <div className="flex items-center space-x-3">
-                  <div className="flex -space-x-2 mr-4">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="w-8 h-8 rounded-full border-2 border-background-card bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
-                        U{i}
-                      </div>
-                    ))}
-                    <div className="w-8 h-8 rounded-full border-2 border-background-card bg-background-muted flex items-center justify-center text-[10px] font-bold text-text-muted">
-                      +5
-                    </div>
-                  </div>
-                  <button className="p-2.5 bg-background-card border border-border-main text-text-secondary rounded-xl hover:bg-background-muted transition-all">
-                    <Bell size={20} />
-                  </button>
-                  <button className="p-2.5 bg-background-card border border-border-main text-text-secondary rounded-xl hover:bg-background-muted transition-all">
-                    <Settings size={20} />
-                  </button>
-                </div> */}
-              </div>
-
-              {/* Top High-Level Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Pending Orders Card */}
-                <div className="bg-background-card p-6 rounded-3xl border border-border-light shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-2">
-                      <div className="p-2 bg-orange-500/10 text-orange-500 rounded-lg">
-                        <ShoppingCart size={18} />
-                      </div>
-                      <span className="text-sm font-bold text-text-secondary">Pending Orders</span>
-                    </div>
-                    <ChevronRight size={16} className="text-text-muted group-hover:translate-x-1 transition-transform" />
-                  </div>
-                  <div className="flex items-end space-x-4">
-                    <span className="text-4xl font-black text-text-primary">25</span>
-                    <div className="flex items-center space-x-1 mb-1.5 text-status-available text-[11px] font-bold">
-                      <span>47%</span>
-                      <span className="text-text-muted font-normal uppercase">Cleared</span>
-                    </div>
-                  </div>
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
-                </div>
-
-                {/* Orders in Progress Card */}
-                <div className="bg-background-card p-6 rounded-3xl border border-border-light shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-2">
-                      <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg">
-                        <Clock size={18} />
-                      </div>
-                      <span className="text-sm font-bold text-text-secondary">Orders in Progress</span>
-                    </div>
-                    <ChevronRight size={16} className="text-text-muted group-hover:translate-x-1 transition-transform" />
-                  </div>
-                  <div className="flex items-end space-x-4">
-                    <span className="text-4xl font-black text-text-primary">17</span>
-                  </div>
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
-                </div>
-
-                {/* Available Tables Card */}
-                <div className="bg-background-card p-6 rounded-3xl border border-border-light shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-2">
-                      <div className="p-2 bg-primary/10 text-primary rounded-lg">
-                        <LayoutDashboard size={18} />
-                      </div>
-                      <span className="text-sm font-bold text-text-secondary">Available Tables</span>
-                    </div>
-                    <ChevronRight size={16} className="text-text-muted group-hover:translate-x-1 transition-transform" />
-                  </div>
-                  <div className="flex items-end space-x-4">
-                    <div className="flex items-baseline space-x-1">
-                      <span className="text-4xl font-black text-text-primary">3</span>
-                      <span className="text-xl font-bold text-text-muted">/12</span>
-                    </div>
-                    <div className="flex items-center space-x-1 mb-1.5 text-status-available text-[11px] font-bold">
-                      <span>87%</span>
-                      <span className="text-text-muted font-normal uppercase">Booked</span>
-                    </div>
-                  </div>
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
-                </div>
-              </div>
-
-              {/* Main Analytics Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Total Revenue Chart Card */}
-                <div className="lg:col-span-2 bg-background-card rounded-[2.5rem] border border-border-light shadow-sm overflow-hidden flex flex-col">
-                  <div className="p-8 border-b border-border-light flex items-center justify-between">
+              ) : stats ? (
+                <React.Fragment>
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                      <h3 className="font-black text-text-primary text-xl">Total Revenue</h3>
-                      <p className="text-text-secondary text-xs font-medium">Sales Overview</p>
-                    </div>
-                    <div className="flex items-center space-x-2 bg-background-muted/50 p-1 rounded-xl border border-border-light">
-                      <button className="px-3 py-1.5 rounded-lg text-xs font-bold bg-background-card text-text-primary shadow-sm border border-border-light">This Week</button>
-                      <button className="px-3 py-1.5 rounded-lg text-xs font-bold text-text-muted hover:text-text-primary transition-colors">This Month</button>
+                      <h2 className="text-3xl font-black text-text-primary tracking-tight">Dashboard</h2>
+                      <p className="text-text-secondary text-sm font-medium">Welcome back! Here's what's happening today.</p>
                     </div>
                   </div>
-                  <div className="flex-1 p-8 flex flex-col items-center justify-center min-h-[300px] bg-gradient-to-b from-transparent to-primary/5 relative">
-                    {/* Mock Bar Chart */}
-                    <div className="flex items-end space-x-4 w-full h-full max-h-[200px] justify-between">
-                      {[40, 70, 45, 90, 65, 30, 50].map((height, i) => (
-                        <div key={i} className="flex-1 flex flex-col items-center space-y-3 group">
-                          <div
-                            className={`w-full max-w-[40px] rounded-t-xl transition-all duration-500 relative ${i === 3 ? 'bg-primary' : 'bg-background-muted group-hover:bg-primary/20'}`}
-                            style={{ height: `${height}%` }}
-                          >
-                            {i === 3 && (
-                              <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-xl animate-bounce">
-                                ₹598.00
-                              </div>
-                            )}
-                          </div>
-                          <span className="text-[10px] font-bold text-text-muted uppercase">
-                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i]}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
 
-                {/* Business Data Sidebar */}
-                <div className="space-y-6">
-                  <div className="bg-background-card p-8 rounded-[2.5rem] border border-border-light shadow-sm flex flex-col h-full">
-                    <div className="flex items-center justify-between mb-8">
-                      <h3 className="font-black text-text-primary text-xl">Business Data</h3>
-                      <div className="flex items-center space-x-1 text-text-muted">
-                        <Clock size={14} />
-                        <span className="text-[10px] font-bold uppercase">This Week</span>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="bg-background-card p-6 rounded-3xl border border-border-light shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-2">
+                          <div className="p-2 bg-orange-500/10 text-orange-500 rounded-lg">
+                            <ShoppingCart size={18} />
+                          </div>
+                          <span className="text-sm font-bold text-text-secondary">Pending Orders</span>
+                        </div>
+                        <ChevronRight size={16} className="text-text-muted group-hover:translate-x-1 transition-transform" />
+                      </div>
+                      <div className="flex items-end space-x-4">
+                        <span className="text-4xl font-black text-text-primary">{stats.orderStats.pending}</span>
+                      </div>
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
+                    </div>
+
+                    <div className="bg-background-card p-6 rounded-3xl border border-border-light shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-2">
+                          <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg">
+                            <Clock size={18} />
+                          </div>
+                          <span className="text-sm font-bold text-text-secondary">Orders in Progress</span>
+                        </div>
+                        <ChevronRight size={16} className="text-text-muted group-hover:translate-x-1 transition-transform" />
+                      </div>
+                      <div className="flex items-end space-x-4">
+                        <span className="text-4xl font-black text-text-primary">{stats.orderStats.inProgress}</span>
+                      </div>
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
+                    </div>
+
+                    <div className="bg-background-card p-6 rounded-3xl border border-border-light shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-2">
+                          <div className="p-2 bg-primary/10 text-primary rounded-lg">
+                            <LayoutDashboard size={18} />
+                          </div>
+                          <span className="text-sm font-bold text-text-secondary">Available Tables</span>
+                        </div>
+                        <ChevronRight size={16} className="text-text-muted group-hover:translate-x-1 transition-transform" />
+                      </div>
+                      <div className="flex items-end space-x-4">
+                        <div className="flex items-baseline space-x-1">
+                          <span className="text-4xl font-black text-text-primary">{stats.tableStats.available}</span>
+                          <span className="text-xl font-bold text-text-muted">/{stats.tableStats.total}</span>
+                        </div>
+                        <div className="flex items-center space-x-1 mb-1.5 text-status-available text-[11px] font-bold">
+                          <span>{stats.tableStats.total > 0 ? Math.round(((stats.tableStats.total - stats.tableStats.available) / stats.tableStats.total) * 100) : 0}%</span>
+                          <span className="text-text-muted font-normal uppercase">Occupied</span>
+                        </div>
+                      </div>
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2 bg-background-card rounded-[2.5rem] border border-border-light shadow-sm overflow-hidden flex flex-col">
+                      <div className="p-8 border-b border-border-light flex items-center justify-between">
+                        <div>
+                          <h3 className="font-black text-text-primary text-xl">Total Revenue</h3>
+                          <p className="text-text-secondary text-xs font-medium">Sales Overview</p>
+                        </div>
+                        <div className="flex items-center space-x-2 bg-background-muted/50 p-1 rounded-xl border border-border-light">
+                          <button 
+                            onClick={() => setChartTimeframe('week')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${chartTimeframe === 'week' ? 'bg-background-card text-text-primary shadow-sm border border-border-light' : 'text-text-muted hover:text-text-primary'}`}
+                          >
+                            This Week
+                          </button>
+                          <button 
+                            onClick={() => setChartTimeframe('month')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${chartTimeframe === 'month' ? 'bg-background-card text-text-primary shadow-sm border border-border-light' : 'text-text-muted hover:text-text-primary'}`}
+                          >
+                            This Month
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex-1 w-full p-8 flex flex-col items-center justify-center bg-gradient-to-b from-transparent to-primary/5 relative min-h-[300px]">
+                        <div className={`flex items-end ${chartTimeframe === 'month' ? 'space-x-1 sm:space-x-1.5' : 'space-x-2 sm:space-x-4'} w-full h-48 justify-between items-baseline`}>
+                          {(chartTimeframe === 'week' ? stats.revenueTrend : stats.monthlyTrend).map((data, i) => {
+                            const trendData = chartTimeframe === 'week' ? stats.revenueTrend : stats.monthlyTrend;
+                            const revenues = trendData.map(d => d.revenue);
+                            const maxRevenue = Math.max(...revenues, 1);
+                            const height = (data.revenue / maxRevenue) * 100;
+                            const isToday = chartTimeframe === 'week' ? i === 6 : i === new Date().getDate() - 1;
+
+                            return (
+                              <div key={i} className="flex-1 flex flex-col items-center space-y-3 group h-full justify-end">
+                                <div className="relative w-full flex flex-col items-center justify-end h-full">
+                                  {data.revenue > 0 && (
+                                    <div className="absolute -top-10 bg-black text-white text-[9px] font-bold px-2 py-1 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                                      ₹{data.revenue.toLocaleString()}
+                                    </div>
+                                  )}
+                                  <div
+                                    className={`w-full ${chartTimeframe === 'month' ? 'max-w-[12px]' : 'max-w-[40px]'} rounded-t-lg transition-all duration-700 relative ${isToday ? 'bg-primary shadow-[0_-4px_12px_rgba(var(--primary-rgb),0.3)]' : 'bg-background-muted group-hover:bg-primary/30'}`}
+                                    style={{ height: `${Math.max(height, chartTimeframe === 'month' ? 4 : 8)}%` }}
+                                  >
+                                    {isToday && <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent rounded-t-lg" />}
+                                  </div>
+                                </div>
+                                {chartTimeframe === 'week' ? (
+                                  <span className={`text-[10px] font-bold uppercase ${isToday ? 'text-primary' : 'text-text-muted'}`}>
+                                    {data.day}
+                                  </span>
+                                ) : (
+                                  (i % 5 === 0 || i === trendData.length - 1) && (
+                                    <span className={`text-[8px] font-bold ${isToday ? 'text-primary' : 'text-text-muted'}`}>
+                                      {data.day}
+                                    </span>
+                                  )
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
 
                     <div className="space-y-6">
-                      {[
-                        { label: 'Number of Customers', value: '197', icon: Users, color: 'bg-purple-500/10 text-purple-500' },
-                        { label: 'Total Orders', value: '270', icon: ShoppingCart, color: 'bg-blue-500/10 text-blue-500' },
-                        { label: 'Average Order Values', value: '₹ 109.00', icon: BarChart3, color: 'bg-primary/10 text-primary' },
-                      ].map((item) => (
-                        <div key={item.label} className="group cursor-pointer">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-bold text-text-muted uppercase tracking-tight">{item.label}</span>
-                            <ChevronRight size={14} className="text-text-muted opacity-0 group-hover:opacity-100 transition-all" />
-                          </div>
-                          <div className={`flex items-center space-x-4 p-4 rounded-2xl border border-transparent transition-all group-hover:border-border-light ${item.color}`}>
-                            <item.icon size={20} />
-                            <span className="text-2xl font-black">{item.value}</span>
+                      <div className="bg-background-card p-8 rounded-[2.5rem] border border-border-light shadow-sm flex flex-col h-full">
+                        <div className="flex items-center justify-between mb-8">
+                          <h3 className="font-black text-text-primary text-xl">Business Data</h3>
+                          <div className="flex items-center space-x-1 text-text-muted">
+                            <Clock size={14} />
+                            <span className="text-[10px] font-bold uppercase">This Week</span>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
 
-              {/* Bottom Section: Recent Activity and Top Dishes */}
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                {/* Recent Activity */}
-                <div className="bg-background-card rounded-[2.5rem] border border-border-light shadow-sm overflow-hidden p-8">
-                  <div className="flex items-center justify-between mb-8">
-                    <h3 className="font-black text-text-primary text-xl">Recent Activity</h3>
-                    <button className="text-primary text-xs font-bold hover:underline">View All</button>
-                  </div>
-                  <div className="space-y-6">
-                    {[
-                      { id: '#4587', action: 'Status Changed', time: '9min', status: 'Completed', amount: '109.00', statusColor: 'bg-status-on/10 text-status-available' },
-                      { id: '#4587', action: 'Status Changed', time: '9min', status: 'Pending', amount: '109.00', statusColor: 'bg-orange-500/10 text-orange-500' },
-                    ].map((activity, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-4 rounded-2xl hover:bg-background-muted transition-colors border border-transparent hover:border-border-light">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-12 h-12 rounded-xl bg-background-muted flex items-center justify-center overflow-hidden border border-border-light">
-                            <img src="/placeholder-dish.png" alt="Dish" className="w-full h-full object-cover opacity-50" />
-                          </div>
-                          <div>
-                            <p className="font-bold text-text-primary">{activity.action}</p>
-                            <p className="text-[11px] text-text-muted font-medium">₹ {activity.amount} • {activity.id} • <Clock size={10} className="inline mb-0.5" /> Wait {activity.time}</p>
-                          </div>
-                        </div>
-                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${activity.statusColor}`}>
-                          {activity.status}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Top Dishes */}
-                <div className="bg-background-card rounded-[2.5rem] border border-border-light shadow-sm overflow-hidden p-8">
-                  <div className="flex items-center justify-between mb-8">
-                    <h3 className="font-black text-text-primary text-xl">Top Dishes</h3>
-                    <div className="flex items-center space-x-1 text-text-muted">
-                      <Clock size={14} />
-                      <span className="text-[10px] font-bold uppercase">This Week</span>
-                    </div>
-                  </div>
-                  <div className="space-y-6">
-                    {[
-                      { name: 'Twice Cooked Pork', orders: '960' },
-                      { name: 'Fish Flavored Pork', orders: '863' },
-                      { name: 'Pork Ribs Rice', orders: '884' },
-                    ].map((dish, idx) => (
-                      <div key={idx} className="flex items-center justify-between group">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-12 h-12 rounded-xl bg-background-muted flex items-center justify-center overflow-hidden border border-border-light group-hover:scale-105 transition-transform">
-                            <img src="/placeholder-dish.png" alt="Dish" className="w-full h-full object-cover opacity-50" />
-                          </div>
-                          <span className="font-bold text-text-primary text-sm group-hover:text-primary transition-colors">{dish.name}</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-xl font-black text-text-primary">{dish.orders}</span>
-                          <span className="text-[10px] font-bold text-text-muted uppercase">Orders</span>
+                        <div className="space-y-6">
+                          {[
+                            { label: 'Number of Customers', value: stats.metrics.totalCustomers.toLocaleString(), icon: Users, color: 'bg-purple-500/10 text-purple-500' },
+                            { label: 'Total Orders', value: stats.metrics.totalOrders.toLocaleString(), icon: ShoppingCart, color: 'bg-blue-500/10 text-blue-500' },
+                            { label: 'Average Order Values', value: `₹ ${stats.metrics.avgOrderValue.toFixed(2)}`, icon: BarChart3, color: 'bg-primary/10 text-primary' },
+                          ].map((item) => (
+                            <div key={item.label} className="group cursor-pointer">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-bold text-text-muted uppercase tracking-tight">{item.label}</span>
+                                <ChevronRight size={14} className="text-text-muted opacity-0 group-hover:opacity-100 transition-all" />
+                              </div>
+                              <div className={`flex items-center space-x-4 p-4 rounded-2xl border border-transparent transition-all group-hover:border-border-light ${item.color}`}>
+                                <item.icon size={20} />
+                                <span className="text-2xl font-black">{item.value}</span>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                    ))}
+                    </div>
                   </div>
-                </div>
-              </div>
+
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                    <div className="bg-background-card rounded-[2.5rem] border border-border-light shadow-sm overflow-hidden p-8">
+                      <div className="flex items-center justify-between mb-8">
+                        <h3 className="font-black text-text-primary text-xl">Recent Activity</h3>
+                        <button className="text-primary text-xs font-bold hover:underline">View All</button>
+                      </div>
+                      <div className="space-y-6">
+                        {stats.recentOrders.length === 0 ? (
+                          <div className="text-center py-12 text-text-muted italic">No recent orders</div>
+                        ) : (
+                          stats.recentOrders.map((order, idx) => (
+                            <div key={idx} className="flex items-center justify-between p-4 rounded-2xl hover:bg-background-muted transition-colors border border-transparent hover:border-border-light">
+                              <div className="flex items-center space-x-4">
+                                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold border border-primary/20">
+                                  {order.customer?.name?.charAt(0) || 'W'}
+                                </div>
+                                <div>
+                                  <p className="font-bold text-text-primary">{order.customer?.name || 'Walk-in Customer'}</p>
+                                  <p className="text-[11px] text-text-muted font-medium">₹ {order.totalAmount} • {order.orderNumber} • <Clock size={10} className="inline mb-0.5" /> {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                </div>
+                              </div>
+                              <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${order.status === 'completed' ? 'bg-status-on/10 text-status-available' : order.status === 'pending' ? 'bg-orange-500/10 text-orange-500' : order.status === 'cancelled' ? 'bg-status-off/10 text-status-unavailable' : 'bg-blue-500/10 text-blue-500'}`}>
+                                {order.status}
+                              </span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-background-card rounded-[2.5rem] border border-border-light shadow-sm overflow-hidden p-8">
+                      <div className="flex items-center justify-between mb-8">
+                        <h3 className="font-black text-text-primary text-xl">Top Dishes</h3>
+                        <div className="flex items-center space-x-1 text-text-muted">
+                          <Clock size={14} />
+                          <span className="text-[10px] font-bold uppercase">This Week</span>
+                        </div>
+                      </div>
+                      <div className="space-y-6">
+                        {stats.topDishes.length === 0 ? (
+                          <div className="text-center py-12 text-text-muted italic">No dishes sold yet</div>
+                        ) : (
+                          stats.topDishes.map((dish, idx) => (
+                            <div key={idx} className="flex items-center justify-between group">
+                              <div className="flex items-center space-x-4">
+                                <div className="w-12 h-12 rounded-xl bg-background-muted flex items-center justify-center overflow-hidden border border-border-light group-hover:scale-105 transition-transform">
+                                  {dish.image ? <img src={dish.image} alt={dish.name} className="w-full h-full object-cover" /> : <UtensilsCrossed size={20} className="text-text-muted" />}
+                                </div>
+                                <span className="font-bold text-text-primary text-sm group-hover:text-primary transition-colors">{dish.name}</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className="text-xl font-black text-text-primary">{dish.orders}</span>
+                                <span className="text-[10px] font-bold text-text-muted uppercase">Qty</span>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </React.Fragment>
+              ) : null}
             </div>
           )}
 
           {activeTab === 'Orders' && <OrderSection key={`order-${refreshKey}`} />}
           {activeTab === 'Categories' && <CategorySection key={`cat-${refreshKey}`} />}
-          {activeTab === 'Sizes' && <SizeSection key={`size-${refreshKey}`} />}
           {activeTab === 'Menu' && <MenuSection key={`menu-${refreshKey}`} />}
 
           {activeTab === 'Staff' && <StaffManagement key={`staff-${refreshKey}`} />}
+          {activeTab === 'Users' && <UserManagement key={`users-${refreshKey}`} />}
 
           {activeTab === 'Settings' && (
             <div className="flex items-center justify-center h-64 border-2 border-dashed border-border-light rounded-2xl">
