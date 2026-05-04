@@ -59,7 +59,7 @@ const AdminDashboard = () => {
   const fetchDashboardStats = async () => {
     setIsStatsLoading(true);
     try {
-      const response = await axios.get('http://localhost:5000/api/dashboard/stats');
+      const response = await axios.get(`${window.location.protocol}//${window.location.hostname}:5000/api/dashboard/stats`);
       setStats(response.data.data);
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
@@ -92,26 +92,6 @@ const AdminDashboard = () => {
     { label: 'Menu Items', value: stats.metrics.totalMenuItems.toString(), description: 'Catalogue size', icon: BookOpen, color: 'text-amber-500' },
     { label: 'Avg Order Value', value: `₹${stats.metrics.avgOrderValue.toFixed(2)}`, description: 'Average spend', icon: BarChart3, color: 'text-pink-500' },
   ] : [];
-
-  const recentOrders = [
-    { id: '#ORD-7234', customer: 'Anwar Sadat', items: 'Chicken Biryani, Lime Soda', type: 'Dine-in', amount: '₹450', status: 'Pending', time: '5 mins ago' },
-    { id: '#ORD-7233', customer: 'Rahul K.', items: 'Alfaham, Roti', type: 'Takeaway', amount: '₹320', status: 'Delivered', time: '12 mins ago' },
-    { id: '#ORD-7232', customer: 'Aiswarya R.', items: 'Beef Roast, Appam x4', type: 'Delivery', amount: '₹580', status: 'Preparing', time: '18 mins ago' },
-    { id: '#ORD-7231', customer: 'Kevin John', items: 'Club Sandwich, Fries', type: 'Dine-in', amount: '₹210', status: 'Delivered', time: '25 mins ago' },
-  ];
-
-  const lowStockItems = [
-    { item: 'Chicken Biriyani', category: 'Main Course', stock: '5 portions', threshold: '15 portions', status: 'Critical' },
-    { item: 'Alfaham', category: 'Grill', stock: '3 full', threshold: '10 full', status: 'Critical' },
-    { item: 'Beef Roast', category: 'Side Dish', stock: '4 portions', threshold: '8 portions', status: 'Low' },
-    { item: 'Lime Soda', category: 'Beverages', stock: '8 servings', threshold: '15 servings', status: 'Low' },
-  ];
-
-  const charts = [
-    { name: 'Revenue Trend', type: 'Line Chart', purpose: 'Daily / weekly / monthly revenue over time', icon: LineChart },
-    { name: 'Order Distribution', type: 'Pie Chart', purpose: 'Breakdown by order type (Dine-in / Takeaway / Delivery)', icon: PieChartIcon },
-    { name: 'Top Items', type: 'Bar Chart', purpose: 'Best-selling menu items ranked by quantity', icon: BarChart3 },
-  ];
 
   return (
     <div className={`flex h-screen bg-background text-text-primary overflow-hidden transition-colors duration-300`}>
@@ -453,15 +433,17 @@ const AdminDashboard = () => {
                             <div key={idx} className="flex items-center justify-between p-4 rounded-2xl hover:bg-background-muted transition-colors border border-transparent hover:border-border-light">
                               <div className="flex items-center space-x-4">
                                 <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold border border-primary/20">
-                                  {order.customer?.name?.charAt(0) || 'W'}
+                                  {(order.customer?.name || order.address?.recipientName || (order.customerDetails?.name !== 'Walk-in' ? order.customerDetails?.name : null) || 'W').charAt(0)}
                                 </div>
                                 <div>
-                                  <p className="font-bold text-text-primary">{order.customer?.name || 'Walk-in Customer'}</p>
+                                  <p className="font-bold text-text-primary">
+                                    {order.customer?.name || order.address?.recipientName || (order.customerDetails?.name !== 'Walk-in' ? order.customerDetails?.name : null) || 'Walk-in Customer'}
+                                  </p>
                                   <p className="text-[11px] text-text-muted font-medium">₹ {order.totalAmount} • {order.orderNumber} • <Clock size={10} className="inline mb-0.5" /> {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                                 </div>
                               </div>
-                              <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${order.status === 'completed' ? 'bg-status-on/10 text-status-available' : order.status === 'pending' ? 'bg-orange-500/10 text-orange-500' : order.status === 'cancelled' ? 'bg-status-off/10 text-status-unavailable' : 'bg-blue-500/10 text-blue-500'}`}>
-                                {order.status}
+                              <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${order.orderStatus === 'completed' ? 'bg-status-on/10 text-status-available' : order.orderStatus === 'placed' ? 'bg-orange-500/10 text-orange-500' : order.orderStatus === 'cancelled' ? 'bg-status-off/10 text-status-unavailable' : 'bg-blue-500/10 text-blue-500'}`}>
+                                {order.orderStatus}
                               </span>
                             </div>
                           ))

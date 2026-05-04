@@ -1,32 +1,58 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Plus, Search, Filter, Eye, Edit2, Trash2, Clock,
+  Plus, Search, Filter, Eye, Trash2, Clock, Edit2,
   CheckCircle2, XCircle, AlertCircle, Loader2, ArrowUpDown,
   ShoppingCart, User, Phone, CreditCard, ChevronRight,
   MoreVertical, Printer, Package, Utensils, RotateCcw,
-  Copy, MapPin, ExternalLink
+  Copy, MapPin, ExternalLink, Minus
 } from 'lucide-react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:5000/api`;
 const SOCKET_URL = 'http://localhost:5000';
 
 const OrderSection = () => {
   const handleCopyForWhatsApp = (order) => {
-    const itemsText = order.items.map(item => `- ${item.name} (${item.size}) x${item.quantity}`).join('\n');
+    // Support both items structures
+    const itemsText = order.items.map(item => {
+      const name = item.name || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Menu Item');
+      const price = item.unitPrice || item.price || 0;
+      return `- ${name} (${item.size}) x${item.quantity}`;
+    }).join('\n');
+
+    // Support both customerDetails and address structures
+    const name = (order.orderSource === 'online' || order.orderSource === 'user') 
+      ? (order.address?.recipientName || order.customerDetails?.name || 'Walk-in')
+      : (order.customerDetails?.name || order.address?.recipientName || 'Walk-in');
+    const phone = order.customerDetails?.phone || order.address?.mobile || 'N/A';
+    const address = order.customerDetails?.address || order.address?.address || 'N/A';
+    const location = order.customerDetails?.location || order.address?.location;
+    
+    // Construct location URL if it's an object or already a string
+    let locationUrl = '';
+    if (location) {
+      if (typeof location === 'object' && location.lat) {
+        locationUrl = `\n📍 *Location:* https://www.google.com/maps?q=${location.lat},${location.lng}`;
+      } else if (typeof location === 'string') {
+        // If it's already a URL or contains one, just use it or extract it
+        const urlMatch = location.match(/https?:\/\/[^\s]+/);
+        locationUrl = urlMatch ? `\n📍 *Location:* ${urlMatch[0]}` : `\n📍 *Location:* ${location}`;
+      }
+    }
+
     const text = `*ORDER: ${order.orderNumber}*\n` +
                  `--------------------------\n` +
-                 `👤 *Customer:* ${order.customerDetails?.name}\n` +
-                 `📞 *Phone:* ${order.customerDetails?.phone || 'N/A'}\n` +
-                 `🏠 *Address:* ${order.customerDetails?.address || 'N/A'}\n` +
+                 `👤 *Customer:* ${name}\n` +
+                 `📞 *Phone:* ${phone}\n` +
+                 `🏠 *Address:* ${address}\n` +
                  `--------------------------\n` +
                  `📦 *Items:*\n${itemsText}\n` +
                  `--------------------------\n` +
                  `💰 *Total:* ₹${order.totalAmount}\n` +
                  `💳 *Payment:* ${order.paymentMethod?.toUpperCase()} (${order.paymentStatus?.toUpperCase()})\n` +
-                 (order.customerDetails?.location ? `\n📍 *Location:* https://www.google.com/maps?q=${order.customerDetails.location.lat},${order.customerDetails.location.lng}` : '');
+                 locationUrl;
     
     navigator.clipboard.writeText(text);
     showToast('success', 'Copied for WhatsApp!');
@@ -39,9 +65,14 @@ const OrderSection = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [posSearchTerm, setPosSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [orderStatusFilter, setOrderStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
-  const [activeTab, setActiveTab] = useState('takeaway');
+  const [activeTab, setActiveTab] = useState(localStorage.getItem('orderActiveTab') || 'takeaway');
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    localStorage.setItem('orderActiveTab', tab);
+  };
   const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
 
   // POS State
@@ -52,6 +83,7 @@ const OrderSection = () => {
   const [menuItems, setMenuItems] = useState([]);
   const [posOrderType, setPosOrderType] = useState('takeaway');
   const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [deliveryLocation, setDeliveryLocation] = useState('');
   const socketRef = useRef();
 
   useEffect(() => {
@@ -75,19 +107,34 @@ const OrderSection = () => {
     };
   }, []);
 
+  // Sync selectedOrder with orders list when live updates happen
+  useEffect(() => {
+    if (selectedOrder) {
+      const liveOrder = orders.find(o => o._id === selectedOrder._id);
+      if (liveOrder && JSON.stringify(liveOrder) !== JSON.stringify(selectedOrder)) {
+        setSelectedOrder(liveOrder);
+      }
+    }
+  }, [orders, selectedOrder]);
+
   const handlePrintKOT = (order) => {
     const printWindow = window.open('', '_blank');
-    const itemsHtml = order.items.map(item => `
+    const itemsHtml = order.items.map(item => {
+      const name = item.name || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Menu Item');
+      const unitPrice = item.unitPrice || item.price || 0;
+      const totalPrice = item.totalPrice || (unitPrice * item.quantity);
+      return `
       <tr>
-        <td colspan="4" style="text-transform: uppercase; font-weight: bold; padding-top: 8px;">${item.name} (${item.size})</td>
+        <td colspan="4" style="text-transform: uppercase; font-weight: bold; padding-top: 8px;">${name} (${item.size})</td>
       </tr>
       <tr>
         <td style="width: 40%;"></td>
         <td style="width: 15%; text-align: left;">${item.quantity} P</td>
-        <td style="width: 20%; text-align: right;">${item.unitPrice.toFixed(2)}</td>
-        <td style="width: 25%; text-align: right;">${item.totalPrice.toFixed(2)}</td>
+        <td style="width: 20%; text-align: right;">${unitPrice.toFixed(2)}</td>
+        <td style="width: 25%; text-align: right;">${totalPrice.toFixed(2)}</td>
       </tr>
-    `).join('');
+    `;
+    }).join('');
 
     // Static QR from public folder
     const qrCodeUrl = '/QR-guestoPayment.jpeg';
@@ -150,8 +197,18 @@ const OrderSection = () => {
           <div class="divider"></div>
           <div class="total-section">
             <span>TOTAL :</span>
-            <span>${order.totalAmount.toFixed(2)}</span>
+            <span>${(order.totalAmount || order.subtotal || 0).toFixed(2)}</span>
           </div>
+          ${order.paidAmount > 0 && (order.totalAmount || order.subtotal) > order.paidAmount ? `
+            <div style="font-size: 13px; font-weight: bold; margin-top: 5px; display: flex; justify-content: space-between;">
+              <span>PAID AMOUNT:</span>
+              <span>₹${order.paidAmount.toFixed(2)}</span>
+            </div>
+            <div style="font-size: 14px; font-weight: bold; margin-top: 3px; display: flex; justify-content: space-between; border: 1px solid #000; padding: 4px;">
+              <span>BALANCE DUE:</span>
+              <span>₹${((order.totalAmount || order.subtotal) - order.paidAmount).toFixed(2)}</span>
+            </div>
+          ` : ''}
           <div class="divider"></div>
           <div class="payment-info">
             ${order.paymentMethod === 'cash' ? `
@@ -175,7 +232,7 @@ const OrderSection = () => {
             `}
           </div>
           
-          ${order.orderType === 'delivery' ? `
+          ${(order.orderType === 'delivery' || order.orderType === 'online') ? `
             <div class="qr-section">
               <div class="qr-label">Scan to Pay</div>
               <img src="${qrCodeUrl}" style="width: 120px; height: 120px; border: 1px solid #000; padding: 5px;" />
@@ -184,7 +241,7 @@ const OrderSection = () => {
 
           <div class="divider"></div>
           <div style="text-align: center; font-size: 11px; margin-top: 10px;">
-            ${order.orderType === 'delivery' ? 'THANK YOU FOR ORDER!' : 'THANK YOU FOR VISITING!'}
+            ${(order.orderType === 'delivery' || order.orderType === 'online') ? 'THANK YOU FOR ORDER!' : 'THANK YOU FOR VISITING!'}
           </div>
         </body>
       </html>
@@ -227,18 +284,16 @@ const OrderSection = () => {
       const subtotal = cart.reduce((acc, item) => acc + item.totalPrice, 0);
 
       if (selectedOrder) {
-        // Adding items to existing order
-        const currentTotal = (selectedOrder.totalAmount || 0) + cart.reduce((acc, item) => acc + item.totalPrice, 0);
-        const cash = parseFloat(cashReceived) || selectedOrder.cashReceived || 0;
-        const balance = cash - currentTotal;
-
-        const response = await axios.patch(`${API_BASE_URL}/orders/${selectedOrder._id}/add-items`, { 
+        // Full Edit mode (replaces items)
+        const response = await axios.patch(`${API_BASE_URL}/orders/${selectedOrder._id}/items`, { 
           items: cart,
-          cashReceived: cash,
-          balance: balance
+          cashReceived: parseFloat(cashReceived) || selectedOrder.cashReceived || 0,
+          deliveryAddress: deliveryAddress,
+          deliveryLocation: deliveryLocation,
+          customerDetails: customer
         });
         if (response.data.success) {
-          showToast('success', 'Items added to order');
+          showToast('success', 'Order updated successfully');
           setIsModalOpen(false);
           setCart([]);
           setSelectedOrder(response.data.data);
@@ -282,7 +337,7 @@ const OrderSection = () => {
 
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
-      const response = await axios.patch(`${API_BASE_URL}/orders/${orderId}/status`, { status: newStatus });
+      const response = await axios.patch(`${API_BASE_URL}/orders/${orderId}/status`, { orderStatus: newStatus });
       if (response.data.success) {
         showToast('success', `Order marked as ${newStatus}`);
         setOrders(orders.map(o => o._id === orderId ? response.data.data : o));
@@ -310,9 +365,20 @@ const OrderSection = () => {
 
   const handleUpdatePaymentStatus = async (orderId, newStatus) => {
     try {
-      const response = await axios.patch(`${API_BASE_URL}/orders/${orderId}/status`, { paymentStatus: newStatus });
+      const updateData = { paymentStatus: newStatus };
+      // Automatically set order status to completed if marked as paid
+      if (newStatus === 'paid' || newStatus === 'completed') {
+        updateData.orderStatus = 'completed';
+        // Record the current total as paidAmount when marking as paid
+        const orderToUpdate = orders.find(o => o._id === orderId);
+        if (orderToUpdate) {
+          updateData.paidAmount = orderToUpdate.totalAmount;
+        }
+      }
+
+      const response = await axios.patch(`${API_BASE_URL}/orders/${orderId}/status`, updateData);
       if (response.data.success) {
-        showToast('success', `Payment marked as ${newStatus}`);
+        showToast('success', `Payment marked as ${newStatus}${newStatus === 'paid' ? ' and order Completed' : ''}`);
         setOrders(orders.map(o => o._id === orderId ? response.data.data : o));
         if (selectedOrder?._id === orderId) setSelectedOrder(response.data.data);
       }
@@ -327,12 +393,19 @@ const OrderSection = () => {
   useEffect(() => {
     if (selectedOrder) {
       setEditCustomer({
-        name: selectedOrder.customerDetails?.name || '',
-        phone: selectedOrder.customerDetails?.phone || ''
+        name: (selectedOrder.orderSource === 'online' || selectedOrder.orderSource === 'user')
+          ? (selectedOrder.address?.recipientName || selectedOrder.customerDetails?.name || '')
+          : (selectedOrder.customerDetails?.name || selectedOrder.address?.recipientName || ''),
+        phone: selectedOrder.customerDetails?.phone || selectedOrder.address?.mobile || ''
       });
       setEditCashReceived(selectedOrder.cashReceived || '');
     }
   }, [selectedOrder]);
+
+  const handleOpenDetails = (order) => {
+    setSelectedOrder(order);
+    setIsDetailsModalOpen(true);
+  };
 
   const handleUpdatePaymentDetails = async () => {
     try {
@@ -433,22 +506,49 @@ const OrderSection = () => {
 
   const filteredOrders = getSortedData(orders).filter(o => {
     const searchLower = (searchTerm || '').toLowerCase();
+    
+    // Support both customerDetails and address structures
+    const customerName = o.customerDetails?.name || o.address?.recipientName || '';
+    const customerPhone = o.customerDetails?.phone || o.address?.mobile || '';
+    const orderStatus = o.orderStatus || '';
+    
     const matchesSearch = (o.orderNumber || '').toLowerCase().includes(searchLower) ||
-      (o.customerDetails?.phone || '').includes(searchTerm) ||
-      (o.customerDetails?.name || '').toLowerCase().includes(searchLower);
-    const matchesStatus = statusFilter === 'all' || o.status === statusFilter;
+      customerPhone.includes(searchTerm) ||
+      customerName.toLowerCase().includes(searchLower);
+      
+    const matchesStatus = orderStatusFilter === 'all' || orderStatus === orderStatusFilter;
     const matchesPayment = paymentFilter === 'all' || o.paymentStatus === paymentFilter;
-    const matchesType = o.orderType === activeTab;
+    
+    // Match 'delivery' tab with both 'delivery' and 'online' order types
+    let matchesType = o.orderType === activeTab;
+    if (activeTab === 'delivery') {
+      matchesType = o.orderType === 'delivery' || o.orderType === 'online';
+    } else if (activeTab === 'takeaway') {
+      matchesType = o.orderType === 'takeaway' || o.orderType === 'take-away';
+    } else if (activeTab === 'dine-in') {
+      matchesType = o.orderType === 'dine-in' || o.orderType === 'dining';
+    }
+    
     return matchesSearch && matchesStatus && matchesPayment && matchesType;
   });
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'pending': return 'bg-status-off/10 text-status-unavailable border-status-off/20';
-      case 'preparing': return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
-      case 'delayed': return 'bg-red-500/10 text-red-500 border-red-500/20';
-      case 'ready': return 'bg-status-on/10 text-status-available border-status-on/20';
-      case 'completed': return 'bg-primary/10 text-primary border-primary/20';
+      case 'pending':
+      case 'placed': 
+        return 'bg-status-off/10 text-status-unavailable border-status-off/20';
+      case 'preparing':
+      case 'processing':
+        return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
+      case 'out-for-delivery':
+        return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+      case 'delayed': 
+        return 'bg-red-500/10 text-red-500 border-red-500/20';
+      case 'ready':
+      case 'delivered':
+        return 'bg-status-on/10 text-status-available border-status-on/20';
+      case 'completed': 
+        return 'bg-primary/10 text-primary border-primary/20';
       default: return 'bg-background-muted text-text-muted border-border-light';
     }
   };
@@ -489,7 +589,7 @@ const OrderSection = () => {
           ].map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabChange(tab.id)}
               className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
                 activeTab === tab.id 
                   ? 'bg-primary text-white shadow-lg shadow-primary/20' 
@@ -501,7 +601,12 @@ const OrderSection = () => {
               <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[8px] ${
                 activeTab === tab.id ? 'bg-white/20' : 'bg-background-muted'
               }`}>
-                {orders.filter(o => o.orderType === tab.id).length}
+                {orders.filter(o => {
+                  if (tab.id === 'delivery') return o.orderType === 'delivery';
+                  if (tab.id === 'takeaway') return o.orderType === 'takeaway';
+                  if (tab.id === 'dine-in') return o.orderType === 'dine-in';
+                  return o.orderType === tab.id;
+                }).length}
               </span>
             </button>
           ))}
@@ -523,14 +628,21 @@ const OrderSection = () => {
               <div className="flex items-center space-x-2">
                 <Filter size={14} className="text-text-muted" />
                 <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
+                  value={orderStatusFilter}
+                  onChange={(e) => setOrderStatusFilter(e.target.value)}
                   className="bg-background-card text-text-primary border border-border-main rounded-lg px-3 py-1.5 text-xs outline-none"
                 >
                   <option value="all">All Orders</option>
-                  <option value="pending">Pending</option>
-                  <option value="confirmed">Confirmed</option>
+                  <option value="placed">Placed</option>
+                  <option value="processing">Processing</option>
+                  {(activeTab === 'delivery' || activeTab === 'all') && (
+                    <>
+                      <option value="out-for-delivery">Out for Delivery</option>
+                      <option value="delivered">Delivered</option>
+                    </>
+                  )}
                   <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
                 </select>
                 <select
                   value={paymentFilter}
@@ -538,16 +650,16 @@ const OrderSection = () => {
                   className="bg-background-card text-text-primary border border-border-main rounded-lg px-3 py-1.5 text-xs outline-none"
                 >
                   <option value="all">All Payment</option>
-                  <option value="paid">Paid</option>
                   <option value="pending">Pending</option>
+                  <option value="completed">Completed</option>
                   <option value="failed">Failed</option>
                   <option value="refunded">Refunded</option>
                 </select>
                 <button
-                  onClick={() => { setSearchTerm(''); setStatusFilter('all'); setPaymentFilter('all'); }}
-                  disabled={!searchTerm && statusFilter === 'all' && paymentFilter === 'all'}
+                  onClick={() => { setSearchTerm(''); setOrderStatusFilter('all'); setPaymentFilter('all'); }}
+                  disabled={!searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all'}
                   className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${
-                    !searchTerm && statusFilter === 'all' && paymentFilter === 'all'
+                    !searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all'
                       ? 'bg-background-muted/50 text-text-muted/30 border-border-light cursor-not-allowed'
                       : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white'
                   }`}
@@ -564,35 +676,35 @@ const OrderSection = () => {
             <table className="w-full text-left text-sm whitespace-nowrap">
               <thead className="bg-background-muted/50 text-text-secondary uppercase text-[10px] font-black tracking-widest border-b border-border-light">
                 <tr>
-                  <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('orderNumber')}>
+                  <th className="px-3 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('orderNumber')}>
                     <div className="flex items-center space-x-1">
                       <span>Order #</span>
                       <ArrowUpDown size={12} className={sortConfig.key === 'orderNumber' ? 'text-primary' : 'text-text-muted'} />
                     </div>
                   </th>
-                  <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('createdAt')}>
+                  <th className="px-3 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('createdAt')}>
                     <div className="flex items-center space-x-1">
                       <span>Date & Time</span>
                       <ArrowUpDown size={12} className={sortConfig.key === 'createdAt' ? 'text-primary' : 'text-text-muted'} />
                     </div>
                   </th>
-                  <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('customer')}>
+                  <th className="px-3 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('customer')}>
                     <div className="flex items-center space-x-1">
                       <span>Customer</span>
                       <ArrowUpDown size={12} className={sortConfig.key === 'customer' ? 'text-primary' : 'text-text-muted'} />
                     </div>
                   </th>
-                  <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('amount')}>
+                  <th className="px-3 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('amount')}>
                     <div className="flex items-center space-x-1">
                       <span>Amount</span>
                       <ArrowUpDown size={12} className={sortConfig.key === 'amount' ? 'text-primary' : 'text-text-muted'} />
                     </div>
                   </th>
-                  <th className="px-6 py-4 text-center">Order</th>
-                  <th className="px-6 py-4 text-center">Payment</th>
-                  <th className="px-6 py-4 text-center">Method</th>
-                  <th className="px-6 py-4 text-center">Kitchen</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
+                  <th className="px-3 py-4 text-center">Order</th>
+                  <th className="px-3 py-4 text-center">Payment</th>
+                  <th className="px-3 py-4 text-center">Method</th>
+                  <th className="px-3 py-4 text-center">Kitchen</th>
+                  <th className="px-3 py-4 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light">
@@ -612,50 +724,69 @@ const OrderSection = () => {
                 ) : (
                   filteredOrders.map((order) => (
                     <tr key={order._id} className="hover:bg-background-muted/30 transition-colors group">
-                      <td className="px-6 py-4 font-black text-text-primary">{order.orderNumber}</td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-4 font-black text-text-primary">{order.orderNumber}</td>
+                      <td className="px-3 py-4">
                         <div className="flex flex-col">
                           <span className="text-xs font-bold text-text-primary">{new Date(order.createdAt).toLocaleDateString('en-GB')}</span>
                           <span className="text-[10px] text-text-muted">{new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 font-bold text-text-secondary">
+                      <td className="px-3 py-4 font-bold text-text-secondary">
                         <div className="flex flex-col">
-                          <span>{order.customerDetails?.name}</span>
-                          <span className="text-[10px] text-text-muted">{order.customerDetails?.phone || '-'}</span>
+                          <div className="flex items-center space-x-2">
+                            <span>
+                              {(order.orderSource === 'online' || order.orderSource === 'user') 
+                                ? (order.address?.recipientName || order.customerDetails?.name || 'Walk-in')
+                                : (order.customerDetails?.name || order.address?.recipientName || 'Walk-in')
+                              }
+                            </span>
+                            {/* Source Dot Indicator */}
+                            {(order.orderSource === 'online' || order.orderSource === 'user') ? (
+                              <span className="flex h-2 w-2 rounded-full bg-blue-500" title="Online Order"></span>
+                            ) : (
+                              <span className="flex h-2 w-2 rounded-full bg-amber-500" title="Admin Order"></span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-text-muted">{order.customerDetails?.phone || order.address?.mobile || '-'}</span>
+                          <span className="text-[8px] font-black uppercase tracking-tighter text-text-muted/50">
+                            Source: {order.orderSource || 'admin'}
+                          </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 font-black text-text-primary">₹{order.totalAmount}</td>
-                      <td className="px-6 py-4 text-center">
-                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${order.status === 'completed' ? 'bg-primary/10 text-primary border-primary/20' :
-                          order.status === 'confirmed' ? 'bg-status-on/10 text-status-available border-status-on/20' :
-                            order.status === 'cancelled' ? 'bg-status-off/10 text-status-unavailable border-status-off/20' :
-                              'bg-background-muted text-text-muted border-border-light'
-                          }`}>
-                          {order.status}
+                      <td className="px-3 py-4 font-black text-text-primary">₹{order.totalAmount || order.subtotal || 0}</td>
+                      <td className="px-3 py-4 text-center">
+                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
+                          order.orderStatus === 'completed' || order.orderStatus === 'delivered' ? 'bg-primary/10 text-primary border-primary/20' :
+                          order.orderStatus === 'processing' || order.orderStatus === 'out-for-delivery' ? 'bg-status-on/10 text-status-available border-status-on/20' :
+                          order.orderStatus === 'placed' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                          order.orderStatus === 'cancelled' ? 'bg-status-off/10 text-status-unavailable border-status-off/20' :
+                          'bg-background-muted text-text-muted border-border-light'
+                        }`}>
+                          {order.orderStatus}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${order.paymentStatus === 'paid' ? 'bg-status-on/10 text-status-available border-status-on/20' :
+                      <td className="px-3 py-4 text-center">
+                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
+                          (order.paymentStatus === 'paid' || order.paymentStatus === 'completed') ? 'bg-status-on/10 text-status-available border-status-on/20' :
                           order.paymentStatus === 'pending' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                            order.paymentStatus === 'refunded' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
-                              'bg-status-off/10 text-status-unavailable border-status-off/20'
-                          }`}>
+                          order.paymentStatus === 'refunded' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
+                          'bg-status-off/10 text-status-unavailable border-status-off/20'
+                        }`}>
                           {order.paymentStatus}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-3 py-4 text-center">
                         <span className="px-2 py-0.5 bg-background-muted text-text-muted text-[8px] font-black uppercase rounded-lg border border-border-light">
                           {order.paymentMethod}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-3 py-4 text-center">
                         <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${getStatusColor(order.kitchenStatus)}`}>
                           {order.kitchenStatus}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end space-x-2">
+                      <td className="px-3 py-4 text-center">
+                        <div className="flex items-center justify-center space-x-1">
                           <button
                             onClick={() => handlePrintKOT(order)}
                             className="p-2 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all"
@@ -664,12 +795,12 @@ const OrderSection = () => {
                             <Printer size={18} />
                           </button>
                           <button
-                            onClick={() => { setSelectedOrder(order); setIsDetailsModalOpen(true); }}
+                            onClick={() => handleOpenDetails(order)}
                             className="p-2 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all"
-                            title="View Details"
                           >
                             <Eye size={18} />
                           </button>
+
                           {activeTab === 'delivery' && (
                             <button
                               onClick={() => handleCopyForWhatsApp(order)}
@@ -722,8 +853,8 @@ const OrderSection = () => {
                   <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Customer Name</p>
                   <input
                     type="text"
-                    value={editCustomer.name}
-                    onChange={(e) => setEditCustomer({ ...editCustomer, name: e.target.value })}
+                    value={editCustomer?.name || selectedOrder?.address?.recipientName || ''}
+                    onChange={(e) => setEditCustomer(prev => ({ ...prev, name: e.target.value }))}
                     className="bg-transparent text-sm font-black text-text-primary outline-none w-full"
                   />
                 </div>
@@ -731,8 +862,8 @@ const OrderSection = () => {
                   <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Phone Number</p>
                   <input
                     type="text"
-                    value={editCustomer.phone}
-                    onChange={(e) => setEditCustomer({ ...editCustomer, phone: e.target.value })}
+                    value={editCustomer?.phone || selectedOrder?.address?.mobile || ''}
+                    onChange={(e) => setEditCustomer(prev => ({ ...prev, phone: e.target.value }))}
                     className="bg-transparent text-sm font-black text-text-primary outline-none w-full"
                   />
                 </div>
@@ -756,6 +887,7 @@ const OrderSection = () => {
                     <option value="paid">Paid</option>
                     <option value="failed">Failed</option>
                     <option value="refunded">Refunded</option>
+                    <option value="completed">Completed</option>
                   </select>
                 </div>
                 {selectedOrder.paymentMethod === 'cash' && (
@@ -785,58 +917,86 @@ const OrderSection = () => {
                 <div className="space-y-1 pt-4">
                   <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Order Status</p>
                   <select
-                    value={selectedOrder.status}
-                    onChange={(e) => handleUpdateOrderStatus(selectedOrder._id, e.target.value)}
+                    value={selectedOrder?.orderStatus}
+                    onChange={(e) => handleUpdateOrderStatus(selectedOrder?._id, e.target.value)}
                     className="bg-primary/10 text-primary text-[10px] font-black uppercase rounded-lg border border-primary/20 px-2 py-1 outline-none cursor-pointer"
                   >
-                    <option value="pending">Pending</option>
-                    <option value="confirmed">Confirmed</option>
+                    <option value="placed">Placed</option>
+                    <option value="processing">Processing</option>
+                    {(selectedOrder?.orderType === 'delivery' || selectedOrder?.orderType === 'online') && (
+                      <>
+                        <option value="out-for-delivery">Out for Delivery</option>
+                        <option value="delivered">Delivered</option>
+                      </>
+                    )}
                     <option value="completed">Completed</option>
                     <option value="cancelled">Cancelled</option>
                   </select>
                 </div>
 
-                {selectedOrder.orderType === 'delivery' && selectedOrder.customerDetails?.address && (
+                {(selectedOrder.orderType === 'delivery' || selectedOrder.orderType === 'online') && 
+                  (selectedOrder.customerDetails?.address || selectedOrder.address?.address) && (
                   <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 space-y-2 mt-4">
                     <p className="text-[10px] text-primary font-bold uppercase tracking-widest flex items-center space-x-1">
                       <MapPin size={12} />
                       <span>Delivery Address</span>
                     </p>
                     <p className="text-xs font-bold text-text-primary leading-relaxed">
-                      {selectedOrder.customerDetails.address}
+                      {selectedOrder.customerDetails?.address || selectedOrder.address?.address}
                     </p>
-                    {selectedOrder.customerDetails.location && (
+                    {(selectedOrder.customerDetails?.location || selectedOrder.address?.location) && (
                       <div className="space-y-2 pt-2">
-                        <a 
-                          href={`https://www.google.com/maps?q=${selectedOrder.customerDetails.location.lat},${selectedOrder.customerDetails.location.lng}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center space-x-1 text-[10px] font-black text-primary uppercase hover:underline"
-                        >
-                          <ExternalLink size={12} />
-                          <span>View on Google Maps</span>
-                        </a>
-                        <div className="w-full h-40 rounded-xl overflow-hidden border border-border-light shadow-inner">
-                          <iframe
-                            title="Order Location"
-                            width="100%"
-                            height="100%"
-                            frameBorder="0"
-                            scrolling="no"
-                            marginHeight="0"
-                            marginWidth="0"
-                            src={`https://maps.google.com/maps?q=${selectedOrder.customerDetails.location.lat},${selectedOrder.customerDetails.location.lng}&z=15&output=embed`}
-                          />
-                        </div>
+                        {(() => {
+                          const loc = selectedOrder.customerDetails?.location || selectedOrder.address?.location;
+                          let lat, lng, url;
+                          if (typeof loc === 'object' && loc.lat) {
+                            lat = loc.lat; lng = loc.lng;
+                            url = `https://www.google.com/maps?q=${lat},${lng}`;
+                          } else if (typeof loc === 'string') {
+                            const match = loc.match(/q=([\d.-]+),([\d.-]+)/);
+                            if (match) { lat = match[1]; lng = match[2]; }
+                            url = loc.match(/https?:\/\/[^\s]+/) ? loc.match(/https?:\/\/[^\s]+/)[0] : null;
+                          }
+                          
+                          if (!url) return null;
+
+                          return (
+                            <>
+                              <a 
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center space-x-1 text-[10px] font-black text-primary uppercase hover:underline"
+                              >
+                                <ExternalLink size={12} />
+                                <span>View Location</span>
+                              </a>
+                              {lat && lng && (
+                                <div className="w-full h-40 rounded-xl overflow-hidden border border-border-light shadow-inner">
+                                  <iframe
+                                    title="Order Location"
+                                    width="100%"
+                                    height="100%"
+                                    frameBorder="0"
+                                    scrolling="no"
+                                    marginHeight="0"
+                                    marginWidth="0"
+                                    src={`https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`}
+                                  />
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>
                 )}
 
                 <div className="flex items-end justify-end pt-4">
-                  {(editCustomer.name !== (selectedOrder.customerDetails?.name || '') ||
-                    editCustomer.phone !== (selectedOrder.customerDetails?.phone || '') ||
-                    editCashReceived !== (selectedOrder.cashReceived || '')) && (
+                  {(editCustomer?.name !== (selectedOrder?.customerDetails?.name || '') ||
+                    editCustomer?.phone !== (selectedOrder?.customerDetails?.phone || '') ||
+                    editCashReceived !== (selectedOrder?.cashReceived || '')) && (
                       <button
                         onClick={handleUpdatePaymentDetails}
                         className="bg-primary text-white text-[9px] font-black uppercase px-4 py-2 rounded-xl shadow-lg shadow-primary/20 hover:scale-105 transition-all"
@@ -850,18 +1010,39 @@ const OrderSection = () => {
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-border-light pb-2">
                   <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Order Items</p>
-                  {!selectedOrder.isLocked && selectedOrder.status === 'confirmed' && (
+                  {!['cancelled', 'completed', 'delivered'].includes(selectedOrder.orderStatus) && (
                     <button
-                      onClick={() => { setCashReceived(selectedOrder.cashReceived || ''); setIsModalOpen(true); }}
+                      onClick={() => { 
+                        setCashReceived(selectedOrder.cashReceived || ''); 
+                        setCustomer({
+                          name: (selectedOrder.orderSource === 'online' || selectedOrder.orderSource === 'user')
+                            ? (selectedOrder.address?.recipientName || selectedOrder.customerDetails?.name || '')
+                            : (selectedOrder.customerDetails?.name || selectedOrder.address?.recipientName || ''),
+                          phone: selectedOrder.customerDetails?.phone || selectedOrder.address?.mobile || ''
+                        });
+                        setDeliveryAddress(selectedOrder.customerDetails?.address || selectedOrder.address?.address || '');
+                        setDeliveryLocation(selectedOrder.address?.location || (typeof selectedOrder.customerDetails?.location === 'string' ? selectedOrder.customerDetails.location : ''));
+                        setPosOrderType(selectedOrder.orderType);
+                        setPaymentMethod(selectedOrder.paymentMethod || 'cash');
+                        // Populate cart with existing items for editing
+                        setCart(selectedOrder.items.map(item => ({
+                          ...item,
+                          menuItem: item.menuItem?._id || item.menuItem,
+                          name: item.name || item.menuItem?.name || 'Item',
+                          unitPrice: item.unitPrice || item.price,
+                          totalPrice: item.totalPrice || ((item.unitPrice || item.price) * item.quantity)
+                        })));
+                        setIsModalOpen(true); 
+                      }}
                       className="text-[10px] font-black text-primary uppercase hover:underline flex items-center space-x-1"
                     >
-                      <Plus size={12} />
-                      <span>Add Items</span>
+                      <Edit2 size={12} />
+                      <span>Edit Items</span>
                     </button>
                   )}
                 </div>
 
-                {selectedOrder.status === 'pending' && (
+                {selectedOrder.orderStatus === 'pending' && (
                   <div className="flex items-center space-x-2 p-3 bg-amber-500/10 rounded-xl border border-amber-500/20 text-amber-600">
                     <AlertCircle size={14} />
                     <p className="text-[10px] font-bold uppercase tracking-widest">Awaiting Confirmation to start kitchen</p>
@@ -869,66 +1050,80 @@ const OrderSection = () => {
                 )}
 
                 <div className="space-y-3">
-                  {selectedOrder.items.map((item) => (
+                  {selectedOrder?.items?.map((item) => (
                     <div key={item._id} className="flex items-center justify-between p-4 bg-background-muted/20 rounded-2xl border border-border-light hover:border-primary/20 transition-all">
                       <div className="flex items-center space-x-4">
                         <div className="w-12 h-12 bg-background-card rounded-xl flex items-center justify-center border border-border-light overflow-hidden shrink-0">
-                          {item.image ? (
-                            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                          {item?.image || (item?.menuItem && typeof item?.menuItem === 'object' ? item?.menuItem?.image : '') ? (
+                            <img src={item?.image || item?.menuItem?.image} alt={item?.name || item?.menuItem?.name} className="w-full h-full object-cover" />
                           ) : (
                             <Package size={20} className="text-primary/40" />
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="font-bold text-text-primary text-sm truncate">{item.name}</p>
+                          <p className="font-bold text-text-primary text-sm truncate">{item?.name || (item?.menuItem && typeof item?.menuItem === 'object' ? item?.menuItem?.name : 'Menu Item')}</p>
                           <p className="text-[10px] text-text-muted font-bold uppercase">
-                            {item.size} • ₹{item.unitPrice} x {item.quantity}
+                            {item?.size} • ₹{item?.unitPrice || item?.price} x {item?.quantity}
                           </p>
                         </div>
                       </div>
 
                       <div className="flex items-center space-x-4">
                         <div className="text-right">
-                          <p className="text-xs font-black text-text-primary">₹{item.totalPrice}</p>
+                          <p className="text-xs font-black text-text-primary">
+                            ₹{item?.totalPrice || ((item?.unitPrice || item?.price || 0) * item?.quantity)}
+                          </p>
                         </div>
 
                         <div className="flex items-center space-x-2">
-                          <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${selectedOrder.status === 'pending' ? 'bg-background-muted text-text-muted border-border-light opacity-50' : getStatusColor(item.kitchenStatus || 'pending')}`}>
-                            {selectedOrder.status === 'pending' ? 'Locked' : (item.kitchenStatus || 'pending')}
+                          <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${selectedOrder.orderStatus === 'pending' ? 'bg-background-muted text-text-muted border-border-light opacity-50' : getStatusColor(item.kitchenStatus || 'pending')}`}>
+                            {selectedOrder.orderStatus === 'pending' ? 'Locked' : (item.kitchenStatus || 'pending')}
                           </span>
-
-                          {!selectedOrder.isLocked && selectedOrder.status === 'confirmed' && item.kitchenStatus === 'pending' && (
-                            <button
-                              onClick={async () => {
-                                if (await showDeleteConfirmation('Cancel Item?', 'Remove this item from the order?')) {
-                                  try {
-                                    const res = await axios.patch(`${API_BASE_URL}/orders/${selectedOrder._id}/items/${item._id}/remove`);
-                                    if (res.data.success) {
-                                      showToast('success', 'Item removed');
-                                      setSelectedOrder(res.data.data);
-                                      setOrders(orders.map(o => o._id === selectedOrder._id ? res.data.data : o));
-                                    }
-                                  } catch (e) { showToast('error', 'Failed to remove'); }
-                                }
-                              }}
-                              className="p-1.5 text-text-muted hover:text-status-unavailable transition-colors"
-                              title="Cancel Item"
-                            >
-                              <XCircle size={16} />
-                            </button>
-                          )}
                         </div>
                       </div>
-                    </div>
-                  ))}
+                      </div>
+                    ))}
                 </div>
               </div>
             </div>
 
             <div className="p-8 bg-background-muted/30 border-t border-border-light flex items-center justify-between">
-              <div className="space-y-1">
-                <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Total Bill Amount</p>
-                <p className="text-3xl font-black text-text-primary">₹{selectedOrder.totalAmount}</p>
+              <div className="flex flex-col space-y-4">
+                <div className="space-y-1">
+                  <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Total Bill Amount</p>
+                  <div className="flex items-baseline space-x-2">
+                    <span className="text-4xl font-black text-text-primary">
+                      ₹{selectedOrder.totalAmount || selectedOrder.subtotal || 0}
+                    </span>
+                    {selectedOrder.paidAmount > 0 && (selectedOrder.totalAmount || selectedOrder.subtotal) > selectedOrder.paidAmount && (
+                      <span className="px-2 py-0.5 bg-status-off/10 text-status-unavailable text-[10px] font-black rounded-lg uppercase tracking-tighter">
+                        Partial Payment
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                {selectedOrder.paidAmount > 0 && (selectedOrder.totalAmount || selectedOrder.subtotal) > selectedOrder.paidAmount && (
+                  <div className="animate-in slide-in-from-left duration-500">
+                    <div className="flex items-center space-x-4 p-4 bg-background-card rounded-[1.5rem] border border-status-unavailable/20 shadow-sm">
+                      <div className="w-10 h-10 bg-status-off/10 text-status-unavailable rounded-xl flex items-center justify-center">
+                        <AlertCircle size={20} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-status-unavailable uppercase tracking-widest mb-0.5">Balance to Collect</p>
+                        <div className="flex items-baseline space-x-3">
+                          <span className="text-2xl font-black text-text-primary">
+                            ₹{(selectedOrder?.totalAmount || selectedOrder?.subtotal || 0) - (selectedOrder?.paidAmount || 0)}
+                          </span>
+                          <div className="h-4 w-[1px] bg-border-light" />
+                          <span className="text-[10px] font-bold text-text-muted uppercase">
+                            Paid: ₹{selectedOrder?.paidAmount || 0}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
               <button
                 onClick={() => handlePrintKOT(selectedOrder)}
@@ -1000,16 +1195,9 @@ const OrderSection = () => {
                 </div>
 
                 {selectedOrder && (
-                  <div className="mb-4 p-3 bg-primary/5 rounded-xl border border-primary/10">
-                    <p className="text-[10px] font-black text-primary uppercase mb-2">Already in Order:</p>
-                    <div className="space-y-1">
-                      {selectedOrder.items.map((item, i) => (
-                        <div key={i} className="flex justify-between text-[10px] text-text-secondary font-bold">
-                          <span>{item.name} ({item.size}) x{item.quantity}</span>
-                          <span>₹{item.totalPrice}</span>
-                        </div>
-                      ))}
-                    </div>
+                  <div className="mb-4 p-3 bg-amber-500/5 rounded-xl border border-amber-500/10">
+                    <p className="text-[10px] font-black text-amber-500 uppercase mb-1">Editing Order Mode</p>
+                    <p className="text-[9px] text-text-muted font-medium italic">You can add, remove, or change quantities below.</p>
                   </div>
                 )}
 
@@ -1043,6 +1231,16 @@ const OrderSection = () => {
                           value={deliveryAddress}
                           onChange={e => setDeliveryAddress(e.target.value)}
                           className="bg-transparent text-xs font-bold text-text-primary outline-none w-full min-h-[60px] resize-none"
+                        />
+                      </div>
+                      <div className="flex items-center space-x-2 p-2 bg-primary/5 rounded-lg border border-primary/10">
+                        <ExternalLink size={12} className="text-primary" />
+                        <input
+                          type="text"
+                          placeholder="Google Maps Link (Optional)"
+                          value={deliveryLocation}
+                          onChange={e => setDeliveryLocation(e.target.value)}
+                          className="bg-transparent text-[9px] text-primary font-bold outline-none w-full"
                         />
                       </div>
                     </div>
@@ -1080,9 +1278,28 @@ const OrderSection = () => {
               </div>
 
               <div className="p-4 bg-background-card border-t border-border-light space-y-3">
-                <div className="flex items-center justify-between text-text-primary">
-                  <span className="font-bold text-xs uppercase tracking-wider">Total Amount</span>
-                  <span className="text-xl font-black">₹{cart.reduce((acc, i) => acc + i.totalPrice, 0) + (selectedOrder?.totalAmount || 0)}</span>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-text-primary">
+                    <span className="font-bold text-xs uppercase tracking-wider text-text-muted">New Order Total</span>
+                    <span className="text-xl font-black">₹{cart.reduce((acc, i) => acc + i.totalPrice, 0)}</span>
+                  </div>
+
+                  {selectedOrder && selectedOrder.paidAmount > 0 && (
+                    <div className="animate-in slide-in-from-bottom-2 duration-500">
+                      <div className="flex items-center justify-between p-2.5 bg-amber-500/5 rounded-xl border border-amber-500/20">
+                        <div className="space-y-0.5">
+                          <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest">Payment Summary</p>
+                          <p className="text-[11px] font-bold text-text-muted">Already Paid: ₹{selectedOrder.paidAmount}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[9px] font-black text-status-unavailable uppercase tracking-widest">Balance Due</p>
+                          <p className="text-lg font-black text-status-unavailable">
+                            ₹{Math.max(0, cart.reduce((acc, i) => acc + i.totalPrice, 0) - selectedOrder.paidAmount)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {paymentMethod === 'cash' && (
@@ -1112,7 +1329,7 @@ const OrderSection = () => {
                         </button>
                       ))}
                       <button
-                        onClick={() => setCashReceived(cart.reduce((acc, i) => acc + i.totalPrice, 0) + (selectedOrder?.totalAmount || 0))}
+                        onClick={() => setCashReceived(cart.reduce((acc, i) => acc + i.totalPrice, 0))}
                         className="px-2 py-1 bg-primary/10 text-[9px] font-bold text-primary rounded-lg border border-primary/20 hover:bg-primary hover:text-white transition-all"
                       >
                         Exact
@@ -1120,23 +1337,23 @@ const OrderSection = () => {
                     </div>
 
                     <div className={`flex items-center justify-between p-2 rounded-xl border transition-all ${
-                      (parseFloat(cashReceived) || 0) < (cart.reduce((acc, i) => acc + i.totalPrice, 0) + (selectedOrder?.totalAmount || 0))
+                      (parseFloat(cashReceived) || 0) < cart.reduce((acc, i) => acc + i.totalPrice, 0)
                         ? 'bg-status-off/5 border-status-unavailable/20'
                         : 'bg-primary/5 border-primary/20'
                     }`}>
                       <span className={`text-[10px] font-bold uppercase ${
-                        (parseFloat(cashReceived) || 0) < (cart.reduce((acc, i) => acc + i.totalPrice, 0) + (selectedOrder?.totalAmount || 0))
+                        (parseFloat(cashReceived) || 0) < cart.reduce((acc, i) => acc + i.totalPrice, 0)
                           ? 'text-status-unavailable'
                           : 'text-primary'
                       }`}>
-                        {(parseFloat(cashReceived) || 0) < (cart.reduce((acc, i) => acc + i.totalPrice, 0) + (selectedOrder?.totalAmount || 0)) ? 'Due' : 'Change'}
+                        {(parseFloat(cashReceived) || 0) < cart.reduce((acc, i) => acc + i.totalPrice, 0) ? 'Due' : 'Change'}
                       </span>
                       <span className={`text-base font-black ${
-                        (parseFloat(cashReceived) || 0) < (cart.reduce((acc, i) => acc + i.totalPrice, 0) + (selectedOrder?.totalAmount || 0))
+                        (parseFloat(cashReceived) || 0) < cart.reduce((acc, i) => acc + i.totalPrice, 0)
                           ? 'text-status-unavailable'
                           : 'text-primary'
                       }`}>
-                        ₹{((parseFloat(cashReceived) || 0) - (cart.reduce((acc, i) => acc + i.totalPrice, 0) + (selectedOrder?.totalAmount || 0))).toFixed(2)}
+                        ₹{((parseFloat(cashReceived) || 0) - cart.reduce((acc, i) => acc + i.totalPrice, 0)).toFixed(2)}
                       </span>
                     </div>
                   </div>
@@ -1173,7 +1390,7 @@ const OrderSection = () => {
                     : 'bg-primary text-white shadow-primary/20 hover:scale-[1.02] active:scale-95'
                     }`}
                 >
-                  {isSubmitting ? 'Processing Order...' : 'Save Order'}
+                  {isSubmitting ? 'Processing Order...' : (selectedOrder ? 'Update Order' : 'Save Order')}
                 </button>
               </div>
             </div>

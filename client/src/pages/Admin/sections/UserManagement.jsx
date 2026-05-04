@@ -178,27 +178,27 @@ const UserManagement = () => {
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-background-muted/50 text-text-secondary uppercase text-[10px] font-black tracking-widest border-b border-border-light">
               <tr>
-                <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('name')}>
+                <th className="px-3 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('name')}>
                   <div className="flex items-center space-x-1">
                     <span>User</span>
                     <ArrowUpDown size={12} className={sortConfig.key === 'name' ? 'text-primary' : 'text-text-muted'} />
                   </div>
                 </th>
-                <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('email')}>
+                <th className="px-3 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('email')}>
                   <div className="flex items-center space-x-1">
                     <span>Email</span>
                     <ArrowUpDown size={12} className={sortConfig.key === 'email' ? 'text-primary' : 'text-text-muted'} />
                   </div>
                 </th>
-                <th className="px-6 py-4">Phone</th>
-                <th className="px-6 py-4 text-center">Status</th>
-                <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('createdAt')}>
+                <th className="px-3 py-4">Phone</th>
+                <th className="px-3 py-4 text-center">Status</th>
+                <th className="px-3 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('createdAt')}>
                    <div className="flex items-center space-x-1 justify-center">
                     <span>Joined</span>
                     <ArrowUpDown size={12} className={sortConfig.key === 'createdAt' ? 'text-primary' : 'text-text-muted'} />
                   </div>
                 </th>
-                <th className="px-6 py-4 text-right">Actions</th>
+                <th className="px-3 py-4 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
@@ -215,7 +215,7 @@ const UserManagement = () => {
               ) : (
                 filteredUsers.map((user) => (
                   <tr key={user._id} className="hover:bg-background-muted/30 transition-colors group">
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-4">
                       <div className="flex items-center space-x-3">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${user.isActive ? 'bg-primary/10 text-primary' : 'bg-status-off/10 text-status-unavailable'}`}>
                           {user.name.charAt(0)}
@@ -226,25 +226,25 @@ const UserManagement = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-text-secondary">{user.email}</td>
-                    <td className="px-6 py-4 text-text-secondary text-xs">
+                    <td className="px-3 py-4 text-text-secondary">{user.email}</td>
+                    <td className="px-3 py-4 text-text-secondary text-xs">
                       <div className="flex items-center space-x-1">
                         <Phone size={10} />
                         <span>{user.phone || 'N/A'}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-3 py-4 text-center">
                       <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
                         user.isActive ? 'bg-status-on/10 text-status-available border-status-on/20' : 'bg-status-off/10 text-status-unavailable border-status-off/20'
                       }`}>
                         {user.isActive ? 'Active' : 'Blocked'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-center text-text-muted text-[10px]">
+                    <td className="px-3 py-4 text-center text-text-muted text-[10px]">
                       {new Date(user.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end space-x-1">
+                    <td className="px-3 py-4 text-center">
+                      <div className="flex items-center justify-center space-x-1">
                         <button 
                           onClick={() => handleToggleStatus(user._id)} 
                           className={`p-2 rounded-lg transition-all ${user.isActive ? 'hover:bg-status-off/10 text-text-secondary hover:text-status-unavailable' : 'hover:bg-status-on/10 text-text-secondary hover:text-status-available'}`}

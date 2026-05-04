@@ -30,7 +30,6 @@ const MenuSection = () => {
     includedItems: [] // Global addons if needed, but we'll focus on variants
   });
 
-  const [allSizes, setAllSizes] = useState([]); // Kept for safety if used elsewhere, but not fetched anymore
 
   const [isUploading, setIsUploading] = useState(false);
 
@@ -388,29 +387,29 @@ const MenuSection = () => {
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-background-muted/50 text-text-secondary uppercase text-[10px] font-bold tracking-widest border-b border-border-light">
               <tr>
-                <th className="px-4 py-4 w-12 text-center">#</th>
-                <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors group min-w-[200px]" onClick={() => handleSort('name')}>
+                <th className="px-2 py-4 w-12 text-center">#</th>
+                <th className="px-3 py-4 cursor-pointer hover:text-primary transition-colors group min-w-[200px]" onClick={() => handleSort('name')}>
                   <div className="flex items-center space-x-1">
                     <span>Menu Item</span>
                     <ArrowUpDown size={12} className={`opacity-0 group-hover:opacity-100 transition-opacity ${sortConfig.key === 'name' ? 'opacity-100 text-primary' : ''}`} />
                   </div>
                 </th>
-                <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors group" onClick={() => handleSort('category')}>
+                <th className="px-3 py-4 cursor-pointer hover:text-primary transition-colors group" onClick={() => handleSort('category')}>
                   <div className="flex items-center space-x-1">
                     <span>Category</span>
                     <ArrowUpDown size={12} className={`opacity-0 group-hover:opacity-100 transition-opacity ${sortConfig.key === 'category' ? 'opacity-100 text-primary' : ''}`} />
                   </div>
                 </th>
-                <th className="px-6 py-4 text-center">Type</th>
-                <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors group min-w-[120px]" onClick={() => handleSort('price')}>
+                <th className="px-3 py-4 text-center">Type</th>
+                <th className="px-3 py-4 cursor-pointer hover:text-primary transition-colors group min-w-[120px]" onClick={() => handleSort('price')}>
                   <div className="flex items-center space-x-1">
                     <span>Pricing</span>
                     <ArrowUpDown size={12} className={`opacity-0 group-hover:opacity-100 transition-opacity ${sortConfig.key === 'price' ? 'opacity-100 text-primary' : ''}`} />
                   </div>
                 </th>
-                <th className="px-6 py-4 text-center">Inventory</th>
-                <th className="px-6 py-4 text-center">Status</th>
-                <th className="px-6 py-4 text-right">Actions</th>
+                <th className="px-3 py-4 text-center">Inventory</th>
+                <th className="px-3 py-4 text-center">Status</th>
+                <th className="px-3 py-4 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
@@ -432,8 +431,8 @@ const MenuSection = () => {
               ) : (
                 filteredMenus.map((menu, index) => (
                   <tr key={menu._id} className="hover:bg-background-muted/30 transition-colors group align-middle">
-                    <td className="px-4 py-4 text-center font-medium text-text-muted">{index + 1}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-2 py-4 text-center font-medium text-text-muted">{index + 1}</td>
+                    <td className="px-3 py-4">
                       <div className="flex items-center space-x-3">
                         <div className="w-12 h-12 rounded-xl bg-background-muted overflow-hidden shrink-0 border border-border-light shadow-sm">
                           {menu.image ? (
@@ -450,12 +449,12 @@ const MenuSection = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-4">
                       <span className="text-[11px] font-bold text-text-secondary bg-background-muted/50 px-2.5 py-1 rounded-full border border-border-light">
                         {menu.category?.name || 'Uncategorized'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-3 py-4 text-center">
                       <div className="flex justify-center">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border ${
                           menu.foodType === 'veg' 
@@ -466,7 +465,7 @@ const MenuSection = () => {
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-4">
                       <div className="flex flex-col space-y-2">
                         {menu.variants?.length > 0 ? (
                           <div className="relative">
@@ -494,7 +493,7 @@ const MenuSection = () => {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-3 py-4 text-center">
                       <div className="flex flex-col items-center">
                         {menu.totalStock > 0 ? (
                           <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300">
@@ -512,7 +511,7 @@ const MenuSection = () => {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-3 py-4 text-center">
                       <div className="flex justify-center">
                         <span className={`flex items-center space-x-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${
                           !menu.isBlocked 
@@ -524,8 +523,8 @@ const MenuSection = () => {
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end space-x-1">
+                    <td className="px-3 py-4 text-center">
+                      <div className="flex items-center justify-center space-x-1">
                         <button 
                           onClick={() => handleOpenModal(menu)}
                           className="p-2 text-text-secondary hover:text-primary hover:bg-primary/10 rounded-xl transition-all duration-200"

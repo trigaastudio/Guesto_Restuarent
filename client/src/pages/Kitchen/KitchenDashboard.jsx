@@ -11,15 +11,14 @@ import axios from 'axios';
 import { useTheme } from '../../context/ThemeContext';
 import { showToast, showAlert } from '../../utils/sweetAlert';
 
-const API_BASE_URL = 'http://localhost:5000/api';
-const SOCKET_URL = 'http://localhost:5000';
+const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:5000/api`;
+const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
 
 const NOTIFICATION_SOUND = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
 
 const KITCHEN_STATUSES = [
   { value: 'pending', label: 'Pending', bg: 'bg-amber-500/10', text: 'text-amber-600', border: 'border-amber-400/40', dot: 'bg-amber-500' },
   { value: 'preparing', label: 'Preparing', bg: 'bg-blue-500/10', text: 'text-blue-600', border: 'border-blue-400/40', dot: 'bg-blue-500' },
-  { value: 'delayed', label: 'Delayed', bg: 'bg-red-500/10', text: 'text-red-600', border: 'border-red-400/40', dot: 'bg-red-500' },
   { value: 'ready', label: 'Ready', bg: 'bg-emerald-500/10', text: 'text-emerald-600', border: 'border-emerald-400/40', dot: 'bg-emerald-500' },
 ];
 
@@ -80,7 +79,12 @@ const TABS = [
 const KitchenDashboard = () => {
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('takeaway');
+  const [activeTab, setActiveTab] = useState(localStorage.getItem('kitchenActiveTab') || 'takeaway');
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    localStorage.setItem('kitchenActiveTab', tab);
+  };
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -106,7 +110,7 @@ const KitchenDashboard = () => {
       const allOrders = response.data.data || [];
       // Show only confirmed and ready orders in the kitchen panel
       const kitchenOrders = allOrders.filter(o =>
-        o.status === 'confirmed' || o.status === 'ready'
+        o.orderStatus === 'processing'
       );
 
       // Detect new orders for notifications and sound
@@ -165,7 +169,7 @@ const KitchenDashboard = () => {
     const printWindow = window.open('', '_blank');
     const itemsHtml = order.items.map(item => `
       <tr>
-        <td style="text-transform: uppercase; font-weight: bold; padding: 8px 0; font-size: 16px;">${item.name}</td>
+        <td style="text-transform: uppercase; font-weight: bold; padding: 8px 0; font-size: 16px;">${item.name || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Menu Item')}</td>
       </tr>
       <tr>
         <td style="padding-bottom: 8px; font-weight: bold;">
@@ -231,8 +235,8 @@ const KitchenDashboard = () => {
   const handleUpdateItemStatus = async (orderId, itemId, newStatus, itemName, currentStatus) => {
     if (newStatus === currentStatus) return;
 
-    const labels = { pending: 'Pending', preparing: 'Preparing', delayed: 'Delayed', ready: 'Ready' };
-    const colors = { pending: '#9CA3AF', preparing: '#F59E0B', delayed: '#DC2626', ready: '#16A34A' };
+    const labels = { pending: 'Pending', preparing: 'Preparing', ready: 'Ready' };
+    const colors = { pending: '#9CA3AF', preparing: '#F59E0B', ready: '#16A34A' };
 
     const result = await showAlert({
       icon: 'question',
@@ -252,7 +256,8 @@ const KitchenDashboard = () => {
       showToast('success', `"${itemName}" → ${labels[newStatus]}`);
       fetchOrders(true);
     } catch (error) {
-      showToast('error', 'Failed to update status');
+      console.error('Status update failed:', error);
+      showToast('error', error.response?.data?.message || 'Failed to update status');
     }
   };
 
@@ -271,7 +276,7 @@ const KitchenDashboard = () => {
     if (!result.isConfirmed) return;
 
     try {
-      await axios.patch(`${API_BASE_URL}/orders/${orderId}/status`, { status: 'completed' });
+      await axios.patch(`${API_BASE_URL}/orders/${orderId}/status`, { orderStatus: 'completed' });
       showToast('success', `Order ${orderNumber} removed from kitchen`);
       fetchOrders(true);
     } catch (error) {
@@ -285,7 +290,12 @@ const KitchenDashboard = () => {
     navigate('/staff/login', { replace: true });
   };
 
-  const filteredOrders = orders.filter(o => o.orderType === activeTab);
+  const filteredOrders = orders.filter(o => {
+    if (activeTab === 'delivery') return o.orderType === 'delivery' || o.orderType === 'online';
+    if (activeTab === 'takeaway') return o.orderType === 'takeaway' || o.orderType === 'take-away';
+    if (activeTab === 'dine-in') return o.orderType === 'dine-in' || o.orderType === 'dining';
+    return o.orderType === activeTab;
+  });
 
   const pendingCount = orders.filter(o =>
     o.items?.some(i => i.kitchenStatus === 'pending' || i.kitchenStatus === 'preparing')
@@ -350,11 +360,16 @@ const KitchenDashboard = () => {
           {/* Nav */}
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto no-scrollbar">
             {TABS.map((tab) => {
-              const count = orders.filter(o => o.orderType === tab.type).length;
+              const count = orders.filter(o => {
+                if (tab.type === 'delivery') return o.orderType === 'delivery' || o.orderType === 'online';
+                if (tab.type === 'takeaway') return o.orderType === 'takeaway' || o.orderType === 'take-away';
+                if (tab.type === 'dine-in') return o.orderType === 'dine-in' || o.orderType === 'dining';
+                return o.orderType === tab.type;
+              }).length;
               return (
                 <button
                   key={tab.type}
-                  onClick={() => { setActiveTab(tab.type); if (window.innerWidth < 1024) setIsMobileMenuOpen(false); }}
+                  onClick={() => { handleTabChange(tab.type); if (window.innerWidth < 1024) setIsMobileMenuOpen(false); }}
                   title={(isSidebarCollapsed && !isMobileMenuOpen) ? tab.name : ''}
                   className={`w-full flex items-center rounded-xl transition-all duration-200 p-3 group relative
                     ${activeTab === tab.type
@@ -563,9 +578,14 @@ const KitchenDashboard = () => {
                     </div>
 
                     {/* Customer info if exists */}
-                    {(order.customerName || order.tableNumber) && (
+                    {(order.customerDetails?.name || order.address?.recipientName || order.tableNumber) && (
                       <div className="px-5 pt-3 pb-0 flex items-center space-x-3 text-xs text-text-secondary font-bold">
-                        {order.customerName && <span>👤 {order.customerName}</span>}
+                        {(order.customerDetails?.name || order.address?.recipientName) && (
+                          <span>👤 {(order.orderSource === 'online' || order.orderSource === 'user') 
+                            ? (order.address?.recipientName || order.customerDetails?.name) 
+                            : (order.customerDetails?.name || order.address?.recipientName)}
+                          </span>
+                        )}
                         {order.tableNumber && <span>🪑 Table {order.tableNumber}</span>}
                       </div>
                     )}
@@ -578,24 +598,31 @@ const KitchenDashboard = () => {
                           <div key={item._id} className="flex items-center justify-between p-3 bg-background-muted/20 rounded-2xl border border-border-light gap-3">
                             <div className="flex items-center space-x-3 min-w-0">
                               <div className="w-14 h-14 bg-background-card rounded-xl flex items-center justify-center border border-border-light shrink-0 overflow-hidden">
-                                {item.image ? (
-                                  <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                                {item.image || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.image : '') ? (
+                                  <img src={item.image || item.menuItem.image} alt={item.name || item.menuItem.name} className="w-full h-full object-cover" />
                                 ) : (
                                   <Package size={20} className="text-primary/40" />
                                 )}
                               </div>
                               <div className="min-w-0">
-                                <p className="font-bold text-text-primary text-xs leading-tight truncate">{item.name}</p>
+                                <p className="font-bold text-text-primary text-xs leading-tight truncate">
+                                  {item.name || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Menu Item')}
+                                </p>
                                 <p className="text-[10px] text-text-muted font-bold uppercase tracking-tighter">
                                   {item.size} • Qty: {item.quantity}
                                 </p>
                               </div>
                             </div>
 
-                            {/* Status Dropdown */}
                             <StatusDropdown
                               value={status}
-                              onChange={(newStatus) => handleUpdateItemStatus(order._id, item._id, newStatus, item.name, status)}
+                              onChange={(newStatus) => handleUpdateItemStatus(
+                                order._id, 
+                                item._id, 
+                                newStatus, 
+                                item.name || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Menu Item'), 
+                                status
+                              )}
                             />
                           </div>
                         );

@@ -171,17 +171,17 @@ const StaffManagement = () => {
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-background-muted/50 text-text-secondary uppercase text-[10px] font-black tracking-widest border-b border-border-light">
               <tr>
-                <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('name')}>
+                <th className="px-3 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('name')}>
                   <div className="flex items-center space-x-1">
                     <span>Staff Member</span>
                     <ArrowUpDown size={12} className={sortConfig.key === 'name' ? 'text-primary' : 'text-text-muted'} />
                   </div>
                 </th>
-                <th className="px-6 py-4">Role</th>
-                <th className="px-6 py-4">Employee ID</th>
-                <th className="px-6 py-4">Contact</th>
-                <th className="px-6 py-4 text-center">Status</th>
-                <th className="px-6 py-4 text-right">Actions</th>
+                <th className="px-3 py-4">Role</th>
+                <th className="px-3 py-4">Employee ID</th>
+                <th className="px-3 py-4">Contact</th>
+                <th className="px-3 py-4 text-center">Status</th>
+                <th className="px-3 py-4 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
@@ -198,7 +198,7 @@ const StaffManagement = () => {
               ) : (
                 filteredStaff.map((staff) => (
                   <tr key={staff._id} className="hover:bg-background-muted/30 transition-colors group">
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-4">
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
                           {staff.name.charAt(0)}
@@ -209,7 +209,7 @@ const StaffManagement = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-4">
                       <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
                         staff.role === 'kitchen' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
                         staff.role === 'waiter' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
@@ -218,21 +218,21 @@ const StaffManagement = () => {
                         {staff.role}
                       </span>
                     </td>
-                    <td className="px-6 py-4 font-mono font-bold text-text-primary">{staff.employeeId}</td>
-                    <td className="px-6 py-4 text-text-secondary text-xs">
+                    <td className="px-3 py-4 font-mono font-bold text-text-primary">{staff.employeeId}</td>
+                    <td className="px-3 py-4 text-text-secondary text-xs">
                       <div className="flex flex-col">
                         <span className="flex items-center space-x-1"><Phone size={10} /> <span>{staff.phoneNumber}</span></span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-3 py-4 text-center">
                       <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
                         staff.isActive ? 'bg-status-on/10 text-status-available border-status-on/20' : 'bg-status-off/10 text-status-unavailable border-status-off/20'
                       }`}>
                         {staff.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end space-x-1">
+                    <td className="px-3 py-4 text-center">
+                      <div className="flex items-center justify-center space-x-1">
                         <button onClick={() => handleOpenModal(staff)} className="p-2 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all">
                           <Edit2 size={18} />
                         </button>

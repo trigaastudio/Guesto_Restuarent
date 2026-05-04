@@ -232,23 +232,23 @@ const CategorySection = () => {
           <table className="w-full text-left text-sm">
             <thead className="bg-background-muted/50 text-text-secondary uppercase text-[10px] font-bold tracking-widest border-b border-border-light">
               <tr>
-                <th className="px-6 py-4 w-16 text-center">S.No</th>
-                <th className="px-6 py-4">Image</th>
-                <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors group" onClick={() => handleSort('name')}>
+                <th className="px-3 py-4 w-16 text-center">S.No</th>
+                <th className="px-3 py-4">Image</th>
+                <th className="px-3 py-4 cursor-pointer hover:text-primary transition-colors group" onClick={() => handleSort('name')}>
                   <div className="flex items-center space-x-1">
                     <span>Name</span>
                     <ArrowUpDown size={12} className={`opacity-0 group-hover:opacity-100 transition-opacity ${sortConfig.key === 'name' ? 'opacity-100 text-primary' : ''}`} />
                   </div>
                 </th>
-                <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors group" onClick={() => handleSort('isActive')}>
+                <th className="px-3 py-4 cursor-pointer hover:text-primary transition-colors group" onClick={() => handleSort('isActive')}>
                   <div className="flex items-center space-x-1">
                     <span>Status</span>
                     <ArrowUpDown size={12} className={`opacity-0 group-hover:opacity-100 transition-opacity ${sortConfig.key === 'isActive' ? 'opacity-100 text-primary' : ''}`} />
                   </div>
                 </th>
-                <th className="px-6 py-4">Items</th>
-                <th className="px-6 py-4">Total Stock</th>
-                <th className="px-6 py-4 text-right">Actions</th>
+                <th className="px-3 py-4">Items</th>
+                <th className="px-3 py-4">Total Stock</th>
+                <th className="px-3 py-4 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
@@ -270,8 +270,8 @@ const CategorySection = () => {
               ) : (
                 filteredCategories.map((category, index) => (
                   <tr key={category._id} className="hover:bg-background-muted/30 transition-colors group">
-                    <td className="px-6 py-4 text-center font-medium text-text-muted">{index + 1}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-4 text-center font-medium text-text-muted">{index + 1}</td>
+                    <td className="px-3 py-4">
                       <div className="w-12 h-12 rounded-lg bg-background-muted overflow-hidden border border-border-light flex items-center justify-center">
                         {category.image ? (
                           <img src={category.image} alt={category.name} className="w-full h-full object-cover" />
@@ -280,10 +280,10 @@ const CategorySection = () => {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-4">
                       <span className="font-bold text-text-primary">{category.name}</span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-4">
                       <span className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                         category.isActive ? 'bg-status-on/10 text-status-available' : 'bg-status-off/10 text-status-unavailable'
                       }`}>
@@ -291,15 +291,15 @@ const CategorySection = () => {
                         <span>{category.isActive ? 'Active' : 'Inactive'}</span>
                       </span>
                     </td>
-                    <td className="px-6 py-4 font-medium text-text-secondary">{category.itemCount || 0} Items</td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-4 font-medium text-text-secondary">{category.itemCount || 0} Items</td>
+                    <td className="px-3 py-4">
                       <div className="flex items-center space-x-2">
                         <span className="font-bold text-text-primary">{category.totalStock || 0}</span>
                         <span className="text-[10px] text-text-muted uppercase font-bold tracking-tighter">Units</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end space-x-2">
+                    <td className="px-3 py-4 text-center">
+                      <div className="flex items-center justify-center space-x-1">
                         <button 
                           onClick={() => handleOpenModal(category)}
                           className="p-2 text-text-secondary hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"

@@ -25,13 +25,13 @@ class DashboardService {
     ] = await Promise.all([
       // 1. Total Revenue
       Order.aggregate([
-        { $match: { status: 'completed' } },
+        { $match: { orderStatus: { $ne: 'cancelled' } } },
         { $group: { _id: null, total: { $sum: '$totalAmount' } } }
       ]),
 
       // 2. Today Revenue
       Order.aggregate([
-        { $match: { status: 'completed', createdAt: { $gte: today } } },
+        { $match: { orderStatus: { $ne: 'cancelled' }, createdAt: { $gte: today } } },
         { $group: { _id: null, total: { $sum: '$totalAmount' } } }
       ]),
 
@@ -45,10 +45,10 @@ class DashboardService {
       Menu.countDocuments(),
 
       // 6. Pending Orders
-      Order.countDocuments({ status: 'pending' }),
+      Order.countDocuments({ orderStatus: 'placed' }),
 
       // 7. Orders in Progress
-      Order.countDocuments({ status: { $in: ['confirmed', 'preparing', 'ready'] } }),
+      Order.countDocuments({ orderStatus: 'processing' }),
 
       // 8. Table Stats
       Table.aggregate([
@@ -67,7 +67,7 @@ class DashboardService {
 
       // 11. Top Dishes
       Order.aggregate([
-        { $match: { status: 'completed' } },
+        { $match: { orderStatus: { $ne: 'cancelled' } } },
         { $unwind: '$items' },
         { $group: { 
           _id: '$items.menuItem', 
@@ -85,10 +85,11 @@ class DashboardService {
         { $unwind: { path: '$menuInfo', preserveNullAndEmptyArrays: true } },
         { $project: {
           _id: 1,
-          name: 1,
+          name: { $ifNull: ['$name', '$menuInfo.name'] },
           orders: 1,
           image: '$menuInfo.image'
         } },
+        { $match: { name: { $ne: null } } },
         { $sort: { orders: -1 } },
         { $limit: 5 }
       ]),
@@ -99,8 +100,8 @@ class DashboardService {
 
     const totalRevenue = totalRevenueData[0]?.total || 0;
     const todayRevenue = todayRevenueData[0]?.total || 0;
-    const completedOrdersCount = await Order.countDocuments({ status: 'completed' });
-    const avgOrderValue = completedOrdersCount > 0 ? (totalRevenue / completedOrdersCount) : 0;
+    const activeOrdersCount = await Order.countDocuments({ orderStatus: { $ne: 'cancelled' } });
+    const avgOrderValue = activeOrdersCount > 0 ? (totalRevenue / activeOrdersCount) : 0;
 
     return {
       metrics: {
@@ -134,7 +135,7 @@ class DashboardService {
     const trend = await Order.aggregate([
       { 
         $match: { 
-          status: 'completed', 
+          orderStatus: { $ne: 'cancelled' }, 
           createdAt: { $gte: sevenDaysAgo } 
         } 
       },
@@ -173,7 +174,7 @@ class DashboardService {
     const trend = await Order.aggregate([
       { 
         $match: { 
-          status: 'completed', 
+          orderStatus: { $ne: 'cancelled' }, 
           createdAt: { $gte: firstDayOfMonth } 
         } 
       },
