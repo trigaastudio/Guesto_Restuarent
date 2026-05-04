@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../../api/axiosInstance';
 import Swal from 'sweetalert2';
-import { User, Mail, Phone, Lock, CheckCircle2, ArrowRight } from 'lucide-react';
+import { User, Mail, Phone, Lock, CheckCircle2, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import OTPModal from '../../components/OTPModal/OTPModal';
 
 const RegisterPage = () => {
@@ -22,6 +22,8 @@ const RegisterPage = () => {
   const [apiError, setApiError] = useState('');
   const [showOTP, setShowOTP] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   React.useEffect(() => {
     const token = localStorage.getItem('token');
@@ -186,11 +188,11 @@ const RegisterPage = () => {
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">Full Name</label>
                     <div className="relative group">
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 group-focus-within:text-white transition-colors" size={16} />
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-[#DA9133] transition-all duration-300" size={16} />
                       <input
                         type="text" name="name" placeholder="John Doe"
                         value={fields.name} onChange={handleChange}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all text-white placeholder:text-white/30"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white placeholder:text-white/30 autofill:bg-transparent"
                       />
                     </div>
                     {errors.name && <p className="text-[10px] text-white font-bold ml-1">{errors.name}</p>}
@@ -199,11 +201,11 @@ const RegisterPage = () => {
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">Phone Number</label>
                     <div className="relative group">
-                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 group-focus-within:text-white transition-colors" size={16} />
+                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-[#DA9133] transition-all duration-300" size={16} />
                       <input
                         type="tel" name="phone" placeholder="+123 456 7890"
                         value={fields.phone} onChange={handleChange}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all text-white placeholder:text-white/30"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white placeholder:text-white/30 autofill:bg-transparent"
                       />
                     </div>
                     {errors.phone && <p className="text-[10px] text-white font-bold ml-1">{errors.phone}</p>}
@@ -213,11 +215,11 @@ const RegisterPage = () => {
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">Email Address</label>
                   <div className="relative group">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 group-focus-within:text-white transition-colors" size={16} />
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-[#DA9133] transition-all duration-300" size={16} />
                     <input
                       type="email" name="email" placeholder="alex@example.com"
                       value={fields.email} onChange={handleChange}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all text-white placeholder:text-white/30"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white placeholder:text-white/30 autofill:bg-transparent"
                     />
                   </div>
                   {errors.email && <p className="text-[10px] text-white font-bold ml-1">{errors.email}</p>}
@@ -227,12 +229,19 @@ const RegisterPage = () => {
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">Password</label>
                     <div className="relative group">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 group-focus-within:text-white transition-colors" size={16} />
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-[#DA9133] transition-all duration-300" size={16} />
                       <input
-                        type="password" name="password" placeholder="••••••••"
+                        type={showPassword ? "text" : "password"} name="password" placeholder="••••••••"
                         value={fields.password} onChange={handleChange}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all text-white placeholder:text-white/30"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-10 text-sm font-medium focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white placeholder:text-white/30 autofill:bg-transparent"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors"
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
                     </div>
                     {errors.password && <p className="text-[10px] text-white font-bold ml-1">{errors.password}</p>}
                   </div>
@@ -240,12 +249,19 @@ const RegisterPage = () => {
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">Confirm Password</label>
                     <div className="relative group">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 group-focus-within:text-white transition-colors" size={16} />
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-[#DA9133] transition-all duration-300" size={16} />
                       <input
-                        type="password" name="confirmPassword" placeholder="••••••••"
+                        type={showConfirmPassword ? "text" : "password"} name="confirmPassword" placeholder="••••••••"
                         value={fields.confirmPassword} onChange={handleChange}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all text-white placeholder:text-white/30"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-10 text-sm font-medium focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white placeholder:text-white/30 autofill:bg-transparent"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors"
+                      >
+                        {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
                     </div>
                     {errors.confirmPassword && <p className="text-[10px] text-white font-bold ml-1">{errors.confirmPassword}</p>}
                   </div>
@@ -322,6 +338,14 @@ const RegisterPage = () => {
         }
         .animate-shake {
           animation: shake 0.4s ease-in-out;
+        }
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:focus, 
+        input:-webkit-autofill:active{
+            -webkit-box-shadow: 0 0 0 30px #8B0000 inset !important;
+            -webkit-text-fill-color: white !important;
+            transition: background-color 5000s ease-in-out 0s;
         }
       `}} />
 

@@ -36,13 +36,13 @@ const Navbar = React.memo(({ user, cartItems, showUserDropdown, setShowUserDropd
   return (
     <header className="relative z-50 w-full">
       <div className="max-w-7xl mx-auto px-6 h-16 md:h-24 flex items-center justify-between">
-        {/* Mobile Menu Toggle */}
-        <button
+        {/* Mobile Menu Toggle - Removed as per request for mobile/tab */}
+        {/* <button
           onClick={() => setIsMobileMenuOpen(true)}
           className="lg:hidden p-2 text-white hover:bg-white/10 rounded-xl transition-colors"
         >
           <Menu size={24} />
-        </button>
+        </button> */}
 
         <div className="flex items-center gap-2">
           <img
@@ -69,7 +69,7 @@ const Navbar = React.memo(({ user, cartItems, showUserDropdown, setShowUserDropd
         <div className="flex items-center gap-3 md:gap-4">
           {!hideCart && (
             <div
-              className="relative cursor-pointer group p-2.5 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 transition-all duration-300 active:scale-95"
+              className={`relative cursor-pointer group p-2.5 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 transition-all duration-300 active:scale-95 ${['/home', '/my-orders', '/profile'].includes(window.location.pathname) ? 'hidden lg:flex' : ''}`}
               onClick={() => navigate('/cart')}
             >
               <ShoppingCart size={20} className="text-white group-hover:scale-110 transition-transform" />
@@ -82,10 +82,14 @@ const Navbar = React.memo(({ user, cartItems, showUserDropdown, setShowUserDropd
           )}
 
           {user && user.name ? (
-            <div className="relative cursor-pointer" ref={dropdownRef}>
+            <div className="relative" ref={dropdownRef}>
               <div
-                onClick={() => setShowUserDropdown(!showUserDropdown)}
-                className="flex items-center gap-2 p-1 md:p-1.5 md:pr-4 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 backdrop-blur-md border border-white/10 transition-all duration-300"
+                onClick={() => {
+                  if (window.innerWidth >= 1024) {
+                    setShowUserDropdown(!showUserDropdown);
+                  }
+                }}
+                className={`flex items-center gap-2 p-1 md:p-1.5 md:pr-4 rounded-full bg-white/10 backdrop-blur-md border border-white/10 transition-all duration-300 ${window.innerWidth >= 1024 ? 'cursor-pointer hover:bg-white/20 active:bg-white/30' : 'cursor-default'}`}
               >
                 <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#DA9133] flex items-center justify-center text-white font-black text-xs md:text-sm shadow-inner">
                   {user.name[0].toUpperCase()}

@@ -32,6 +32,7 @@ const PaymentPage = () => {
   const total = subtotal + deliveryFee + platformFee;
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     // If no address or items, redirect back to cart (unless order was just successful)
     if (!isOrderSuccess && (!deliveryAddress || cartItems.length === 0)) {
       navigate('/cart');
@@ -52,12 +53,18 @@ const PaymentPage = () => {
     setLoading(true);
     try {
       const orderData = {
-        items: cartItems.map(item => ({
-          menuItem: item._id,
-          size: item.selectedSize,
-          quantity: item.quantity,
-          price: item.sizes?.find(s => s.size === item.selectedSize)?.price || item.offerPrice || 0
-        })),
+        items: cartItems.map(item => {
+          const variants = item.variants || item.sizes || [];
+          const sizeData = variants.find(v => v.size === item.selectedSize);
+          const price = sizeData ? sizeData.price : (item.offerPrice || 0);
+          
+          return {
+            menuItem: item._id,
+            size: item.selectedSize,
+            quantity: item.quantity,
+            price: price
+          };
+        }),
         address: deliveryAddress,
         paymentMethod,
         totalAmount: total,
@@ -96,9 +103,14 @@ const PaymentPage = () => {
             popup: 'rounded-[2.5rem]',
             confirmButton: 'rounded-2xl px-12 py-4 font-black uppercase tracking-widest text-sm'
           }
-        }).then(() => {
+        }).then((result) => {
           clearCart();
-          navigate('/my-orders');
+          const orderId = response.data.data._id || response.data.data.id;
+          if (orderId) {
+            navigate(`/track-order/${orderId}`);
+          } else {
+            navigate('/my-orders');
+          }
         });
       }
     } catch (error) {
@@ -197,7 +209,12 @@ const PaymentPage = () => {
                       </div>
                     </div>
                     <div className="text-sm font-black text-text-primary tracking-tight">
-                      ₹{(item.sizes?.find(s => s.size === item.selectedSize)?.price || item.offerPrice || 0) * item.quantity}
+                      ₹{(() => {
+                        const variants = item.variants || item.sizes || [];
+                        const sizeData = variants.find(v => v.size === item.selectedSize);
+                        const price = sizeData ? sizeData.price : (item.offerPrice || 0);
+                        return price * item.quantity;
+                      })()}
                     </div>
                   </div>
                 ))}

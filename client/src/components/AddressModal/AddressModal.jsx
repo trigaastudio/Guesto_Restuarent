@@ -65,9 +65,9 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 sm:p-6">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose}></div>
-      <div className="bg-[#FAF9F6] w-full max-w-lg rounded-[2rem] shadow-2xl relative z-10 overflow-hidden animate-in fade-in zoom-in duration-300">
+      <div className="bg-[#FAF9F6] w-full max-w-lg max-h-[90vh] rounded-[2rem] shadow-2xl relative z-10 overflow-hidden flex flex-col animate-in fade-in zoom-in duration-300">
         {/* Modal Header */}
         <div className="p-6 border-b border-[#D10000]/10 flex justify-between items-center bg-[#D10000]">
           <div>
@@ -79,7 +79,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
           </button>
         </div>
 
-        <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+        <div className="p-6 md:p-8 space-y-5 md:space-y-6 overflow-y-auto custom-scrollbar flex-1">
           {/* Recipient Toggle */}
           <div className="flex p-1 bg-gray-100 rounded-2xl">
             <button
@@ -204,7 +204,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
         </div>
 
         {/* Modal Footer */}
-        <div className="p-8 border-t border-gray-100 bg-gray-50/50">
+        <div className="p-6 md:p-8 border-t border-gray-100 bg-gray-50/50 pb-10 md:pb-8">
           <button
             onClick={() => onSave(formData)}
             className="w-full bg-[#DA9133] text-white font-black py-4 rounded-2xl hover:bg-[#C27D29] transition-all shadow-[0_15px_40px_rgba(0,0,0,0.1)] active:scale-[0.98] uppercase tracking-widest text-sm"

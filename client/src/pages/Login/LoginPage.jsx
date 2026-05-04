@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useGoogleLogin } from '@react-oauth/google';
-import { Mail, Lock, ArrowRight } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import api from '../../api/axiosInstance';
 
 const GoogleIcon = () => (
@@ -19,6 +19,7 @@ const LoginPage = () => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   React.useEffect(() => {
     const token = localStorage.getItem('token');
@@ -134,14 +135,14 @@ const LoginPage = () => {
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">Email Address</label>
                   <div className="relative group">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 group-focus-within:text-white transition-colors" size={18} />
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-[#DA9133] transition-all duration-300" size={18} />
                     <input
                       type="email"
                       name="email"
                       placeholder="name@example.com"
                       value={fields.email}
                       onChange={handleChange}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm font-medium placeholder:text-white/30 focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all text-white"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm font-medium placeholder:text-white/30 focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white autofill:bg-transparent"
                     />
                   </div>
                   {errors.email && <p className="text-[10px] text-white font-bold ml-1">{errors.email}</p>}
@@ -150,15 +151,22 @@ const LoginPage = () => {
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">Password</label>
                   <div className="relative group">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 group-focus-within:text-white transition-colors" size={18} />
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-[#DA9133] transition-all duration-300" size={18} />
                     <input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       name="password"
                       placeholder="••••••••"
                       value={fields.password}
                       onChange={handleChange}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm font-medium placeholder:text-white/30 focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all text-white"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-12 text-sm font-medium placeholder:text-white/30 focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white autofill:bg-transparent"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
                   {errors.password && <p className="text-[10px] text-white font-bold ml-1">{errors.password}</p>}
                 </div>
@@ -240,6 +248,14 @@ const LoginPage = () => {
         }
         .animate-shake {
           animation: shake 0.4s ease-in-out;
+        }
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:focus, 
+        input:-webkit-autofill:active{
+            -webkit-box-shadow: 0 0 0 30px #8B0000 inset !important;
+            -webkit-text-fill-color: white !important;
+            transition: background-color 5000s ease-in-out 0s;
         }
       `}} />
     </div>

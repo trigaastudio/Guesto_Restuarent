@@ -152,7 +152,8 @@ export const CartProvider = ({ children }) => {
   };
 
   const subtotal = cartItems.reduce((sum, item) => {
-    const sizeData = item.sizes?.find(s => s.size === item.selectedSize);
+    const variants = item.variants || item.sizes || [];
+    const sizeData = variants.find(v => v.size === item.selectedSize);
     const price = sizeData ? sizeData.price : (item.offerPrice || 0);
     return sum + price * item.quantity;
   }, 0);

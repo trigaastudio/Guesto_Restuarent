@@ -106,8 +106,6 @@ const LandingPage = () => {
         </div>
       </main>
 
-      <Footer />
-
       {/* Custom Styles */}
       <style dangerouslySetInnerHTML={{
         __html: `

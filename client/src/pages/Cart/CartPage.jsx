@@ -111,6 +111,7 @@ const CartPage = () => {
   }, []);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     fetchAddresses();
 
     const handleClickOutside = (event) => {
@@ -378,7 +379,12 @@ const CartPage = () => {
                     <div className="flex items-center justify-between mt-auto">
                       <div className="font-black text-xl text-text-primary tracking-tighter">
                         <span className="text-[#D10000] text-sm mr-0.5 font-bold">₹</span>
-                        {(item.sizes?.find(s => s.size === item.selectedSize)?.price || item.offerPrice) * item.quantity}
+                        {(() => {
+                          const variants = item.variants || item.sizes || [];
+                          const sizeData = variants.find(v => v.size === item.selectedSize);
+                          const price = sizeData ? sizeData.price : (item.offerPrice || 0);
+                          return price * item.quantity;
+                        })()}
                       </div>
 
                       {/* Premium Stepper */}
@@ -427,6 +433,11 @@ const CartPage = () => {
                   <span className="text-sm font-black text-text-primary uppercase tracking-widest">To Pay</span>
                   <span className="text-3xl font-black text-[#D10000] tracking-tighter leading-none">₹{total}</span>
                 </div>
+                {total < 100 && (
+                  <p className="text-[10px] font-bold text-red-500 mt-2 text-center animate-pulse">
+                    Add ₹{100 - total} more to reach minimum order of ₹100
+                  </p>
+                )}
               </div>
 
               {/* Offer Card */}
@@ -446,21 +457,30 @@ const CartPage = () => {
               {/* Action Button */}
               <button
                 onClick={() => {
+                  if (total < 100) {
+                    Swal.fire({
+                      title: 'Minimum Order Required',
+                      text: `Minimum order value is ₹100. Please add ₹${100 - total} more to proceed.`,
+                      icon: 'info',
+                      confirmButtonColor: '#DA9133'
+                    });
+                    return;
+                  }
                   if (!deliveryAddress.address) {
                     Swal.fire({
                       title: 'Select Address',
                       text: 'Please select a delivery address before proceeding.',
                       icon: 'warning',
-                      confirmButtonColor: '#D10000'
+                      confirmButtonColor: '#DA9133'
                     });
                     return;
                   }
                   navigate('/payment', { state: { deliveryAddress } });
                 }}
-                className="w-full bg-text-primary text-white font-black py-5 rounded-[2rem] hover:bg-[#D10000] transition-all shadow-[0_20px_50px_rgba(0,0,0,0.1)] flex flex-col items-center gap-0.5 group relative overflow-hidden"
+                className={`w-full font-black py-5 rounded-[2rem] transition-all shadow-[0_20px_50px_rgba(218,145,51,0.2)] flex flex-col items-center gap-0.5 group relative overflow-hidden ${total < 100 ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' : 'bg-[#DA9133] text-white hover:bg-[#C27D29]'}`}
               >
-                <div className="absolute inset-0 bg-[#D10000] translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out"></div>
-                <span className="relative z-10 text-sm uppercase tracking-[0.2em] mb-0.5">Proceed to Pay</span>
+                <div className={`absolute inset-0 bg-black/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out ${total < 100 ? 'hidden' : ''}`}></div>
+                <span className="relative z-10 text-sm tracking-widest mb-0.5">Proceed to Pay</span>
                 <span className="relative z-10 text-[10px] font-medium opacity-60 group-hover:opacity-100 transition-opacity">Inclusive of all taxes</span>
               </button>
 

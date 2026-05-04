@@ -10,9 +10,14 @@ import Navbar from '../../components/Navbar/Navbar';
 
 const heroImages = ['/heroSection/hero1.png', '/heroSection/hero2.png', '/heroSection/hero3.png', '/heroSection/hero4.png'];
 
-const HeroSection = React.memo(({ searchQuery, setSearchQuery, navigate, heroImages }) => {
+const HeroSection = React.memo(({ searchQuery, setSearchQuery, heroImages }) => {
+  const [localQuery, setLocalQuery] = useState(searchQuery);
   const [heroIndex, setHeroIndex] = useState(0);
   const directionRef = useRef(1);
+
+  useEffect(() => {
+    setLocalQuery(searchQuery);
+  }, [searchQuery]);
 
   useEffect(() => {
     // Hero Carousel Timer (Ping-Pong logic: 1-2-3-4-3-2-1)
@@ -46,9 +51,9 @@ const HeroSection = React.memo(({ searchQuery, setSearchQuery, navigate, heroIma
     <div className="relative z-10 flex flex-col lg:flex-row items-center justify-center lg:justify-between px-6 md:px-12 max-w-7xl mx-auto w-full gap-8 lg:gap-16 pt-2 pb-8 md:pt-12 md:pb-24">
       {/* Left Side: Content */}
       <div className="flex-1 text-center lg:text-left space-y-4 md:space-y-8 hero-fade-in order-2 lg:order-1">
-        <div className="inline-flex items-center gap-2 bg-white/20 border border-white/30 text-white px-4 py-1.5 rounded-full text-[10px] font-black tracking-[0.2em] uppercase">
+        <div className="inline-flex items-center gap-2 bg-white/20 border border-white/30 text-white px-4 py-1.5 rounded-full text-[10px] font-bold tracking-widest">
           <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
-          Fastest Food Delivery 🛵
+          Fastest food delivery 🛵
         </div>
 
         <div className="space-y-4">
@@ -56,7 +61,7 @@ const HeroSection = React.memo(({ searchQuery, setSearchQuery, navigate, heroIma
             Hungry? <br />
             <span className="text-white opacity-90">We’ve got you covered.</span>
           </h1>
-          <p className="text-white/80 text-xs md:text-lg font-medium leading-relaxed max-w-xl mx-auto lg:mx-0 pt-1 uppercase tracking-widest opacity-80">
+          <p className="text-white/80 text-xs md:text-lg font-medium leading-relaxed max-w-xl mx-auto lg:mx-0 pt-1 tracking-wide opacity-80">
             Guesto brings <span className="text-white border-b-2 border-white/20 pb-0.5 font-black">premium quality</span> meals directly to your dining table.
           </p>
         </div>
@@ -64,18 +69,41 @@ const HeroSection = React.memo(({ searchQuery, setSearchQuery, navigate, heroIma
         {/* Search Bar */}
         <div className="w-full max-w-lg pt-4 mx-auto lg:mx-0">
           <div className="bg-white rounded-2xl p-1 flex items-center shadow-2xl overflow-hidden group focus-within:ring-4 focus-within:ring-white/20 transition-all border-2 border-[#D10000]/30 hover:border-[#D10000] transition-colors">
-            <div className="flex-1 flex items-center gap-2 pl-4">
-              <Search size={20} className="text-[#D10000] opacity-40 group-focus-within:opacity-100 transition-opacity" />
+            <div className="flex-1 flex items-center gap-2 pl-4 relative group/input">
+              <Search size={20} className="text-[#D10000] opacity-40 group-focus-within/input:opacity-100 transition-opacity" />
               <input
                 type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={localQuery}
+                onChange={(e) => setLocalQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setSearchQuery(localQuery);
+                    document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
                 placeholder="What are you craving today?"
-                className="w-full py-3 text-xs md:text-sm font-bold outline-none placeholder:text-gray-400 bg-transparent text-text-primary"
+                className="w-full py-3 pr-10 text-xs md:text-sm font-bold outline-none placeholder:text-gray-400 bg-transparent text-text-primary"
               />
+              {localQuery && (
+                <button
+                  onClick={() => {
+                    setLocalQuery('');
+                    setSearchQuery('');
+                  }}
+                  className="absolute right-2 p-1.5 hover:bg-gray-100 rounded-full text-gray-400 hover:text-[#D10000] transition-all active:scale-90"
+                >
+                  <X size={14} strokeWidth={3} />
+                </button>
+              )}
             </div>
-            <button className="bg-[#DA9133] hover:bg-[#C27D29] active:bg-[#C27D29] text-white px-7 py-3 rounded-xl font-black text-[10px] md:text-xs transition-all transform active:scale-95 shrink-0 uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-[#DA9133]/20">
-              Find Food <ArrowRight size={16} strokeWidth={3} />
+            <button
+              onClick={() => {
+                setSearchQuery(localQuery);
+                document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="bg-[#DA9133] hover:bg-[#C27D29] active:bg-[#C27D29] text-white px-7 py-3 rounded-xl font-black text-[10px] md:text-xs transition-all transform active:scale-95 shrink-0 tracking-widest flex items-center gap-2 shadow-lg shadow-[#DA9133]/20"
+            >
+              Search <ArrowRight size={16} strokeWidth={3} />
             </button>
           </div>
         </div>
@@ -107,8 +135,11 @@ const MenuModal = ({ isOpen, onClose, menu, addToCart }) => {
   const [selectedSize, setSelectedSize] = useState(null);
 
   useEffect(() => {
-    if (menu?.sizes?.length > 0) {
-      setSelectedSize(menu.sizes[0].size);
+    const variants = menu?.variants || menu?.sizes || [];
+    if (variants.length > 0) {
+      // Find the variant with the lowest price
+      const lowestVariant = [...variants].sort((a, b) => a.price - b.price)[0];
+      setSelectedSize(lowestVariant.size);
     } else {
       setSelectedSize(null);
     }
@@ -127,7 +158,9 @@ const MenuModal = ({ isOpen, onClose, menu, addToCart }) => {
 
   if (!isOpen || !menu) return null;
 
-  const currentPrice = menu.sizes?.find(s => s.size === selectedSize)?.price || menu.offerPrice;
+  const variants = menu.variants || menu.sizes || [];
+  const selectedVariant = variants.find(v => v.size === selectedSize);
+  const currentPrice = selectedVariant ? selectedVariant.price : menu.offerPrice;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -154,32 +187,32 @@ const MenuModal = ({ isOpen, onClose, menu, addToCart }) => {
               <span className={`w-2 h-2 rounded-full ${menu.foodType === 'veg' ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></span>
               <span className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted opacity-60">{menu.foodType}</span>
             </div>
-            <h2 className="text-2xl font-black text-text-primary uppercase tracking-tighter leading-none">{menu.name}</h2>
-            <p className="text-[10px] md:text-xs text-text-muted font-bold leading-relaxed opacity-60 uppercase tracking-widest line-clamp-2">
+            <h2 className="text-2xl font-black text-text-primary tracking-tighter leading-none">{menu.name}</h2>
+            <p className="text-[10px] md:text-xs text-text-muted font-bold leading-relaxed opacity-60 tracking-wide line-clamp-2">
               {menu.description}
             </p>
           </div>
 
-          {menu.sizes && menu.sizes.length > 0 && (
+          {variants.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <div className="w-1 h-3 bg-[#D10000] rounded-full"></div>
-                <h4 className="text-[9px] font-black uppercase tracking-[0.25em] text-text-primary">Choose portion</h4>
+                <h4 className="text-[9px] font-black tracking-widest text-text-primary">Choose portion</h4>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                {menu.sizes.map((s) => (
+                {variants.map((v) => (
                   <button
-                    key={s.size}
-                    onClick={() => setSelectedSize(s.size)}
-                    className={`relative p-3 rounded-2xl flex flex-col items-start transition-all duration-300 border-2 overflow-hidden group ${selectedSize === s.size ? 'bg-white border-[#D10000] shadow-xl' : 'bg-gray-50 border-transparent hover:bg-white hover:border-gray-200'}`}
+                    key={v.size}
+                    onClick={() => setSelectedSize(v.size)}
+                    className={`relative p-3 rounded-2xl flex flex-col items-start transition-all duration-300 border-2 overflow-hidden group ${selectedSize === v.size ? 'bg-white border-[#D10000] shadow-xl' : 'bg-gray-50 border-transparent hover:bg-white hover:border-gray-200'}`}
                   >
-                    {selectedSize === s.size && (
+                    {selectedSize === v.size && (
                       <div className="absolute top-0 right-0 p-1.5 bg-[#D10000] text-white rounded-bl-xl">
                         <Check size={8} strokeWidth={4} />
                       </div>
                     )}
-                    <span className={`text-[9px] font-black uppercase tracking-widest mb-0.5 ${selectedSize === s.size ? 'text-[#D10000]' : 'text-text-muted opacity-40'}`}>{s.size}</span>
-                    <span className="text-base font-black text-text-primary tracking-tighter">₹{s.price}</span>
+                    <span className={`text-[9px] font-black tracking-widest mb-0.5 ${selectedSize === v.size ? 'text-[#D10000]' : 'text-text-muted opacity-40'}`}>{v.size}</span>
+                    <span className="text-base font-black text-text-primary tracking-tighter">₹{v.price}</span>
                   </button>
                 ))}
               </div>
@@ -188,14 +221,14 @@ const MenuModal = ({ isOpen, onClose, menu, addToCart }) => {
 
           <div className="pt-5 flex items-center justify-between border-t border-black/5">
             <div className="flex flex-col">
-              <span className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted opacity-40 mb-1">To Pay</span>
+              <span className="text-[8px] font-black tracking-widest text-text-muted opacity-40 mb-1">To pay</span>
               <span className="text-2xl font-black text-text-primary tracking-tighter leading-none">₹{currentPrice}</span>
             </div>
             <button
               onClick={() => { addToCart(menu, selectedSize); onClose(); }}
-              className="bg-[#DA9133] hover:bg-[#C27D29] text-white px-8 py-4 rounded-[1.2rem] font-black text-[9px] uppercase tracking-[0.2em] transition-all shadow-xl shadow-[#DA9133]/20 active:scale-95 flex items-center gap-2"
+              className="bg-[#DA9133] hover:bg-[#C27D29] text-white px-8 py-4 rounded-[1.2rem] font-black text-[9px] tracking-widest transition-all shadow-xl shadow-[#DA9133]/20 active:scale-95 flex items-center gap-2"
             >
-              Add to Cart <Plus size={14} strokeWidth={3} />
+              Add to cart <Plus size={14} strokeWidth={3} />
             </button>
           </div>
         </div>
@@ -211,10 +244,10 @@ const CategorySection = React.memo(({ categories, selectedCategory, handleCatego
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-end justify-between mb-10">
           <div className="space-y-2">
-            <h2 className="text-2xl md:text-3xl font-black text-text-primary tracking-tighter uppercase">
+            <h2 className="text-2xl md:text-3xl font-black text-text-primary tracking-tighter">
               Thinking of <span className="text-[#D10000]">something delicious?</span>
             </h2>
-            <p className="text-xs md:text-sm text-text-muted font-bold uppercase tracking-widest opacity-60">Explore our curated categories for every craving</p>
+            <p className="text-xs md:text-sm text-text-muted font-bold tracking-widest opacity-60">Explore our curated categories for every craving</p>
           </div>
           <div className="flex gap-3 pb-1">
             <button
@@ -244,7 +277,7 @@ const CategorySection = React.memo(({ categories, selectedCategory, handleCatego
             <div className={`w-24 h-24 md:w-28 md:h-28 rounded-full flex items-center justify-center transition-all duration-500 border-0 outline-none ${selectedCategory === 'all' ? 'bg-[#D10000]/5 shadow-inner' : 'bg-gray-100/50 hover:bg-white hover:shadow-xl active:bg-white active:shadow-xl'}`}>
               <UtensilsCrossed size={28} className={`transition-all duration-500 ${selectedCategory === 'all' ? 'text-[#D10000] scale-110' : 'text-text-muted opacity-40 group-hover:opacity-100 group-hover:text-[#D10000] group-hover:scale-110 group-active:opacity-100 group-active:text-[#D10000] group-active:scale-110'}`} />
             </div>
-            <p className={`mt-4 text-center text-[10px] font-black tracking-[0.2em] transition-all duration-500 ${selectedCategory === 'all' ? 'text-[#D10000] opacity-100 translate-y-0' : 'text-text-muted opacity-40 group-hover:opacity-80 group-active:opacity-80'}`}>All Dishes</p>
+            <p className={`mt-4 text-center text-[10px] font-black tracking-widest transition-all duration-500 ${selectedCategory === 'all' ? 'text-[#D10000] opacity-100 translate-y-0' : 'text-text-muted opacity-40 group-hover:opacity-80 group-active:opacity-80'}`}>All dishes</p>
           </div>
 
           {categories.map((category) => (
@@ -260,7 +293,7 @@ const CategorySection = React.memo(({ categories, selectedCategory, handleCatego
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 group-active:scale-110"
                 />
               </div>
-              <p className={`mt-4 text-center text-[10px] font-black tracking-[0.2em] transition-all duration-500 ${selectedCategory === category._id ? 'text-[#D10000] opacity-100 translate-y-0' : 'text-text-muted opacity-40 group-hover:opacity-80 group-active:opacity-80'}`}>{category.name}</p>
+              <p className={`mt-4 text-center text-[10px] font-black tracking-widest transition-all duration-500 ${selectedCategory === category._id ? 'text-[#D10000] opacity-100 translate-y-0' : 'text-text-muted opacity-40 group-hover:opacity-80 group-active:opacity-80'}`}>{category.name}</p>
             </div>
           ))}
         </div>
@@ -275,8 +308,8 @@ const MenuSection = React.memo(({ loading, filteredMenus, addToCart, navigate, s
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 md:mb-12 gap-6">
           <div className="space-y-3">
-            <h2 className="text-3xl md:text-5xl font-black text-text-primary tracking-tighter uppercase flex items-center gap-4">
-              Popular <span className="text-[#D10000]">Menu</span>
+            <h2 className="text-3xl md:text-5xl font-black text-text-primary tracking-tighter flex items-center gap-4">
+              Popular <span className="text-[#D10000]">menu</span>
             </h2>
             <p className="text-text-muted font-bold text-sm md:text-base opacity-60 tracking-widest">Discover the most loved dishes by our customers</p>
           </div>
@@ -287,7 +320,7 @@ const MenuSection = React.memo(({ loading, filteredMenus, addToCart, navigate, s
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="appearance-none bg-gray-50 border border-border/60 text-text-primary text-[10px] md:text-xs font-black uppercase tracking-widest rounded-xl px-5 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-[#D10000]/20 hover:border-[#D10000]/40 transition-all cursor-pointer shadow-sm"
+                className="appearance-none bg-gray-50 border border-border/60 text-text-primary text-[10px] md:text-xs font-black tracking-widest rounded-xl px-5 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-[#D10000]/20 hover:border-[#D10000]/40 transition-all cursor-pointer shadow-sm"
               >
                 <option value="default">Relevance</option>
                 <option value="name-az">Name (A-Z)</option>
@@ -302,25 +335,25 @@ const MenuSection = React.memo(({ loading, filteredMenus, addToCart, navigate, s
 
             <button
               onClick={() => setDietaryFilter(dietaryFilter === 'veg' ? 'all' : 'veg')}
-              className={`flex items-center gap-2 px-5 py-3 border text-[10px] md:text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-sm group ${dietaryFilter === 'veg' ? 'bg-[#D10000] text-white border-[#D10000]' : 'bg-gray-50 border-border/60 text-text-primary hover:bg-white hover:border-[#D10000]/40'}`}
+              className={`flex items-center gap-2 px-5 py-3 border text-[10px] md:text-xs font-black tracking-widest rounded-xl transition-all shadow-sm group ${dietaryFilter === 'veg' ? 'bg-[#D10000] text-white border-[#D10000]' : 'bg-gray-50 border-border/60 text-text-primary hover:bg-white hover:border-[#D10000]/40'}`}
             >
               <span className={`w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.4)] ${dietaryFilter === 'veg' ? 'brightness-150' : ''}`}></span>
               Vegetarian
             </button>
             <button
               onClick={() => setDietaryFilter(dietaryFilter === 'non-veg' ? 'all' : 'non-veg')}
-              className={`flex items-center gap-2 px-5 py-3 border text-[10px] md:text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-sm ${dietaryFilter === 'non-veg' ? 'bg-[#D10000] text-white border-[#D10000]' : 'bg-gray-50 border-border/60 text-text-primary hover:bg-white hover:border-[#D10000]/40'}`}
+              className={`flex items-center gap-2 px-5 py-3 border text-[10px] md:text-xs font-black tracking-widest rounded-xl transition-all shadow-sm ${dietaryFilter === 'non-veg' ? 'bg-[#D10000] text-white border-[#D10000]' : 'bg-gray-50 border-border/60 text-text-primary hover:bg-white hover:border-[#D10000]/40'}`}
             >
               <span className={`w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.4)] ${dietaryFilter === 'non-veg' ? 'brightness-150' : ''}`}></span>
-              Non-Veg
+              Non-veg
             </button>
 
             {(sortBy !== 'default' || dietaryFilter !== 'all' || (typeof searchQuery === 'string' && searchQuery.length > 0)) && (
               <button
                 onClick={() => { setSortBy('default'); setDietaryFilter('all'); setSearchQuery(''); }}
-                className="text-[10px] md:text-xs font-black uppercase tracking-widest text-[#D10000] hover:underline underline-offset-4 px-2"
+                className="text-[10px] md:text-xs font-black tracking-widest text-[#D10000] hover:underline underline-offset-4 px-2"
               >
-                Clear All
+                Clear all
               </button>
             )}
           </div>
@@ -336,12 +369,12 @@ const MenuSection = React.memo(({ loading, filteredMenus, addToCart, navigate, s
               <UtensilsCrossed size={40} className="text-[#D10000] opacity-20" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-xl font-black text-text-primary uppercase tracking-tighter">No dishes found</h3>
-              <p className="text-sm text-text-muted font-bold uppercase tracking-widest opacity-60">We couldn't find any items matching your current filters.</p>
+              <h3 className="text-xl font-black text-text-primary tracking-tighter">No dishes found</h3>
+              <p className="text-sm text-text-muted font-bold tracking-widest opacity-60">We couldn't find any items matching your current filters.</p>
             </div>
             <button
               onClick={() => { setDietaryFilter('all'); setSortBy('default'); setSearchQuery(''); }}
-              className="px-8 py-3 bg-[#D10000] text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-full hover:bg-[#B10000] transition-all active:scale-95 shadow-lg shadow-[#D10000]/20"
+              className="px-8 py-3 bg-[#D10000] text-white font-black text-[10px] tracking-widest rounded-full hover:bg-[#B10000] transition-all active:scale-95 shadow-lg shadow-[#D10000]/20"
             >
               Clear all filters
             </button>
@@ -363,19 +396,27 @@ const MenuSection = React.memo(({ loading, filteredMenus, addToCart, navigate, s
                 </div>
 
                 <div className="flex-1 flex flex-col">
-                  <h3 className="font-black text-sm text-text-primary group-hover:text-white group-active:text-white transition-colors leading-tight mb-1 uppercase tracking-tight truncate">
+                  <h3 className="font-black text-sm text-text-primary group-hover:text-white group-active:text-white transition-colors leading-tight mb-1 tracking-tight truncate">
                     {menu.name}
                   </h3>
 
 
 
-                  <p className="text-[9px] text-text-muted/60 group-hover:text-white/60 group-active:text-white/60 line-clamp-2 mb-4 leading-relaxed font-bold uppercase tracking-widest transition-colors">
+                  <p className="text-[9px] text-text-muted/60 group-hover:text-white/60 group-active:text-white/60 line-clamp-2 mb-4 leading-relaxed font-bold tracking-widest transition-colors">
                     {menu.description}
                   </p>
 
                   <div className="flex justify-between items-center mt-auto pt-4 border-t border-black/5 group-hover:border-white/10 group-active:border-white/10">
                     <span className="font-black text-base text-text-primary group-hover:text-white group-active:text-white transition-colors">
-                      ₹{menu.sizes?.[0]?.price || menu.offerPrice}
+                      ₹{(() => {
+                        const variants = menu.variants || menu.sizes || [];
+                        if (variants.length > 0) {
+                          // Find the lowest price among variants
+                          const prices = variants.map(v => v.price);
+                          return Math.min(...prices);
+                        }
+                        return menu.offerPrice;
+                      })()}
                     </span>
                     <button
                       onClick={(e) => { e.stopPropagation(); onAddClick(menu); }}
@@ -396,11 +437,11 @@ const MenuSection = React.memo(({ loading, filteredMenus, addToCart, navigate, s
           {loadingMore && (
             <div className="flex items-center gap-3">
               <div className="w-5 h-5 border-3 border-[#D10000]/20 border-t-[#D10000] rounded-full animate-spin"></div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-[#D10000] opacity-60">Loading more dishes...</span>
+              <span className="text-[10px] font-black tracking-widest text-[#D10000] opacity-60">Loading more dishes...</span>
             </div>
           )}
           {!hasMore && filteredMenus.length > 0 && (
-            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted opacity-40">You've reached the end of the menu</p>
+            <p className="text-[10px] font-black tracking-widest text-text-muted opacity-40">You've reached the end of the menu</p>
           )}
         </div>
       </div>
@@ -432,6 +473,7 @@ const HomePage = () => {
   const user = useMemo(() => JSON.parse(localStorage.getItem('user') || '{}'), []);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     fetchCategories();
     fetchMenus();
 
@@ -534,9 +576,21 @@ const HomePage = () => {
     });
 
     if (sortBy === 'price-low') {
-      result.sort((a, b) => (a.sizes?.[0]?.price || a.offerPrice) - (b.sizes?.[0]?.price || b.offerPrice));
+      result.sort((a, b) => {
+        const getMinPrice = (m) => {
+          const variants = m.variants || m.sizes || [];
+          return variants.length > 0 ? Math.min(...variants.map(v => v.price)) : (m.offerPrice || 0);
+        };
+        return getMinPrice(a) - getMinPrice(b);
+      });
     } else if (sortBy === 'price-high') {
-      result.sort((a, b) => (b.sizes?.[0]?.price || b.offerPrice) - (a.sizes?.[0]?.price || a.offerPrice));
+      result.sort((a, b) => {
+        const getMinPrice = (m) => {
+          const variants = m.variants || m.sizes || [];
+          return variants.length > 0 ? Math.min(...variants.map(v => v.price)) : (m.offerPrice || 0);
+        };
+        return getMinPrice(b) - getMinPrice(a);
+      });
     } else if (sortBy === 'name-az') {
       result.sort((a, b) => a.name.localeCompare(b.name));
     } else if (sortBy === 'rating') {

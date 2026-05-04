@@ -16,6 +16,7 @@ import MenuDetailPage from './pages/Menu/MenuDetailPage';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 import { ThemeProvider } from './context/ThemeContext';
 import { CartProvider } from './context/CartContext';
+import BottomNavbar from './components/Navbar/BottomNavbar';
 import './index.css';
 
 function App() {
@@ -66,6 +67,7 @@ function App() {
                 </ProtectedRoute>
               } />
             </Routes>
+            <BottomNavbar />
           </BrowserRouter>
         </CartProvider>
       </ThemeProvider>
