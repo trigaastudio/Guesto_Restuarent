@@ -87,9 +87,11 @@ class CartController {
       const cart = await Cart.findOne({ user: userId });
       if (!cart) throw new Error('Cart not found');
 
-      const itemIndex = cart.items.findIndex(item => 
-        item.menuItem.toString() === menuItemId && item.size === size
-      );
+      const itemIndex = cart.items.findIndex(item => {
+        const itemSize = item.size || '';
+        const targetSize = size || '';
+        return item.menuItem.toString() === menuItemId && itemSize === targetSize;
+      });
 
       if (itemIndex > -1) {
         if (quantity < 1) {
@@ -124,9 +126,11 @@ class CartController {
 
       const cart = await Cart.findOne({ user: userId });
       if (cart) {
-        cart.items = cart.items.filter(item => 
-          !(item.menuItem.toString() === menuItemId && item.size === size)
-        );
+        cart.items = cart.items.filter(item => {
+          const itemSize = item.size || '';
+          const targetSize = size || '';
+          return !(item.menuItem.toString() === menuItemId && itemSize === targetSize);
+        });
         await cart.save();
       }
 
