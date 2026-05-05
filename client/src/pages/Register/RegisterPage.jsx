@@ -140,7 +140,7 @@ const RegisterPage = () => {
   };
 
   return (
-    <div className="min-h-[100dvh] w-full bg-[#D10000] flex flex-col relative overflow-x-hidden font-sans select-none text-white pb-10">
+    <div className="h-screen w-full bg-[#D10000] flex flex-col relative overflow-hidden font-sans select-none text-white">
 
       {/* Background Image with Vibrant Red Studio Overlay */}
       <div className="fixed inset-0 z-0">
@@ -153,28 +153,28 @@ const RegisterPage = () => {
       </div>
 
       {/* Header / Logo */}
-      <header className="relative w-full px-6 md:px-12 py-6 z-30">
+      <header className="relative w-full px-6 md:px-12 py-3 z-30">
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-          <img src="/logo-light.png" alt="Guesto Restaurant" className="h-8 md:h-10 object-contain" />
+          <img src="/logo-light.png" alt="Guesto Restaurant" className="h-6 md:h-8 object-contain" />
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center justify-center px-6 relative z-20 w-full pt-4">
+      <main className="flex-1 flex flex-col items-center justify-center px-6 relative z-20 w-full pt-2 pb-2">
 
         {/* Register Card */}
-        <div className="w-full max-w-xl page-fade-in">
-          <div className="backdrop-blur-3xl bg-white/10 border border-white/20 p-6 md:p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden group">
+        <div className="w-full max-w-xl page-fade-in scale-[0.85] md:scale-95 lg:scale-100 origin-center">
+          <div className="backdrop-blur-3xl bg-white/10 border border-white/20 p-5 md:p-8 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden group">
 
             {/* Decorative Glow */}
             <div className="absolute -top-24 -right-24 w-48 h-48 bg-white/10 rounded-full blur-[70px]"></div>
 
-            <div className="space-y-6 relative z-10">
-              <div className="space-y-2 text-center">
-                <h1 className="text-3xl md:text-4xl font-black tracking-tight uppercase text-white">
+            <div className="space-y-4 relative z-10">
+              <div className="space-y-1 text-center">
+                <h1 className="text-2xl md:text-3xl font-black tracking-tight uppercase text-white">
                   Join <span className="opacity-90">Guesto</span>
                 </h1>
-                <p className="text-white/70 text-sm font-medium uppercase tracking-widest">Create an account to begin your journey</p>
+                <p className="text-white/70 text-[10px] font-medium uppercase tracking-widest">Create an account to begin your journey</p>
               </div>
 
               {apiError && (
@@ -183,57 +183,57 @@ const RegisterPage = () => {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-3">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">Full Name</label>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-white/50 uppercase tracking-widest ml-1">Full Name</label>
                     <div className="relative group">
                       <User className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-[#DA9133] transition-all duration-300" size={16} />
                       <input
                         type="text" name="name" placeholder="John Doe"
                         value={fields.name} onChange={handleChange}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white placeholder:text-white/30 autofill:bg-transparent"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-11 pr-4 text-xs font-medium focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white placeholder:text-white/30 autofill:bg-transparent"
                       />
                     </div>
                     {errors.name && <p className="text-[10px] text-white font-bold ml-1">{errors.name}</p>}
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">Phone Number</label>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-white/50 uppercase tracking-widest ml-1">Phone Number</label>
                     <div className="relative group">
                       <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-[#DA9133] transition-all duration-300" size={16} />
                       <input
                         type="tel" name="phone" placeholder="+123 456 7890"
                         value={fields.phone} onChange={handleChange}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white placeholder:text-white/30 autofill:bg-transparent"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-11 pr-4 text-xs font-medium focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white placeholder:text-white/30 autofill:bg-transparent"
                       />
                     </div>
                     {errors.phone && <p className="text-[10px] text-white font-bold ml-1">{errors.phone}</p>}
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">Email Address</label>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-black text-white/50 uppercase tracking-widest ml-1">Email Address</label>
                   <div className="relative group">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-[#DA9133] transition-all duration-300" size={16} />
                     <input
                       type="email" name="email" placeholder="alex@example.com"
                       value={fields.email} onChange={handleChange}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white placeholder:text-white/30 autofill:bg-transparent"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-11 pr-4 text-xs font-medium focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white placeholder:text-white/30 autofill:bg-transparent"
                     />
                   </div>
                   {errors.email && <p className="text-[10px] text-white font-bold ml-1">{errors.email}</p>}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">Password</label>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-white/50 uppercase tracking-widest ml-1">Password</label>
                     <div className="relative group">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-[#DA9133] transition-all duration-300" size={16} />
                       <input
                         type={showPassword ? "text" : "password"} name="password" placeholder="••••••••"
                         value={fields.password} onChange={handleChange}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-10 text-sm font-medium focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white placeholder:text-white/30 autofill:bg-transparent"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-11 pr-10 text-xs font-medium focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white placeholder:text-white/30 autofill:bg-transparent"
                       />
                       <button
                         type="button"
@@ -246,14 +246,14 @@ const RegisterPage = () => {
                     {errors.password && <p className="text-[10px] text-white font-bold ml-1">{errors.password}</p>}
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">Confirm Password</label>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-white/50 uppercase tracking-widest ml-1">Confirm Password</label>
                     <div className="relative group">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-[#DA9133] transition-all duration-300" size={16} />
                       <input
                         type={showConfirmPassword ? "text" : "password"} name="confirmPassword" placeholder="••••••••"
                         value={fields.confirmPassword} onChange={handleChange}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-10 text-sm font-medium focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white placeholder:text-white/30 autofill:bg-transparent"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-11 pr-10 text-xs font-medium focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white placeholder:text-white/30 autofill:bg-transparent"
                       />
                       <button
                         type="button"
@@ -267,7 +267,7 @@ const RegisterPage = () => {
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3 py-2">
+                <div className="flex items-start gap-3 py-1">
                   <div className="relative flex items-center">
                     <input
                       type="checkbox" name="agreed"
@@ -285,7 +285,7 @@ const RegisterPage = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-[#DA9133] hover:bg-[#C27D29] text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-xl shadow-black/20 disabled:opacity-50 disabled:cursor-not-allowed group flex items-center justify-center gap-2"
+                  className="w-full bg-[#DA9133] hover:bg-[#C27D29] text-white py-3 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-xl shadow-black/20 disabled:opacity-50 disabled:cursor-not-allowed group flex items-center justify-center gap-2"
                 >
                   {loading ? 'Creating Account...' : (
                     <>
@@ -308,7 +308,7 @@ const RegisterPage = () => {
       </main>
 
       {/* Footer */}
-      <footer className="mt-auto w-full px-6 py-8 relative z-30 text-center">
+      <footer className="mt-auto w-full px-6 py-4 relative z-30 text-center">
         <p className="text-[10px] font-black text-white/30 uppercase tracking-widest">
           © 2024 Guesto Restaurant Group. Join the Culinary Revolution.
         </p>

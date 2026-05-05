@@ -37,7 +37,7 @@ const Footer = React.memo(() => {
 
           {/* Contact Details */}
           <div className="space-y-4">
-            <h4 className="text-[9px] font-black uppercase tracking-widest text-[#DA9133]">Get in touch</h4>
+            <h4 className="text-[9px] font-black tracking-widest text-[#DA9133]">Get in touch</h4>
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0 border border-white/10 text-[10px]">📍</div>
@@ -51,7 +51,7 @@ const Footer = React.memo(() => {
           </div>
 
           <div className="space-y-4">
-            <h4 className="text-[9px] font-black uppercase tracking-widest text-[#DA9133]">Our motto</h4>
+            <h4 className="text-[9px] font-black tracking-widest text-[#DA9133]">Our motto</h4>
             <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
               <p className="text-[10px] font-black text-white/80 italic leading-relaxed tracking-wide">
                 "We serve memories of home, crafted with the finest ingredients."

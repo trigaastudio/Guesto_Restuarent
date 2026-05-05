@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useGoogleLogin } from '@react-oauth/google';
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import api from '../../api/axiosInstance';
+import ForgotPasswordModal from '../../components/ForgotPasswordModal/ForgotPasswordModal';
 
 const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" width="20" height="20">
@@ -20,6 +21,7 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
 
   React.useEffect(() => {
     const token = localStorage.getItem('token');
@@ -88,7 +90,7 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="h-[100dvh] w-full bg-[#D10000] flex flex-col relative overflow-hidden font-sans select-none text-white">
+    <div className="h-screen w-full bg-[#D10000] flex flex-col relative overflow-hidden font-sans select-none text-white">
 
       {/* Background Image with Vibrant Red Studio Overlay */}
       <div className="absolute inset-0 z-0">
@@ -101,28 +103,28 @@ const LoginPage = () => {
       </div>
 
       {/* Header / Logo */}
-      <header className="absolute top-0 left-0 w-full px-6 md:px-12 py-6 z-30">
+      <header className="absolute top-0 left-0 w-full px-6 md:px-12 py-4 z-30">
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-          <img src="/logo-light.png" alt="Guesto Restaurant" className="h-8 md:h-10 object-contain" />
+          <img src="/logo-light.png" alt="Guesto Restaurant" className="h-7 md:h-9 object-contain" />
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center justify-center px-6 relative z-20 w-full pt-10">
+      <main className="flex-1 flex flex-col items-center justify-center px-6 relative z-20 w-full pt-8 pb-4">
 
         {/* Login Card */}
-        <div className="w-full max-w-md page-fade-in">
-          <div className="backdrop-blur-3xl bg-white/10 border border-white/20 p-8 md:p-12 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden group">
+        <div className="w-full max-w-md page-fade-in scale-[0.95] md:scale-100">
+          <div className="backdrop-blur-3xl bg-white/10 border border-white/20 p-6 md:p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden group">
 
             {/* Decorative Glow */}
             <div className="absolute -top-24 -right-24 w-48 h-48 bg-white/10 rounded-full blur-[70px]"></div>
 
-            <div className="space-y-8 relative z-10">
-              <div className="space-y-2 text-center">
-                <h1 className="text-3xl md:text-4xl font-black tracking-tight uppercase text-white">
+            <div className="space-y-4 relative z-10">
+              <div className="space-y-1 text-center">
+                <h1 className="text-2xl md:text-3xl font-black tracking-tight uppercase text-white">
                   Welcome <span className="opacity-90">Back</span>
                 </h1>
-                <p className="text-white/70 text-sm font-medium uppercase tracking-widest">Log in to savor the extraordinary</p>
+                <p className="text-white/70 text-[10px] font-medium uppercase tracking-widest">Log in to savor the extraordinary</p>
               </div>
 
               {apiError && (
@@ -131,8 +133,8 @@ const LoginPage = () => {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="space-y-2">
+              <form onSubmit={handleSubmit} className="space-y-3.5">
+                <div className="space-y-1">
                   <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">Email Address</label>
                   <div className="relative group">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-[#DA9133] transition-all duration-300" size={18} />
@@ -142,13 +144,13 @@ const LoginPage = () => {
                       placeholder="name@example.com"
                       value={fields.email}
                       onChange={handleChange}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm font-medium placeholder:text-white/30 focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white autofill:bg-transparent"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-sm font-medium placeholder:text-white/30 focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white autofill:bg-transparent"
                     />
                   </div>
                   {errors.email && <p className="text-[10px] text-white font-bold ml-1">{errors.email}</p>}
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">Password</label>
                   <div className="relative group">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-[#DA9133] transition-all duration-300" size={18} />
@@ -158,7 +160,7 @@ const LoginPage = () => {
                       placeholder="••••••••"
                       value={fields.password}
                       onChange={handleChange}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-12 text-sm font-medium placeholder:text-white/30 focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white autofill:bg-transparent"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-12 text-sm font-medium placeholder:text-white/30 focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white autofill:bg-transparent"
                     />
                     <button
                       type="button"
@@ -172,15 +174,15 @@ const LoginPage = () => {
                 </div>
 
                 <div className="flex justify-end">
-                  <Link to="/forgot-password" size="sm" className="text-[10px] font-black text-[#DA9133] hover:text-[#C27D29] transition-colors uppercase tracking-widest">
+                  <button type="button" onClick={() => setShowResetModal(true)} className="text-[10px] font-black text-[#DA9133] hover:text-[#C27D29] transition-colors uppercase tracking-widest">
                     Forgot Password?
-                  </Link>
+                  </button>
                 </div>
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-[#DA9133] hover:bg-[#C27D29] text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-xl shadow-black/20 disabled:opacity-50 disabled:cursor-not-allowed group flex items-center justify-center gap-2"
+                  className="w-full bg-[#DA9133] hover:bg-[#C27D29] text-white py-3.5 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-xl shadow-black/20 disabled:opacity-50 disabled:cursor-not-allowed group flex items-center justify-center gap-2"
                 >
                   {loading ? 'Authenticating...' : (
                     <>
@@ -191,7 +193,7 @@ const LoginPage = () => {
                 </button>
               </form>
 
-              <div className="relative flex items-center py-2">
+              <div className="relative flex items-center py-1">
                 <div className="flex-grow border-t border-white/10"></div>
                 <span className="flex-shrink mx-4 text-[10px] font-black text-white/40 uppercase tracking-widest">Or continue with</span>
                 <div className="flex-grow border-t border-white/10"></div>
@@ -200,7 +202,7 @@ const LoginPage = () => {
               <button
                 type="button"
                 onClick={() => googleLogin()}
-                className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white py-4 rounded-2xl font-bold text-sm transition-all active:scale-95 flex items-center justify-center gap-3"
+                className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white py-3.5 rounded-2xl font-bold text-sm transition-all active:scale-95 flex items-center justify-center gap-3"
               >
                 <GoogleIcon />
                 Google Account
@@ -218,7 +220,7 @@ const LoginPage = () => {
       </main>
 
       {/* Footer / Info */}
-      <footer className="w-full px-6 py-8 relative z-30 text-center">
+      <footer className="w-full px-6 py-4 relative z-30 text-center">
         <p className="text-[10px] font-black text-white/30 uppercase tracking-widest">
           © 2024 Guesto Restaurant Group. Secure Authentication.
         </p>
@@ -258,6 +260,10 @@ const LoginPage = () => {
             transition: background-color 5000s ease-in-out 0s;
         }
       `}} />
+      <ForgotPasswordModal 
+        isOpen={showResetModal} 
+        onClose={() => setShowResetModal(false)} 
+      />
     </div>
   );
 };

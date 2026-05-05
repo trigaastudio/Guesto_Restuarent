@@ -11,6 +11,7 @@ router.post('/address', protect, userController.addAddress);
 router.get('/addresses', protect, userController.getAddresses);
 router.put('/address/:addressId/default', protect, userController.setDefaultAddress);
 router.put('/address/:addressId', protect, userController.updateAddress);
+router.put('/change-password', protect, userController.changePassword);
 router.delete('/address/:addressId', protect, userController.deleteAddress);
 
 export default router;

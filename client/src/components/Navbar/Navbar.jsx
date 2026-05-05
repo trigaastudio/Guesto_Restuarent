@@ -35,7 +35,7 @@ const Navbar = React.memo(({ user, cartItems, showUserDropdown, setShowUserDropd
 
   return (
     <header className="relative z-50 w-full">
-      <div className="max-w-7xl mx-auto px-6 h-16 md:h-24 flex items-center justify-between">
+      <div className="max-w-6xl mx-auto px-6 h-16 md:h-20 flex items-center justify-between">
         {/* Mobile Menu Toggle - Removed as per request for mobile/tab */}
         {/* <button
           onClick={() => setIsMobileMenuOpen(true)}
@@ -48,7 +48,7 @@ const Navbar = React.memo(({ user, cartItems, showUserDropdown, setShowUserDropd
           <img
             src="/logo-light.png"
             alt="GuestO"
-            className="h-8 md:h-10 cursor-pointer active:opacity-80 transition-opacity"
+            className="h-8 md:h-9 cursor-pointer active:opacity-80 transition-opacity"
             onClick={() => navigate('/home')}
           />
         </div>
@@ -59,7 +59,7 @@ const Navbar = React.memo(({ user, cartItems, showUserDropdown, setShowUserDropd
             <button
               key={link.name}
               onClick={(e) => handleNavClick(e, link.path, link.name)}
-              className="text-[11px] font-black uppercase tracking-[0.2em] text-white/80 hover:text-white transition-colors outline-none"
+              className="text-[11px] font-black tracking-[0.1em] text-white/80 hover:text-white transition-colors outline-none"
             >
               {link.name}
             </button>
@@ -94,27 +94,27 @@ const Navbar = React.memo(({ user, cartItems, showUserDropdown, setShowUserDropd
                 <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#DA9133] flex items-center justify-center text-white font-black text-xs md:text-sm shadow-inner">
                   {user.name[0].toUpperCase()}
                 </div>
-                <span className="text-white text-[10px] font-black tracking-widest hidden md:block uppercase">{user.name.split(' ')[0]}</span>
+                <span className="text-white text-[10px] font-black tracking-widest hidden md:block">{user.name.split(' ')[0]}</span>
               </div>
 
               <div className={`absolute top-full right-0 mt-3 w-64 bg-white rounded-[2rem] shadow-[0_20px_70px_rgba(0,0,0,0.2)] border border-gray-100 overflow-hidden transition-all duration-500 z-50 transform ${showUserDropdown ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-4'}`}>
                 <div className="p-6 bg-[#D10000]/5 border-b border-[#D10000]/10">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-[#D10000] font-black mb-1.5 opacity-60">Welcome back,</p>
+                  <p className="text-[10px] tracking-[0.1em] text-[#D10000] font-black mb-1.5 opacity-60">Welcome back,</p>
                   <p className="font-black text-text-primary text-lg truncate">{user.name}</p>
                 </div>
                 <div className="p-3">
                   <button onClick={() => { setShowUserDropdown(false); navigate('/profile'); }} className="w-full flex items-center gap-4 px-5 py-4 text-sm font-black text-text-primary hover:bg-[#D10000]/5 rounded-2xl transition-all group/item">
                     <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center group-hover/item:bg-[#DA9133] group-hover/item:text-white transition-all"><UserIcon size={18} /></div>
-                    <div className="flex flex-col items-start"><span>My Profile</span><span className="text-[9px] font-bold text-text-muted opacity-50 uppercase tracking-widest">Account Details</span></div>
+                    <div className="flex flex-col items-start"><span>My Profile</span><span className="text-[9px] font-bold text-text-muted opacity-50 tracking-widest">Account Details</span></div>
                   </button>
                   <button onClick={() => { setShowUserDropdown(false); navigate('/my-orders'); }} className="w-full flex items-center gap-4 px-5 py-4 text-sm font-black text-text-primary hover:bg-[#D10000]/5 rounded-2xl transition-all group/item">
                     <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center group-hover/item:bg-[#DA9133] group-hover/item:text-white transition-all"><LayoutGrid size={18} /></div>
-                    <div className="flex flex-col items-start"><span>My Orders</span><span className="text-[9px] font-bold text-text-muted opacity-50 uppercase tracking-widest">Track History</span></div>
+                    <div className="flex flex-col items-start"><span>My Orders</span><span className="text-[9px] font-bold text-text-muted opacity-50 tracking-widest">Track History</span></div>
                   </button>
                   <div className="h-px bg-gray-100 my-2 mx-4"></div>
                   <button onClick={handleLogout} className="w-full flex items-center gap-4 px-5 py-4 text-sm font-black text-red-500 hover:bg-red-50 rounded-2xl transition-all group/item">
                     <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center group-hover/item:bg-red-500 group-hover/item:text-white transition-all"><UtensilsCrossed size={18} className="rotate-45" /></div>
-                    <div className="flex flex-col items-start"><span>Logout</span><span className="text-[9px] font-bold text-red-400 opacity-50 uppercase tracking-widest">See you soon</span></div>
+                    <div className="flex flex-col items-start"><span>Logout</span><span className="text-[9px] font-bold text-red-400 opacity-50 tracking-widest">See you soon</span></div>
                   </button>
                 </div>
               </div>
@@ -122,7 +122,7 @@ const Navbar = React.memo(({ user, cartItems, showUserDropdown, setShowUserDropd
           ) : (
             <button
               onClick={() => navigate('/login')}
-              className="bg-[#DA9133] text-white px-5 md:px-7 py-2 md:py-2.5 font-black hover:bg-[#C27D29] transition-all text-[10px] md:text-[11px] rounded-full shadow-lg active:scale-95 uppercase tracking-[0.15em]"
+              className="bg-[#DA9133] text-white px-4 py-1 md:py-1.5 font-black hover:bg-[#C27D29] transition-all text-[9px] md:text-[10px] rounded-full shadow-lg active:scale-95 tracking-[0.1em]"
             >
               Join Now
             </button>
@@ -167,7 +167,7 @@ const Navbar = React.memo(({ user, cartItems, showUserDropdown, setShowUserDropd
                   <link.icon size={18} />
                 </div>
                 <div className="flex flex-col items-start text-left">
-                  <span className="font-black text-sm uppercase tracking-widest">{link.name}</span>
+                  <span className="font-black text-sm tracking-widest">{link.name}</span>
                 </div>
               </button>
             ))}
@@ -180,7 +180,7 @@ const Navbar = React.memo(({ user, cartItems, showUserDropdown, setShowUserDropd
               </div>
               <div className="flex flex-col">
                 <span className="text-xs font-black text-text-primary">{user?.name || 'Guest User'}</span>
-                <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Active Member</span>
+                <span className="text-[10px] font-bold text-text-muted tracking-widest">Active Member</span>
               </div>
             </div>
           </div>

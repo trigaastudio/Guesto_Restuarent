@@ -30,7 +30,7 @@ const LandingPage = () => {
           <img src="/logo-light.png" alt="Guesto Restaurant" className="h-8 md:h-10 object-contain" />
         </div>
         <div className="flex items-center gap-6">
-          <nav className="hidden lg:flex items-center gap-8 text-[11px] font-bold uppercase tracking-widest text-white/80">
+          <nav className="hidden lg:flex items-center gap-8 text-[11px] font-bold tracking-widest text-white/80">
             <a href="#" className="hover:text-white transition-colors">Home</a>
             <a href="#" className="hover:text-white transition-colors">Menu</a>
             <a href="#" className="hover:text-white transition-colors">About</a>
@@ -38,7 +38,7 @@ const LandingPage = () => {
           </nav>
           <button
             onClick={() => navigate('/login')}
-            className="bg-[#DA9133] hover:bg-[#C27D29] text-white px-5 md:px-7 py-2 md:py-2.5 rounded-full font-bold text-xs md:text-sm transition-all active:scale-95 shadow-xl shadow-black/20 uppercase tracking-widest"
+            className="bg-[#DA9133] hover:bg-[#C27D29] text-white px-4 py-1 md:py-1.5 rounded-full font-bold text-[10px] md:text-xs transition-all active:scale-95 shadow-lg shadow-black/10 tracking-widest"
           >
             Sign In
           </button>
@@ -46,21 +46,21 @@ const LandingPage = () => {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col lg:flex-row items-center justify-center lg:justify-between px-6 md:px-12 pt-10 pb-12 lg:pt-0 lg:pb-0 relative z-20 max-w-7xl mx-auto w-full gap-6 md:gap-16 lg:gap-20">
+      <main className="flex-1 flex flex-col lg:flex-row items-center justify-center lg:justify-between px-6 md:px-12 pt-10 pb-12 lg:pt-0 lg:pb-0 relative z-20 max-w-6xl mx-auto w-full gap-6 md:gap-16 lg:gap-20">
 
         {/* Left Side: Content */}
         <div className="flex-1 text-center lg:text-left space-y-6 md:space-y-10 page-fade-in">
           <div className="space-y-4 md:space-y-6">
-            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 text-white/90 px-4 py-1.5 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-widest mx-auto lg:mx-0">
+            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 text-white/90 px-4 py-1.5 rounded-full text-[10px] md:text-xs font-bold tracking-widest mx-auto lg:mx-0">
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
               Chef's Signature
             </div>
 
             <div className="flex flex-col gap-3 pt-2 md:pt-4">
-              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-8xl font-black leading-[1.05] tracking-tighter uppercase text-white drop-shadow-2xl">
+              <h1 className="text-4xl sm:text-5xl md:text-5xl lg:text-6xl font-black leading-[1.05] tracking-tighter text-white drop-shadow-2xl">
                 Guesto <span className="block opacity-90">Restaurant</span>
               </h1>
-              <p className="text-white/90 text-sm md:text-lg lg:text-xl font-medium max-w-xl mx-auto lg:mx-0 leading-relaxed uppercase tracking-widest opacity-80">
+              <p className="text-white/90 text-sm md:text-lg lg:text-lg font-medium max-w-xl mx-auto lg:mx-0 leading-relaxed tracking-widest opacity-80">
                 Savor the authentic flavors of Thrissur. We bring premium, chef-crafted meals directly to your dining table.
               </p>
             </div>
@@ -68,16 +68,16 @@ const LandingPage = () => {
 
           <button
             onClick={() => navigate('/login')}
-            className="group inline-flex items-center justify-center gap-3 bg-[#DA9133] text-white py-3.5 md:py-4.5 px-8 md:px-10 rounded-full font-bold text-base md:text-lg shadow-2xl shadow-black/30 hover:bg-[#C27D29] hover:-translate-y-1 transition-all duration-300 active:scale-95 uppercase tracking-widest"
+            className="group inline-flex items-center justify-center gap-2.5 bg-[#DA9133] text-white py-2 md:py-2.5 px-6 md:px-7 rounded-full font-bold text-xs md:text-sm shadow-xl shadow-black/20 hover:bg-[#C27D29] hover:-translate-y-0.5 transition-all duration-300 active:scale-95 tracking-widest"
           >
-            EXPLORE MENU
+            Explore Menu
             <ArrowRight className="group-hover:translate-x-1.5 transition-transform duration-300" size={20} />
           </button>
         </div>
 
         {/* Right Side: Glassmorphism Card */}
         <div className="flex flex-col gap-4 w-full max-w-sm sm:max-w-md page-fade-in" style={{ animationDelay: '0.3s' }}>
-          <div className="backdrop-blur-3xl bg-white/10 border border-white/20 p-6 md:p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.4)] space-y-4 md:space-y-10 relative overflow-hidden group">
+          <div className="backdrop-blur-3xl bg-white/10 border border-white/20 p-6 md:p-8 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.4)] space-y-4 md:space-y-10 relative overflow-hidden group">
             {/* Decorative Glow */}
             <div className="absolute -top-24 -right-24 w-48 h-48 bg-white/10 rounded-full blur-[70px]"></div>
 
@@ -86,8 +86,8 @@ const LandingPage = () => {
                 <Clock size={28} className="md:w-8 md:h-8" />
               </div>
               <div className="space-y-0.5">
-                <h3 className="font-bold text-lg md:text-2xl text-white tracking-tight uppercase">Hot & Fresh</h3>
-                <p className="text-white/70 font-black text-sm md:text-lg uppercase tracking-wider">Served in 18-24 mins</p>
+                <h3 className="font-bold text-lg md:text-2xl text-white tracking-tight">Hot & Fresh</h3>
+                <p className="text-white/70 font-black text-sm md:text-lg tracking-wider">Served in 18-24 mins</p>
               </div>
             </div>
 
@@ -98,8 +98,8 @@ const LandingPage = () => {
                 <UtensilsCrossed size={28} className="md:w-8 md:h-8" />
               </div>
               <div className="space-y-0.5">
-                <h3 className="font-bold text-lg md:text-2xl text-white tracking-tight uppercase">Signature Dishes</h3>
-                <p className="text-white/60 text-xs md:text-sm font-semibold uppercase tracking-widest">By expert chefs</p>
+                <h3 className="font-bold text-lg md:text-2xl text-white tracking-tight">Signature Dishes</h3>
+                <p className="text-white/60 text-xs md:text-sm font-semibold tracking-widest">By expert chefs</p>
               </div>
             </div>
           </div>

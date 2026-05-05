@@ -6,6 +6,8 @@ import Swal from 'sweetalert2';
 import AddressModal from '../../components/AddressModal/AddressModal';
 import Footer from '../../components/Footer/Footer';
 import Navbar from '../../components/Navbar/Navbar';
+import SideNavbar from '../../components/SideNavbar/SideNavbar';
+import ChangePasswordModal from '../../components/ChangePasswordModal/ChangePasswordModal';
 import { useCart } from '../../context/CartContext';
 
 const ProfilePage = () => {
@@ -14,6 +16,7 @@ const ProfilePage = () => {
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [editingAddress, setEditingAddress] = useState(null);
   const dropdownRef = useRef(null);
@@ -171,7 +174,7 @@ const ProfilePage = () => {
 
   return (
     <div className="min-h-screen bg-[#FAF9F6] font-sans selection:bg-primary/10 overflow-x-hidden">
-      <header className="relative bg-[#D10000] sticky top-0 z-40 transition-all duration-500 shadow-xl overflow-hidden">
+      <header className="relative bg-[#D10000] sticky top-0 z-40 transition-all duration-500 shadow-xl">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3 blur-[120px] pointer-events-none"></div>
 
         <Navbar
@@ -185,120 +188,28 @@ const ProfilePage = () => {
         />
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-12 md:py-20 relative z-30 pb-24">
+      <main className="max-w-7xl mx-auto px-6 py-4 md:py-6 relative z-10 pb-20">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
 
-          {/* Left Column: Premium Identity Card */}
-          <div className="lg:col-span-4 space-y-8 animate-in fade-in slide-in-from-bottom-10 duration-700">
-            <div className="bg-white rounded-[3.5rem] p-10 border border-gray-100 shadow-[0_30px_100px_rgba(0,0,0,0.04)] relative overflow-hidden group">
-              {/* Abstract Backdrop Decor */}
-              <div className="absolute top-0 right-0 w-48 h-48 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-primary/10 transition-colors duration-700"></div>
-              <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
-
-              <div className="relative z-10 flex flex-col items-center text-center">
-                <div className="relative mb-6 group/avatar cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                  {/* Premium Avatar Container */}
-                  <div className="w-40 h-40 rounded-full bg-white p-1 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-gray-100 relative overflow-hidden group-hover/avatar:shadow-[0_30px_70px_rgba(209,0,0,0.15)] transition-all duration-700">
-                    <div className="w-full h-full rounded-full overflow-hidden border-4 border-white shadow-inner bg-gray-50">
-                      <img
-                        src={user.avatar ? `http://localhost:5000${user.avatar}` : '/user-avatar.png'}
-                        alt={user.name}
-                        className="w-full h-full object-cover group-hover/avatar:scale-110 transition-transform duration-1000"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                          e.target.nextSibling.style.display = 'flex';
-                        }}
-                      />
-                      <div className="hidden w-full h-full items-center justify-center bg-[#D10000]/5 text-[#D10000] text-5xl font-black">
-                        {user.name?.[0]?.toUpperCase()}
-                      </div>
-                    </div>
-                    
-                    {/* Professional Upload Overlay */}
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex flex-col items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-all duration-500">
-                      <Camera className="text-white mb-1" size={24} />
-                      <span className="text-[8px] font-black text-white uppercase tracking-widest">Update</span>
-                    </div>
-                  </div>
-
-                  {/* Verification Badge */}
-                  <div className="absolute bottom-2 right-2 w-10 h-10 bg-green-500 rounded-full shadow-lg flex items-center justify-center text-white border-4 border-white z-20 group-hover/avatar:scale-110 transition-transform duration-500">
-                    <ShieldCheck size={20} strokeWidth={3} />
-                  </div>
-                  
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleAvatarUpload}
-                    className="hidden"
-                    accept="image/*"
-                  />
-                </div>
-
-                <h2 className="text-2xl font-black text-text-primary tracking-tight mb-1">{user.name}</h2>
-                <div className="flex items-center gap-2 px-4 py-1.5 bg-gray-50 rounded-full border border-gray-100 mb-4">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-                  <p className="text-[9px] font-black text-text-muted tracking-widest">Member since Apr 2024</p>
-                </div>
-
-                <div className="w-full space-y-3">
-                  <div className="group/item flex items-center gap-4 p-4 rounded-3xl bg-gray-50/50 hover:bg-white border border-transparent hover:border-gray-100 hover:shadow-[0_10px_30px_rgba(0,0,0,0.03)] transition-all duration-500">
-                    <div className="w-10 h-10 rounded-2xl bg-white shadow-sm flex items-center justify-center text-[#D10000] group-hover/item:bg-[#D10000] group-hover/item:text-white transition-all duration-500">
-                      <Mail size={18} strokeWidth={2.5} />
-                    </div>
-                    <div className="flex-1 text-left min-w-0">
-                      <p className="text-[8px] font-black text-text-muted tracking-widest mb-0.5 opacity-50">Email address</p>
-                      <p className="text-[11px] font-black text-text-primary truncate">{user.email}</p>
-                    </div>
-                  </div>
- 
-                  <div className="group/item flex items-center gap-4 p-4 rounded-3xl bg-gray-50/50 hover:bg-white border border-transparent hover:border-gray-100 hover:shadow-[0_10px_30px_rgba(0,0,0,0.03)] transition-all duration-500">
-                    <div className="w-10 h-10 rounded-2xl bg-white shadow-sm flex items-center justify-center text-[#D10000] group-hover/item:bg-[#D10000] group-hover/item:text-white transition-all duration-500">
-                      <Phone size={18} strokeWidth={2.5} />
-                    </div>
-                    <div className="flex-1 text-left min-w-0">
-                      <p className="text-[8px] font-black text-text-muted tracking-widest mb-0.5 opacity-50">Phone number</p>
-                      <p className="text-[11px] font-black text-text-primary truncate">{user.phone || user.mobile || 'Not linked'}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 w-full pt-6 border-t border-gray-100 space-y-3">
-                  {!user.googleId && (
-                    <>
-                      <button
-                        className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-gray-50 hover:bg-[#D10000] text-text-primary hover:text-white rounded-2xl transition-all duration-500 font-black text-[10px] tracking-widest group/action shadow-sm border border-gray-100"
-                      >
-                        <Mail size={16} className="group-hover/action:scale-110 transition-transform" />
-                        Update email
-                      </button>
-                      <button
-                        className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-gray-50 hover:bg-[#D10000] text-text-primary hover:text-white rounded-2xl transition-all duration-500 font-black text-[10px] tracking-widest group/action shadow-sm border border-gray-100"
-                      >
-                        <Lock size={16} className="group-hover/action:scale-110 transition-transform" />
-                        Change password
-                      </button>
-                    </>
-                  )}
-                  <button
-                    onClick={handleLogout}
-                    className="w-full lg:hidden flex items-center justify-center gap-3 px-6 py-4 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white rounded-2xl transition-all duration-500 font-black text-[10px] tracking-widest group/action shadow-sm border border-red-100"
-                  >
-                    <LogOut size={16} className="group-hover/action:scale-110 transition-transform" />
-                    Logout
-                  </button>
-                </div>
-              </div>
-            </div>
-
+          {/* Left Column: Side Navbar */}
+          <div className="lg:col-span-4 xl:col-span-3 lg:sticky lg:top-24 z-20 w-full animate-in fade-in slide-in-from-bottom-10 duration-700">
+            <SideNavbar
+              user={user}
+              handleLogout={handleLogout}
+              navigate={navigate}
+              onAvatarClick={() => fileInputRef.current?.click()}
+              fileInputRef={fileInputRef}
+              handleAvatarUpload={handleAvatarUpload}
+              onChangePassword={() => setIsPasswordModalOpen(true)}
+            />
           </div>
 
           {/* Right Column: Address Management */}
-          <div className="lg:col-span-8 space-y-10 animate-in fade-in slide-in-from-bottom-10 duration-700 delay-100">
-            <div className="bg-white rounded-[3.5rem] p-12 border border-gray-100 shadow-[0_30px_100px_rgba(0,0,0,0.04)] min-h-[600px] flex flex-col relative overflow-hidden">
+          <div className="lg:col-span-8 xl:col-span-9 space-y-6 relative z-10">
+            <div className="bg-white rounded-[3.5rem] p-6 md:p-10 border border-gray-100 shadow-[0_30px_100px_rgba(0,0,0,0.04)] min-h-[500px] flex flex-col relative overflow-hidden">
               <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
 
-              <div className="relative z-10 flex items-center justify-between mb-16">
+              <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-10 md:mb-12">
                 <div className="space-y-2">
                   <div className="flex items-center gap-3">
                     <span className="w-6 h-1 bg-primary rounded-full"></span>
@@ -310,9 +221,9 @@ const ProfilePage = () => {
 
                 <button
                   onClick={() => setIsAddressModalOpen(true)}
-                  className="group relative w-12 h-12 rounded-2xl bg-primary text-white flex items-center justify-center hover:bg-primary-dark transition-all duration-500 shadow-[0_10px_30px_rgba(201,106,10,0.2)] hover:-translate-y-1 active:scale-95"
+                  className="group relative w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center hover:bg-primary-dark transition-all duration-500 shadow-[0_8px_25px_rgba(201,106,10,0.15)] hover:-translate-y-0.5 active:scale-95"
                 >
-                  <Plus size={20} strokeWidth={3} className="group-hover:rotate-90 transition-transform duration-500" />
+                  <Plus size={18} strokeWidth={3} className="group-hover:rotate-90 transition-transform duration-500" />
                 </button>
               </div>
 
@@ -337,7 +248,7 @@ const ProfilePage = () => {
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                   {addresses.map((address, idx) => (
                     <div
                       key={address._id}
@@ -413,6 +324,11 @@ const ProfilePage = () => {
         onSave={handleSaveAddress}
         user={user}
         editData={editingAddress}
+      />
+      <ChangePasswordModal
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
+        userEmail={user.email}
       />
       <Footer />
     </div>

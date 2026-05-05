@@ -48,16 +48,16 @@ const HeroSection = React.memo(({ searchQuery, setSearchQuery, heroImages }) => 
   }, [heroImages.length]);
 
   return (
-    <div className="relative z-10 flex flex-col lg:flex-row items-center justify-center lg:justify-between px-6 md:px-12 max-w-7xl mx-auto w-full gap-8 lg:gap-16 pt-2 pb-8 md:pt-12 md:pb-24">
+    <div className="relative z-10 flex flex-col lg:flex-row items-center justify-center lg:justify-between px-6 md:px-12 max-w-6xl mx-auto w-full gap-8 lg:gap-16 pt-0 pb-8 md:pt-2 md:pb-16">
       {/* Left Side: Content */}
-      <div className="flex-1 text-center lg:text-left space-y-4 md:space-y-8 hero-fade-in order-2 lg:order-1">
-        <div className="inline-flex items-center gap-2 bg-white/20 border border-white/30 text-white px-4 py-1.5 rounded-full text-[10px] font-bold tracking-widest">
+      <div className="flex-1 text-center lg:text-left space-y-3 md:space-y-4 hero-fade-in order-2 lg:order-1">
+        <div className="inline-flex items-center gap-2 bg-white/20 border border-white/30 text-white px-4 py-1.5 rounded-full text-[10px] font-bold tracking-wider">
           <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
           Fastest food delivery 🛵
         </div>
 
         <div className="space-y-4">
-          <h1 className="text-3xl md:text-6xl lg:text-7xl font-black leading-[1.05] text-white tracking-tighter uppercase drop-shadow-2xl">
+          <h1 className="text-3xl md:text-5xl lg:text-6xl font-black leading-[1.05] text-white tracking-tighter drop-shadow-2xl">
             Hungry? <br />
             <span className="text-white opacity-90">We’ve got you covered.</span>
           </h1>
@@ -67,7 +67,7 @@ const HeroSection = React.memo(({ searchQuery, setSearchQuery, heroImages }) => 
         </div>
 
         {/* Search Bar */}
-        <div className="w-full max-w-lg pt-4 mx-auto lg:mx-0">
+        <div className="w-full max-w-lg pt-2 mx-auto lg:mx-0">
           <div className="bg-white rounded-2xl p-1 flex items-center shadow-2xl overflow-hidden group focus-within:ring-4 focus-within:ring-white/20 transition-all border-2 border-[#D10000]/30 hover:border-[#D10000] transition-colors">
             <div className="flex-1 flex items-center gap-2 pl-4 relative group/input">
               <Search size={20} className="text-[#D10000] opacity-40 group-focus-within/input:opacity-100 transition-opacity" />
@@ -101,7 +101,7 @@ const HeroSection = React.memo(({ searchQuery, setSearchQuery, heroImages }) => 
                 setSearchQuery(localQuery);
                 document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="bg-[#DA9133] hover:bg-[#C27D29] active:bg-[#C27D29] text-white px-7 py-3 rounded-xl font-black text-[10px] md:text-xs transition-all transform active:scale-95 shrink-0 tracking-widest flex items-center gap-2 shadow-lg shadow-[#DA9133]/20"
+              className="bg-[#DA9133] hover:bg-[#C27D29] active:bg-[#C27D29] text-white px-5 py-1.5 rounded-xl font-black text-[10px] md:text-xs transition-all transform active:scale-95 shrink-0 tracking-wider flex items-center gap-2 shadow-lg shadow-[#DA9133]/20"
             >
               Search <ArrowRight size={16} strokeWidth={3} />
             </button>
@@ -111,7 +111,7 @@ const HeroSection = React.memo(({ searchQuery, setSearchQuery, heroImages }) => 
 
       {/* Right Side: Featured Image */}
       <div className="flex-1 flex justify-center lg:justify-end order-1 lg:order-2 hero-fade-in mt-4 lg:mt-0" style={{ animationDelay: '0.3s' }}>
-        <div className="relative w-full max-w-[320px] md:max-w-xl aspect-square min-h-[300px] md:min-h-[500px]">
+        <div className="relative w-full max-w-[320px] md:max-w-lg aspect-square min-h-[300px] md:min-h-[420px]">
           {heroImages.map((img, idx) => (
             <div
               key={idx}
@@ -165,9 +165,9 @@ const MenuModal = ({ isOpen, onClose, menu, addToCart }) => {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose}></div>
-      <div className="bg-[#FAF9F6] w-full max-w-md rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden animate-in fade-in zoom-in duration-300">
+      <div className="bg-[#FAF9F6] w-full max-w-[400px] rounded-[2rem] shadow-2xl relative z-10 overflow-hidden animate-in fade-in zoom-in duration-300">
         {/* Modal Header/Image */}
-        <div className="relative h-56 md:h-64 bg-gray-50 flex items-center justify-center p-6">
+        <div className="relative h-44 md:h-48 bg-gray-50/50 flex items-center justify-center p-4">
           <img
             src={menu.image || '/placeholder-food.jpg'}
             alt={menu.name}
@@ -181,11 +181,11 @@ const MenuModal = ({ isOpen, onClose, menu, addToCart }) => {
           </button>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="p-5 md:p-6 space-y-4">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${menu.foodType === 'veg' ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></span>
-              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted opacity-60">{menu.foodType}</span>
+              <span className="text-[9px] font-black tracking-[0.1em] text-text-muted opacity-60">{menu.foodType}</span>
             </div>
             <h2 className="text-2xl font-black text-text-primary tracking-tighter leading-none">{menu.name}</h2>
             <p className="text-[10px] md:text-xs text-text-muted font-bold leading-relaxed opacity-60 tracking-wide line-clamp-2">
@@ -197,21 +197,21 @@ const MenuModal = ({ isOpen, onClose, menu, addToCart }) => {
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <div className="w-1 h-3 bg-[#D10000] rounded-full"></div>
-                <h4 className="text-[9px] font-black tracking-widest text-text-primary">Choose portion</h4>
+                <h4 className="text-[9px] font-black tracking-wider text-text-primary">Choose portion</h4>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {variants.map((v) => (
                   <button
                     key={v.size}
                     onClick={() => setSelectedSize(v.size)}
-                    className={`relative p-3 rounded-2xl flex flex-col items-start transition-all duration-300 border-2 overflow-hidden group ${selectedSize === v.size ? 'bg-white border-[#D10000] shadow-xl' : 'bg-gray-50 border-transparent hover:bg-white hover:border-gray-200'}`}
+                    className={`relative p-2.5 rounded-xl flex flex-col items-start transition-all duration-300 border-2 overflow-hidden group ${selectedSize === v.size ? 'bg-white border-[#D10000] shadow-xl' : 'bg-gray-50 border-transparent hover:bg-white hover:border-gray-200'}`}
                   >
                     {selectedSize === v.size && (
                       <div className="absolute top-0 right-0 p-1.5 bg-[#D10000] text-white rounded-bl-xl">
                         <Check size={8} strokeWidth={4} />
                       </div>
                     )}
-                    <span className={`text-[9px] font-black tracking-widest mb-0.5 ${selectedSize === v.size ? 'text-[#D10000]' : 'text-text-muted opacity-40'}`}>{v.size}</span>
+                    <span className={`text-[9px] font-black tracking-wider mb-0.5 ${selectedSize === v.size ? 'text-[#D10000]' : 'text-text-muted opacity-40'}`}>{v.size}</span>
                     <span className="text-base font-black text-text-primary tracking-tighter">₹{v.price}</span>
                   </button>
                 ))}
@@ -219,14 +219,14 @@ const MenuModal = ({ isOpen, onClose, menu, addToCart }) => {
             </div>
           )}
 
-          <div className="pt-5 flex items-center justify-between border-t border-black/5">
+          <div className="pt-4 flex items-center justify-between border-t border-black/5">
             <div className="flex flex-col">
               <span className="text-[8px] font-black tracking-widest text-text-muted opacity-40 mb-1">To pay</span>
               <span className="text-2xl font-black text-text-primary tracking-tighter leading-none">₹{currentPrice}</span>
             </div>
             <button
               onClick={() => { addToCart(menu, selectedSize); onClose(); }}
-              className="bg-[#DA9133] hover:bg-[#C27D29] text-white px-8 py-4 rounded-[1.2rem] font-black text-[9px] tracking-widest transition-all shadow-xl shadow-[#DA9133]/20 active:scale-95 flex items-center gap-2"
+              className="bg-[#DA9133] hover:bg-[#C27D29] text-white px-4 py-2 rounded-xl font-black text-[9px] tracking-wider transition-all shadow-xl shadow-[#DA9133]/20 active:scale-95 flex items-center gap-2"
             >
               Add to cart <Plus size={14} strokeWidth={3} />
             </button>
@@ -241,8 +241,8 @@ const MenuModal = ({ isOpen, onClose, menu, addToCart }) => {
 const CategorySection = React.memo(({ categories, selectedCategory, handleCategoryChange }) => {
   return (
     <section className="w-full pt-6 md:pt-10 pb-4 bg-background">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex items-end justify-between mb-10">
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="flex items-end justify-between mb-6">
           <div className="space-y-2">
             <h2 className="text-2xl md:text-3xl font-black text-text-primary tracking-tighter">
               Thinking of <span className="text-[#D10000]">something delicious?</span>
@@ -274,7 +274,7 @@ const CategorySection = React.memo(({ categories, selectedCategory, handleCatego
             className="flex-shrink-0 cursor-pointer group snap-center active:scale-95 transition-transform"
             onClick={() => handleCategoryChange('all')}
           >
-            <div className={`w-24 h-24 md:w-28 md:h-28 rounded-full flex items-center justify-center transition-all duration-500 border-0 outline-none ${selectedCategory === 'all' ? 'bg-[#D10000]/5 shadow-inner' : 'bg-gray-100/50 hover:bg-white hover:shadow-xl active:bg-white active:shadow-xl'}`}>
+            <div className={`w-24 h-24 md:w-24 md:h-24 rounded-full flex items-center justify-center transition-all duration-500 border-0 outline-none ${selectedCategory === 'all' ? 'bg-[#D10000]/5 shadow-inner' : 'bg-gray-100/50 hover:bg-white hover:shadow-xl active:bg-white active:shadow-xl'}`}>
               <UtensilsCrossed size={28} className={`transition-all duration-500 ${selectedCategory === 'all' ? 'text-[#D10000] scale-110' : 'text-text-muted opacity-40 group-hover:opacity-100 group-hover:text-[#D10000] group-hover:scale-110 group-active:opacity-100 group-active:text-[#D10000] group-active:scale-110'}`} />
             </div>
             <p className={`mt-4 text-center text-[10px] font-black tracking-widest transition-all duration-500 ${selectedCategory === 'all' ? 'text-[#D10000] opacity-100 translate-y-0' : 'text-text-muted opacity-40 group-hover:opacity-80 group-active:opacity-80'}`}>All dishes</p>
@@ -286,7 +286,7 @@ const CategorySection = React.memo(({ categories, selectedCategory, handleCatego
               className="flex-shrink-0 cursor-pointer group snap-center active:scale-95 transition-transform"
               onClick={() => handleCategoryChange(category._id)}
             >
-              <div className={`w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden transition-all duration-500 border-0 outline-none ${selectedCategory === category._id ? 'scale-105 shadow-xl' : 'hover:scale-105 hover:shadow-lg active:scale-105 active:shadow-lg'}`}>
+              <div className={`w-24 h-24 md:w-24 md:h-24 rounded-full overflow-hidden transition-all duration-500 border-0 outline-none ${selectedCategory === category._id ? 'scale-105 shadow-xl' : 'hover:scale-105 hover:shadow-lg active:scale-105 active:shadow-lg'}`}>
                 <img
                   src={category.image || '/heroSection/hero1.png'}
                   alt={category.name}
@@ -304,11 +304,11 @@ const CategorySection = React.memo(({ categories, selectedCategory, handleCatego
 
 const MenuSection = React.memo(({ loading, filteredMenus, addToCart, navigate, sortBy, setSortBy, dietaryFilter, setDietaryFilter, setSearchQuery, observerTarget, hasMore, loadingMore, onAddClick }) => {
   return (
-    <section id="menu" className="bg-background pt-2 md:pt-16 pb-6 w-full">
-      <div className="max-w-7xl mx-auto px-6">
+    <section id="menu" className="bg-background pt-2 md:pt-8 pb-6 w-full">
+      <div className="max-w-6xl mx-auto px-6">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 md:mb-12 gap-6">
           <div className="space-y-3">
-            <h2 className="text-3xl md:text-5xl font-black text-text-primary tracking-tighter flex items-center gap-4">
+            <h2 className="text-3xl md:text-4xl font-black text-text-primary tracking-tighter flex items-center gap-4">
               Popular <span className="text-[#D10000]">menu</span>
             </h2>
             <p className="text-text-muted font-bold text-sm md:text-base opacity-60 tracking-widest">Discover the most loved dishes by our customers</p>
@@ -380,14 +380,14 @@ const MenuSection = React.memo(({ loading, filteredMenus, addToCart, navigate, s
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 animate-fade-in">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6 animate-fade-in">
             {filteredMenus.map((menu, index) => (
               <div
                 key={`${menu._id}-${index}`}
                 className="bg-[#FFF5F5] rounded-[1.2rem] md:rounded-[1.5rem] overflow-hidden p-3.5 md:p-5 transition-all duration-500 group flex flex-col h-full hover:bg-[#D10000] active:bg-[#D10000] shadow-[0_4px_15px_rgba(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(209,0,0,0.15)] active:shadow-[0_20px_50px_rgba(209,0,0,0.15)]"
                 style={{ animationDelay: `${(index % 10) * 0.05}s` }}
               >
-                <div className="relative h-32 md:h-40 mb-3 md:mb-4 overflow-hidden rounded-xl">
+                <div className="relative h-32 md:h-36 mb-3 md:mb-4 overflow-hidden rounded-xl">
                   <img
                     src={menu.image || '/placeholder-food.jpg'}
                     alt={menu.name}

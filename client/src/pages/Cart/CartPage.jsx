@@ -77,7 +77,7 @@ const AddressListModal = ({ isOpen, onClose, addresses, onSelect, onAddAddress }
         <div className="p-6 border-t border-gray-100 bg-gray-50/50">
           <button
             onClick={onAddAddress}
-            className="w-full bg-[#DA9133] text-white font-black py-4 rounded-2xl hover:bg-[#C27D29] transition-all flex items-center justify-center gap-3 text-xs uppercase tracking-[0.15em] shadow-lg shadow-[#DA9133]/20"
+            className="w-full bg-[#DA9133] text-white font-black py-3 rounded-xl hover:shadow-[0_15px_40px_rgba(218,145,51,0.2)] transition-all flex items-center justify-center gap-3 group relative overflow-hidden disabled:opacity-50"
           >
             <Plus size={18} strokeWidth={3} /> Add New Address
           </button>
@@ -201,14 +201,14 @@ const CartPage = () => {
           <div className="absolute bottom-[-5%] left-[-10%] w-[300px] md:w-[700px] h-[300px] md:h-[700px] bg-[#DA9133]/10 rounded-full blur-[90px] md:blur-[130px] animate-pulse" style={{ animationDelay: '2s' }}></div>
         </div>
 
-        <div className="relative z-10 flex flex-col md:flex-row items-center justify-center max-w-7xl w-full gap-12 md:gap-24">
+        <div className="relative z-10 flex flex-col md:flex-row items-center justify-center max-w-6xl w-full gap-12 md:gap-24">
 
           {/* Left Column: Main Visual Component */}
           <div className="relative flex-shrink-0">
             <div className="w-56 h-56 md:w-80 md:h-80 relative group">
               {/* Layered Glass Rings */}
-              <div className="absolute inset-0 bg-white/40 backdrop-blur-xl rounded-[2.5rem] md:rounded-[4rem] shadow-[0_20px_80px_rgba(0,0,0,0.08)] rotate-6 border border-white/50 transition-all duration-700 group-hover:rotate-12 group-hover:scale-105"></div>
-              <div className="absolute inset-0 bg-white rounded-[2.5rem] md:rounded-[4rem] shadow-[0_10px_40px_rgba(0,0,0,0.04)] -rotate-3 border border-gray-100 flex items-center justify-center overflow-hidden transition-all duration-700 group-hover:-rotate-6">
+              <div className="absolute inset-0 bg-white/40 backdrop-blur-xl rounded-[2.5rem] md:rounded-[3rem] shadow-[0_20px_80px_rgba(0,0,0,0.08)] rotate-6 border border-white/50 transition-all duration-700 group-hover:rotate-12 group-hover:scale-105"></div>
+              <div className="absolute inset-0 bg-white rounded-[2.5rem] md:rounded-[3rem] shadow-[0_10px_40px_rgba(0,0,0,0.04)] -rotate-3 border border-gray-100 flex items-center justify-center overflow-hidden transition-all duration-700 group-hover:-rotate-6">
                 <div className="absolute top-0 right-0 w-24 md:w-40 h-24 md:h-40 bg-[#D10000]/5 rounded-full blur-3xl"></div>
                 <div className="absolute bottom-0 left-0 w-24 md:w-40 h-24 md:h-40 bg-[#DA9133]/5 rounded-full blur-3xl"></div>
 
@@ -241,15 +241,15 @@ const CartPage = () => {
           {/* Right Column: Text Content & Actions */}
           <div className="flex flex-col items-center md:items-start max-w-xl">
             <div className="inline-block px-4 py-1.5 bg-[#D10000]/5 rounded-full border border-[#D10000]/10 mb-6 animate-in fade-in slide-in-from-left-4 duration-700">
-              <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.3em] text-[#D10000]">Empty Plate Alert</span>
+              <span className="text-[10px] md:text-xs font-black tracking-[0.1em] text-[#D10000]">Empty Plate Alert</span>
             </div>
 
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-[#2D2D2D] tracking-tighter leading-[0.9] md:leading-[0.8] mb-8 animate-in fade-in slide-in-from-left-6 duration-1000">
+            <h1 className="text-4xl md:text-4xl lg:text-5xl font-black text-[#2D2D2D] tracking-tighter leading-[0.9] md:leading-[0.8] mb-8 animate-in fade-in slide-in-from-left-6 duration-1000">
               YOUR CART IS <br className="hidden lg:block" />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#D10000] to-[#DA9133]">CRAVING</span>
             </h1>
 
-            <p className="text-[#6B6B6B] font-bold text-base md:text-xl leading-relaxed opacity-80 mb-12 animate-in fade-in slide-in-from-left-8 duration-1000 delay-200">
+            <p className="text-[#6B6B6B] font-bold text-sm md:text-lg leading-relaxed opacity-80 mb-12 animate-in fade-in slide-in-from-left-8 duration-1000 delay-200">
               It looks like your cart is waiting for a feast. Let's fill it with something extraordinary today.
             </p>
 
@@ -257,9 +257,9 @@ const CartPage = () => {
               <div className="absolute -inset-1 bg-gradient-to-r from-[#D10000] to-[#DA9133] rounded-[2.5rem] blur opacity-25 group-hover:opacity-60 transition duration-1000"></div>
               <button
                 onClick={() => navigate('/home')}
-                className="relative bg-[#D10000] text-white font-black py-5 md:py-7 px-12 md:px-20 rounded-[2.5rem] flex items-center gap-4 text-sm md:text-base uppercase tracking-[0.25em] transition-all hover:scale-[1.02] active:scale-95 shadow-2xl overflow-hidden"
+                className="relative bg-[#D10000] text-white font-black py-2.5 px-6 rounded-xl flex items-center gap-2.5 text-[9px] md:text-[10px] tracking-[0.15em] transition-all hover:scale-[1.02] active:scale-95 shadow-lg overflow-hidden"
               >
-                <ArrowLeft size={24} className="group-hover:-translate-x-1 transition-transform" />
+                <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
                 <span className="relative z-10">Start Your Feast</span>
               </button>
             </div>
@@ -268,7 +268,7 @@ const CartPage = () => {
             <div className="mt-16 opacity-30 flex items-center gap-4 grayscale scale-90 md:scale-100 origin-left">
               <img src="/logo-light.png" alt="" className="h-6 invert opacity-50" />
               <div className="w-1 h-1 rounded-full bg-black"></div>
-              <span className="text-[10px] font-black tracking-[0.4em] uppercase">Premium Dining Experience</span>
+              <span className="text-[10px] font-black tracking-[0.1em]">Premium Dining Experience</span>
             </div>
           </div>
 
@@ -289,39 +289,30 @@ const CartPage = () => {
           handleLogout={handleLogout}
           navigate={navigate}
           dropdownRef={dropdownRef}
-          hideCart={true}
+          hideCart={false}
         />
 
-        {/* Simple Back Header below Navbar */}
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center gap-4 relative z-10 pb-4">
-          <button
-            onClick={() => navigate('/home')}
-            className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-white hover:text-[#D10000] transition-all shadow-xl group border border-white/30 active:scale-95"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <h1 className="text-white font-black text-lg uppercase tracking-widest">My Cart</h1>
-        </div>
+
       </div>
 
-      <main className="max-w-7xl mx-auto px-6 pt-4 pb-16 bg-[#FAF9F6]">
-        <div className="flex flex-col lg:flex-row gap-10 items-start">
+      <main className="max-w-5xl mx-auto px-6 pt-4 pb-12 bg-[#FAF9F6]">
+        <div className="flex flex-col lg:flex-row gap-6 items-start">
 
           {/* Main Content Area */}
           <div className="flex-1 space-y-8 w-full">
 
             {/* Delivery Steps */}
-            <div className="bg-white rounded-[2rem] p-8 flex flex-wrap gap-8 items-center justify-between border border-[#D10000]/5 shadow-sm">
+            <div className="bg-white rounded-[1.5rem] p-4 flex flex-wrap gap-6 items-center justify-between border border-[#D10000]/5 shadow-sm">
               <div className="flex items-center gap-5">
-                <div className="w-12 h-12 rounded-2xl bg-[#D10000]/10 flex items-center justify-center text-[#D10000]">
+                <div className="w-9 h-9 rounded-lg bg-[#D10000]/10 flex items-center justify-center text-[#D10000]">
                   <MapPin size={22} />
                 </div>
                 <div className="flex flex-col justify-center">
                   <div className="flex items-center gap-3 mb-1">
-                    <h4 className="text-sm font-black text-text-primary tracking-tight leading-none uppercase">Delivery Address</h4>
+                    <h4 className="text-sm font-black text-text-primary tracking-tight leading-none">Delivery Address</h4>
                     <button
                       onClick={() => setIsAddressListModalOpen(true)}
-                      className="text-[8px] font-black text-[#D10000] uppercase tracking-widest bg-[#D10000]/5 hover:bg-[#D10000]/10 px-2 py-1 rounded-lg transition-all border border-[#D10000]/10 active:scale-95"
+                      className="text-[7px] font-black text-[#D10000] tracking-widest bg-[#D10000]/5 hover:bg-[#D10000]/10 px-1.5 py-0.5 rounded-md transition-all border border-[#D10000]/10 active:scale-95"
                     >
                       Change
                     </button>
@@ -333,11 +324,11 @@ const CartPage = () => {
               </div>
 
               <div className="flex items-center gap-5">
-                <div className="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center text-green-600">
+                <div className="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center text-green-600">
                   <Clock size={22} />
                 </div>
                 <div className="flex flex-col justify-center">
-                  <h4 className="text-sm font-black text-text-primary tracking-tight leading-none mb-1 uppercase">Estimated Time</h4>
+                  <h4 className="text-sm font-black text-text-primary tracking-tight leading-none mb-1">Estimated Time</h4>
                   <p className="text-[11px] text-text-muted font-bold opacity-60 leading-tight tracking-wide">25 - 35 MINUTES</p>
                 </div>
               </div>
@@ -345,26 +336,26 @@ const CartPage = () => {
 
             {/* Items List */}
             <div className="space-y-4">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-1.5 h-6 bg-[#D10000] rounded-full"></div>
-                <h2 className="text-xl font-black text-text-primary tracking-tight uppercase">Cart Items ({cartItems.length})</h2>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-1 h-5 bg-[#D10000] rounded-full"></div>
+                <h2 className="text-lg font-black text-text-primary tracking-tight">Cart Items ({cartItems.length})</h2>
               </div>
 
               {cartItems.map((item) => (
-                <div key={item._id} className="bg-white rounded-[2.5rem] p-5 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-gray-100 flex items-center gap-6 group hover:shadow-[0_25px_60px_rgb(0,0,0,0.06)] transition-all duration-700">
+                <div key={item._id} className="bg-white rounded-[1.5rem] p-3 shadow-[0_4px_20px_rgb(0,0,0,0.02)] border border-gray-100 flex items-center gap-4 group hover:shadow-[0_15px_40px_rgb(0,0,0,0.04)] transition-all duration-700">
                   {/* Compact Image */}
-                  <div className="w-24 h-24 md:w-32 md:h-32 rounded-[1.8rem] overflow-hidden bg-gray-50 flex-shrink-0 relative">
+                  <div className="w-20 h-20 md:w-24 md:h-24 rounded-[1rem] overflow-hidden bg-gray-50 flex-shrink-0 relative">
                     <img src={item.image || '/placeholder-food.jpg'} alt={item.name} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-1000" />
                     <div className="absolute top-2 left-2 bg-white/95 backdrop-blur-md px-2 py-1 rounded-lg border border-gray-100 flex items-center gap-1">
                       <span className={`w-2 h-2 rounded-full ${item.foodType === 'veg' ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></span>
-                      <span className="text-[8px] font-black uppercase tracking-widest">{item.foodType}</span>
+                      <span className="text-[8px] font-black tracking-widest">{item.foodType}</span>
                     </div>
                   </div>
 
                   {/* Content Area */}
                   <div className="flex-1 py-1">
                     <div className="flex justify-between items-start mb-1">
-                      <h3 className="text-base md:text-lg font-black text-text-primary group-hover:text-[#D10000] transition-colors leading-tight uppercase truncate">
+                      <h3 className="text-sm md:text-base font-black text-text-primary group-hover:text-[#D10000] transition-colors leading-tight truncate">
                         {item.name} {item.selectedSize && <span className="text-[10px] text-text-muted">({item.selectedSize})</span>}
                       </h3>
                       <button
@@ -374,10 +365,10 @@ const CartPage = () => {
                         <Trash2 size={18} />
                       </button>
                     </div>
-                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest opacity-40 mb-4">{item.category?.name || 'Main Course'}</p>
+                    <p className="text-[9px] font-bold text-text-muted tracking-widest opacity-40 mb-3">{item.category?.name || 'Main Course'}</p>
 
                     <div className="flex items-center justify-between mt-auto">
-                      <div className="font-black text-xl text-text-primary tracking-tighter">
+                      <div className="font-black text-base text-text-primary tracking-tighter">
                         <span className="text-[#D10000] text-sm mr-0.5 font-bold">₹</span>
                         {(() => {
                           const variants = item.variants || item.sizes || [];
@@ -389,18 +380,12 @@ const CartPage = () => {
 
                       {/* Premium Stepper */}
                       <div className="flex items-center gap-3 bg-gray-50 px-2 py-1.5 rounded-2xl border border-gray-100">
-                        <button
-                          onClick={() => updateQuantity(item._id, item.quantity - 1, item.selectedSize)}
-                          className="w-8 h-8 rounded-xl bg-white shadow-sm flex items-center justify-center text-text-primary hover:bg-[#D10000] hover:text-white transition-all active:scale-90"
-                        >
-                          <Minus size={12} strokeWidth={4} />
+                        <button onClick={() => updateQuantity(item._id, item.selectedSize, item.quantity - 1)} className="w-7 h-7 flex items-center justify-center text-text-primary hover:bg-gray-100 rounded-lg transition-colors border border-gray-100">
+                          <Minus size={12} />
                         </button>
-                        <span className="text-sm font-black w-4 text-center">{item.quantity}</span>
-                        <button
-                          onClick={() => updateQuantity(item._id, item.quantity + 1, item.selectedSize)}
-                          className="w-8 h-8 rounded-xl bg-white shadow-sm flex items-center justify-center text-text-primary hover:bg-[#D10000] hover:text-white transition-all active:scale-90"
-                        >
-                          <Plus size={12} strokeWidth={4} />
+                        <span className="w-6 text-center text-xs font-black">{item.quantity}</span>
+                        <button onClick={() => updateQuantity(item._id, item.selectedSize, item.quantity + 1)} className="w-7 h-7 flex items-center justify-center text-text-primary hover:bg-gray-100 rounded-lg transition-colors border border-gray-100">
+                          <Plus size={12} />
                         </button>
                       </div>
                     </div>
@@ -410,28 +395,28 @@ const CartPage = () => {
             </div>
           </div>
 
-          <div className="w-full lg:w-[380px] sticky top-44">
-            <div className="bg-white rounded-[3rem] p-8 border border-gray-100 flex flex-col shadow-sm">
-              <h2 className="text-2xl font-black text-text-primary tracking-tight mb-8 uppercase">Order Details</h2>
+          <div className="w-full lg:w-[300px] sticky top-44">
+            <div className="bg-white rounded-[1.5rem] p-5 border border-gray-100 flex flex-col shadow-sm">
+              <h2 className="text-lg font-black text-text-primary tracking-tight mb-6">Order Details</h2>
 
               {/* Pricing Breakdown */}
               <div className="space-y-4 mb-8">
-                <div className="flex justify-between text-xs font-black uppercase tracking-widest text-text-muted/60">
+                <div className="flex justify-between text-xs font-black tracking-widest text-text-muted/60">
                   <span>Item Total</span>
                   <span className="text-text-primary">₹{subtotal}</span>
                 </div>
-                <div className="flex justify-between text-xs font-black uppercase tracking-widest text-text-muted/60">
+                <div className="flex justify-between text-xs font-black tracking-widest text-text-muted/60">
                   <span>Delivery Partner Fee</span>
                   <span className="text-text-primary">₹{deliveryFee}</span>
                 </div>
-                <div className="flex justify-between text-xs font-black uppercase tracking-widest text-text-muted/60">
+                <div className="flex justify-between text-xs font-black tracking-widest text-text-muted/60">
                   <span>Platform Fee</span>
                   <span className="text-text-primary">₹{platformFee}</span>
                 </div>
                 <div className="h-px bg-dashed border-t border-dashed border-gray-200 my-2"></div>
                 <div className="flex justify-between items-center pt-2">
-                  <span className="text-sm font-black text-text-primary uppercase tracking-widest">To Pay</span>
-                  <span className="text-3xl font-black text-[#D10000] tracking-tighter leading-none">₹{total}</span>
+                  <span className="text-sm font-black text-text-primary tracking-widest">To Pay</span>
+                  <span className="text-xl font-black text-[#D10000] tracking-tighter leading-none">₹{total}</span>
                 </div>
                 {total < 100 && (
                   <p className="text-[10px] font-bold text-red-500 mt-2 text-center animate-pulse">
@@ -447,7 +432,7 @@ const CartPage = () => {
                     <span className="text-xs">🎟️</span>
                   </div>
                   <div>
-                    <h5 className="text-[10px] font-black uppercase tracking-widest text-text-primary">Apply Coupon</h5>
+                    <h5 className="text-[10px] font-black tracking-widest text-text-primary">Apply Coupon</h5>
                     <p className="text-[8px] font-bold text-[#D10000]">Save up to ₹100 more</p>
                   </div>
                 </div>
@@ -477,7 +462,7 @@ const CartPage = () => {
                   }
                   navigate('/payment', { state: { deliveryAddress } });
                 }}
-                className={`w-full font-black py-5 rounded-[2rem] transition-all shadow-[0_20px_50px_rgba(218,145,51,0.2)] flex flex-col items-center gap-0.5 group relative overflow-hidden ${total < 100 ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' : 'bg-[#DA9133] text-white hover:bg-[#C27D29]'}`}
+                className={`w-full font-black py-2 rounded-xl transition-all shadow-[0_8px_25px_rgba(218,145,51,0.12)] flex flex-col items-center gap-0 group relative overflow-hidden ${total < 100 ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' : 'bg-[#DA9133] text-white hover:bg-[#C27D29]'}`}
               >
                 <div className={`absolute inset-0 bg-black/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out ${total < 100 ? 'hidden' : ''}`}></div>
                 <span className="relative z-10 text-sm tracking-widest mb-0.5">Proceed to Pay</span>

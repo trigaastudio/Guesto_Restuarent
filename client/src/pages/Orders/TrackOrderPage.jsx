@@ -6,6 +6,7 @@ import Navbar from '../../components/Navbar/Navbar';
 import Footer from '../../components/Footer/Footer';
 import { useCart } from '../../context/CartContext';
 import { useTheme } from '../../context/ThemeContext';
+import socket from '../../services/socket';
 
 const TrackOrderPage = () => {
   const { orderId } = useParams();
@@ -19,9 +20,32 @@ const TrackOrderPage = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
     fetchOrderDetails();
-    // Simulate real-time updates every 30 seconds
-    const interval = setInterval(fetchOrderDetails, 30000);
-    return () => clearInterval(interval);
+
+    // Socket setup
+    socket.connect();
+
+    const onConnect = () => {
+      console.log('Connected to socket server');
+      socket.emit('joinOrder', orderId);
+    };
+
+    const onOrderStatusUpdate = ({ status }) => {
+      console.log('Received status update:', status);
+      setOrder(prev => prev ? { ...prev, orderStatus: status } : null);
+    };
+
+    socket.on('connect', onConnect);
+    socket.on('orderStatusUpdated', onOrderStatusUpdate);
+
+    if (socket.connected) {
+      onConnect();
+    }
+
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('orderStatusUpdated', onOrderStatusUpdate);
+      socket.disconnect();
+    };
   }, [orderId]);
 
   const fetchOrderDetails = async () => {
@@ -66,7 +90,7 @@ const TrackOrderPage = () => {
         </div>
         <h2 className="text-2xl font-black text-text-primary mb-2 tracking-tight">Order Not Found</h2>
         <p className="text-sm font-bold text-text-muted opacity-60 mb-8">We couldn't find the order you're looking for.</p>
-        <button onClick={() => navigate('/my-orders')} className="bg-[#D10000] text-white px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest">Back to Orders</button>
+        <button onClick={() => navigate('/my-orders')} className="bg-[#D10000] text-white px-8 py-3 rounded-2xl font-black text-xs tracking-widest">Back to Orders</button>
       </div>
     );
   }
@@ -78,7 +102,8 @@ const TrackOrderPage = () => {
       case 'placed': return 'Placed';
       case 'processing': return 'Preparing';
       case 'out-for-delivery': return 'On the way';
-      case 'delivered': return 'Delivered';
+      case 'delivered':
+      case 'completed': return 'Delivered';
       case 'cancelled': return 'Cancelled';
       default: return status;
     }
@@ -88,33 +113,24 @@ const TrackOrderPage = () => {
     <div className={`min-h-screen bg-[#FAF9F6] font-sans overflow-x-hidden ${theme}`}>
       <header className="relative bg-[#D10000] z-40 transition-all duration-500 shadow-xl overflow-hidden">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3 blur-[120px] pointer-events-none"></div>
-        <Navbar user={user} cartItems={cartItems} navigate={navigate} />
+        <Navbar user={user} cartItems={cartItems} navigate={navigate} hideCart={true} />
       </header>
 
       <main className="max-w-6xl mx-auto px-6 pt-10 pb-20">
         {/* Top Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 md:mb-10">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div className="w-full">
             <button
               onClick={() => navigate('/my-orders')}
-              className="flex items-center gap-2 text-[10px] font-black text-[#D10000] tracking-wide mb-3 hover:gap-3 transition-all"
+              className="flex items-center gap-2 text-[10px] font-black text-[#D10000] tracking-wide mb-2 hover:gap-3 transition-all"
             >
               <ArrowLeft size={14} /> Back to my orders
             </button>
             <div className="flex flex-wrap items-center gap-4">
-              <h1 className="text-3xl md:text-4xl font-black text-text-primary tracking-tighter break-words">Track Order <span className="text-[#D10000]">#{order.orderNumber || order._id.slice(-8).toUpperCase()}</span></h1>
-              <div className="px-4 py-1.5 rounded-full bg-[#D10000]/5 border border-[#D10000]/10 text-[#D10000] text-[10px] font-black uppercase tracking-widest animate-pulse">
+              <h1 className="text-2xl md:text-3xl font-black text-text-primary tracking-tighter break-words">Track Order <span className="text-[#D10000]">#{order.orderNumber || order._id.slice(-8).toUpperCase()}</span></h1>
+              <div className="px-3 py-1 rounded-full bg-[#D10000]/5 border border-[#D10000]/10 text-[#D10000] text-[9px] font-black tracking-widest animate-pulse">
                 {getStatusLabel(order.orderStatus)}
               </div>
-            </div>
-          </div>
-          <div className="bg-white px-6 py-4 rounded-[1.5rem] border border-gray-100 shadow-sm flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center text-green-600">
-              <Clock size={20} />
-            </div>
-            <div>
-              <p className="text-[10px] font-black text-text-muted tracking-wide">Estimated arrival</p>
-              <p className="text-lg font-black text-text-primary">25 - 35 mins</p>
             </div>
           </div>
         </div>
@@ -122,9 +138,9 @@ const TrackOrderPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           {/* Left Column: Tracking Stepper */}
           <div className="lg:col-span-2 space-y-8">
-            <div className="bg-white rounded-[2.5rem] p-6 md:p-10 border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)] relative overflow-hidden">
+            <div className="bg-white rounded-[1.5rem] p-5 md:p-8 border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)] relative overflow-hidden">
               {/* Status Stepper */}
-              <div className="relative space-y-10 md:y-12">
+              <div className="relative space-y-8 md:y-10">
                 {statusSteps.map((step, index) => {
                   const isCompleted = index <= activeStepIndex;
                   const isActive = index === activeStepIndex;
@@ -134,11 +150,11 @@ const TrackOrderPage = () => {
                     <div key={step.id} className="relative flex gap-4 md:gap-8 group">
                       {/* Vertical Line */}
                       {!isLast && (
-                        <div className={`absolute left-6 md:left-7 top-12 md:top-14 bottom-[-40px] md:bottom-[-48px] w-1 rounded-full transition-colors duration-1000 ${index < activeStepIndex ? 'bg-[#D10000]' : 'bg-gray-100'}`}></div>
+                        <div className={`absolute left-5 md:left-6 top-10 md:top-12 bottom-[-32px] md:bottom-[-40px] w-0.5 rounded-full transition-colors duration-1000 ${index < activeStepIndex ? 'bg-[#D10000]' : 'bg-gray-100'}`}></div>
                       )}
 
                       {/* Icon Node */}
-                      <div className={`relative z-10 w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center transition-all duration-700 shadow-lg shrink-0 ${isCompleted ? 'bg-[#D10000] text-white shadow-[#D10000]/20' : 'bg-gray-50 text-gray-300'}`}>
+                      <div className={`relative z-10 w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center transition-all duration-700 shadow-md shrink-0 ${isCompleted ? 'bg-[#D10000] text-white shadow-[#D10000]/20' : 'bg-gray-50 text-gray-300'}`}>
                         {isActive && (
                           <div className="absolute inset-0 bg-[#D10000] rounded-xl md:rounded-2xl animate-ping opacity-20"></div>
                         )}
@@ -197,7 +213,7 @@ const TrackOrderPage = () => {
           {/* Right Column: Order Summary */}
           <div className="space-y-8">
             {/* Delivery Address */}
-            <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
+            <div className="bg-white rounded-[1.5rem] p-5 border border-gray-100 shadow-sm">
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
                   <MapPin size={20} />
@@ -205,14 +221,34 @@ const TrackOrderPage = () => {
                 <h3 className="text-lg font-black text-text-primary tracking-tight">Delivery Address</h3>
               </div>
               <div className="space-y-1">
-                <h4 className="font-black text-text-primary text-sm">{order.address?.recipientName}</h4>
-                <p className="text-xs text-text-muted font-bold opacity-70 leading-relaxed">{order.address?.address}</p>
-                <p className="text-[10px] font-black text-[#D10000] tracking-widest mt-2">{order.address?.mobile}</p>
+                <h4 className="font-black text-text-primary text-sm">{order.customerDetails?.name}</h4>
+                <p className="text-xs text-text-muted font-bold opacity-70 leading-relaxed">{order.customerDetails?.address}</p>
+                <p className="text-[10px] font-black text-[#D10000] tracking-widest mt-2">{order.customerDetails?.phone || order.customerDetails?.mobile}</p>
+                {order.customerDetails?.location && (
+                  <div className="mt-3 pt-3 border-t border-gray-50">
+                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1 opacity-40">Landmark / Location</p>
+                    <p className="text-[10px] font-bold text-text-primary flex items-center gap-2">
+                      <MapPin size={10} className="text-[#D10000]" />
+                      {order.customerDetails.location.includes('http') ? (
+                        <a 
+                          href={order.customerDetails.location.split('📍 Precise Location: ')[1] || order.customerDetails.location} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-[#D10000] hover:underline"
+                        >
+                          View on Google Maps
+                        </a>
+                      ) : (
+                        order.customerDetails.location
+                      )}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Order Items */}
-            <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
+            <div className="bg-white rounded-[1.5rem] p-5 border border-gray-100 shadow-sm">
               <h3 className="text-lg font-black text-text-primary tracking-tight mb-6">Order summary</h3>
               <div className="space-y-5">
                 {order.items.map((item, idx) => (
@@ -250,7 +286,7 @@ const TrackOrderPage = () => {
             </div>
 
             {/* Support Card */}
-            <div className="bg-gray-50 rounded-[2.5rem] p-8 border border-gray-100 text-center">
+            <div className="bg-gray-50 rounded-[1.5rem] p-5 border border-gray-100 text-center">
               <h4 className="text-sm font-black text-text-primary mb-2 tracking-tight">Need help with your order?</h4>
               <p className="text-xs font-bold text-text-muted opacity-60 mb-6">Our support team is available 24/7</p>
               <button className="w-full py-4 rounded-2xl border-2 border-gray-200 text-xs font-black tracking-widest hover:bg-white transition-all active:scale-[0.98]">Contact support</button>
