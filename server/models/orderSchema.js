@@ -10,7 +10,7 @@ const orderSchema = new mongoose.Schema({
   orderType: {
     type: String,
     // Standardized to kebab-case, removed redundancies
-    enum: ["dine-in", "takeaway", "delivery", "online"],
+    enum: ["dine-in", "takeaway", "delivery"],
     required: true
   },
   orderSource: {
@@ -45,8 +45,8 @@ const orderSchema = new mongoose.Schema({
     },
     kitchenStatus: {
       type: String,
-      enum: ["pending", "preparing", "ready"],
-      default: "pending"
+      enum: ["placed", "preparing", "ready", "delayed"],
+      default: "placed"
     }
   }],
 
@@ -70,6 +70,7 @@ const orderSchema = new mongoose.Schema({
   subtotal: { type: Number, default: 0 },
   tax: { type: Number, default: 0 },
   discount: { type: Number, default: 0 },
+  deliveryFee: { type: Number, default: 0 }, // Added from snippet
   totalAmount: { type: Number, default: 0 },
   cashReceived: { type: Number, default: 0 },
   balance: { type: Number, default: 0 },
@@ -77,20 +78,21 @@ const orderSchema = new mongoose.Schema({
   // Status Management
   orderStatus: {
     type: String,
-    enum: ["placed", "processing", "out-for-delivery", "delivered", "completed", "cancelled"],
+    enum: ["placed", "processing", "out-for-delivery", "delivered", "cancelled"],
     default: "placed"
   },
 
   kitchenStatus: {
     type: String,
-    enum: ["pending", "preparing", "ready"],
-    default: "pending"
+    enum: ["placed", "preparing", "ready", "delayed"],
+    default: "placed"
   },
 
+  remarks: { type: String, trim: true }, // Added for easy top-level access
   isLocked: { type: Boolean, default: false },
   paymentStatus: {
     type: String,
-    enum: ["pending", "failed", "refunded", "completed"],
+    enum: ["pending", "paid", "failed", "refunded"],
     default: "pending"
   },
   paymentMethod: {
@@ -99,39 +101,44 @@ const orderSchema = new mongoose.Schema({
   }
 }, { timestamps: true, strict: true });
 
-// Pre-save hook: Data Consistency & Calculations
-orderSchema.pre('save', async function () {
-  // 1. Financial Calculations
-  if (this.isModified('items') || this.isModified('tax') || this.isModified('discount')) {
+// Pre-validation hook: Data Consistency & Calculations
+orderSchema.pre('validate', async function () {
+  // 1. Financial Calculations (Including Delivery Fee)
+  if (this.isModified('items') || this.isModified('tax') || this.isModified('discount') || this.isModified('deliveryFee')) {
     this.subtotal = this.items.reduce((acc, item) =>
       acc + (item.totalPrice || (item.price * item.quantity) || 0), 0
     );
-    this.totalAmount = Math.max(0, this.subtotal + this.tax - this.discount);
+    // Formula: Subtotal + Tax + DeliveryFee - Discount
+    this.totalAmount = Math.max(0, this.subtotal + (this.tax || 0) + (this.deliveryFee || 0) - (this.discount || 0));
   }
 
   // 2. Cash Balance Calculation
-  if (this.paymentMethod === 'cash') {
+  if (this.paymentMethod === 'cash' || this.paymentMethod === 'cod') {
     this.balance = (this.cashReceived || 0) - this.totalAmount;
   }
 
-
+  // 3. Payment Status Auto-Update
+  if (this.paymentMethod === 'online') {
+    this.paymentStatus = 'paid';
+  }
 
   // 4. Kitchen Status Aggregation
   if (this.items && this.items.length > 0) {
     const statuses = this.items.map(i => i.kitchenStatus);
-    if (statuses.every(s => s === "ready")) {
+    if (statuses.some(s => s === "delayed")) {
+      this.kitchenStatus = "delayed";
+    } else if (statuses.every(s => s === "ready")) {
       this.kitchenStatus = "ready";
     } else if (statuses.some(s => s === "preparing" || s === "ready")) {
       this.kitchenStatus = "preparing";
     } else {
-      this.kitchenStatus = "pending";
+      this.kitchenStatus = "placed";
     }
 
-    // Auto-lock if kitchen starts
-    if (this.kitchenStatus !== "pending") this.isLocked = true;
+    if (this.kitchenStatus !== "placed") this.isLocked = true;
   }
 
-  // 5. Address/Customer Sync (Bidirectional)
+  // 5. Address/Customer Sync
   if (this.isModified('customerDetails') && !this.isModified('address')) {
     this.address = {
       ...this.address,
@@ -142,19 +149,18 @@ orderSchema.pre('save', async function () {
         `📍 Maps: https://www.google.com/maps?q=${this.customerDetails.location.lat},${this.customerDetails.location.lng}` :
         (this.customerDetails?.location || "")
     };
-  } else if (this.isModified('address') && !this.isModified('customerDetails')) {
-    let lat = null, lng = null;
-    if (typeof this.address?.location === 'string') {
-      const match = this.address.location.match(/q=([\d.-]+),([\d.-]+)/);
-      if (match) { lat = parseFloat(match[1]); lng = parseFloat(match[2]); }
+  }
+});
+
+// Added Socket Notification from snippet
+orderSchema.post('save', function (doc) {
+  try {
+    const { getIO } = require('../socket.js');
+    if (doc._id) {
+      getIO().emit('ordersUpdated');
     }
-    this.customerDetails = {
-      ...this.customerDetails,
-      name: this.address?.recipientName || "Walk-in",
-      phone: this.address?.mobile || "",
-      address: this.address?.address || "",
-      location: lat && lng ? { lat, lng } : (this.address?.location || "")
-    };
+  } catch (err) {
+    // Silent catch if socket isn't ready
   }
 });
 

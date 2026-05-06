@@ -57,7 +57,7 @@ class OrderController {
       // Auto-set payment status for cash
       let paymentStatus = 'pending';
       if (paymentMethod === 'cash' && cashReceived >= totalAmount) {
-        paymentStatus = 'completed';
+        paymentStatus = 'paid';
       }
 
       const newOrder = new Order({
@@ -73,7 +73,7 @@ class OrderController {
         },
         items: items.map(item => ({
           ...item,
-          kitchenStatus: 'pending'
+          kitchenStatus: 'placed'
         })),
         subtotal,
         tax,
@@ -101,7 +101,10 @@ class OrderController {
     try {
       const { type } = req.query;
       const query = type ? { orderType: type } : {};
-      const orders = await Order.find(query).populate('items.menuItem', 'name image').sort({ createdAt: -1 });
+      const orders = await Order.find(query)
+        .populate('items.menuItem', 'name image')
+        .populate('table', 'tableNumber')
+        .sort({ createdAt: -1 });
       res.json({ success: true, data: orders });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -117,6 +120,22 @@ class OrderController {
       const originalOrder = await Order.findById(id);
       if (!originalOrder) return res.status(404).json({ success: false, message: 'Order not found' });
 
+      // NEW OPERATIONAL RULE: Cannot move past 'processing' unless kitchen is 'ready'
+      // Allow moving TO processing, and allow CANCELLING anytime.
+      // But moving FROM processing to anything else requires kitchen 'ready'.
+      if (
+        originalOrder.orderStatus === 'processing' && 
+        updateData.orderStatus && 
+        updateData.orderStatus !== 'processing' && 
+        updateData.orderStatus !== 'cancelled' && 
+        originalOrder.kitchenStatus !== 'ready'
+      ) {
+        return res.status(403).json({ 
+          success: false, 
+          message: 'Order status cannot be updated until the Kitchen marks all items as "Ready".' 
+        });
+      }
+
       // Handle Stock Recovery if cancelled
       if (updateData.orderStatus === 'cancelled' && originalOrder.orderStatus !== 'cancelled') {
         await restoreStock(originalOrder.items);
@@ -131,9 +150,17 @@ class OrderController {
         }
       }
 
+      // Restrict editing items for user delivery orders
+      if (originalOrder.orderType === 'delivery' && originalOrder.orderSource === 'user' && updateData.items) {
+        return res.status(403).json({ success: false, message: 'User delivery orders cannot have their items modified by admin' });
+      }
+
       Object.assign(originalOrder, updateData);
       const order = await originalOrder.save();
-      await order.populate('items.menuItem', 'name image');
+      await order.populate([
+        { path: 'items.menuItem', select: 'name image' },
+        { path: 'table', select: 'tableNumber' }
+      ]);
 
       getIO().emit('ordersUpdated');
       res.json({ success: true, data: order });
@@ -167,7 +194,7 @@ class OrderController {
       const { kitchenStatus } = req.body;
 
       // Validate kitchenStatus value
-      const allowedStatuses = ['pending', 'preparing', 'ready'];
+      const allowedStatuses = ['placed', 'preparing', 'ready', 'delayed'];
       if (!allowedStatuses.includes(kitchenStatus)) {
         return res.status(400).json({ success: false, message: `Invalid kitchen status: "${kitchenStatus}"` });
       }
@@ -200,11 +227,15 @@ class OrderController {
       const order = await Order.findById(id);
       if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
-      if (['cancelled', 'completed', 'delivered'].includes(order.orderStatus)) {
+      if (['cancelled', 'delivered'].includes(order.orderStatus)) {
         return res.status(403).json({ success: false, message: 'Finalized orders cannot be modified' });
       }
 
-      order.items.push(...items.map(item => ({ ...item, kitchenStatus: 'pending' })));
+      if (order.orderType === 'delivery' && order.orderSource === 'user') {
+        return res.status(403).json({ success: false, message: 'User delivery orders cannot have their items modified by admin' });
+      }
+
+      order.items.push(...items.map(item => ({ ...item, kitchenStatus: 'placed' })));
 
       // Recalculate Totals
       const newSubtotal = order.items.reduce((acc, item) => acc + (item.totalPrice || 0), 0);
@@ -239,8 +270,12 @@ class OrderController {
       const order = await Order.findById(orderId);
       if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
-      if (['cancelled', 'completed', 'delivered'].includes(order.orderStatus)) {
+      if (['cancelled', 'delivered'].includes(order.orderStatus)) {
         return res.status(403).json({ success: false, message: 'Finalized orders cannot be modified' });
+      }
+
+      if (order.orderType === 'delivery' && order.orderSource === 'user') {
+        return res.status(403).json({ success: false, message: 'User delivery orders cannot have their items modified by admin' });
       }
 
       const item = order.items.id(itemId);
@@ -280,7 +315,7 @@ class OrderController {
       const order = await Order.findById(orderId);
       if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
-      if (['cancelled', 'completed', 'delivered'].includes(order.orderStatus)) {
+      if (['cancelled', 'delivered'].includes(order.orderStatus)) {
         return res.status(403).json({ success: false, message: 'Finalized orders cannot be modified' });
       }
 
@@ -316,7 +351,7 @@ class OrderController {
       const order = await Order.findById(id);
       if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
-      if (['cancelled', 'completed', 'delivered'].includes(order.orderStatus)) {
+      if (['cancelled', 'delivered'].includes(order.orderStatus)) {
         return res.status(403).json({ success: false, message: 'Finalized orders cannot be modified' });
       }
 
@@ -326,7 +361,7 @@ class OrderController {
       // Update items
       order.items = items.map(item => ({
         ...item,
-        kitchenStatus: item.kitchenStatus || 'pending'
+        kitchenStatus: item.kitchenStatus || 'placed'
       }));
 
       // Recalculate Totals (Handled by pre-save hook)
@@ -352,6 +387,45 @@ class OrderController {
       await order.populate('items.menuItem', 'name image');
       getIO().emit('ordersUpdated');
       res.json({ success: true, data: order });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  async clearHistory(req, res) {
+    try {
+      const { orderType, startDate, endDate, ids } = req.query;
+      
+      let query = {};
+
+      if (ids) {
+        query = { _id: { $in: ids.split(',') } };
+      } else {
+        query = {
+          $or: [
+            { orderStatus: 'delivered', paymentStatus: 'paid' },
+            { orderStatus: 'cancelled' }
+          ]
+        };
+
+        if (orderType && orderType !== 'all') {
+          query.orderType = orderType;
+        }
+
+        if (startDate || endDate) {
+          query.createdAt = {};
+          if (startDate) query.createdAt.$gte = new Date(startDate);
+          if (endDate) {
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+            query.createdAt.$lte = end;
+          }
+        }
+      }
+
+      const result = await Order.deleteMany(query);
+      getIO().emit('ordersUpdated');
+      res.json({ success: true, message: `${result.deletedCount} orders cleared`, deletedCount: result.deletedCount });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }

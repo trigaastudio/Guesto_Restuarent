@@ -17,9 +17,10 @@ const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:500
 const NOTIFICATION_SOUND = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
 
 const KITCHEN_STATUSES = [
-  { value: 'pending', label: 'Pending', bg: 'bg-amber-500/10', text: 'text-amber-600', border: 'border-amber-400/40', dot: 'bg-amber-500' },
+  { value: 'placed', label: 'Placed', bg: 'bg-amber-500/10', text: 'text-amber-600', border: 'border-amber-400/40', dot: 'bg-amber-500' },
   { value: 'preparing', label: 'Preparing', bg: 'bg-blue-500/10', text: 'text-blue-600', border: 'border-blue-400/40', dot: 'bg-blue-500' },
   { value: 'ready', label: 'Ready', bg: 'bg-emerald-500/10', text: 'text-emerald-600', border: 'border-emerald-400/40', dot: 'bg-emerald-500' },
+  { value: 'delayed', label: 'Delayed', bg: 'bg-red-500/10', text: 'text-red-600', border: 'border-red-400/40', dot: 'bg-red-500' },
 ];
 
 const StatusDropdown = ({ value, onChange }) => {
@@ -235,21 +236,7 @@ const KitchenDashboard = () => {
   const handleUpdateItemStatus = async (orderId, itemId, newStatus, itemName, currentStatus) => {
     if (newStatus === currentStatus) return;
 
-    const labels = { pending: 'Pending', preparing: 'Preparing', ready: 'Ready' };
-    const colors = { pending: '#9CA3AF', preparing: '#F59E0B', ready: '#16A34A' };
-
-    const result = await showAlert({
-      icon: 'question',
-      title: 'Change Status?',
-      text: `Change "${itemName}" from ${labels[currentStatus] || currentStatus} → ${labels[newStatus]}?`,
-      showCancelButton: true,
-      confirmButtonColor: colors[newStatus] || '#C96A0A',
-      cancelButtonColor: '#9CA3AF',
-      confirmButtonText: 'Yes, Change!',
-      cancelButtonText: 'Cancel',
-    });
-
-    if (!result.isConfirmed) return;
+    const labels = { placed: 'Placed', preparing: 'Preparing', ready: 'Ready', delayed: 'Delayed' };
 
     try {
       await axios.patch(`${API_BASE_URL}/orders/${orderId}/items/${itemId}/status`, { kitchenStatus: newStatus });
@@ -276,7 +263,7 @@ const KitchenDashboard = () => {
     if (!result.isConfirmed) return;
 
     try {
-      await axios.patch(`${API_BASE_URL}/orders/${orderId}/status`, { orderStatus: 'completed' });
+      await axios.patch(`${API_BASE_URL}/orders/${orderId}/status`, { orderStatus: 'delivered' });
       showToast('success', `Order ${orderNumber} removed from kitchen`);
       fetchOrders(true);
     } catch (error) {
@@ -298,7 +285,7 @@ const KitchenDashboard = () => {
   });
 
   const pendingCount = orders.filter(o =>
-    o.items?.some(i => i.kitchenStatus === 'pending' || i.kitchenStatus === 'preparing')
+    o.items?.some(i => i.kitchenStatus === 'placed' || i.kitchenStatus === 'preparing')
   ).length;
 
   return (
@@ -593,7 +580,7 @@ const KitchenDashboard = () => {
                     {/* Items */}
                     <div className="flex-1 p-5 space-y-3">
                       {order.items?.map((item) => {
-                        const status = item.kitchenStatus || 'pending';
+                        const status = item.kitchenStatus || 'placed';
                         return (
                           <div key={item._id} className="flex items-center justify-between p-3 bg-background-muted/20 rounded-2xl border border-border-light gap-3">
                             <div className="flex items-center space-x-3 min-w-0">

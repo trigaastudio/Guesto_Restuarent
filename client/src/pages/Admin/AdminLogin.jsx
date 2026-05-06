@@ -12,7 +12,21 @@ const AdminLogin = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [settings, setSettings] = useState(null);
   const isDarkMode = theme === 'dark';
+
+  React.useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const response = await api.get('/api/settings');
+      setSettings(response.data.data);
+    } catch (err) {
+      console.error('Error fetching settings:', err);
+    }
+  };
 
   // Prevent accessing login if already logged in as admin
   React.useEffect(() => {
@@ -56,7 +70,13 @@ const AdminLogin = () => {
 
       {/* Logo Section */}
       <div className="mb-12 text-center flex flex-col items-center animate-in fade-in slide-in-from-top-4 duration-700">
-        <img src={isDarkMode ? "/logo-golden.png" : "/logo-dark.png"} alt="GuestO Logo" className="h-16 w-auto mb-2" />
+        <img 
+          src={isDarkMode 
+            ? (settings?.branding?.logoGold || "/logo-golden.png") 
+            : (settings?.branding?.logoDark || "/logo-dark.png")} 
+          alt="Restaurant Logo" 
+          className="h-16 w-auto mb-2" 
+        />
       </div>
 
       {/* Login Card */}

@@ -4,7 +4,7 @@ import {
   CheckCircle2, XCircle, AlertCircle, Loader2, ArrowUpDown,
   ShoppingCart, User, Phone, CreditCard, ChevronRight,
   MoreVertical, Printer, Package, Utensils, RotateCcw,
-  Copy, MapPin, ExternalLink, Minus
+  Copy, MapPin, ExternalLink, Minus, Truck
 } from 'lucide-react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
@@ -23,13 +23,13 @@ const OrderSection = () => {
     }).join('\n');
 
     // Support both customerDetails and address structures
-    const name = (order.orderSource === 'online' || order.orderSource === 'user') 
+    const name = (order.orderSource === 'online' || order.orderSource === 'user')
       ? (order.address?.recipientName || order.customerDetails?.name || 'Walk-in')
       : (order.customerDetails?.name || order.address?.recipientName || 'Walk-in');
     const phone = order.customerDetails?.phone || order.address?.mobile || 'N/A';
     const address = order.customerDetails?.address || order.address?.address || 'N/A';
     const location = order.customerDetails?.location || order.address?.location;
-    
+
     // Construct location URL if it's an object or already a string
     let locationUrl = '';
     if (location) {
@@ -43,17 +43,17 @@ const OrderSection = () => {
     }
 
     const text = `*ORDER: ${order.orderNumber}*\n` +
-                 `--------------------------\n` +
-                 `👤 *Customer:* ${name}\n` +
-                 `📞 *Phone:* ${phone}\n` +
-                 `🏠 *Address:* ${address}\n` +
-                 `--------------------------\n` +
-                 `📦 *Items:*\n${itemsText}\n` +
-                 `--------------------------\n` +
-                 `💰 *Total:* ₹${order.totalAmount}\n` +
-                 `💳 *Payment:* ${order.paymentMethod?.toUpperCase()} (${order.paymentStatus?.toUpperCase()})\n` +
-                 locationUrl;
-    
+      `--------------------------\n` +
+      `👤 *Customer:* ${name}\n` +
+      `📞 *Phone:* ${phone}\n` +
+      `🏠 *Address:* ${address}\n` +
+      `--------------------------\n` +
+      `📦 *Items:*\n${itemsText}\n` +
+      `--------------------------\n` +
+      `💰 *Total:* ₹${order.totalAmount}\n` +
+      `💳 *Payment:* ${order.paymentMethod?.toUpperCase()} (${order.paymentStatus?.toUpperCase()})\n` +
+      locationUrl;
+
     navigator.clipboard.writeText(text);
     showToast('success', 'Copied for WhatsApp!');
   };
@@ -63,15 +63,34 @@ const OrderSection = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(localStorage.getItem('orderSearchTerm') || '');
   const [posSearchTerm, setPosSearchTerm] = useState('');
-  const [orderStatusFilter, setOrderStatusFilter] = useState('all');
+  const [orderStatusFilter, setOrderStatusFilter] = useState(localStorage.getItem('orderStatusFilter') || 'all');
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [activeTab, setActiveTab] = useState(localStorage.getItem('orderActiveTab') || 'takeaway');
+  const [historyOrderTypeFilter, setHistoryOrderTypeFilter] = useState('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [selectedOrderIds, setSelectedOrderIds] = useState([]);
+  const [settings, setSettings] = useState(null);
+
+  const fetchSettings = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/settings`);
+      setSettings(response.data.data);
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     localStorage.setItem('orderActiveTab', tab);
+    setSelectedOrderIds([]); // Reset selection on tab change
   };
   const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
 
@@ -84,6 +103,13 @@ const OrderSection = () => {
   const [posOrderType, setPosOrderType] = useState('takeaway');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryLocation, setDeliveryLocation] = useState('');
+  const [deliveryFee, setDeliveryFee] = useState('');
+  const [isResolvingLink, setIsResolvingLink] = useState(false);
+  const [updateProfile, setUpdateProfile] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState(null);
+  const [userSuggestions, setUserSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [allUsers, setAllUsers] = useState([]);
   const socketRef = useRef();
 
   useEffect(() => {
@@ -136,6 +162,12 @@ const OrderSection = () => {
     `;
     }).join('');
 
+    // Dynamic settings for Bill
+    const restaurantName = settings?.restaurantDetails?.name || 'GUESTO RESTAURENT';
+    const restaurantAddress = settings?.restaurantDetails?.address || 'Chammannur,Athirthi';
+    const restaurantPhone = settings?.restaurantDetails?.contactNumber || '7034805085';
+    const monochromeLogo = settings?.branding?.logoMonochrome || null;
+
     // Static QR from public folder
     const qrCodeUrl = '/QR-guestoPayment.jpeg';
 
@@ -154,11 +186,11 @@ const OrderSection = () => {
               font-size: 14px;
               line-height: 1.2;
             }
-            .header { text-align: center; margin-bottom: 15px; }
-            .restaurant-name { font-size: 18px; font-weight: bold; margin-bottom: 2px; }
-            .details { font-size: 13px; margin-bottom: 2px; }
-            .divider { border-top: 1px dashed #000; margin: 8px 0; }
-            .info-grid { display: grid; grid-template-cols: 1fr 1fr; margin-bottom: 10px; font-weight: bold; }
+            .header { text-align: center; margin-bottom: 5px; }
+            .restaurant-name { font-size: 18px; font-weight: bold; margin-bottom: 0px; }
+            .details { font-size: 11px; margin-bottom: 0px; line-height: 1.1; }
+            .divider { border-top: 1px dashed #000; margin: 4px 0; }
+            .info-grid { display: grid; grid-template-cols: 1fr 1fr; margin-bottom: 5px; font-weight: bold; font-size: 12px; }
             table { width: 100%; border-collapse: collapse; }
             .total-section { font-weight: bold; font-size: 16px; display: flex; justify-content: space-between; margin-top: 5px; }
             .payment-info { font-size: 13px; margin-top: 10px; }
@@ -168,9 +200,12 @@ const OrderSection = () => {
         </head>
         <body onload="window.print(); window.close();">
           <div class="header">
-            <div class="restaurant-name">GUESTO RESTAURENT</div>
-            <div class="details">Chammannur,Athirthi</div>
-            <div class="details">MOB: 7034805085, 9947649007</div>
+            ${monochromeLogo
+        ? `<img src="${monochromeLogo}" style="width: 45mm; height: auto; margin: 0 auto 2px auto; display: block;" />`
+        : `<div class="restaurant-name">${restaurantName}</div>`
+      }
+            <div class="details">${restaurantAddress}</div>
+            <div class="details">MOB: ${restaurantPhone}</div>
           </div>
           <div class="divider"></div>
           <div class="info-grid">
@@ -262,6 +297,34 @@ const OrderSection = () => {
     }
   };
 
+  const handleClearHistory = async (ids = null) => {
+    const isManualSelection = Array.isArray(ids);
+    const title = isManualSelection ? `Clear ${ids.length} Selected Orders?` : 'Clear History?';
+    const text = isManualSelection
+      ? `This will permanently delete the ${ids.length} marked orders from the database.`
+      : `This will permanently delete all history orders matching current filters from the database.`;
+
+    const result = await showDeleteConfirmation(title, text);
+    if (result.isConfirmed) {
+      try {
+        const response = await axios.delete(`${API_BASE_URL}/orders/clear-history`, {
+          params: {
+            orderType: historyOrderTypeFilter,
+            startDate,
+            endDate,
+            ids: isManualSelection ? ids.join(',') : undefined
+          }
+        });
+        if (response.data.success) {
+          showToast('success', response.data.message);
+          setSelectedOrderIds([]);
+        }
+      } catch (error) {
+        showToast('error', 'Failed to clear history');
+      }
+    }
+  };
+
   const fetchMenu = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/menu`);
@@ -281,11 +344,39 @@ const OrderSection = () => {
 
     setIsSubmitting(true);
     try {
+      // Update customer profile if requested
+      if (updateProfile && selectedUserId) {
+        const currentUserData = allUsers.find(u => u._id === selectedUserId);
+        if (currentUserData) {
+          const newAddresses = [...(currentUserData.addresses || [])];
+          const defaultIdx = newAddresses.findIndex(a => a.isDefault);
+          
+          if (defaultIdx > -1) {
+            // Update existing default
+            newAddresses[defaultIdx] = { 
+              ...newAddresses[defaultIdx], 
+              address: deliveryAddress, 
+              location: deliveryLocation 
+            };
+          } else if (newAddresses.length > 0) {
+            // No default, update first one
+            newAddresses[0] = { ...newAddresses[0], address: deliveryAddress, location: deliveryLocation, isDefault: true };
+          } else {
+            // No addresses at all, add first one
+            newAddresses.push({ address: deliveryAddress, location: deliveryLocation, type: 'home', isDefault: true });
+          }
+
+          await axios.put(`${API_BASE_URL}/users/${selectedUserId}`, {
+            addresses: newAddresses
+          });
+        }
+      }
+
       const subtotal = cart.reduce((acc, item) => acc + item.totalPrice, 0);
 
       if (selectedOrder) {
         // Full Edit mode (replaces items)
-        const response = await axios.patch(`${API_BASE_URL}/orders/${selectedOrder._id}/items`, { 
+        const response = await axios.patch(`${API_BASE_URL}/orders/${selectedOrder._id}/items`, {
           items: cart,
           cashReceived: parseFloat(cashReceived) || selectedOrder.cashReceived || 0,
           deliveryAddress: deliveryAddress,
@@ -302,6 +393,9 @@ const OrderSection = () => {
         return;
       }
 
+      const dFee = posOrderType === 'delivery' ? (parseFloat(deliveryFee) || 0) : 0;
+      const totalAmount = subtotal + dFee;
+
       const orderData = {
         customerDetails: {
           ...customer,
@@ -312,11 +406,12 @@ const OrderSection = () => {
         orderSource: 'admin',
         paymentMethod,
         subtotal,
+        deliveryFee: dFee,
         tax: 0,
         discount: 0,
-        totalAmount: subtotal,
+        totalAmount,
         cashReceived: parseFloat(cashReceived) || 0,
-        balance: (parseFloat(cashReceived) || 0) - subtotal
+        balance: (parseFloat(cashReceived) || 0) - totalAmount
       };
 
       const response = await axios.post(`${API_BASE_URL}/orders/counter`, orderData);
@@ -366,9 +461,9 @@ const OrderSection = () => {
   const handleUpdatePaymentStatus = async (orderId, newStatus) => {
     try {
       const updateData = { paymentStatus: newStatus };
-      // Automatically set order status to completed if marked as paid
-      if (newStatus === 'paid' || newStatus === 'completed') {
-        updateData.orderStatus = 'completed';
+      // Automatically set order status to delivered if marked as paid
+      if (newStatus === 'paid') {
+        updateData.orderStatus = 'delivered';
         // Record the current total as paidAmount when marking as paid
         const orderToUpdate = orders.find(o => o._id === orderId);
         if (orderToUpdate) {
@@ -378,7 +473,7 @@ const OrderSection = () => {
 
       const response = await axios.patch(`${API_BASE_URL}/orders/${orderId}/status`, updateData);
       if (response.data.success) {
-        showToast('success', `Payment marked as ${newStatus}${newStatus === 'paid' ? ' and order Completed' : ''}`);
+        showToast('success', `Payment marked as ${newStatus}${newStatus === 'paid' ? ' and order Delivered' : ''}`);
         setOrders(orders.map(o => o._id === orderId ? response.data.data : o));
         if (selectedOrder?._id === orderId) setSelectedOrder(response.data.data);
       }
@@ -402,6 +497,74 @@ const OrderSection = () => {
     }
   }, [selectedOrder]);
 
+  const fetchUsers = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/users`);
+      setAllUsers(response.data.data || []);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
+
+  const handleCustomerSearch = (field, value) => {
+    setCustomer(prev => ({ ...prev, [field]: value }));
+    
+    if (allUsers.length === 0) fetchUsers();
+
+    // Debounce the actual filtering for performance
+    if (window.searchTimer) clearTimeout(window.searchTimer);
+    
+    window.searchTimer = setTimeout(() => {
+      if (value.length >= 1) {
+        const filtered = allUsers.filter(u => {
+          const nameMatch = u.name?.toLowerCase().includes(value.toLowerCase());
+          const phoneMatch = u.phone?.includes(value);
+          return nameMatch || phoneMatch;
+        });
+        
+        setUserSuggestions(filtered.slice(0, 5));
+        setShowSuggestions(true);
+      } else {
+        setShowSuggestions(false);
+      }
+    }, 150); // 150ms delay is perfect for real-time feel without lag
+  };
+
+  const selectUserSuggestion = (user) => {
+    setSelectedUserId(user._id);
+    setCustomer({
+      name: user.name,
+      phone: user.phone || ''
+    });
+    
+    // Find default address or use the first one
+    const defaultAddr = user.addresses?.find(a => a.isDefault) || user.addresses?.[0];
+    
+    if (defaultAddr) {
+      setDeliveryAddress(defaultAddr.address || '');
+      if (defaultAddr.location) {
+        handleLocationLinkChange(defaultAddr.location);
+      }
+    }
+    setShowSuggestions(false);
+    setUpdateProfile(false); 
+  };
+
+  const handleOpenModal = (order = null) => {
+    fetchMenu();
+    fetchUsers();
+    if (order) {
+      setSelectedOrder(order);
+    } else {
+      setSelectedOrder(null);
+      setCart([]);
+      setCustomer({ name: 'Walk-in', phone: '' });
+      setSelectedUserId(null);
+      setUpdateProfile(false);
+    }
+    setIsModalOpen(true);
+  };
+
   const handleOpenDetails = (order) => {
     setSelectedOrder(order);
     setIsDetailsModalOpen(true);
@@ -412,13 +575,13 @@ const OrderSection = () => {
       const subtotal = selectedOrder.totalAmount || 0;
       const cash = parseFloat(editCashReceived) || 0;
       const balance = cash - subtotal;
-      
-      const response = await axios.patch(`${API_BASE_URL}/orders/${selectedOrder._id}/status`, { 
+
+      const response = await axios.patch(`${API_BASE_URL}/orders/${selectedOrder._id}/status`, {
         customerDetails: editCustomer,
         cashReceived: cash,
         balance: balance
       });
-      
+
       if (response.data.success) {
         showToast('success', 'Order details updated');
         setOrders(orders.map(o => o._id === selectedOrder._id ? response.data.data : o));
@@ -430,6 +593,13 @@ const OrderSection = () => {
   };
 
   const addToCart = (item, variant) => {
+    // Stock Check: Prioritize the item's total stock
+    const availableStock = item.totalStock;
+    if (availableStock !== undefined && availableStock <= 0) {
+      showToast('error', `Out of stock: ${item.name} is currently unavailable`);
+      return;
+    }
+
     const sizeName = variant.size || 'Standard';
     const existingIndex = cart.findIndex(c => c.menuItem === item._id && c.size === sizeName);
 
@@ -472,6 +642,77 @@ const OrderSection = () => {
     setSortConfig({ key, direction });
   };
 
+  // Helper to calculate distance from coordinates (Haversine formula)
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const d = R * c; // Distance in km
+    return d;
+  };
+
+  // Helper to parse Google Maps link for coordinates
+  const handleLocationLinkChange = async (url) => {
+    setDeliveryLocation(url);
+    if (!url) return;
+
+    let targetUrl = url;
+    const coordRegex = /([0-9.-]+),([0-9.-]+)/;
+
+    // If coordinates aren't immediately visible, try expanding it via the server
+    if (!url.match(coordRegex) || url.includes('maps.app.goo.gl') || url.includes('share.google')) {
+      try {
+        setIsResolvingLink(true);
+        showToast('info', 'Expanding link...');
+        const res = await axios.post(`${API_BASE_URL}/utils/expand-url`, { url });
+        targetUrl = res.data.expandedUrl;
+      } catch (err) {
+        console.error('Failed to expand URL:', err);
+      } finally {
+        setIsResolvingLink(false);
+      }
+    }
+
+    const match = targetUrl.match(coordRegex);
+
+    if (match && settings?.restaurantDetails?.location?.lat) {
+      const destLat = parseFloat(match[1]);
+      const destLng = parseFloat(match[2]);
+      const restLat = settings.restaurantDetails.location.lat;
+      const restLng = settings.restaurantDetails.location.lng;
+
+      const distanceStraight = calculateDistance(restLat, restLng, destLat, destLng);
+      let roundedDist = Math.ceil(distanceStraight * 10) / 10;
+
+      // Try to get Road Distance from OSRM (FREE)
+      try {
+        const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${restLng},${restLat};${destLng},${destLat}?overview=false`;
+        const osrmRes = await axios.get(osrmUrl);
+        if (osrmRes.data?.routes?.[0]?.distance) {
+          const roadDistKm = osrmRes.data.routes[0].distance / 1000;
+          roundedDist = Math.ceil(roadDistKm * 10) / 10;
+          console.log('Road distance calculated:', roundedDist);
+        }
+      } catch (osrmErr) {
+        console.error('OSRM failed, falling back to straight line:', osrmErr);
+      }
+
+      // Update distance input and fee
+      const distInput = document.getElementById('pos-distance-input');
+      if (distInput) distInput.value = roundedDist;
+      
+      const freeLimit = settings.deliverySettings?.freeDistanceLimit || 5;
+      const rate = settings.deliverySettings?.chargePerExtraKm || 10;
+      setDeliveryFee(roundedDist <= freeLimit ? '0' : ((roundedDist - freeLimit) * rate).toFixed(0));
+      showToast('success', `Road distance calculated: ${roundedDist} KM`);
+    }
+  };
+
   const getSortedData = (data) => {
     return [...data].sort((a, b) => {
       let valA, valB;
@@ -506,49 +747,66 @@ const OrderSection = () => {
 
   const filteredOrders = getSortedData(orders).filter(o => {
     const searchLower = (searchTerm || '').toLowerCase();
-    
+
     // Support both customerDetails and address structures
     const customerName = o.customerDetails?.name || o.address?.recipientName || '';
     const customerPhone = o.customerDetails?.phone || o.address?.mobile || '';
     const orderStatus = o.orderStatus || '';
-    
+
     const matchesSearch = (o.orderNumber || '').toLowerCase().includes(searchLower) ||
       customerPhone.includes(searchTerm) ||
       customerName.toLowerCase().includes(searchLower);
-      
+
     const matchesStatus = orderStatusFilter === 'all' || orderStatus === orderStatusFilter;
     const matchesPayment = paymentFilter === 'all' || o.paymentStatus === paymentFilter;
-    
-    // Match 'delivery' tab with both 'delivery' and 'online' order types
-    let matchesType = o.orderType === activeTab;
-    if (activeTab === 'delivery') {
-      matchesType = o.orderType === 'delivery' || o.orderType === 'online';
-    } else if (activeTab === 'takeaway') {
-      matchesType = o.orderType === 'takeaway' || o.orderType === 'take-away';
-    } else if (activeTab === 'dine-in') {
-      matchesType = o.orderType === 'dine-in' || o.orderType === 'dining';
+
+    const isHistoryOrder = (o.orderStatus === 'delivered' && o.paymentStatus === 'paid') || o.orderStatus === 'cancelled';
+
+    let matchesType = false;
+    if (activeTab === 'history') {
+      if (!isHistoryOrder) return false;
+      const matchesHistType = historyOrderTypeFilter === 'all' || o.orderType === historyOrderTypeFilter;
+      const orderDate = new Date(o.createdAt);
+      let matchesDate = true;
+      if (startDate) matchesDate = matchesDate && orderDate >= new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        matchesDate = matchesDate && orderDate <= end;
+      }
+      matchesType = matchesHistType && matchesDate;
+    } else {
+      // For other tabs, only show active orders (not history)
+      if (isHistoryOrder) {
+        matchesType = false;
+      } else if (activeTab === 'delivery') {
+        matchesType = o.orderType === 'delivery' || o.orderType === 'online';
+      } else if (activeTab === 'takeaway') {
+        matchesType = o.orderType === 'takeaway' || o.orderType === 'take-away';
+      } else if (activeTab === 'dine-in') {
+        matchesType = o.orderType === 'dine-in' || o.orderType === 'dining';
+      } else {
+        matchesType = o.orderType === activeTab;
+      }
     }
-    
+
     return matchesSearch && matchesStatus && matchesPayment && matchesType;
   });
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'pending':
-      case 'placed': 
+      case 'placed':
         return 'bg-status-off/10 text-status-unavailable border-status-off/20';
       case 'preparing':
       case 'processing':
         return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
       case 'out-for-delivery':
         return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
-      case 'delayed': 
+      case 'delayed':
         return 'bg-red-500/10 text-red-500 border-red-500/20';
       case 'ready':
       case 'delivered':
         return 'bg-status-on/10 text-status-available border-status-on/20';
-      case 'completed': 
-        return 'bg-primary/10 text-primary border-primary/20';
       default: return 'bg-background-muted text-text-muted border-border-light';
     }
   };
@@ -564,15 +822,16 @@ const OrderSection = () => {
             <p className="text-text-secondary text-sm">Monitor all orders and operational status</p>
           </div>
           <button
-            onClick={() => { 
-              setSelectedOrder(null); 
-              setCart([]); 
-              setPosSearchTerm(''); 
-              setCashReceived(''); 
+            onClick={() => {
+              setSelectedOrder(null);
+              setCart([]);
+              setPosSearchTerm('');
+              setCashReceived('');
               setPosOrderType(activeTab === 'all' ? 'takeaway' : activeTab);
               setDeliveryAddress('');
+              setDeliveryFee('');
               setCustomer({ name: 'Walk-in', phone: '' });
-              setIsModalOpen(true); 
+              setIsModalOpen(true);
             }}
             className="bg-primary text-white px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-primary/20 hover:bg-primary-light transition-all flex items-center space-x-2"
           >
@@ -585,23 +844,25 @@ const OrderSection = () => {
           {[
             { id: 'takeaway', label: 'Counter', icon: ShoppingCart },
             { id: 'dine-in', label: 'Dine In', icon: Utensils },
-            { id: 'delivery', label: 'Delivery', icon: ChevronRight }
+            { id: 'delivery', label: 'Delivery', icon: ChevronRight },
+            { id: 'history', label: 'History', icon: Clock }
           ].map(tab => (
             <button
               key={tab.id}
               onClick={() => handleTabChange(tab.id)}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                activeTab === tab.id 
-                  ? 'bg-primary text-white shadow-lg shadow-primary/20' 
+              className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id
+                  ? 'bg-primary text-white shadow-lg shadow-primary/20'
                   : 'text-text-muted hover:bg-background-muted hover:text-text-primary'
-              }`}
+                }`}
             >
               <tab.icon size={14} />
               <span>{tab.label}</span>
-              <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[8px] ${
-                activeTab === tab.id ? 'bg-white/20' : 'bg-background-muted'
-              }`}>
+              <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[8px] ${activeTab === tab.id ? 'bg-white/20' : 'bg-background-muted'
+                }`}>
                 {orders.filter(o => {
+                  const isHistory = (o.orderStatus === 'delivered' && o.paymentStatus === 'paid') || o.orderStatus === 'cancelled';
+                  if (tab.id === 'history') return isHistory;
+                  if (isHistory) return false;
                   if (tab.id === 'delivery') return o.orderType === 'delivery';
                   if (tab.id === 'takeaway') return o.orderType === 'takeaway';
                   if (tab.id === 'dine-in') return o.orderType === 'dine-in';
@@ -621,52 +882,115 @@ const OrderSection = () => {
                   type="text"
                   placeholder="Search by order # or phone..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    localStorage.setItem('orderSearchTerm', e.target.value);
+                  }}
                   className="w-full pl-10 pr-4 py-2 bg-background-card rounded-lg border border-border-main focus:border-primary transition-all outline-none text-sm"
                 />
               </div>
-              <div className="flex items-center space-x-2">
-                <Filter size={14} className="text-text-muted" />
-                <select
-                  value={orderStatusFilter}
-                  onChange={(e) => setOrderStatusFilter(e.target.value)}
-                  className="bg-background-card text-text-primary border border-border-main rounded-lg px-3 py-1.5 text-xs outline-none"
-                >
-                  <option value="all">All Orders</option>
-                  <option value="placed">Placed</option>
-                  <option value="processing">Processing</option>
-                  {(activeTab === 'delivery' || activeTab === 'all') && (
-                    <>
-                      <option value="out-for-delivery">Out for Delivery</option>
-                      <option value="delivered">Delivered</option>
-                    </>
-                  )}
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-                <select
-                  value={paymentFilter}
-                  onChange={(e) => setPaymentFilter(e.target.value)}
-                  className="bg-background-card text-text-primary border border-border-main rounded-lg px-3 py-1.5 text-xs outline-none"
-                >
-                  <option value="all">All Payment</option>
-                  <option value="pending">Pending</option>
-                  <option value="completed">Completed</option>
-                  <option value="failed">Failed</option>
-                  <option value="refunded">Refunded</option>
-                </select>
+              <div className="flex flex-wrap items-center gap-2">
+                {activeTab === 'history' ? (
+                  <>
+                    <select
+                      value={historyOrderTypeFilter}
+                      onChange={(e) => setHistoryOrderTypeFilter(e.target.value)}
+                      className="bg-background-card text-text-primary border border-border-main rounded-lg px-3 py-1.5 text-xs outline-none"
+                    >
+                      <option value="all">All Types</option>
+                      <option value="takeaway">Counter</option>
+                      <option value="dine-in">Dine In</option>
+                      <option value="delivery">Delivery</option>
+                    </select>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="bg-background-card text-text-primary border border-border-main rounded-lg px-2 py-1.5 text-[10px] outline-none"
+                      />
+                      <span className="text-text-muted text-[10px]">to</span>
+                      <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="bg-background-card text-text-primary border border-border-main rounded-lg px-2 py-1.5 text-[10px] outline-none"
+                      />
+                    </div>
+                    {selectedOrderIds.length > 0 ? (
+                      <button
+                        onClick={() => handleClearHistory(selectedOrderIds)}
+                        className="flex items-center space-x-1 px-3 py-1.5 rounded-lg border border-status-unavailable bg-status-unavailable text-white shadow-lg shadow-status-unavailable/20 hover:scale-105 transition-all ml-auto"
+                      >
+                        <Trash2 size={12} />
+                        <span className="text-[10px] font-black uppercase tracking-wider">Clear Selected ({selectedOrderIds.length})</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleClearHistory()}
+                        className="flex items-center space-x-1 px-3 py-1.5 rounded-lg border border-status-unavailable/20 bg-status-unavailable/10 text-status-unavailable hover:bg-status-unavailable hover:text-white transition-all ml-auto"
+                      >
+                        <Trash2 size={12} />
+                        <span className="text-[10px] font-black uppercase tracking-wider">Clear All</span>
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Filter size={14} className="text-text-muted" />
+                    <select
+                      value={orderStatusFilter}
+                      onChange={(e) => {
+                        setOrderStatusFilter(e.target.value);
+                        localStorage.setItem('orderStatusFilter', e.target.value);
+                      }}
+                      className="bg-background-card text-text-primary border border-border-main rounded-lg px-3 py-1.5 text-xs outline-none"
+                    >
+                      <option value="all">All Orders</option>
+                      <option value="placed">Placed</option>
+                      <option value="processing">Processing</option>
+                      {(activeTab === 'delivery' || activeTab === 'all') && (
+                        <>
+                          <option value="out-for-delivery">Out for Delivery</option>
+                          <option value="delivered">Delivered</option>
+                        </>
+                      )}
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                    <select
+                      value={paymentFilter}
+                      onChange={(e) => setPaymentFilter(e.target.value)}
+                      className="bg-background-card text-text-primary border border-border-main rounded-lg px-3 py-1.5 text-xs outline-none"
+                    >
+                      <option value="all">All Payment</option>
+                      <option value="pending">Pending</option>
+                      <option value="paid">Paid</option>
+                      <option value="failed">Failed</option>
+                      <option value="refunded">Refunded</option>
+                    </select>
+                  </>
+                )}
+
                 <button
-                  onClick={() => { setSearchTerm(''); setOrderStatusFilter('all'); setPaymentFilter('all'); }}
-                  disabled={!searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all'}
-                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${
-                    !searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all'
+                  onClick={() => {
+                    setSearchTerm('');
+                    localStorage.removeItem('orderSearchTerm');
+                    setOrderStatusFilter('all');
+                    localStorage.removeItem('orderStatusFilter');
+                    setPaymentFilter('all');
+                    setHistoryOrderTypeFilter('all');
+                    setStartDate('');
+                    setEndDate('');
+                  }}
+                  disabled={!searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all' && historyOrderTypeFilter === 'all' && !startDate && !endDate}
+                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${!searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all' && historyOrderTypeFilter === 'all' && !startDate && !endDate
                       ? 'bg-background-muted/50 text-text-muted/30 border-border-light cursor-not-allowed'
                       : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white'
-                  }`}
+                    }`}
                   title="Clear All Filters"
                 >
                   <RotateCcw size={12} />
-                  <span className="text-[10px] font-black uppercase tracking-wider">Clear Filters</span>
+                  <span className="text-[10px] font-black uppercase tracking-wider">Reset</span>
                 </button>
               </div>
             </div>
@@ -676,12 +1000,35 @@ const OrderSection = () => {
             <table className="w-full text-left text-sm whitespace-nowrap">
               <thead className="bg-background-muted/50 text-text-secondary uppercase text-[10px] font-black tracking-widest border-b border-border-light">
                 <tr>
+                  {activeTab === 'history' && (
+                    <th className="px-3 py-4 w-10">
+                      <input
+                        type="checkbox"
+                        checked={selectedOrderIds.length === filteredOrders.length && filteredOrders.length > 0}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedOrderIds(filteredOrders.map(o => o._id));
+                          } else {
+                            setSelectedOrderIds([]);
+                          }
+                        }}
+                        className="w-4 h-4 rounded border-border-main text-primary focus:ring-primary cursor-pointer accent-primary"
+                      />
+                    </th>
+                  )}
                   <th className="px-3 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('orderNumber')}>
                     <div className="flex items-center space-x-1">
                       <span>Order #</span>
                       <ArrowUpDown size={12} className={sortConfig.key === 'orderNumber' ? 'text-primary' : 'text-text-muted'} />
                     </div>
                   </th>
+                  {activeTab === 'dine-in' && (
+                    <th className="px-3 py-4">
+                      <div className="flex items-center space-x-1">
+                        <span>Table</span>
+                      </div>
+                    </th>
+                  )}
                   <th className="px-3 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('createdAt')}>
                     <div className="flex items-center space-x-1">
                       <span>Date & Time</span>
@@ -710,7 +1057,7 @@ const OrderSection = () => {
               <tbody className="divide-y divide-border-light">
                 {isLoading ? (
                   <tr>
-                    <td colSpan="9" className="px-6 py-12 text-center">
+                    <td colSpan={activeTab === 'dine-in' ? 10 : 9} className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center space-y-2">
                         <Loader2 className="animate-spin text-primary" size={32} />
                         <p className="text-text-secondary font-medium">Loading orders...</p>
@@ -719,12 +1066,39 @@ const OrderSection = () => {
                   </tr>
                 ) : filteredOrders.length === 0 ? (
                   <tr>
-                    <td colSpan="9" className="px-6 py-12 text-center text-text-muted italic">No orders found</td>
+                    <td colSpan={activeTab === 'history' ? (activeTab === 'dine-in' ? 11 : 10) : (activeTab === 'dine-in' ? 10 : 9)} className="px-6 py-12 text-center text-text-muted italic">No orders found</td>
                   </tr>
                 ) : (
                   filteredOrders.map((order) => (
-                    <tr key={order._id} className="hover:bg-background-muted/30 transition-colors group">
+                    <tr key={order._id} className={`hover:bg-background-muted/30 transition-colors group ${selectedOrderIds.includes(order._id) ? 'bg-primary/5' : ''}`}>
+                      {activeTab === 'history' && (
+                        <td className="px-3 py-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedOrderIds.includes(order._id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedOrderIds(prev => [...prev, order._id]);
+                              } else {
+                                setSelectedOrderIds(prev => prev.filter(id => id !== order._id));
+                              }
+                            }}
+                            className="w-4 h-4 rounded border-border-main text-primary focus:ring-primary cursor-pointer accent-primary"
+                          />
+                        </td>
+                      )}
                       <td className="px-3 py-4 font-black text-text-primary">{order.orderNumber}</td>
+                      {activeTab === 'dine-in' && (
+                        <td className="px-3 py-4">
+                          {order.table ? (
+                            <span className="bg-primary/10 text-primary px-2 py-1 rounded-lg text-[10px] font-black border border-primary/20">
+                              T-{order.table.tableNumber}
+                            </span>
+                          ) : (
+                            <span className="text-text-muted text-[10px] font-bold italic">No Table</span>
+                          )}
+                        </td>
+                      )}
                       <td className="px-3 py-4">
                         <div className="flex flex-col">
                           <span className="text-xs font-bold text-text-primary">{new Date(order.createdAt).toLocaleDateString('en-GB')}</span>
@@ -735,7 +1109,7 @@ const OrderSection = () => {
                         <div className="flex flex-col">
                           <div className="flex items-center space-x-2">
                             <span>
-                              {(order.orderSource === 'online' || order.orderSource === 'user') 
+                              {(order.orderSource === 'online' || order.orderSource === 'user')
                                 ? (order.address?.recipientName || order.customerDetails?.name || 'Walk-in')
                                 : (order.customerDetails?.name || order.address?.recipientName || 'Walk-in')
                               }
@@ -755,23 +1129,21 @@ const OrderSection = () => {
                       </td>
                       <td className="px-3 py-4 font-black text-text-primary">₹{order.totalAmount || order.subtotal || 0}</td>
                       <td className="px-3 py-4 text-center">
-                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
-                          order.orderStatus === 'completed' || order.orderStatus === 'delivered' ? 'bg-primary/10 text-primary border-primary/20' :
-                          order.orderStatus === 'processing' || order.orderStatus === 'out-for-delivery' ? 'bg-status-on/10 text-status-available border-status-on/20' :
-                          order.orderStatus === 'placed' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                          order.orderStatus === 'cancelled' ? 'bg-status-off/10 text-status-unavailable border-status-off/20' :
-                          'bg-background-muted text-text-muted border-border-light'
-                        }`}>
+                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${order.orderStatus === 'completed' || order.orderStatus === 'delivered' ? 'bg-primary/10 text-primary border-primary/20' :
+                            order.orderStatus === 'processing' || order.orderStatus === 'out-for-delivery' ? 'bg-status-on/10 text-status-available border-status-on/20' :
+                              order.orderStatus === 'placed' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                order.orderStatus === 'cancelled' ? 'bg-status-off/10 text-status-unavailable border-status-off/20' :
+                                  'bg-background-muted text-text-muted border-border-light'
+                          }`}>
                           {order.orderStatus}
                         </span>
                       </td>
                       <td className="px-3 py-4 text-center">
-                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
-                          (order.paymentStatus === 'paid' || order.paymentStatus === 'completed') ? 'bg-status-on/10 text-status-available border-status-on/20' :
-                          order.paymentStatus === 'pending' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                          order.paymentStatus === 'refunded' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
-                          'bg-status-off/10 text-status-unavailable border-status-off/20'
-                        }`}>
+                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${(order.paymentStatus === 'paid' || order.paymentStatus === 'completed') ? 'bg-status-on/10 text-status-available border-status-on/20' :
+                            order.paymentStatus === 'pending' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                              order.paymentStatus === 'refunded' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
+                                'bg-status-off/10 text-status-unavailable border-status-off/20'
+                          }`}>
                           {order.paymentStatus}
                         </span>
                       </td>
@@ -851,25 +1223,26 @@ const OrderSection = () => {
               <div className="grid grid-cols-3 gap-6 bg-background-muted/20 p-6 rounded-[2rem] border border-border-light">
                 <div className="space-y-1">
                   <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Customer Name</p>
-                  <input
-                    type="text"
-                    value={editCustomer?.name || selectedOrder?.address?.recipientName || ''}
-                    onChange={(e) => setEditCustomer(prev => ({ ...prev, name: e.target.value }))}
-                    className="bg-transparent text-sm font-black text-text-primary outline-none w-full"
-                  />
+                  <p className="text-sm font-black text-text-primary">
+                    {selectedOrder?.address?.recipientName || selectedOrder?.customerDetails?.name || 'Walk-in'}
+                  </p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Phone Number</p>
-                  <input
-                    type="text"
-                    value={editCustomer?.phone || selectedOrder?.address?.mobile || ''}
-                    onChange={(e) => setEditCustomer(prev => ({ ...prev, phone: e.target.value }))}
-                    className="bg-transparent text-sm font-black text-text-primary outline-none w-full"
-                  />
+                  <p className="text-sm font-black text-text-primary">
+                    {selectedOrder?.customerDetails?.phone || selectedOrder?.address?.mobile || 'N/A'}
+                  </p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Payment Method</p>
-                  <p className="text-sm font-black text-text-primary uppercase">{selectedOrder.paymentMethod}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-black text-text-primary uppercase">{selectedOrder.paymentMethod}</p>
+                    {selectedOrder.orderType === 'dine-in' && selectedOrder.table && (
+                      <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-[10px] font-black uppercase border border-primary/20">
+                        Table {selectedOrder.table.tableNumber}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-1 pt-4">
@@ -877,7 +1250,8 @@ const OrderSection = () => {
                   <select
                     value={selectedOrder.paymentStatus}
                     onChange={(e) => handleUpdatePaymentStatus(selectedOrder._id, e.target.value)}
-                    className={`text-[10px] font-black uppercase rounded-lg border px-2 py-1 outline-none cursor-pointer ${selectedOrder.paymentStatus === 'paid' ? 'bg-status-on/10 text-status-available border-status-on/20' :
+                    disabled={selectedOrder.paymentMethod === 'online'}
+                    className={`text-[10px] font-black uppercase rounded-lg border px-2 py-1 outline-none cursor-pointer ${selectedOrder.paymentMethod === 'online' ? 'opacity-70 cursor-not-allowed' : ''} ${selectedOrder.paymentStatus === 'paid' ? 'bg-status-on/10 text-status-available border-status-on/20' :
                       selectedOrder.paymentStatus === 'pending' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
                         selectedOrder.paymentStatus === 'refunded' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
                           'bg-status-off/10 text-status-unavailable border-status-off/20'
@@ -887,159 +1261,155 @@ const OrderSection = () => {
                     <option value="paid">Paid</option>
                     <option value="failed">Failed</option>
                     <option value="refunded">Refunded</option>
-                    <option value="completed">Completed</option>
                   </select>
                 </div>
                 {selectedOrder.paymentMethod === 'cash' && (
                   <>
                     <div className="space-y-1 pt-4">
                       <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Cash Received</p>
-                      <input
-                        type="number"
-                        value={editCashReceived}
-                        onChange={(e) => setEditCashReceived(e.target.value)}
-                        className="bg-transparent text-sm font-black text-text-primary outline-none w-full border-b border-border-light focus:border-primary transition-all"
-                        placeholder="0"
-                      />
+                      <p className="text-sm font-black text-text-primary">₹{selectedOrder.cashReceived || 0}</p>
                     </div>
                     <div className="space-y-1 pt-4">
                       <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">
-                        {(parseFloat(editCashReceived) || 0) < selectedOrder.totalAmount ? 'Due Amount' : 'Balance / Change'}
+                        {(selectedOrder.cashReceived || 0) < selectedOrder.totalAmount ? 'Due Amount' : 'Balance / Change'}
                       </p>
-                      <p className={`text-sm font-black ${
-                        (parseFloat(editCashReceived) || 0) < selectedOrder.totalAmount ? 'text-status-unavailable' : 'text-primary'
-                      }`}>
-                        ₹{((parseFloat(editCashReceived) || 0) - selectedOrder.totalAmount).toFixed(2)}
+                      <p className={`text-sm font-black ${(selectedOrder.cashReceived || 0) < selectedOrder.totalAmount ? 'text-status-unavailable' : 'text-primary'
+                        }`}>
+                        ₹{((selectedOrder.cashReceived || 0) - selectedOrder.totalAmount).toFixed(2)}
                       </p>
                     </div>
                   </>
                 )}
                 <div className="space-y-1 pt-4">
-                  <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Order Status</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Order Status</p>
+                    {selectedOrder?.orderStatus === 'processing' && selectedOrder?.kitchenStatus !== 'ready' && (
+                      <span className="text-[8px] font-black text-status-unavailable uppercase animate-pulse">
+                        Waiting for Kitchen to be Ready
+                      </span>
+                    )}
+                  </div>
                   <select
                     value={selectedOrder?.orderStatus}
                     onChange={(e) => handleUpdateOrderStatus(selectedOrder?._id, e.target.value)}
-                    className="bg-primary/10 text-primary text-[10px] font-black uppercase rounded-lg border border-primary/20 px-2 py-1 outline-none cursor-pointer"
+                    className="w-full bg-primary/10 text-primary text-[10px] font-black uppercase rounded-lg border border-primary/20 px-2 py-2 outline-none cursor-pointer hover:bg-primary/20 transition-all"
                   >
                     <option value="placed">Placed</option>
                     <option value="processing">Processing</option>
-                    {(selectedOrder?.orderType === 'delivery' || selectedOrder?.orderType === 'online') && (
-                      <>
-                        <option value="out-for-delivery">Out for Delivery</option>
-                        <option value="delivered">Delivered</option>
-                      </>
+                    {selectedOrder?.orderType === 'delivery' && (
+                      <option
+                        value="out-for-delivery"
+                        disabled={selectedOrder?.orderStatus === 'processing' && selectedOrder?.kitchenStatus !== 'ready'}
+                      >
+                        Out for Delivery
+                      </option>
                     )}
-                    <option value="completed">Completed</option>
+                    <option
+                      value="delivered"
+                      disabled={selectedOrder?.orderStatus === 'processing' && selectedOrder?.kitchenStatus !== 'ready'}
+                    >
+                      Delivered
+                    </option>
                     <option value="cancelled">Cancelled</option>
                   </select>
                 </div>
 
-                {(selectedOrder.orderType === 'delivery' || selectedOrder.orderType === 'online') && 
+                {selectedOrder.orderType === 'delivery' &&
                   (selectedOrder.customerDetails?.address || selectedOrder.address?.address) && (
-                  <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 space-y-2 mt-4">
-                    <p className="text-[10px] text-primary font-bold uppercase tracking-widest flex items-center space-x-1">
-                      <MapPin size={12} />
-                      <span>Delivery Address</span>
-                    </p>
-                    <p className="text-xs font-bold text-text-primary leading-relaxed">
-                      {selectedOrder.customerDetails?.address || selectedOrder.address?.address}
-                    </p>
-                    {(selectedOrder.customerDetails?.location || selectedOrder.address?.location) && (
-                      <div className="space-y-2 pt-2">
-                        {(() => {
-                          const loc = selectedOrder.customerDetails?.location || selectedOrder.address?.location;
-                          let lat, lng, url;
-                          if (typeof loc === 'object' && loc.lat) {
-                            lat = loc.lat; lng = loc.lng;
-                            url = `https://www.google.com/maps?q=${lat},${lng}`;
-                          } else if (typeof loc === 'string') {
-                            const match = loc.match(/q=([\d.-]+),([\d.-]+)/);
-                            if (match) { lat = match[1]; lng = match[2]; }
-                            url = loc.match(/https?:\/\/[^\s]+/) ? loc.match(/https?:\/\/[^\s]+/)[0] : null;
-                          }
-                          
-                          if (!url) return null;
+                    <div className="col-span-3 p-4 bg-primary/5 rounded-2xl border border-primary/10 space-y-2 mt-4">
+                      <p className="text-[10px] text-primary font-bold uppercase tracking-widest flex items-center space-x-1">
+                        <MapPin size={12} />
+                        <span>Delivery Address</span>
+                      </p>
+                      <p className="text-xs font-bold text-text-primary leading-relaxed">
+                        {selectedOrder.customerDetails?.address || selectedOrder.address?.address}
+                      </p>
+                      {(selectedOrder.customerDetails?.location || selectedOrder.address?.location) && (
+                        <div className="space-y-2 pt-2">
+                          {(() => {
+                            const loc = selectedOrder.customerDetails?.location || selectedOrder.address?.location;
+                            let lat, lng, url;
+                            if (typeof loc === 'object' && loc.lat) {
+                              lat = loc.lat; lng = loc.lng;
+                              url = `https://www.google.com/maps?q=${lat},${lng}`;
+                            } else if (typeof loc === 'string') {
+                              const match = loc.match(/q=([\d.-]+),([\d.-]+)/);
+                              if (match) { lat = match[1]; lng = match[2]; }
+                              url = loc.match(/https?:\/\/[^\s]+/) ? loc.match(/https?:\/\/[^\s]+/)[0] : null;
+                            }
 
-                          return (
-                            <>
-                              <a 
-                                href={url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center space-x-1 text-[10px] font-black text-primary uppercase hover:underline"
-                              >
-                                <ExternalLink size={12} />
-                                <span>View Location</span>
-                              </a>
-                              {lat && lng && (
-                                <div className="w-full h-40 rounded-xl overflow-hidden border border-border-light shadow-inner">
-                                  <iframe
-                                    title="Order Location"
-                                    width="100%"
-                                    height="100%"
-                                    frameBorder="0"
-                                    scrolling="no"
-                                    marginHeight="0"
-                                    marginWidth="0"
-                                    src={`https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`}
-                                  />
-                                </div>
-                              )}
-                            </>
-                          );
-                        })()}
-                      </div>
-                    )}
-                  </div>
-                )}
+                            if (!url) return null;
 
-                <div className="flex items-end justify-end pt-4">
-                  {(editCustomer?.name !== (selectedOrder?.customerDetails?.name || '') ||
-                    editCustomer?.phone !== (selectedOrder?.customerDetails?.phone || '') ||
-                    editCashReceived !== (selectedOrder?.cashReceived || '')) && (
-                      <button
-                        onClick={handleUpdatePaymentDetails}
-                        className="bg-primary text-white text-[9px] font-black uppercase px-4 py-2 rounded-xl shadow-lg shadow-primary/20 hover:scale-105 transition-all"
-                      >
-                        Save Changes
-                      </button>
-                    )}
-                </div>
+                            return (
+                              <>
+                                <a
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center space-x-1 text-[10px] font-black text-primary uppercase hover:underline"
+                                >
+                                  <ExternalLink size={12} />
+                                  <span>View Location</span>
+                                </a>
+                                {lat && lng && (
+                                  <div className="w-full h-40 rounded-xl overflow-hidden border border-border-light shadow-inner">
+                                    <iframe
+                                      title="Order Location"
+                                      width="100%"
+                                      height="100%"
+                                      frameBorder="0"
+                                      scrolling="no"
+                                      marginHeight="0"
+                                      marginWidth="0"
+                                      src={`https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`}
+                                    />
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+
               </div>
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-border-light pb-2">
                   <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Order Items</p>
-                  {!['cancelled', 'completed', 'delivered'].includes(selectedOrder.orderStatus) && (
-                    <button
-                      onClick={() => { 
-                        setCashReceived(selectedOrder.cashReceived || ''); 
-                        setCustomer({
-                          name: (selectedOrder.orderSource === 'online' || selectedOrder.orderSource === 'user')
-                            ? (selectedOrder.address?.recipientName || selectedOrder.customerDetails?.name || '')
-                            : (selectedOrder.customerDetails?.name || selectedOrder.address?.recipientName || ''),
-                          phone: selectedOrder.customerDetails?.phone || selectedOrder.address?.mobile || ''
-                        });
-                        setDeliveryAddress(selectedOrder.customerDetails?.address || selectedOrder.address?.address || '');
-                        setDeliveryLocation(selectedOrder.address?.location || (typeof selectedOrder.customerDetails?.location === 'string' ? selectedOrder.customerDetails.location : ''));
-                        setPosOrderType(selectedOrder.orderType);
-                        setPaymentMethod(selectedOrder.paymentMethod || 'cash');
-                        // Populate cart with existing items for editing
-                        setCart(selectedOrder.items.map(item => ({
-                          ...item,
-                          menuItem: item.menuItem?._id || item.menuItem,
-                          name: item.name || item.menuItem?.name || 'Item',
-                          unitPrice: item.unitPrice || item.price,
-                          totalPrice: item.totalPrice || ((item.unitPrice || item.price) * item.quantity)
-                        })));
-                        setIsModalOpen(true); 
-                      }}
-                      className="text-[10px] font-black text-primary uppercase hover:underline flex items-center space-x-1"
-                    >
-                      <Edit2 size={12} />
-                      <span>Edit Items</span>
-                    </button>
-                  )}
+                  {!['cancelled', 'completed', 'delivered'].includes(selectedOrder.orderStatus) &&
+                    !(selectedOrder.orderType === 'delivery' && (selectedOrder.orderSource === 'user' || selectedOrder.orderSource === 'online')) && (
+                      <button
+                        onClick={() => {
+                          setCashReceived(selectedOrder.cashReceived || '');
+                          setCustomer({
+                            name: (selectedOrder.orderSource === 'online' || selectedOrder.orderSource === 'user')
+                              ? (selectedOrder.address?.recipientName || selectedOrder.customerDetails?.name || '')
+                              : (selectedOrder.customerDetails?.name || selectedOrder.address?.recipientName || ''),
+                            phone: selectedOrder.customerDetails?.phone || selectedOrder.address?.mobile || ''
+                          });
+                          setDeliveryAddress(selectedOrder.customerDetails?.address || selectedOrder.address?.address || '');
+                          setDeliveryLocation(selectedOrder.address?.location || (typeof selectedOrder.customerDetails?.location === 'string' ? selectedOrder.customerDetails.location : ''));
+                          setPosOrderType(selectedOrder.orderType);
+                          setPaymentMethod(selectedOrder.paymentMethod || 'cash');
+                          // Populate cart with existing items for editing
+                          setCart(selectedOrder.items.map(item => ({
+                            ...item,
+                            menuItem: item.menuItem?._id || item.menuItem,
+                            name: item.name || item.menuItem?.name || 'Item',
+                            unitPrice: item.unitPrice || item.price,
+                            totalPrice: item.totalPrice || ((item.unitPrice || item.price) * item.quantity)
+                          })));
+                          setIsModalOpen(true);
+                        }}
+                        className="text-[10px] font-black text-primary uppercase hover:underline flex items-center space-x-1"
+                      >
+                        <Edit2 size={12} />
+                        <span>Edit Items</span>
+                      </button>
+                    )}
                 </div>
 
                 {selectedOrder.orderStatus === 'pending' && (
@@ -1081,8 +1451,8 @@ const OrderSection = () => {
                           </span>
                         </div>
                       </div>
-                      </div>
-                    ))}
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -1090,10 +1460,20 @@ const OrderSection = () => {
             <div className="p-8 bg-background-muted/30 border-t border-border-light flex items-center justify-between">
               <div className="flex flex-col space-y-4">
                 <div className="space-y-1">
+                  <div className="flex flex-col mb-1">
+                    <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">
+                      Subtotal: ₹{selectedOrder.subtotal || 0}
+                    </span>
+                    {selectedOrder.deliveryFee > 0 && (
+                      <span className="text-[10px] text-primary font-bold uppercase tracking-widest">
+                        Delivery Fee: +₹{selectedOrder.deliveryFee}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Total Bill Amount</p>
                   <div className="flex items-baseline space-x-2">
                     <span className="text-4xl font-black text-text-primary">
-                      ₹{selectedOrder.totalAmount || selectedOrder.subtotal || 0}
+                      ₹{selectedOrder.totalAmount || 0}
                     </span>
                     {selectedOrder.paidAmount > 0 && (selectedOrder.totalAmount || selectedOrder.subtotal) > selectedOrder.paidAmount && (
                       <span className="px-2 py-0.5 bg-status-off/10 text-status-unavailable text-[10px] font-black rounded-lg uppercase tracking-tighter">
@@ -1102,7 +1482,7 @@ const OrderSection = () => {
                     )}
                   </div>
                 </div>
-                
+
                 {selectedOrder.paidAmount > 0 && (selectedOrder.totalAmount || selectedOrder.subtotal) > selectedOrder.paidAmount && (
                   <div className="animate-in slide-in-from-left duration-500">
                     <div className="flex items-center space-x-4 p-4 bg-background-card rounded-[1.5rem] border border-status-unavailable/20 shadow-sm">
@@ -1163,21 +1543,39 @@ const OrderSection = () => {
                     return (item.name || '').toLowerCase().includes(searchLower);
                   })
                   .map(item => (
-                    <div key={item._id} className="bg-background-muted/30 p-3 rounded-2xl border border-border-light hover:border-primary/30 transition-all group">
-                      <div className="w-full aspect-square bg-background-card rounded-xl mb-3 overflow-hidden border border-border-light">
-                        <img src={item.image || '/placeholder-dish.png'} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                    <div key={item._id} className={`bg-background-muted/30 p-3 rounded-2xl border border-border-light hover:border-primary/30 transition-all group relative ${item.totalStock <= 0 ? 'opacity-70' : ''}`}>
+                      <div className="w-full aspect-square bg-background-card rounded-xl mb-3 overflow-hidden border border-border-light relative">
+                        <img src={item.image || '/placeholder-dish.png'} alt={item.name} className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${item.totalStock <= 0 ? 'grayscale' : ''}`} />
+                        {item.totalStock <= 0 && (
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px]">
+                            <span className="bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest shadow-lg">Out of Stock</span>
+                          </div>
+                        )}
                       </div>
-                      <p className="font-bold text-text-primary text-xs line-clamp-1 mb-2">{item.name}</p>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="font-bold text-text-primary text-xs line-clamp-1">{item.name}</p>
+                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${item.totalStock > 5 ? 'bg-primary/10 text-primary' : item.totalStock > 0 ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'}`}>
+                          {item.totalStock} Left
+                        </span>
+                      </div>
                       <div className="flex flex-wrap gap-1">
-                        {item.variants.map((v, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => addToCart(item, v)}
-                            className="px-2 py-1 bg-primary text-white text-[9px] font-black rounded-lg hover:bg-primary-light transition-colors"
-                          >
-                            {v.size}: ₹{v.price}
-                          </button>
-                        ))}
+                        {item.variants.map((v, idx) => {
+                          const isOutOfStock = item.totalStock !== undefined && item.totalStock <= 0;
+                          return (
+                            <button
+                              key={idx}
+                              onClick={() => !isOutOfStock && addToCart(item, v)}
+                              disabled={isOutOfStock}
+                              className={`px-2 py-1 text-[9px] font-black rounded-lg transition-all ${
+                                isOutOfStock 
+                                ? 'bg-background-muted text-text-muted cursor-not-allowed border border-border-light' 
+                                : 'bg-primary text-white hover:bg-primary-light shadow-sm active:scale-95'
+                              }`}
+                            >
+                              {v.size}: ₹{v.price}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   ))}
@@ -1201,46 +1599,164 @@ const OrderSection = () => {
                   </div>
                 )}
 
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-3 bg-background-card p-2 rounded-xl border border-border-light">
-                    <User size={14} className="text-text-muted" />
-                    <input
-                      type="text"
-                      placeholder="Customer Name"
-                      value={customer.name}
-                      onChange={e => setCustomer({ ...customer, name: e.target.value })}
-                      className="bg-transparent text-xs font-bold text-text-primary outline-none w-full"
-                    />
+                <div className="flex items-center space-x-2 bg-background-card p-1.5 rounded-2xl border border-border-light mb-4">
+                  {['takeaway', 'dine-in', 'delivery'].map(type => (
+                    <button
+                      key={type}
+                      onClick={() => {
+                        setPosOrderType(type);
+                        if (type === 'delivery') setPaymentMethod('cod');
+                        else setPaymentMethod('cash');
+                      }}
+                      className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${posOrderType === type ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-text-muted hover:bg-background-muted'}`}
+                    >
+                      {type === 'takeaway' ? 'Counter' : type.replace('-', ' ')}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="space-y-2 relative">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center space-x-2 bg-background-card p-2 rounded-xl border border-border-light">
+                      <User size={12} className="text-text-muted" />
+                      <input
+                        type="text"
+                        placeholder="Name"
+                        value={customer.name}
+                        onChange={e => handleCustomerSearch('name', e.target.value)}
+                        onFocus={() => customer.name.length > 1 && setShowSuggestions(true)}
+                        className="bg-transparent text-[10px] font-bold text-text-primary outline-none w-full"
+                      />
+                    </div>
+                    <div className="flex items-center space-x-2 bg-background-card p-2 rounded-xl border border-border-light">
+                      <Phone size={12} className="text-text-muted" />
+                      <input
+                        type="text"
+                        placeholder="Phone"
+                        value={customer.phone}
+                        onChange={e => handleCustomerSearch('phone', e.target.value)}
+                        onFocus={() => customer.phone.length > 1 && setShowSuggestions(true)}
+                        className="bg-transparent text-[10px] font-bold text-text-primary outline-none w-full"
+                      />
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-3 bg-background-card p-2 rounded-xl border border-border-light">
-                    <Phone size={14} className="text-text-muted" />
-                    <input
-                      type="text"
-                      placeholder="Phone Number"
-                      value={customer.phone}
-                      onChange={e => setCustomer({ ...customer, phone: e.target.value })}
-                      className="bg-transparent text-xs font-bold text-text-primary outline-none w-full"
-                    />
-                  </div>
+
+                  {showSuggestions && (
+                    <div className="absolute top-full left-0 right-0 z-[500] mt-2 bg-background-card border-2 border-primary/20 rounded-[1.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="p-3 border-b border-border-light bg-primary/5 flex items-center justify-between">
+                        <p className="text-[10px] font-black text-primary uppercase tracking-widest">Customer Suggestions</p>
+                        {userSuggestions.length > 0 && <span className="text-[9px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-bold">{userSuggestions.length} Found</span>}
+                      </div>
+                      
+                      <div className="max-h-60 overflow-y-auto no-scrollbar">
+                        {userSuggestions.length === 0 ? (
+                          <div className="p-6 text-center">
+                            <User size={24} className="mx-auto text-text-muted/30 mb-2" />
+                            <p className="text-[10px] text-text-muted font-bold">No matching customers found</p>
+                            <p className="text-[8px] text-text-muted/50 mt-1">Creating as a new walk-in customer</p>
+                          </div>
+                        ) : (
+                          userSuggestions.map(user => (
+                            <button
+                              key={user._id}
+                              onClick={() => selectUserSuggestion(user)}
+                              className="w-full p-4 flex items-center justify-between hover:bg-primary/10 active:bg-primary/20 transition-all border-b border-border-light last:border-0 group"
+                            >
+                              <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-xs group-hover:bg-primary group-hover:text-white transition-colors">
+                                  {user.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="flex flex-col items-start text-left">
+                                  <span className="text-xs font-black text-text-primary group-hover:text-primary transition-colors">{user.name}</span>
+                                  <div className="flex items-center space-x-1 text-text-muted">
+                                    <Phone size={8} />
+                                    <span className="text-[9px] font-bold">{user.phone || 'No phone'}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              {user.addresses?.[0]?.address && (
+                                <div className="flex flex-col items-end max-w-[150px]">
+                                  <span className="text-[8px] text-primary/70 font-black uppercase tracking-tighter">Saved Address</span>
+                                  <span className="text-[9px] text-text-muted font-medium truncate w-full text-right">{user.addresses[0].address}</span>
+                                </div>
+                              )}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                      <div className="p-2 bg-background-muted/30 border-t border-border-light text-center">
+                        <p className="text-[8px] text-text-muted font-bold">Press ESC to close suggestions</p>
+                      </div>
+                    </div>
+                  )}
+
                   {posOrderType === 'delivery' && (
-                    <div className="flex flex-col space-y-2 animate-in fade-in slide-in-from-top-1 duration-300">
-                      <div className="flex items-start space-x-3 bg-background-card p-2 rounded-xl border border-border-light">
-                        <MapPin size={14} className="text-text-muted mt-1" />
+                    <div className="space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-300">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="relative group/field flex items-center bg-primary/[0.03] px-3 py-2 rounded-xl border border-primary/20 focus-within:border-primary transition-all">
+                          <Truck size={12} className="text-primary mr-2" />
+                          <div className="flex-1">
+                            <input
+                              id="pos-distance-input"
+                              type="number"
+                              placeholder="Distance (KM)"
+                              onChange={(e) => {
+                                const dist = parseFloat(e.target.value) || 0;
+                                const freeLimit = settings.deliverySettings?.freeDistanceLimit || 5;
+                                const rate = settings.deliverySettings?.chargePerExtraKm || 10;
+                                setDeliveryFee(dist <= freeLimit ? '0' : ((dist - freeLimit) * rate).toFixed(0));
+                              }}
+                              className="bg-transparent text-[10px] font-black text-primary outline-none w-full placeholder:text-primary/30"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="relative group/field flex items-center bg-primary/[0.03] px-3 py-2 rounded-xl border border-primary/20 focus-within:border-primary transition-all">
+                          <ExternalLink size={12} className="text-primary mr-2" />
+                          <div className="flex-1">
+                            <input
+                              type="text"
+                              placeholder="Maps Link"
+                              value={deliveryLocation}
+                              onChange={e => handleLocationLinkChange(e.target.value)}
+                              className="bg-transparent text-[10px] font-black text-primary outline-none w-full placeholder:text-primary/30"
+                            />
+                          </div>
+                          <button 
+                            onClick={() => handleLocationLinkChange(deliveryLocation)}
+                            className="p-1 hover:bg-primary/10 rounded-lg text-primary disabled:opacity-30"
+                            disabled={isResolvingLink}
+                          >
+                            <Loader2 size={12} className={isResolvingLink ? 'animate-spin' : ''} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="relative bg-background-card px-3 py-2 rounded-xl border border-border-main focus-within:border-primary transition-all shadow-sm">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center space-x-1.5">
+                            <MapPin size={10} className="text-primary" />
+                            <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Delivery Address</p>
+                          </div>
+                          
+                          {selectedUserId && (
+                            <button
+                              type="button"
+                              onClick={() => setUpdateProfile(!updateProfile)}
+                              className="flex items-center space-x-1.5 group cursor-pointer"
+                            >
+                              <div className={`w-3 h-3 rounded-[4px] border flex items-center justify-center transition-all ${updateProfile ? 'bg-primary border-primary' : 'bg-transparent border-border-main'}`}>
+                                {updateProfile && <CheckCircle2 size={8} className="text-white" />}
+                              </div>
+                              <span className={`text-[8px] font-black uppercase tracking-widest ${updateProfile ? 'text-primary' : 'text-text-muted'}`}>Update Profile</span>
+                            </button>
+                          )}
+                        </div>
                         <textarea
-                          placeholder="Delivery Address"
+                          placeholder="Building, Street, Area Details..."
                           value={deliveryAddress}
                           onChange={e => setDeliveryAddress(e.target.value)}
-                          className="bg-transparent text-xs font-bold text-text-primary outline-none w-full min-h-[60px] resize-none"
-                        />
-                      </div>
-                      <div className="flex items-center space-x-2 p-2 bg-primary/5 rounded-lg border border-primary/10">
-                        <ExternalLink size={12} className="text-primary" />
-                        <input
-                          type="text"
-                          placeholder="Google Maps Link (Optional)"
-                          value={deliveryLocation}
-                          onChange={e => setDeliveryLocation(e.target.value)}
-                          className="bg-transparent text-[9px] text-primary font-bold outline-none w-full"
+                          className="bg-transparent text-[10px] font-bold text-text-primary outline-none w-full h-12 resize-none placeholder:text-text-muted/20"
                         />
                       </div>
                     </div>
@@ -1279,9 +1795,40 @@ const OrderSection = () => {
 
               <div className="p-4 bg-background-card border-t border-border-light space-y-3">
                 <div className="space-y-2">
+                  {posOrderType === 'delivery' && !settings.deliverySettings?.pricingType === 'distance' && (
+                    <div className="flex items-center justify-between p-2 bg-primary/5 rounded-xl border border-primary/10 mb-2">
+                      <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Manual Delivery Fee</span>
+                      <div className="relative w-24">
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-primary/60 text-[10px]">₹</span>
+                        <input
+                          type="number"
+                          placeholder="0"
+                          value={deliveryFee}
+                          onChange={e => setDeliveryFee(e.target.value)}
+                          className="w-full bg-white/50 border border-primary/20 rounded-lg py-1 pl-5 pr-2 text-xs font-black text-primary outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="space-y-1 border-b border-border-light pb-2">
+                    <div className="flex items-center justify-between text-text-muted text-[10px] font-bold uppercase tracking-widest">
+                      <span>Subtotal</span>
+                      <span>₹{cart.reduce((acc, i) => acc + i.totalPrice, 0)}</span>
+                    </div>
+                    {posOrderType === 'delivery' && (
+                      <div className="flex items-center justify-between text-primary text-[10px] font-bold uppercase tracking-widest">
+                        <span>Delivery Fee</span>
+                        <span>₹{parseFloat(deliveryFee) || 0}</span>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex items-center justify-between text-text-primary">
-                    <span className="font-bold text-xs uppercase tracking-wider text-text-muted">New Order Total</span>
-                    <span className="text-xl font-black">₹{cart.reduce((acc, i) => acc + i.totalPrice, 0)}</span>
+                    <span className="font-bold text-xs uppercase tracking-wider text-text-muted">Total Amount</span>
+                    <span className="text-xl font-black">
+                      ₹{cart.reduce((acc, i) => acc + i.totalPrice, 0) + (posOrderType === 'delivery' ? (parseFloat(deliveryFee) || 0) : 0)}
+                    </span>
                   </div>
 
                   {selectedOrder && selectedOrder.paidAmount > 0 && (
@@ -1302,7 +1849,7 @@ const OrderSection = () => {
                   )}
                 </div>
 
-                {paymentMethod === 'cash' && (
+                {paymentMethod === 'cash' && posOrderType !== 'delivery' && (
                   <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
                     <div className="flex items-center justify-between p-2 bg-background-muted rounded-xl border border-border-light">
                       <span className="text-[10px] font-bold text-text-secondary uppercase">Cash</span>
@@ -1336,23 +1883,20 @@ const OrderSection = () => {
                       </button>
                     </div>
 
-                    <div className={`flex items-center justify-between p-2 rounded-xl border transition-all ${
-                      (parseFloat(cashReceived) || 0) < cart.reduce((acc, i) => acc + i.totalPrice, 0)
+                    <div className={`flex items-center justify-between p-2 rounded-xl border transition-all ${(parseFloat(cashReceived) || 0) < cart.reduce((acc, i) => acc + i.totalPrice, 0)
                         ? 'bg-status-off/5 border-status-unavailable/20'
                         : 'bg-primary/5 border-primary/20'
-                    }`}>
-                      <span className={`text-[10px] font-bold uppercase ${
-                        (parseFloat(cashReceived) || 0) < cart.reduce((acc, i) => acc + i.totalPrice, 0)
+                      }`}>
+                      <span className={`text-[10px] font-bold uppercase ${(parseFloat(cashReceived) || 0) < cart.reduce((acc, i) => acc + i.totalPrice, 0)
                           ? 'text-status-unavailable'
                           : 'text-primary'
-                      }`}>
+                        }`}>
                         {(parseFloat(cashReceived) || 0) < cart.reduce((acc, i) => acc + i.totalPrice, 0) ? 'Due' : 'Change'}
                       </span>
-                      <span className={`text-base font-black ${
-                        (parseFloat(cashReceived) || 0) < cart.reduce((acc, i) => acc + i.totalPrice, 0)
+                      <span className={`text-base font-black ${(parseFloat(cashReceived) || 0) < cart.reduce((acc, i) => acc + i.totalPrice, 0)
                           ? 'text-status-unavailable'
                           : 'text-primary'
-                      }`}>
+                        }`}>
                         ₹{((parseFloat(cashReceived) || 0) - cart.reduce((acc, i) => acc + i.totalPrice, 0)).toFixed(2)}
                       </span>
                     </div>
@@ -1366,7 +1910,12 @@ const OrderSection = () => {
                     { id: 'card', label: 'Card' },
                     { id: 'cod', label: 'COD' },
                     { id: 'online', label: 'Online' }
-                  ].map(m => (
+                  ].filter(m => {
+                    if (posOrderType === 'delivery') {
+                      return m.id === 'cod' || m.id === 'upi';
+                    }
+                    return m.id !== 'cod' && m.id !== 'online';
+                  }).map(m => (
                     <button
                       key={m.id}
                       onClick={() => {

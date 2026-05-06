@@ -10,7 +10,7 @@ const MenuSection = () => {
   const [menus, setMenus] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(localStorage.getItem('menuSearchTerm') || '');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [stockFilter, setStockFilter] = useState('all');
@@ -330,7 +330,10 @@ const MenuSection = () => {
                 type="text"
                 placeholder="Search items or categories..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  localStorage.setItem('menuSearchTerm', e.target.value);
+                }}
                 className="w-full pl-10 pr-4 py-2 bg-background-card rounded-lg border border-border-main focus:border-primary/50 transition-all outline-none text-sm"
               />
             </div>
@@ -367,7 +370,13 @@ const MenuSection = () => {
                 <option value="out-of-stock" className="bg-background-card text-text-primary">Out of Stock</option>
               </select>
               <button
-                onClick={() => { setSearchTerm(''); setCategoryFilter('all'); setTypeFilter('all'); setStockFilter('all'); }}
+                onClick={() => { 
+                  setSearchTerm(''); 
+                  localStorage.removeItem('menuSearchTerm');
+                  setCategoryFilter('all'); 
+                  setTypeFilter('all'); 
+                  setStockFilter('all'); 
+                }}
                 disabled={!searchTerm && categoryFilter === 'all' && typeFilter === 'all' && stockFilter === 'all'}
                 className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${
                   !searchTerm && categoryFilter === 'all' && typeFilter === 'all' && stockFilter === 'all'

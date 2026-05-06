@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Search, User, Mail, Phone, Power, Loader2, ArrowUpDown, XCircle, Ban, CheckCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, User, Mail, Phone, Power, Loader2, ArrowUpDown, XCircle, Ban, CheckCircle, CheckCircle2, MapPin, ExternalLink } from 'lucide-react';
 import axios from 'axios';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:5000/api`;
 
 const UserManagement = () => {
   const [userList, setUserList] = useState([]);
@@ -16,10 +16,14 @@ const UserManagement = () => {
 
   const [currentUser, setCurrentUser] = useState({
     name: '',
-    email: '',
-    phone: '',
     password: '',
-    isActive: true
+    isActive: true,
+    addresses: [{
+      address: '',
+      location: '',
+      type: 'home',
+      isDefault: true
+    }]
   });
 
   useEffect(() => {
@@ -43,7 +47,13 @@ const UserManagement = () => {
     if (user) {
       setCurrentUser({
         ...user,
-        password: '' // Don't show hashed password
+        password: '',
+        addresses: user.addresses?.length > 0 ? user.addresses : [{
+          address: '',
+          location: '',
+          type: 'home',
+          isDefault: true
+        }]
       });
       setIsEditing(true);
     } else {
@@ -52,7 +62,13 @@ const UserManagement = () => {
         email: '',
         phone: '',
         password: '',
-        isActive: true
+        isActive: true,
+        addresses: [{
+          address: '',
+          location: '',
+          type: 'home',
+          isDefault: true
+        }]
       });
       setIsEditing(false);
     }
@@ -60,20 +76,20 @@ const UserManagement = () => {
   };
 
   const handleSave = async () => {
-    if (!currentUser.name || !currentUser.email || (!isEditing && !currentUser.password)) {
-      showToast('warning', 'Please fill all required fields');
+    if (!currentUser.name || (!currentUser.email && !currentUser.phone) || (!isEditing && !currentUser.password)) {
+      showToast('warning', 'Name and (Email or Phone) are required');
       return;
     }
 
     try {
+      const dataToSave = { ...currentUser };
+      if (!dataToSave.password) delete dataToSave.password;
+
       if (isEditing) {
-        const updateData = { ...currentUser };
-        if (!updateData.password) delete updateData.password;
-        
-        await axios.put(`${API_BASE_URL}/users/${currentUser._id}`, updateData);
+        await axios.put(`${API_BASE_URL}/users/${currentUser._id}`, dataToSave);
         showToast('success', 'User updated successfully');
       } else {
-        await axios.post(`${API_BASE_URL}/users`, currentUser);
+        await axios.post(`${API_BASE_URL}/users`, dataToSave);
         showToast('success', 'User created successfully');
       }
       fetchUsers();
@@ -279,7 +295,7 @@ const UserManagement = () => {
               </button>
             </div>
             
-            <div className="p-8 space-y-6">
+            <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto no-scrollbar">
               <div className="space-y-1.5">
                 <label className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Full Name</label>
                 <div className="relative">
@@ -348,6 +364,145 @@ const UserManagement = () => {
                 <span className="text-xs font-bold text-text-primary uppercase tracking-widest">
                   {currentUser.isActive ? 'Account Active' : 'Account Blocked'}
                 </span>
+              </div>
+
+              <div className="pt-4 border-t border-border-light space-y-4">
+                <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Delivery Profile</h4>
+                
+                <div className="space-y-4 pt-4 border-t border-border-light">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] text-text-muted font-black uppercase tracking-widest">Delivery Addresses</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newAddresses = [...(currentUser.addresses || [])];
+                        newAddresses.push({ address: '', location: '', type: 'home', isDefault: newAddresses.length === 0 });
+                        setCurrentUser({ ...currentUser, addresses: newAddresses });
+                      }}
+                      className="flex items-center space-x-1 text-[10px] font-bold text-primary hover:text-primary-light transition-colors"
+                    >
+                      <Plus size={12} />
+                      <span>Add New Address</span>
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {(currentUser.addresses || []).map((addr, idx) => (
+                      <div 
+                        key={idx} 
+                        className={`group relative p-5 rounded-[1.5rem] border-2 transition-all duration-300 ${
+                          addr.isDefault 
+                            ? 'bg-primary/[0.03] border-primary/30 shadow-[0_8px_30px_rgb(var(--color-primary-rgb),0.05)]' 
+                            : 'bg-background-muted/20 border-border-light hover:border-primary/20 shadow-sm'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="relative">
+                              <select
+                                value={addr.type}
+                                onChange={(e) => {
+                                  const newAddresses = [...currentUser.addresses];
+                                  newAddresses[idx].type = e.target.value;
+                                  setCurrentUser({ ...currentUser, addresses: newAddresses });
+                                }}
+                                className="appearance-none pl-3 pr-8 py-1.5 bg-background-card rounded-full text-[10px] font-black uppercase tracking-widest text-primary border border-primary/20 outline-none cursor-pointer hover:bg-primary/5 transition-all"
+                              >
+                                <option value="home">Home</option>
+                                <option value="office">Office</option>
+                              </select>
+                              <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-primary opacity-50">
+                                <Plus size={10} className="rotate-45" />
+                              </div>
+                            </div>
+                            {addr.isDefault && (
+                              <div className="flex items-center space-x-1.5 bg-primary px-3 py-1.5 rounded-full shadow-lg shadow-primary/20">
+                                <CheckCircle2 size={10} className="text-white" />
+                                <span className="text-white text-[8px] font-black uppercase tracking-[0.1em]">Default Address</span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center space-x-2">
+                            {!addr.isDefault && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newAddresses = currentUser.addresses.map((a, i) => ({
+                                    ...a,
+                                    isDefault: i === idx
+                                  }));
+                                  setCurrentUser({ ...currentUser, addresses: newAddresses });
+                                }}
+                                className="px-3 py-1.5 rounded-full text-[9px] font-black text-primary hover:bg-primary/10 transition-all uppercase tracking-widest border border-primary/10"
+                              >
+                                Make Primary
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newAddresses = currentUser.addresses.filter((_, i) => i !== idx);
+                                if (addr.isDefault && newAddresses.length > 0) {
+                                  newAddresses[0].isDefault = true;
+                                }
+                                setCurrentUser({ ...currentUser, addresses: newAddresses });
+                              }}
+                              className="p-2 rounded-xl text-text-muted hover:text-status-unavailable hover:bg-status-unavailable/10 transition-all"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="relative group/field">
+                            <textarea
+                              value={addr.address || ''}
+                              onChange={(e) => {
+                                const newAddresses = [...currentUser.addresses];
+                                newAddresses[idx].address = e.target.value;
+                                setCurrentUser({ ...currentUser, addresses: newAddresses });
+                              }}
+                              className="w-full px-4 py-3 bg-background-card rounded-2xl border border-border-main focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all text-xs font-bold resize-none h-20 placeholder:text-text-muted/30"
+                              placeholder="House No, Building, Street Name..."
+                            />
+                            <div className="absolute right-3 bottom-3 text-text-muted/20">
+                              <MapPin size={14} />
+                            </div>
+                          </div>
+                          
+                          <div className="relative group/field">
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-primary pointer-events-none opacity-50 group-focus-within/field:opacity-100 transition-opacity">
+                              <ExternalLink size={14} />
+                            </div>
+                            <input
+                              type="text"
+                              value={addr.location || ''}
+                              onChange={(e) => {
+                                const newAddresses = [...currentUser.addresses];
+                                newAddresses[idx].location = e.target.value;
+                                setCurrentUser({ ...currentUser, addresses: newAddresses });
+                              }}
+                              className="w-full pl-10 pr-4 py-3 bg-background-card rounded-xl border border-border-main focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all text-xs font-bold placeholder:text-text-muted/30"
+                              placeholder="Paste Google Maps Share Link"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {(!currentUser.addresses || currentUser.addresses.length === 0) && (
+                      <div className="text-center py-12 bg-background-muted/20 rounded-[2rem] border-2 border-dashed border-border-light animate-in fade-in duration-500">
+                        <div className="w-16 h-16 bg-background-muted rounded-full flex items-center justify-center mx-auto mb-4 border border-border-light">
+                          <MapPin size={24} className="text-text-muted/30" />
+                        </div>
+                        <p className="text-[11px] text-text-muted font-black uppercase tracking-widest">No Addresses Saved</p>
+                        <p className="text-[9px] text-text-muted/50 mt-1">Add a delivery location to get started</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 

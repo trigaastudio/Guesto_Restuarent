@@ -11,6 +11,8 @@ import orderRoutes from './routes/orderRoutes.js';
 import staffRoutes from './routes/staffRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
+import settingsRoutes from './routes/settingsRoutes.js';
+import utilRoutes from './routes/utilRoutes.js';
 
 dotenv.config();
 
@@ -41,6 +43,8 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/utils', utilRoutes);
 
 
 app.get('/health', (req, res) => {

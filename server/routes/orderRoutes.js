@@ -11,5 +11,6 @@ router.patch('/:id/items', orderController.updateOrderItems);
 router.patch('/:orderId/items/:itemId/remove', orderController.removeItem);
 router.patch('/:orderId/items/:itemId/status', orderController.updateItemStatus);
 router.patch('/:orderId/items/:itemId/quantity', orderController.updateItemQuantity);
+router.delete('/clear-history', orderController.clearHistory);
 
 export default router;

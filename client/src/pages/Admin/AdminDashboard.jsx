@@ -29,7 +29,10 @@ import {
   Layers,
   Filter,
   RefreshCw,
-  Loader2
+  Loader2,
+  Package,
+  PackageX,
+  AlertTriangle
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import CategorySection from './sections/CategorySection';
@@ -37,6 +40,7 @@ import MenuSection from './sections/MenuSection';
 import OrderSection from './sections/OrderSection';
 import StaffManagement from './sections/StaffManagement';
 import UserManagement from './sections/UserManagement';
+import SettingsSection from './sections/SettingsSection';
 
 const AdminDashboard = () => {
   const { theme, toggleTheme } = useTheme();
@@ -47,8 +51,22 @@ const AdminDashboard = () => {
   const isDarkMode = theme === 'dark';
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
+  const [settings, setSettings] = useState(null);
   const [isStatsLoading, setIsStatsLoading] = useState(true);
   const [chartTimeframe, setChartTimeframe] = useState('week'); // 'week' or 'month'
+
+  useEffect(() => {
+    fetchSettings();
+  }, [refreshKey]);
+
+  const fetchSettings = async () => {
+    try {
+      const response = await axios.get(`${window.location.protocol}//${window.location.hostname}:5000/api/settings`);
+      setSettings(response.data.data);
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+    }
+  };
 
   useEffect(() => {
     if (activeTab === 'Overview') {
@@ -75,6 +93,20 @@ const AdminDashboard = () => {
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
+  };
+
+  const navigateWithFilter = (tab, subTab = null, statusFilter = null, searchTerm = null) => {
+    if (tab === 'Orders') {
+      if (subTab) localStorage.setItem('orderActiveTab', subTab);
+      if (statusFilter) localStorage.setItem('orderStatusFilter', statusFilter);
+      else localStorage.removeItem('orderStatusFilter');
+      if (searchTerm) localStorage.setItem('orderSearchTerm', searchTerm);
+      else localStorage.removeItem('orderSearchTerm');
+    } else if (tab === 'Menu') {
+      if (searchTerm) localStorage.setItem('menuSearchTerm', searchTerm);
+      else localStorage.removeItem('menuSearchTerm');
+    }
+    handleTabChange(tab);
   };
 
   const handleLogout = () => {
@@ -128,7 +160,9 @@ const AdminDashboard = () => {
               src={
                 (isSidebarCollapsed && !isMobileMenuOpen)
                   ? "/browser-icon.png"
-                  : (isDarkMode ? "/logo-golden.png" : "/logo-dark.png")
+                  : (isDarkMode 
+                      ? (settings?.branding?.logoGold || "/logo-golden.png") 
+                      : (settings?.branding?.logoDark || "/logo-dark.png"))
               }
               alt="Logo"
               className={`${(isSidebarCollapsed && !isMobileMenuOpen) ? 'h-8' : 'h-10'} w-auto transition-all duration-500`}
@@ -264,42 +298,62 @@ const AdminDashboard = () => {
                       <h2 className="text-3xl font-black text-text-primary tracking-tight">Dashboard</h2>
                       <p className="text-text-secondary text-sm font-medium">Welcome back! Here's what's happening today.</p>
                     </div>
+                    {stats.stockStats && (stats.stockStats.outOfStock > 0 || stats.stockStats.lowStock > 0) && (
+                      <div className="flex items-center space-x-3 bg-status-off/10 border border-status-off/20 px-4 py-2 rounded-2xl animate-pulse">
+                        <AlertTriangle className="text-status-unavailable" size={20} />
+                        <div>
+                          <p className="text-xs font-black text-status-unavailable uppercase">Stock Alerts</p>
+                          <p className="text-[10px] text-text-secondary font-medium">
+                            {stats.stockStats.outOfStock} out of stock, {stats.stockStats.lowStock} low stock
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="bg-background-card p-6 rounded-3xl border border-border-light shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+                    <div 
+                      onClick={() => navigateWithFilter('Orders', 'takeaway', 'placed')}
+                      className="bg-background-card p-6 rounded-3xl border border-border-light shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer active:scale-95"
+                    >
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-2">
                           <div className="p-2 bg-orange-500/10 text-orange-500 rounded-lg">
                             <ShoppingCart size={18} />
                           </div>
-                          <span className="text-sm font-bold text-text-secondary">Pending Orders</span>
+                          <span className="text-sm font-bold text-text-secondary">Placed Orders</span>
                         </div>
                         <ChevronRight size={16} className="text-text-muted group-hover:translate-x-1 transition-transform" />
                       </div>
                       <div className="flex items-end space-x-4">
-                        <span className="text-4xl font-black text-text-primary">{stats.orderStats.pending}</span>
+                        <span className="text-4xl font-black text-text-primary">{stats.orderStats.placed}</span>
                       </div>
                       <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
                     </div>
 
-                    <div className="bg-background-card p-6 rounded-3xl border border-border-light shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+                    <div 
+                      onClick={() => navigateWithFilter('Orders', 'takeaway', 'processing')}
+                      className="bg-background-card p-6 rounded-3xl border border-border-light shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer active:scale-95"
+                    >
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-2">
                           <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg">
                             <Clock size={18} />
                           </div>
-                          <span className="text-sm font-bold text-text-secondary">Orders in Progress</span>
+                          <span className="text-sm font-bold text-text-secondary">Processing Orders</span>
                         </div>
                         <ChevronRight size={16} className="text-text-muted group-hover:translate-x-1 transition-transform" />
                       </div>
                       <div className="flex items-end space-x-4">
-                        <span className="text-4xl font-black text-text-primary">{stats.orderStats.inProgress}</span>
+                        <span className="text-4xl font-black text-text-primary">{stats.orderStats.processing}</span>
                       </div>
                       <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
                     </div>
 
-                    <div className="bg-background-card p-6 rounded-3xl border border-border-light shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+                    <div 
+                      onClick={() => navigateWithFilter('Orders', 'dine-in')}
+                      className="bg-background-card p-6 rounded-3xl border border-border-light shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer active:scale-95"
+                    >
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-2">
                           <div className="p-2 bg-primary/10 text-primary rounded-lg">
@@ -331,13 +385,13 @@ const AdminDashboard = () => {
                           <p className="text-text-secondary text-xs font-medium">Sales Overview</p>
                         </div>
                         <div className="flex items-center space-x-2 bg-background-muted/50 p-1 rounded-xl border border-border-light">
-                          <button 
+                          <button
                             onClick={() => setChartTimeframe('week')}
                             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${chartTimeframe === 'week' ? 'bg-background-card text-text-primary shadow-sm border border-border-light' : 'text-text-muted hover:text-text-primary'}`}
                           >
                             This Week
                           </button>
-                          <button 
+                          <button
                             onClick={() => setChartTimeframe('month')}
                             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${chartTimeframe === 'month' ? 'bg-background-card text-text-primary shadow-sm border border-border-light' : 'text-text-muted hover:text-text-primary'}`}
                           >
@@ -399,11 +453,11 @@ const AdminDashboard = () => {
 
                         <div className="space-y-6">
                           {[
-                            { label: 'Number of Customers', value: stats.metrics.totalCustomers.toLocaleString(), icon: Users, color: 'bg-purple-500/10 text-purple-500' },
-                            { label: 'Total Orders', value: stats.metrics.totalOrders.toLocaleString(), icon: ShoppingCart, color: 'bg-blue-500/10 text-blue-500' },
-                            { label: 'Average Order Values', value: `₹ ${stats.metrics.avgOrderValue.toFixed(2)}`, icon: BarChart3, color: 'bg-primary/10 text-primary' },
+                            { label: 'Number of Customers', value: stats.metrics.totalCustomers.toLocaleString(), icon: Users, color: 'bg-purple-500/10 text-purple-500', action: () => handleTabChange('Users') },
+                            { label: 'Total Orders', value: stats.metrics.totalOrders.toLocaleString(), icon: ShoppingCart, color: 'bg-blue-500/10 text-blue-500', action: () => navigateWithFilter('Orders', 'history') },
+                            { label: 'Average Order Values', value: `₹ ${stats.metrics.avgOrderValue.toFixed(2)}`, icon: BarChart3, color: 'bg-primary/10 text-primary', action: () => navigateWithFilter('Orders', 'history') },
                           ].map((item) => (
-                            <div key={item.label} className="group cursor-pointer">
+                            <div key={item.label} className="group cursor-pointer active:scale-95" onClick={item.action}>
                               <div className="flex items-center justify-between mb-2">
                                 <span className="text-xs font-bold text-text-muted uppercase tracking-tight">{item.label}</span>
                                 <ChevronRight size={14} className="text-text-muted opacity-0 group-hover:opacity-100 transition-all" />
@@ -430,13 +484,17 @@ const AdminDashboard = () => {
                           <div className="text-center py-12 text-text-muted italic">No recent orders</div>
                         ) : (
                           stats.recentOrders.map((order, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-4 rounded-2xl hover:bg-background-muted transition-colors border border-transparent hover:border-border-light">
+                            <div 
+                              key={idx} 
+                              onClick={() => navigateWithFilter('Orders', 'history', null, order.orderNumber)}
+                              className="flex items-center justify-between p-4 rounded-2xl hover:bg-background-muted transition-colors border border-transparent hover:border-border-light cursor-pointer group active:scale-[0.98]"
+                            >
                               <div className="flex items-center space-x-4">
-                                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold border border-primary/20">
+                                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold border border-primary/20 group-hover:scale-110 transition-transform">
                                   {(order.customer?.name || order.address?.recipientName || (order.customerDetails?.name !== 'Walk-in' ? order.customerDetails?.name : null) || 'W').charAt(0)}
                                 </div>
                                 <div>
-                                  <p className="font-bold text-text-primary">
+                                  <p className="font-bold text-text-primary group-hover:text-primary transition-colors">
                                     {order.customer?.name || order.address?.recipientName || (order.customerDetails?.name !== 'Walk-in' ? order.customerDetails?.name : null) || 'Walk-in Customer'}
                                   </p>
                                   <p className="text-[11px] text-text-muted font-medium">₹ {order.totalAmount} • {order.orderNumber} • <Clock size={10} className="inline mb-0.5" /> {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
@@ -464,20 +522,135 @@ const AdminDashboard = () => {
                           <div className="text-center py-12 text-text-muted italic">No dishes sold yet</div>
                         ) : (
                           stats.topDishes.map((dish, idx) => (
-                            <div key={idx} className="flex items-center justify-between group">
-                              <div className="flex items-center space-x-4">
-                                <div className="w-12 h-12 rounded-xl bg-background-muted flex items-center justify-center overflow-hidden border border-border-light group-hover:scale-105 transition-transform">
-                                  {dish.image ? <img src={dish.image} alt={dish.name} className="w-full h-full object-cover" /> : <UtensilsCrossed size={20} className="text-text-muted" />}
-                                </div>
-                                <span className="font-bold text-text-primary text-sm group-hover:text-primary transition-colors">{dish.name}</span>
+                          <div 
+                            key={idx} 
+                            onClick={() => navigateWithFilter('Menu', null, null, dish.name)}
+                            className="flex items-center justify-between group cursor-pointer hover:bg-background-muted/50 p-2 rounded-xl transition-all active:scale-[0.98]"
+                          >
+                            <div className="flex items-center space-x-4">
+                              <div className="w-12 h-12 rounded-xl bg-background-muted flex items-center justify-center overflow-hidden border border-border-light group-hover:scale-105 transition-transform">
+                                {dish.image ? <img src={dish.image} alt={dish.name} className="w-full h-full object-cover" /> : <UtensilsCrossed size={20} className="text-text-muted" />}
                               </div>
-                              <div className="flex items-center space-x-2">
-                                <span className="text-xl font-black text-text-primary">{dish.orders}</span>
-                                <span className="text-[10px] font-bold text-text-muted uppercase">Qty</span>
-                              </div>
+                              <span className="font-bold text-text-primary text-sm group-hover:text-primary transition-colors">{dish.name}</span>
                             </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-xl font-black text-text-primary">{dish.orders}</span>
+                              <span className="text-[10px] font-bold text-text-muted uppercase">Qty</span>
+                            </div>
+                          </div>
                           ))
                         )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2 bg-background-card rounded-[2.5rem] border border-border-light shadow-sm overflow-hidden p-8">
+                      <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center space-x-3">
+                          <div className="p-2 bg-red-500/10 text-red-500 rounded-xl">
+                            <PackageX size={20} />
+                          </div>
+                          <h3 className="font-black text-text-primary text-xl">Inventory Alerts</h3>
+                        </div>
+                        <button 
+                          onClick={() => setActiveTab('Menu')}
+                          className="text-primary text-xs font-bold hover:underline"
+                        >
+                          Manage Inventory
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+                        <div 
+                          onClick={() => navigateWithFilter('Menu')}
+                          className="flex items-center space-x-4 p-6 rounded-3xl bg-status-off/5 border border-status-off/10 cursor-pointer hover:bg-status-off/10 transition-all active:scale-95"
+                        >
+                          <div className="p-3 bg-status-off/10 text-status-unavailable rounded-2xl">
+                            <PackageX size={24} />
+                          </div>
+                          <div>
+                            <p className="text-3xl font-black text-status-unavailable">{stats.stockStats.outOfStock}</p>
+                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Out of Stock</p>
+                          </div>
+                        </div>
+                        <div 
+                          onClick={() => navigateWithFilter('Menu')}
+                          className="flex items-center space-x-4 p-6 rounded-3xl bg-amber-500/5 border border-amber-500/10 cursor-pointer hover:bg-amber-500/10 transition-all active:scale-95"
+                        >
+                          <div className="p-3 bg-amber-500/10 text-amber-500 rounded-2xl">
+                            <AlertTriangle size={24} />
+                          </div>
+                          <div>
+                            <p className="text-3xl font-black text-amber-500">{stats.stockStats.lowStock}</p>
+                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Low Stock</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        {stats.stockStats.alerts.length === 0 ? (
+                          <div className="text-center py-12 text-text-muted italic flex flex-col items-center space-y-3 bg-status-on/5 rounded-[2rem] border border-dashed border-status-on/20">
+                            <CheckCircle2 className="text-status-available" size={40} />
+                            <p className="font-bold">Inventory levels are healthy</p>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {stats.stockStats.alerts.map((item, idx) => (
+                              <div key={idx} className="flex items-center justify-between p-4 rounded-2xl bg-background-muted/20 border border-border-light/50 hover:border-primary/30 transition-all group">
+                                <div className="flex items-center space-x-3 overflow-hidden">
+                                  <div className="w-10 h-10 rounded-lg bg-background-card flex items-center justify-center overflow-hidden border border-border-light shrink-0">
+                                    {item.image ? <img src={item.image} alt={item.name} className="w-full h-full object-cover" /> : <Package size={18} className="text-text-muted" />}
+                                  </div>
+                                  <div className="truncate">
+                                    <p className="font-bold text-sm text-text-primary truncate group-hover:text-primary transition-colors">{item.name}</p>
+                                    <p className="text-[9px] text-text-muted font-bold uppercase">{item.category?.name || 'Item'}</p>
+                                  </div>
+                                </div>
+                                <div className="text-right shrink-0 ml-2">
+                                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black ${item.totalStock === 0 ? 'bg-status-off/10 text-status-unavailable' : 'bg-amber-500/10 text-amber-500'}`}>
+                                    {item.totalStock}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-background-card rounded-[2.5rem] border border-border-light shadow-sm overflow-hidden p-8 flex flex-col justify-between">
+                      <div>
+                        <h3 className="font-black text-text-primary text-xl mb-6">Inventory Health</h3>
+                        <div className="relative h-48 w-48 mx-auto mb-6">
+                          <svg className="w-full h-full" viewBox="0 0 100 100">
+                            <circle className="text-background-muted stroke-current" strokeWidth="10" fill="transparent" r="40" cx="50" cy="50" />
+                            <circle 
+                              className="text-primary stroke-current transition-all duration-1000" 
+                              strokeWidth="10" 
+                              strokeLinecap="round" 
+                              fill="transparent" 
+                              r="40" 
+                              cx="50" 
+                              cy="50" 
+                              strokeDasharray={`${( (stats.metrics.totalMenuItems - (stats.stockStats.outOfStock + stats.stockStats.lowStock)) / stats.metrics.totalMenuItems) * 251} 251`}
+                              transform="rotate(-90 50 50)"
+                            />
+                            <text x="50" y="50" className="fill-text-primary text-[14px] font-black" textAnchor="middle" dy="0.3em">
+                              {Math.round(((stats.metrics.totalMenuItems - (stats.stockStats.outOfStock + stats.stockStats.lowStock)) / stats.metrics.totalMenuItems) * 100)}%
+                            </text>
+                            <text x="50" y="65" className="fill-text-muted text-[6px] font-bold uppercase" textAnchor="middle">Healthy</text>
+                          </svg>
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-text-secondary font-bold">Total Items</span>
+                          <span className="text-text-primary font-black">{stats.metrics.totalMenuItems}</span>
+                        </div>
+                        <div className="w-full bg-background-muted h-1.5 rounded-full overflow-hidden">
+                          <div className="bg-primary h-full rounded-full" style={{ width: '100%' }} />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -493,11 +666,7 @@ const AdminDashboard = () => {
           {activeTab === 'Staff' && <StaffManagement key={`staff-${refreshKey}`} />}
           {activeTab === 'Users' && <UserManagement key={`users-${refreshKey}`} />}
 
-          {activeTab === 'Settings' && (
-            <div className="flex items-center justify-center h-64 border-2 border-dashed border-border-light rounded-2xl">
-              <p className="text-text-secondary font-medium italic">Settings section coming soon...</p>
-            </div>
-          )}
+          {activeTab === 'Settings' && <SettingsSection key={`settings-${refreshKey}`} />}
         </div>
       </main>
     </div>

@@ -15,13 +15,16 @@ class DashboardService {
       totalOrders,
       totalCustomers,
       totalMenuItems,
-      pendingOrders,
-      inProgressOrders,
+      placedOrders,
+      processingOrders,
       tableStats,
       recentOrders,
       revenueTrend,
       topDishes,
-      monthlyTrend
+      monthlyTrend,
+      outOfStockCount,
+      lowStockCount,
+      stockAlerts
     ] = await Promise.all([
       // 1. Total Revenue
       Order.aggregate([
@@ -44,10 +47,10 @@ class DashboardService {
       // 5. Total Menu Items
       Menu.countDocuments(),
 
-      // 6. Pending Orders
+      // 6. Placed Orders
       Order.countDocuments({ orderStatus: 'placed' }),
 
-      // 7. Orders in Progress
+      // 7. Processing Orders
       Order.countDocuments({ orderStatus: 'processing' }),
 
       // 8. Table Stats
@@ -95,7 +98,19 @@ class DashboardService {
       ]),
 
       // 12. Monthly Revenue Trend
-      this.getMonthlyRevenueTrend()
+      this.getMonthlyRevenueTrend(),
+
+      // 13. Out of Stock Items
+      Menu.countDocuments({ totalStock: 0 }),
+
+      // 14. Low Stock Items (Threshold: 10)
+      Menu.countDocuments({ totalStock: { $gt: 0, $lte: 10 } }),
+
+      // 15. Stock Alerts (Items to display)
+      Menu.find({ totalStock: { $lte: 10 } })
+        .sort({ totalStock: 1 })
+        .limit(5)
+        .populate('category', 'name')
     ]);
 
     const totalRevenue = totalRevenueData[0]?.total || 0;
@@ -113,8 +128,8 @@ class DashboardService {
         avgOrderValue
       },
       orderStats: {
-        pending: pendingOrders,
-        inProgress: inProgressOrders
+        placed: placedOrders,
+        processing: processingOrders
       },
       tableStats: {
         total: tableStats[0]?.total || 0,
@@ -123,7 +138,12 @@ class DashboardService {
       recentOrders,
       revenueTrend,
       monthlyTrend,
-      topDishes
+      topDishes,
+      stockStats: {
+        outOfStock: outOfStockCount,
+        lowStock: lowStockCount,
+        alerts: stockAlerts
+      }
     };
   }
 
