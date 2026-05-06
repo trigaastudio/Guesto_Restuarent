@@ -1,6 +1,18 @@
 import Order from '../models/orderSchema.js';
 import Cart from '../models/cartSchema.js';
 
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371; // km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+};
+
 const placeOrder = async (req, res) => {
   try {
     const { items, address, paymentMethod, totalAmount, subtotal, discount, tax } = req.body;
@@ -11,6 +23,22 @@ const placeOrder = async (req, res) => {
     const finalOrderType = isUser ? 'delivery' : (req.body.orderType || 'dine-in');
 
     const orderNumber = `GO-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    // Calculate delivery fee on server for security
+    let deliveryFee = 0;
+    if (finalOrderType === 'delivery' && address.location) {
+      const urlMatch = address.location.match(/q=([-.\d]+),([-.\d]+)/);
+      if (urlMatch) {
+        const userLat = parseFloat(urlMatch[1]);
+        const userLng = parseFloat(urlMatch[2]);
+        const restLat = parseFloat(process.env.RESTAURANT_LAT || '10.668194');
+        const restLng = parseFloat(process.env.RESTAURANT_LNG || '76.025111');
+        const distance = calculateDistance(userLat, userLng, restLat, restLng);
+        if (distance > 5) {
+          deliveryFee = Math.ceil(distance - 5) * 10;
+        }
+      }
+    }
 
     const newOrder = new Order({
       customer: req.user._id,
@@ -31,10 +59,11 @@ const placeOrder = async (req, res) => {
         remarks: req.body.remarks || ''
       },
       paymentMethod: paymentMethod || 'cod',
-      totalAmount,
       subtotal,
+      deliveryFee: deliveryFee || req.body.deliveryFee || 0,
       discount: discount || 0,
       tax: tax || 0,
+      totalAmount: subtotal + deliveryFee - (discount || 0) + (tax || 0),
       orderStatus: 'placed',
       kitchenStatus: 'placed',
       paymentStatus: (paymentMethod === 'cod' || paymentMethod === 'cash') ? 'pending' : 'paid'
@@ -49,8 +78,8 @@ const placeOrder = async (req, res) => {
     await newOrder.save();
 
     // Clear cart after placing order
-    await Cart.findOneAndDelete({ customer: req.user._id }).catch(() => {}); // Attempt both field names
-    await Cart.findOneAndDelete({ user: req.user._id }).catch(() => {});
+    await Cart.findOneAndDelete({ customer: req.user._id }).catch(() => { }); // Attempt both field names
+    await Cart.findOneAndDelete({ user: req.user._id }).catch(() => { });
 
     res.status(201).json({
       success: true,

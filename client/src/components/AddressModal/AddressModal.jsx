@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, User as UserIcon, Users, MapPin, Home, Briefcase } from 'lucide-react';
 
 const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
@@ -7,9 +7,15 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
     name: '',
     phone: '',
     address: '',
+    landmark: '',
     location: '',
     type: 'home'
   });
+  const [isMapOpen, setIsMapOpen] = useState(false);
+  const [errors, setErrors] = useState({});
+  const mapRef = useRef(null);
+  const markerRef = useRef(null);
+  const lMap = useRef(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -17,10 +23,12 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
         name: '',
         phone: '',
         address: '',
+        landmark: '',
         location: '',
         type: 'home'
       });
       setRecipientType('myself');
+      setErrors({});
       return;
     }
 
@@ -29,19 +37,20 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
         name: editData.name || '',
         phone: editData.phone || '',
         address: editData.address || '',
+        landmark: editData.landmark || '',
         location: editData.location || '',
         type: editData.type || 'home',
         _id: editData._id
       });
-      setRecipientType(editData.name === user.name ? 'myself' : 'others');
-    } else {
-      if (recipientType === 'myself' && user) {
+      setRecipientType(editData.name === user?.name ? 'myself' : 'others');
+    } else if (user) {
+      if (recipientType === 'myself') {
         setFormData(prev => ({
           ...prev,
           name: user.name || '',
           phone: user.phone || ''
         }));
-      } else if (recipientType === 'others') {
+      } else {
         setFormData(prev => ({
           ...prev,
           name: '',
@@ -62,35 +71,96 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
     };
   }, [isOpen]);
 
+  // Handle Map Initialization
+  useEffect(() => {
+    if (isMapOpen && !lMap.current) {
+      setTimeout(() => {
+        if (!window.L) return;
+        const initialLat = 10.668194;
+        const initialLng = 76.025111;
+        
+        lMap.current = window.L.map(mapRef.current).setView([initialLat, initialLng], 15);
+        
+        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors'
+        }).addTo(lMap.current);
+
+        markerRef.current = window.L.marker([initialLat, initialLng], {
+          draggable: true
+        }).addTo(lMap.current);
+
+        lMap.current.on('click', function(e) {
+          markerRef.current.setLatLng(e.latlng);
+        });
+      }, 100);
+    }
+
+    return () => {
+      if (lMap.current) {
+        lMap.current.remove();
+        lMap.current = null;
+      }
+    };
+  }, [isMapOpen]);
+
+  const handleSaveMapLocation = () => {
+    if (markerRef.current) {
+      const { lat, lng } = markerRef.current.getLatLng();
+      const mapsUrl = `https://www.google.com/maps?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
+      setFormData({
+        ...formData,
+        location: `📍 Precise Location: ${mapsUrl}`
+      });
+      if (errors.location) setErrors(prev => ({ ...prev, location: null }));
+      setIsMapOpen(false);
+    }
+  };
+
+  const validate = () => {
+    const newErrors = {};
+    if (!formData.name.trim()) newErrors.name = true;
+    if (!formData.phone.trim()) newErrors.phone = true;
+    if (!formData.address.trim()) newErrors.address = true;
+    if (recipientType === 'others' && !formData.landmark.trim()) newErrors.landmark = true;
+    if (recipientType === 'myself' && !formData.location) newErrors.location = true;
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleFinalSave = () => {
+    if (validate()) {
+      onSave(formData);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 sm:p-6">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose}></div>
-      <div className="bg-[#FAF9F6] w-full max-w-lg max-h-[90vh] rounded-[2rem] shadow-2xl relative z-10 overflow-hidden flex flex-col animate-in fade-in zoom-in duration-300">
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="bg-white w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 relative flex flex-col max-h-[90vh]">
+        
         {/* Modal Header */}
-        <div className="p-6 border-b border-[#D10000]/10 flex justify-between items-center bg-[#D10000]">
-          <div>
-            <h3 className="text-xl font-black text-white tracking-tight">{editData ? 'Edit Address' : 'Add Delivery Address'}</h3>
-            <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mt-1">{editData ? 'Updating your delivery details' : 'Where should we drop the magic?'}</p>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/20 text-white rounded-full transition-colors">
+        <div className="bg-[#D10000] p-6 md:p-8 text-white relative">
+          <button onClick={onClose} className="absolute top-6 right-6 p-2 hover:bg-white/20 rounded-full transition-colors">
             <X size={20} />
           </button>
+          <h3 className="text-xl font-black tracking-tight mb-1">Add Delivery Address</h3>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Where should we drop the magic?</p>
         </div>
 
-        <div className="p-6 md:p-8 space-y-5 md:space-y-6 overflow-y-auto custom-scrollbar flex-1">
+        <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
           {/* Recipient Toggle */}
-          <div className="flex p-1 bg-gray-100 rounded-2xl">
+          <div className="flex bg-gray-50 p-1.5 rounded-2xl border border-gray-100">
             <button
               onClick={() => setRecipientType('myself')}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${recipientType === 'myself' ? 'bg-white text-[#D10000] shadow-sm' : 'text-gray-400'}`}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${recipientType === 'myself' ? 'bg-white shadow-md text-primary' : 'text-gray-400 hover:text-gray-600'}`}
             >
               <UserIcon size={14} /> Myself
             </button>
             <button
               onClick={() => setRecipientType('others')}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${recipientType === 'others' ? 'bg-white text-[#D10000] shadow-sm' : 'text-gray-400'}`}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${recipientType === 'others' ? 'bg-white shadow-md text-[#D10000]' : 'text-gray-400 hover:text-gray-600'}`}
             >
               <Users size={14} /> Others
             </button>
@@ -103,9 +173,12 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
               <input
                 type="text"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, name: e.target.value });
+                  if (errors.name) setErrors(prev => ({ ...prev, name: null }));
+                }}
                 disabled={recipientType === 'myself'}
-                className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-50"
+                className={`w-full px-5 py-3.5 bg-gray-50 border ${errors.name ? 'border-red-500' : 'border-gray-100'} rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-50`}
                 placeholder="Enter name"
               />
             </div>
@@ -115,54 +188,83 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
               <input
                 type="tel"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-50"
+                onChange={(e) => {
+                  setFormData({ ...formData, phone: e.target.value });
+                  if (errors.phone) setErrors(prev => ({ ...prev, phone: null }));
+                }}
+                className={`w-full px-5 py-3.5 bg-gray-50 border ${errors.phone ? 'border-red-500' : 'border-gray-100'} rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all`}
                 placeholder="Enter mobile number"
               />
             </div>
           </div>
 
-          {/* Address */}
           <div className="space-y-1.5">
             <label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">Detailed Address</label>
             <textarea
               value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all min-h-[100px] resize-none"
+              onChange={(e) => {
+                setFormData({ ...formData, address: e.target.value });
+                if (errors.address) setErrors(prev => ({ ...prev, address: null }));
+              }}
+              className={`w-full px-5 py-3.5 bg-gray-50 border ${errors.address ? 'border-red-500' : 'border-gray-100'} rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all min-h-[80px] resize-none`}
               placeholder="Flat/House No., Building, Apartment"
             />
           </div>
 
-          {/* Location */}
+          {/* Landmark */}
           <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">
+              Landmark {recipientType === 'others' ? '(Required)' : '(Optional)'}
+            </label>
+            <input
+              type="text"
+              value={formData.landmark}
+              onChange={(e) => {
+                setFormData({ ...formData, landmark: e.target.value });
+                if (errors.landmark) setErrors(prev => ({ ...prev, landmark: null }));
+              }}
+              className={`w-full px-5 py-3.5 bg-gray-50 border ${errors.landmark ? 'border-red-500' : 'border-gray-100'} rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all`}
+              placeholder="E.g. Near City Hospital, Beside Park"
+            />
+          </div>
+
+          {/* Location - Only for Myself */}
+          {recipientType === 'myself' && (
+            <div className="space-y-1.5">
             <div className="flex justify-between items-center ml-1">
-              <label className="text-[10px] font-black text-text-muted uppercase tracking-widest">Landmark / Location</label>
+              <label className="text-[10px] font-black text-text-muted uppercase tracking-widest">Precise Location (GPS)</label>
               <button
                 onClick={() => {
-                  if (navigator.geolocation) {
-                    const btn = document.getElementById('locate-me-btn');
-                    btn.classList.add('animate-pulse');
-                    btn.innerText = 'Sending...';
+                  if (recipientType === 'myself') {
+                    if (navigator.geolocation) {
+                      const btn = document.getElementById('locate-me-btn');
+                      btn.classList.add('animate-pulse');
+                      btn.innerText = 'Sending...';
 
-                    navigator.geolocation.getCurrentPosition(
-                      (position) => {
-                        const { latitude, longitude } = position.coords;
-                        const mapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
-                        setFormData({
-                          ...formData,
-                          location: `📍 Precise Location: ${mapsUrl}`
-                        });
-                        btn.classList.remove('animate-pulse');
-                        btn.innerText = 'Sent! ✅';
-                        setTimeout(() => btn.innerText = 'Send Location', 2000);
-                      },
-                      (error) => {
-                        console.error(error);
-                        btn.classList.remove('animate-pulse');
-                        btn.innerText = 'Error! ❌';
-                        setTimeout(() => btn.innerText = 'Send Location', 2000);
-                      }
-                    );
+                      navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                          const { latitude, longitude } = position.coords;
+                          const mapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+                          setFormData({
+                            ...formData,
+                            location: `📍 Precise Location: ${mapsUrl}`
+                          });
+                          if (errors.location) setErrors(prev => ({ ...prev, location: null }));
+                          btn.classList.remove('animate-pulse');
+                          btn.innerText = 'Sent! ✅';
+                          setTimeout(() => btn.innerText = 'Send Location', 2000);
+                        },
+                        (error) => {
+                          console.error(error);
+                          btn.classList.remove('animate-pulse');
+                          btn.innerText = 'Error! ❌';
+                          setTimeout(() => btn.innerText = 'Send Location', 2000);
+                        }
+                      );
+                    }
+                  } else {
+                    // Open map picker for others
+                    setIsMapOpen(true);
                   }
                 }}
                 id="locate-me-btn"
@@ -172,16 +274,31 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
               </button>
             </div>
             <div className="relative">
-              <MapPin size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-[#D10000]" />
+              <MapPin size={16} className={`absolute left-5 top-1/2 -translate-y-1/2 ${formData.location ? 'text-green-500' : 'text-gray-300'}`} />
               <input
                 type="text"
                 value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                className="w-full pl-12 pr-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#D10000]/20 transition-all"
-                placeholder="Google Maps Link or Landmark"
+                onChange={(e) => {
+                  setFormData({ ...formData, location: e.target.value });
+                  if (errors.location) setErrors(prev => ({ ...prev, location: null }));
+                }}
+                className={`w-full pl-12 pr-5 py-3.5 bg-gray-50/50 border ${errors.location ? 'border-red-500' : 'border-gray-100'} rounded-2xl text-[10px] font-bold text-gray-400 focus:outline-none transition-all`}
+                placeholder={recipientType === 'myself' ? "GPS link will appear here or paste Google Maps link" : "Paste Google Maps link or click Send Location to pick"}
               />
             </div>
+            <p className="text-[8px] font-bold text-gray-400 mt-1 ml-1 italic opacity-80">
+              Tip: You can paste a Google Maps link directly here if you have one.
+            </p>
+            {recipientType === 'myself' && (
+              <button 
+                onClick={() => setIsMapOpen(true)}
+                className="mt-2 text-[8px] font-black text-gray-400 uppercase tracking-widest hover:text-[#DA9133] transition-all flex items-center gap-1"
+              >
+                <MapPin size={10} /> Pick on Map instead of GPS?
+              </button>
+            )}
           </div>
+          )}
 
           {/* Address Type */}
           <div className="space-y-3">
@@ -206,12 +323,42 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
         {/* Modal Footer */}
         <div className="p-6 md:p-8 border-t border-gray-100 bg-gray-50/50 pb-10 md:pb-8">
           <button
-            onClick={() => onSave(formData)}
+            onClick={handleFinalSave}
             className="w-full bg-[#DA9133] text-white font-black py-4 rounded-2xl hover:bg-[#C27D29] transition-all shadow-[0_15px_40px_rgba(0,0,0,0.1)] active:scale-[0.98] uppercase tracking-widest text-sm"
           >
             Save Address & Continue
           </button>
         </div>
+
+        {/* Map Picker Modal Overlay */}
+        {isMapOpen && (
+          <div className="fixed inset-0 z-[3000] flex flex-col bg-white">
+            <div className="p-4 bg-[#DA9133] text-white flex justify-between items-center">
+              <div>
+                <h3 className="font-black tracking-tight">Pick Delivery Location</h3>
+                <p className="text-[10px] opacity-80 font-bold uppercase tracking-widest">Move the pin to your exact spot</p>
+              </div>
+              <button onClick={() => setIsMapOpen(false)} className="p-2 hover:bg-white/20 rounded-full">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 relative">
+              <div ref={mapRef} className="absolute inset-0 z-10" />
+              <div className="absolute top-4 left-4 z-[20] bg-white/90 backdrop-blur p-3 rounded-xl shadow-lg border border-gray-100 max-w-[200px]">
+                <p className="text-[10px] font-black text-[#DA9133] uppercase tracking-widest mb-1">Tip</p>
+                <p className="text-[10px] font-bold text-gray-600">You can drag the red marker or click anywhere on the map to set the pin.</p>
+              </div>
+            </div>
+            <div className="p-6 bg-white border-t border-gray-100">
+              <button
+                onClick={handleSaveMapLocation}
+                className="w-full bg-[#D10000] text-white font-black py-4 rounded-2xl hover:bg-[#B00000] transition-all shadow-xl uppercase tracking-widest text-sm"
+              >
+                Confirm Location & Save Pin
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

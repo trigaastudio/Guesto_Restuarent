@@ -127,7 +127,12 @@ const TrackOrderPage = () => {
               <ArrowLeft size={14} /> Back to my orders
             </button>
             <div className="flex flex-wrap items-center gap-4">
-              <h1 className="text-2xl md:text-3xl font-black text-text-primary tracking-tighter break-words">Track Order <span className="text-[#D10000]">#{order.orderNumber || order._id.slice(-8).toUpperCase()}</span></h1>
+              <h1 className="text-2xl md:text-3xl font-black text-text-primary tracking-tighter break-words flex items-center gap-3 flex-wrap">
+                Track Order
+                <span className="font-mono bg-[#D10000]/5 text-[#D10000] px-4 py-1 rounded-2xl border border-[#D10000]/10 text-xl md:text-2xl tracking-[0.1em] shadow-sm">
+                  {order.orderNumber || order._id.slice(-8).toUpperCase()}
+                </span>
+              </h1>
               <div className="px-3 py-1 rounded-full bg-[#D10000]/5 border border-[#D10000]/10 text-[#D10000] text-[9px] font-black tracking-widest animate-pulse">
                 {getStatusLabel(order.orderStatus)}
               </div>
@@ -176,8 +181,8 @@ const TrackOrderPage = () => {
               </div>
             </div>
 
-            {/* Delivery Partner Info */}
-            {activeStepIndex >= 2 && (
+            {/* Delivery Partner Info - Only show when Out for Delivery */}
+            {order.orderStatus === 'out-for-delivery' && (
               <div className="bg-[#D10000] rounded-[2.5rem] p-8 text-white flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl shadow-[#D10000]/30 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
                 <div className="flex items-center gap-6 relative z-10">
@@ -230,9 +235,9 @@ const TrackOrderPage = () => {
                     <p className="text-[10px] font-bold text-text-primary flex items-center gap-2">
                       <MapPin size={10} className="text-[#D10000]" />
                       {order.customerDetails.location.includes('http') ? (
-                        <a 
-                          href={order.customerDetails.location.split('📍 Precise Location: ')[1] || order.customerDetails.location} 
-                          target="_blank" 
+                        <a
+                          href={order.customerDetails.location.split('📍 Precise Location: ')[1] || order.customerDetails.location}
+                          target="_blank"
                           rel="noopener noreferrer"
                           className="text-[#D10000] hover:underline"
                         >

@@ -128,7 +128,7 @@ const OrdersPage = () => {
         />
       </header>
 
-      <main className={`max-w-7xl mx-auto px-6 ${hasOrders ? 'py-4 md:py-6' : 'min-h-[70vh] flex items-center justify-center'} relative z-10 pb-20`}>
+      <main className={`max-w-6xl mx-auto px-6 ${hasOrders ? 'py-4 md:py-8' : 'min-h-[70vh] flex items-center justify-center'} relative z-10 pb-24`}>
         {loading ? (
           <div className="space-y-6 w-full">
             {[1, 2, 3].map(n => (
@@ -167,10 +167,10 @@ const OrdersPage = () => {
             </button>
           </div>
         ) : (
-          <div className="max-w-5xl mx-auto w-full space-y-6 relative z-10">
+          <div className="max-w-4xl mx-auto w-full space-y-6 relative z-10">
             {/* Orders List */}
-            <div className="space-y-6 relative z-10">
-              <div className="bg-white rounded-[3.5rem] p-6 md:p-10 border border-gray-100 shadow-[0_30px_100px_rgba(0,0,0,0.04)] min-h-[500px] flex flex-col relative overflow-hidden">
+            <div className="space-y-8 relative z-10">
+              <div className="bg-white rounded-[2.5rem] p-6 md:p-8 border border-gray-100 shadow-[0_30px_100px_rgba(0,0,0,0.03)] min-h-[400px] flex flex-col relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
 
                 <div className="relative z-10 flex items-center gap-3 mb-10">
@@ -183,16 +183,27 @@ const OrdersPage = () => {
 
                 <div className="space-y-6 relative z-10">
                   {orders.map((order) => (
-                    <div key={order._id} className="bg-[#FAF9F6] hover:bg-white rounded-[2.5rem] border border-gray-100 hover:border-[#D10000]/20 shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden group">
+                    <div key={order._id} className="bg-[#FAF9F6] hover:bg-white rounded-[2.5rem] border border-gray-100 hover:border-[#D10000]/20 shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden group relative">
+                      {order.orderStatus === 'cancelled' && (
+                        <div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center overflow-hidden p-10">
+                          <img
+                            src="/cancelled.png.png"
+                            alt="Cancelled"
+                            className="w-full max-w-[250px] object-contain opacity-[0.3] -rotate-12"
+                          />
+                        </div>
+                      )}
                       {/* Order Header */}
-                      <div className="p-6 md:p-8 flex flex-col md:flex-row justify-between gap-6 border-b border-gray-100/50">
+                      <div className="p-4 md:p-6 flex flex-col md:flex-row justify-between gap-4 border-b border-gray-100/50 bg-white">
                         <div className="flex gap-4">
                           <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:scale-110 ${order.orderStatus === 'cancelled' ? 'bg-red-50 text-red-500' : 'bg-white shadow-sm text-[#D10000]'}`}>
                             {order.orderStatus === 'cancelled' ? <XCircle size={24} /> : <Package size={24} />}
                           </div>
                           <div>
                             <div className="flex flex-wrap items-center gap-3 mb-1">
-                              <h3 className="font-black text-text-primary text-lg">#{order.orderNumber || order._id.slice(-8).toUpperCase()}</h3>
+                              <h3 className="font-mono font-black text-text-primary text-base md:text-lg tracking-[0.1em] bg-gray-50/50 px-3 py-1 rounded-xl border border-gray-100 flex items-center justify-center">
+                                {order.orderNumber || order._id.slice(-8).toUpperCase()}
+                              </h3>
                               <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-widest border uppercase ${getStatusColor(order.orderStatus)}`}>
                                 {getStatusIcon(order.orderStatus)}
                                 {getStatusLabel(order.orderStatus)}
@@ -208,8 +219,8 @@ const OrdersPage = () => {
                       </div>
 
                       {/* Order Content */}
-                      <div className="p-6 md:p-8">
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                      <div className="p-4 md:p-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                           {/* Items */}
                           <div className="space-y-4">
                             <p className="text-[9px] font-black text-text-muted tracking-widest uppercase opacity-40">Items Summary</p>
@@ -235,7 +246,7 @@ const OrdersPage = () => {
                           </div>
 
                           {/* Delivery & Payment Info */}
-                          <div className="bg-white/50 rounded-[2rem] p-6 border border-gray-100/50 space-y-6">
+                          <div className="bg-white/50 rounded-2xl p-4 border border-gray-100/50 space-y-4">
                             <div>
                               <p className="text-[9px] font-black text-text-muted tracking-widest uppercase opacity-40 mb-3">Delivery Location</p>
                               <div className="flex items-start gap-3">
@@ -254,25 +265,27 @@ const OrdersPage = () => {
                               </div>
                             </div>
 
-                            <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                              <div className="flex flex-col">
-                                <span className="text-[9px] font-black text-text-muted tracking-widest uppercase opacity-40">Payment</span>
-                                <span className="text-[10px] font-black text-text-primary tracking-widest mt-1 uppercase">{order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment'}</span>
+                            {order.orderStatus !== 'cancelled' && (
+                              <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                                <div className="flex flex-col">
+                                  <span className="text-[9px] font-black text-text-muted tracking-widest uppercase opacity-40">Payment</span>
+                                  <span className="text-[10px] font-black text-text-primary tracking-widest mt-1 uppercase">{order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment'}</span>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-[9px] font-black text-text-muted tracking-widest uppercase opacity-40">Status</span>
+                                  <span className={`block text-[10px] font-black tracking-widest mt-1 uppercase ${order.paymentStatus === 'paid' ? 'text-green-600' : 'text-orange-500'}`}>
+                                    {order.paymentStatus}
+                                  </span>
+                                </div>
                               </div>
-                              <div className="text-right">
-                                <span className="text-[9px] font-black text-text-muted tracking-widest uppercase opacity-40">Status</span>
-                                <span className={`block text-[10px] font-black tracking-widest mt-1 uppercase ${order.paymentStatus === 'paid' ? 'text-green-600' : 'text-orange-500'}`}>
-                                  {order.paymentStatus}
-                                </span>
-                              </div>
-                            </div>
+                            )}
                           </div>
                         </div>
                       </div>
 
                       {/* Footer Actions */}
                       {order.orderStatus !== 'cancelled' && (
-                        <div className="px-6 md:px-8 py-5 bg-white border-t border-gray-100/50 flex flex-col sm:flex-row justify-end gap-3">
+                        <div className="px-4 md:px-6 py-4 bg-white border-t border-gray-100/50 flex flex-wrap justify-end gap-2">
                           {order.orderStatus === 'placed' && (
                             <button
                               onClick={() => handleCancelOrder(order._id)}
@@ -298,9 +311,9 @@ const OrdersPage = () => {
                     </div>
                   ))}
                 </div>
+              </div>
             </div>
           </div>
-        </div>
         )}
       </main>
       {!loading && hasOrders && <Footer />}

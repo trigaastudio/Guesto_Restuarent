@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
-import { ShoppingCart, Trash2, Plus, Minus, ArrowLeft, ChevronRight, MapPin, Clock, CreditCard, X, Home, Briefcase, User as UserIcon, Users } from 'lucide-react';
+import { ShoppingCart, Trash2, Plus, Minus, ArrowLeft, MapPin, Clock, CreditCard, X, Home, Briefcase, User as UserIcon, Users } from 'lucide-react';
 import api from '../../api/axiosInstance';
 import Swal from 'sweetalert2';
 import AddressModal from '../../components/AddressModal/AddressModal';
@@ -96,6 +96,8 @@ const CartPage = () => {
   const [showUserDropdown, setShowUserDropdown] = React.useState(false);
   const dropdownRef = React.useRef(null);
   const [savedAddresses, setSavedAddresses] = useState([]);
+  const [additionalNote, setAdditionalNote] = useState('');
+  const [deliveryInfo, setDeliveryInfo] = useState({ fee: 0, distance: 0 });
   const [deliveryAddress, setDeliveryAddress] = useState({
     name: user?.name || '',
     phone: user?.phone || '',
@@ -125,6 +127,51 @@ const CartPage = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (deliveryAddress?.location) {
+      const info = calculateDeliveryInfo(deliveryAddress.location);
+      setDeliveryInfo(info);
+    }
+  }, [deliveryAddress]);
+
+  const calculateDeliveryInfo = (locationStr) => {
+    try {
+      const urlMatch = locationStr.match(/q=([-.\d]+),([-.\d]+)/);
+      if (!urlMatch) return { fee: 0, distance: 0 };
+
+      const userLat = parseFloat(urlMatch[1]);
+      const userLng = parseFloat(urlMatch[2]);
+
+      const restLat = parseFloat(import.meta.env.VITE_RESTAURANT_LAT || '10.668194');
+      const restLng = parseFloat(import.meta.env.VITE_RESTAURANT_LNG || '76.025111');
+
+      if (isNaN(userLat) || isNaN(userLng) || isNaN(restLat) || isNaN(restLng)) {
+        return { fee: 0, distance: 0 };
+      }
+
+      const R = 6371;
+      const dLat = (userLat - restLat) * Math.PI / 180;
+      const dLng = (userLng - restLng) * Math.PI / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(restLat * Math.PI / 180) * Math.cos(userLat * Math.PI / 180) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const distance = R * c;
+
+      let fee = 0;
+      if (distance > 5) {
+        fee = Math.ceil(distance - 5) * 10;
+      }
+      return { fee: isNaN(fee) ? 0 : fee, distance: isNaN(distance) ? 0 : distance.toFixed(1) };
+    } catch (e) {
+      return { fee: 0, distance: 0 };
+    }
+  };
+
+  const platformFee = 0;
+  const total = subtotal + deliveryInfo.fee + platformFee;
+
   const fetchAddresses = async () => {
     try {
       const response = await api.get('/api/users/addresses');
@@ -139,10 +186,6 @@ const CartPage = () => {
       console.error('Error fetching addresses:', error);
     }
   };
-
-  const deliveryFee = 0;
-  const platformFee = 0;
-  const total = subtotal + deliveryFee + platformFee;
 
   const handleSaveAddress = async (newAddress) => {
     try {
@@ -279,7 +322,6 @@ const CartPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navbar Integration */}
       <div className="bg-[#D10000]">
         <Navbar
           user={user}
@@ -291,189 +333,198 @@ const CartPage = () => {
           dropdownRef={dropdownRef}
           hideCart={false}
         />
-
-
       </div>
 
-      <main className="max-w-5xl mx-auto px-6 pt-4 pb-12 bg-[#FAF9F6]">
-        <div className="flex flex-col lg:flex-row gap-6 items-start">
+      <main className="max-w-6xl mx-auto px-4 md:px-6 py-6">
+        <div className="flex flex-col lg:flex-row gap-8 items-start">
 
-          {/* Main Content Area */}
-          <div className="flex-1 space-y-8 w-full">
-
-            {/* Delivery Steps */}
-            <div className="bg-white rounded-[1.5rem] p-4 flex flex-wrap gap-6 items-center justify-between border border-[#D10000]/5 shadow-sm">
-              <div className="flex items-center gap-5">
-                <div className="w-9 h-9 rounded-lg bg-[#D10000]/10 flex items-center justify-center text-[#D10000]">
-                  <MapPin size={22} />
+          {/* Left Column: Address Selection */}
+          <div className="flex-1 w-full space-y-6">
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-8 h-8 bg-[#D10000] text-white flex items-center justify-center rounded-lg shadow-lg">
+                  <MapPin size={16} />
                 </div>
-                <div className="flex flex-col justify-center">
-                  <div className="flex items-center gap-3 mb-1">
-                    <h4 className="text-sm font-black text-text-primary tracking-tight leading-none">Delivery Address</h4>
-                    <button
-                      onClick={() => setIsAddressListModalOpen(true)}
-                      className="text-[7px] font-black text-[#D10000] tracking-widest bg-[#D10000]/5 hover:bg-[#D10000]/10 px-1.5 py-0.5 rounded-md transition-all border border-[#D10000]/10 active:scale-95"
-                    >
-                      Change
-                    </button>
-                  </div>
-                  <p className="text-[11px] text-text-muted font-bold opacity-60 leading-tight tracking-wide">
-                    {deliveryAddress.address || 'Set your location for delivery'}
-                  </p>
+                <div>
+                  <h2 className="text-xl font-black text-gray-900 tracking-tight">Choose a delivery address</h2>
                 </div>
               </div>
 
-              <div className="flex items-center gap-5">
-                <div className="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center text-green-600">
-                  <Clock size={22} />
-                </div>
-                <div className="flex flex-col justify-center">
-                  <h4 className="text-sm font-black text-text-primary tracking-tight leading-none mb-1">Estimated Time</h4>
-                  <p className="text-[11px] text-text-muted font-bold opacity-60 leading-tight tracking-wide">25 - 35 MINUTES</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {savedAddresses.map((addr) => (
+                  <div key={addr._id} className={`flex flex-col h-full p-4 border-2 rounded-xl transition-all ${deliveryAddress._id === addr._id ? 'border-[#D10000] shadow-md' : 'border-gray-100 hover:border-gray-200 shadow-sm'}`}>
+                    <div className="flex items-start gap-3 mb-3 flex-grow">
+                      <div className="mt-1 flex-shrink-0">
+                        {addr.type === 'home' ? <Home size={18} className="text-gray-500" /> : <Briefcase size={18} className="text-gray-500" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-base font-black text-gray-800 capitalize mb-0.5 truncate">{addr.type}</h4>
+                        <p className="text-[10px] font-black text-[#D10000] uppercase tracking-wider mb-1">{addr.name}</p>
+                        <p className="text-[11px] text-gray-500 leading-tight line-clamp-2 mb-1">{addr.address}</p>
+                        {addr.landmark && <p className="text-[10px] font-bold text-[#D10000] italic mb-1 truncate">Landmark: {addr.landmark}</p>}
+                        <p className="text-[10px] font-black text-gray-900 lowercase tracking-wider">45 mins</p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleSelectAddress(addr)}
+                      className={`w-full py-2.5 rounded-lg font-black text-[10px] tracking-widest uppercase transition-all mt-auto ${deliveryAddress._id === addr._id ? 'bg-[#DA9133] text-white' : 'bg-[#DA9133]/80 hover:bg-[#DA9133] text-white'}`}
+                    >
+                      Deliver Here
+                    </button>
+                  </div>
+                ))}
+
+                {/* Add New Address Card */}
+                <div
+                  onClick={() => setIsAddressModalOpen(true)}
+                  className="p-4 border-2 border-dashed border-gray-200 rounded-xl hover:border-gray-400 cursor-pointer flex flex-col items-center justify-center gap-2 transition-all min-h-[190px] h-full group bg-gray-50/30"
+                >
+                  <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-400 group-hover:bg-[#DA9133] group-hover:text-white transition-all border border-gray-100">
+                    <Plus size={20} strokeWidth={3} />
+                  </div>
+                  <span className="text-[11px] font-black text-gray-400 group-hover:text-gray-700 uppercase tracking-widest">Add New Address</span>
                 </div>
               </div>
             </div>
 
-            {/* Items List */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-1 h-5 bg-[#D10000] rounded-full"></div>
-                <h2 className="text-lg font-black text-text-primary tracking-tight">Cart Items ({cartItems.length})</h2>
-              </div>
-
-              {cartItems.map((item) => (
-                <div key={item._id} className="bg-white rounded-[1.5rem] p-3 shadow-[0_4px_20px_rgb(0,0,0,0.02)] border border-gray-100 flex items-center gap-4 group hover:shadow-[0_15px_40px_rgb(0,0,0,0.04)] transition-all duration-700">
-                  {/* Compact Image */}
-                  <div className="w-20 h-20 md:w-24 md:h-24 rounded-[1rem] overflow-hidden bg-gray-50 flex-shrink-0 relative">
-                    <img src={item.image || '/placeholder-food.jpg'} alt={item.name} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-1000" />
-                    <div className="absolute top-2 left-2 bg-white/95 backdrop-blur-md px-2 py-1 rounded-lg border border-gray-100 flex items-center gap-1">
-                      <span className={`w-2 h-2 rounded-full ${item.foodType === 'veg' ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></span>
-                      <span className="text-[8px] font-black tracking-widest">{item.foodType}</span>
-                    </div>
-                  </div>
-
-                  {/* Content Area */}
-                  <div className="flex-1 py-1">
-                    <div className="flex justify-between items-start mb-1">
-                      <h3 className="text-sm md:text-base font-black text-text-primary group-hover:text-[#D10000] transition-colors leading-tight truncate">
-                        {item.name} {item.selectedSize && <span className="text-[10px] text-text-muted">({item.selectedSize})</span>}
-                      </h3>
-                      <button
-                        onClick={() => removeFromCart(item._id, item.selectedSize)}
-                        className="text-gray-300 hover:text-red-500 transition-colors p-2"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                    <p className="text-[9px] font-bold text-text-muted tracking-widest opacity-40 mb-3">{item.category?.name || 'Main Course'}</p>
-
-                    <div className="flex items-center justify-between mt-auto">
-                      <div className="font-black text-base text-text-primary tracking-tighter">
-                        <span className="text-[#D10000] text-sm mr-0.5 font-bold">₹</span>
-                        {(() => {
-                          const variants = item.variants || item.sizes || [];
-                          const sizeData = variants.find(v => v.size === item.selectedSize);
-                          const price = sizeData ? sizeData.price : (item.offerPrice || 0);
-                          return price * item.quantity;
-                        })()}
-                      </div>
-
-                      {/* Premium Stepper */}
-                      <div className="flex items-center gap-3 bg-gray-50 px-2 py-1.5 rounded-2xl border border-gray-100">
-                        <button onClick={() => updateQuantity(item._id, item.selectedSize, item.quantity - 1)} className="w-7 h-7 flex items-center justify-center text-text-primary hover:bg-gray-100 rounded-lg transition-colors border border-gray-100">
-                          <Minus size={12} />
-                        </button>
-                        <span className="w-6 text-center text-xs font-black">{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item._id, item.selectedSize, item.quantity + 1)} className="w-7 h-7 flex items-center justify-center text-text-primary hover:bg-gray-100 rounded-lg transition-colors border border-gray-100">
-                          <Plus size={12} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+            {/* Payment (Placeholder for next step) */}
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 opacity-50">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-gray-100 text-gray-400 flex items-center justify-center rounded-lg">
+                  <CreditCard size={16} />
                 </div>
-              ))}
+                <h2 className="text-xl font-black text-gray-400 tracking-tight">Payment</h2>
+              </div>
             </div>
           </div>
 
-          <div className="w-full lg:w-[300px] sticky top-44">
-            <div className="bg-white rounded-[1.5rem] p-5 border border-gray-100 flex flex-col shadow-sm">
-              <h2 className="text-lg font-black text-text-primary tracking-tight mb-6">Order Details</h2>
+          {/* Right Column: Order Summary Sidebar */}
+          <div className="w-full lg:w-[320px]">
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
 
-              {/* Pricing Breakdown */}
-              <div className="space-y-4 mb-8">
-                <div className="flex justify-between text-xs font-black tracking-widest text-text-muted/60">
-                  <span>Item Total</span>
-                  <span className="text-text-primary">₹{subtotal}</span>
-                </div>
-                <div className="flex justify-between text-xs font-black tracking-widest text-text-muted/60">
-                  <span>Delivery Partner Fee</span>
-                  <span className="text-text-primary">₹{deliveryFee}</span>
-                </div>
-                <div className="flex justify-between text-xs font-black tracking-widest text-text-muted/60">
-                  <span>Platform Fee</span>
-                  <span className="text-text-primary">₹{platformFee}</span>
-                </div>
-                <div className="h-px bg-dashed border-t border-dashed border-gray-200 my-2"></div>
-                <div className="flex justify-between items-center pt-2">
-                  <span className="text-sm font-black text-text-primary tracking-widest">To Pay</span>
-                  <span className="text-xl font-black text-[#D10000] tracking-tighter leading-none">₹{total}</span>
-                </div>
-                {total < 100 && (
-                  <p className="text-[10px] font-bold text-red-500 mt-2 text-center animate-pulse">
-                    Add ₹{100 - total} more to reach minimum order of ₹100
-                  </p>
-                )}
-              </div>
+              {/* Items Scrollable Area */}
+              <div className="p-6 space-y-6 max-h-[400px] overflow-y-auto custom-scrollbar">
+                {cartItems.map((item) => {
+                  const variants = item.variants || item.sizes || [];
+                  const sizeData = variants.find(v => v.size === item.selectedSize);
+                  const price = sizeData ? sizeData.price : (item.offerPrice || 0);
 
-              {/* Offer Card */}
-              <div className="bg-[#D10000]/5 rounded-[1.8rem] p-5 mb-8 border border-[#D10000]/10 flex items-center justify-between group cursor-pointer hover:bg-[#D10000]/10 transition-all">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#D10000] shadow-sm">
-                    <span className="text-xs">🎟️</span>
+                  return (
+                    <div key={`${item._id}-${item.selectedSize}`} className="flex justify-between items-start gap-3 relative group/item">
+                      <div className="flex items-start gap-2 flex-1">
+                        {/* Compact Image */}
+                        <div className="w-14 h-14 rounded-lg bg-gray-50 flex-shrink-0 overflow-hidden border border-gray-100 shadow-sm relative group">
+                          <img src={item.image || '/placeholder-food.jpg'} alt={item.name} className="w-full h-full object-contain group-hover:scale-110 transition-transform" />
+                          <div className={`absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-sm border border-white flex items-center justify-center p-0.5 ${item.foodType === 'veg' ? 'bg-white border-green-600' : 'bg-white border-red-600'}`}>
+                            <div className={`w-1 h-1 rounded-full ${item.foodType === 'veg' ? 'bg-green-600' : 'bg-red-600'}`}></div>
+                          </div>
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-[13px] font-black text-gray-800 leading-tight truncate">
+                            {item.name}
+                          </h4>
+                          {item.selectedSize && <p className="text-[10px] font-bold text-gray-400 mt-0.5 opacity-80">({item.selectedSize})</p>}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-end gap-2.5 flex-shrink-0">
+                        {/* Quantity Stepper & Delete */}
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-lg p-0.5 shadow-sm">
+                            <button
+                              onClick={() => updateQuantity(item._id, item.quantity - 1, item.selectedSize)}
+                              className="w-6 h-6 flex items-center justify-center text-[#D10000] hover:bg-[#D10000] hover:text-white rounded-md transition-all font-black text-sm"
+                            >
+                              -
+                            </button>
+                            <span className="text-[11px] font-black w-4 text-center text-gray-900">{item.quantity}</span>
+                            <button
+                              onClick={() => updateQuantity(item._id, item.quantity + 1, item.selectedSize)}
+                              className="w-6 h-6 flex items-center justify-center text-[#D10000] hover:bg-[#D10000] hover:text-white rounded-md transition-all font-black text-sm"
+                            >
+                              +
+                            </button>
+                          </div>
+                          <button
+                            onClick={() => removeFromCart(item._id, item.selectedSize)}
+                            className="w-7 h-7 flex items-center justify-center text-gray-300 hover:text-[#D10000] hover:bg-[#D10000]/5 rounded-full transition-all"
+                            title="Remove Item"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                        {/* Accurate Price Tag */}
+                        <div className="bg-gray-900 text-white px-2 py-0.5 rounded-md">
+                          <span className="text-[11px] font-black tracking-tighter">₹{price * item.quantity}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Sections removed for cleaner UI */}
+
+                {/* Additional Note */}
+                <div className="mt-4 pt-4 border-t border-gray-50">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-1 h-3 bg-[#DA9133] rounded-full"></div>
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Additional Note</label>
                   </div>
-                  <div>
-                    <h5 className="text-[10px] font-black tracking-widest text-text-primary">Apply Coupon</h5>
-                    <p className="text-[8px] font-bold text-[#D10000]">Save up to ₹100 more</p>
+                  <textarea
+                    value={additionalNote}
+                    onChange={(e) => setAdditionalNote(e.target.value)}
+                    placeholder="E.g. Ring the bell, deliver to gate..."
+                    className="w-full bg-gray-50/50 border border-gray-100 rounded-xl p-3 text-[11px] font-bold text-gray-700 focus:ring-1 focus:ring-[#DA9133] focus:border-[#DA9133] outline-none transition-all resize-none h-20 placeholder:text-gray-300 shadow-inner"
+                  />
+                </div>
+              </div>
+
+              {/* Bill Details */}
+              <div className="p-6 bg-white border-t border-gray-50">
+                <h4 className="text-sm font-black text-gray-900 mb-4 uppercase tracking-widest">Bill Details</h4>
+                <div className="space-y-3">
+                  <div className="flex justify-between text-xs font-bold text-gray-500">
+                    <span>Item Total</span>
+                    <span>₹{subtotal}</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex justify-between text-xs font-bold text-gray-500">
+                      <span className="flex items-center gap-1.5">Delivery Fee | {deliveryInfo.distance} kms <Clock size={12} className="opacity-40" /></span>
+                      <span className={deliveryInfo.fee === 0 ? 'text-green-600' : ''}>
+                        {deliveryInfo.fee === 0 ? 'FREE' : `₹${deliveryInfo.fee}`}
+                      </span>
+                    </div>
+                    <p className="text-[9px] font-bold text-[#D10000] italic opacity-70">
+                      * delivery is free around 5 kilometers
+                    </p>
+                  </div>
+                  <div className="h-px bg-gray-100 my-2"></div>
+                  <div className="flex justify-between text-xs font-bold text-gray-500">
+                    <span className="flex items-center gap-1.5">GST and Other Charges <Clock size={12} className="opacity-40" /></span>
+                    <span>₹{platformFee}</span>
+                  </div>
+                  <div className="h-[2px] bg-gray-900 my-4"></div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-base font-black text-gray-900 uppercase tracking-widest">To Pay</span>
+                    <span className="text-xl font-black text-gray-900">₹{total}</span>
                   </div>
                 </div>
-                <ChevronRight size={16} className="text-[#D10000] group-hover:translate-x-1 transition-transform" />
+
+                <button
+                  onClick={() => {
+                    if (!deliveryAddress.address) {
+                      Swal.fire({ title: 'Select Address', text: 'Please select a delivery address.', icon: 'warning' });
+                      return;
+                    }
+                    navigate('/payment', { state: { deliveryAddress, additionalNote, deliveryFee: deliveryInfo.fee, platformFee } });
+                  }}
+                  className="w-full mt-8 bg-[#DA9133] text-white font-black py-4 rounded-xl hover:bg-[#C27D29] transition-all shadow-lg active:scale-95 flex items-center justify-center gap-3"
+                >
+                  Proceed to Pay ₹{total}
+                </button>
               </div>
 
-              {/* Action Button */}
-              <button
-                onClick={() => {
-                  if (total < 100) {
-                    Swal.fire({
-                      title: 'Minimum Order Required',
-                      text: `Minimum order value is ₹100. Please add ₹${100 - total} more to proceed.`,
-                      icon: 'info',
-                      confirmButtonColor: '#DA9133'
-                    });
-                    return;
-                  }
-                  if (!deliveryAddress.address) {
-                    Swal.fire({
-                      title: 'Select Address',
-                      text: 'Please select a delivery address before proceeding.',
-                      icon: 'warning',
-                      confirmButtonColor: '#DA9133'
-                    });
-                    return;
-                  }
-                  navigate('/payment', { state: { deliveryAddress } });
-                }}
-                className={`w-full font-black py-2 rounded-xl transition-all shadow-[0_8px_25px_rgba(218,145,51,0.12)] flex flex-col items-center gap-0 group relative overflow-hidden ${total < 100 ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' : 'bg-[#DA9133] text-white hover:bg-[#C27D29]'}`}
-              >
-                <div className={`absolute inset-0 bg-black/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out ${total < 100 ? 'hidden' : ''}`}></div>
-                <span className="relative z-10 text-sm tracking-widest mb-0.5">Proceed to Pay</span>
-                <span className="relative z-10 text-[10px] font-medium opacity-60 group-hover:opacity-100 transition-opacity">Inclusive of all taxes</span>
-              </button>
-
-              <div className="mt-8 flex flex-col items-center gap-4 text-center">
-                <div className="flex items-center gap-2 text-[8px] font-black text-text-muted/40 uppercase tracking-[0.3em]">
-                  <CreditCard size={10} /> 100% Safe Payments
-                </div>
-              </div>
             </div>
           </div>
 

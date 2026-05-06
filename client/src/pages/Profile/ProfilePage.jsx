@@ -84,7 +84,13 @@ const ProfilePage = () => {
         // Assume endpoint exists based on usual patterns
         await api.delete(`/api/users/address/${addressId}`);
         setAddresses(addresses.filter(a => a._id !== addressId));
-        Swal.fire('Deleted!', 'Address has been removed.', 'success');
+        Swal.fire({
+          title: 'Deleted!',
+          text: 'Address has been removed.',
+          icon: 'success',
+          showConfirmButton: false,
+          timer: 1500
+        });
       } catch (error) {
         Swal.fire('Error', 'Failed to delete address.', 'error');
       }
@@ -129,7 +135,8 @@ const ProfilePage = () => {
           title: isEditing ? 'Address Updated!' : 'Address Saved!',
           text: isEditing ? 'Your location details have been updated.' : 'Your new delivery location has been added.',
           icon: 'success',
-          confirmButtonColor: '#f59e0b'
+          showConfirmButton: false,
+          timer: 1500
         });
       }
     } catch (error) {
@@ -248,40 +255,40 @@ const ProfilePage = () => {
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5">
                   {addresses.map((address, idx) => (
                     <div
                       key={address._id}
-                      className="group/card bg-[#FAF9F6] hover:bg-white p-6 rounded-[2.5rem] border border-gray-100 hover:border-primary/30 hover:shadow-[0_15px_45px_rgba(0,0,0,0.04)] transition-all duration-500 relative flex flex-col h-full animate-in fade-in slide-in-from-bottom-5 duration-700"
+                      className="group/card bg-[#FAF9F6] hover:bg-white p-3 rounded-2xl border border-gray-100 hover:border-primary/30 hover:shadow-[0_15px_45px_rgba(0,0,0,0.04)] transition-all duration-500 relative flex flex-col h-full animate-in fade-in slide-in-from-bottom-5 duration-700"
                       style={{ animationDelay: `${idx * 100}ms` }}
                     >
-                      <div className="flex justify-between items-start mb-6">
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm transition-transform group-hover/card:scale-110 duration-500 ${address.type === 'home' ? 'bg-blue-50 text-blue-500 border border-blue-100' : 'bg-orange-50 text-orange-500 border border-orange-100'}`}>
-                          {address.type === 'home' ? <Home size={20} strokeWidth={2.5} /> : <Briefcase size={20} strokeWidth={2.5} />}
+                      <div className="flex justify-between items-start mb-3">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm transition-transform group-hover/card:scale-110 duration-500 ${address.type === 'home' ? 'bg-blue-50 text-blue-500 border border-blue-100' : 'bg-orange-50 text-orange-500 border border-orange-100'}`}>
+                          {address.type === 'home' ? <Home size={14} strokeWidth={2.5} /> : <Briefcase size={14} strokeWidth={2.5} />}
                         </div>
                         {address.isDefault && (
-                          <span className="text-[8px] font-black tracking-widest text-green-600 bg-green-50 px-3 py-1.5 rounded-xl border border-green-100 shadow-sm">Primary</span>
+                          <span className="text-[7px] font-black tracking-widest text-green-600 bg-green-50 px-2 py-1 rounded-lg border border-green-100 shadow-sm">Primary</span>
                         )}
                       </div>
 
-                      <div className="flex-1 space-y-1 mb-4">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <h4 className="text-[8px] font-black text-primary tracking-widest uppercase">{address.type}</h4>
+                      <div className="flex-1 space-y-0.5 mb-2">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <h4 className="text-[6px] font-black text-primary tracking-widest uppercase">{address.type}</h4>
                           <span className="w-1 h-1 rounded-full bg-gray-200"></span>
-                          <span className="text-[8px] font-black text-text-muted tracking-widest">{address.phone || user.phone}</span>
+                          <span className="text-[6px] font-black text-text-muted tracking-widest">{address.phone || user.phone}</span>
                         </div>
-                        <h5 className="text-base font-black text-text-primary tracking-tight group-hover/card:text-primary transition-colors duration-500">{address.name || user.name}</h5>
-                        <p className="text-[11px] font-bold text-text-muted opacity-70 leading-relaxed line-clamp-2">{address.address}</p>
+                        <h5 className="text-xs font-black text-text-primary tracking-tight group-hover/card:text-primary transition-colors duration-500">{address.name || user.name}</h5>
+                        <p className="text-[9px] font-bold text-text-muted opacity-70 leading-relaxed line-clamp-1">{address.address}</p>
                       </div>
 
-                      <div className="pt-4 border-t border-gray-100/50 flex items-center gap-2">
+                      <div className="pt-3 border-t border-gray-100/50 flex items-center gap-1.5">
                         {!address.isDefault && (
                           <button
                             onClick={() => handleSetDefaultAddress(address._id)}
-                            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-green-50 hover:bg-green-100 text-green-600 text-[8px] font-black tracking-widest transition-all group/btn shadow-sm"
+                            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-green-50 hover:bg-green-100 text-green-600 text-[6px] font-black tracking-widest transition-all group/btn"
                             title="Set as Primary"
                           >
-                            <ShieldCheck size={12} className="group-hover/btn:scale-110 transition-transform" />
+                            <ShieldCheck size={10} className="group-hover/btn:scale-110 transition-transform" />
                             Primary
                           </button>
                         )}
@@ -290,18 +297,18 @@ const ProfilePage = () => {
                             setEditingAddress(address);
                             setIsAddressModalOpen(true);
                           }}
-                          className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 text-[8px] font-black tracking-widest transition-all group/btn shadow-sm"
+                          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 text-[6px] font-black tracking-widest transition-all group/btn"
                           title="Edit Address"
                         >
-                          <PenLine size={12} className="group-hover/btn:scale-110 transition-transform" />
+                          <PenLine size={10} className="group-hover/btn:scale-110 transition-transform" />
                           Edit
                         </button>
                         <button
                           onClick={() => handleDeleteAddress(address._id)}
-                          className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-[8px] font-black tracking-widest transition-all group/btn shadow-sm"
+                          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 text-[6px] font-black tracking-widest transition-all group/btn"
                           title="Delete Address"
                         >
-                          <Trash size={12} className="group-hover/btn:scale-110 transition-transform" />
+                          <Trash size={10} className="group-hover/btn:scale-110 transition-transform" />
                           Delete
                         </button>
                       </div>

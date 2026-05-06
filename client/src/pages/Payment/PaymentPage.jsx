@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
-import { ArrowLeft, CreditCard, Banknote, MapPin, ChevronRight, CheckCircle2, ShieldCheck, Info } from 'lucide-react';
+import { ArrowLeft, CreditCard, Banknote, MapPin, ChevronRight, CheckCircle2, ShieldCheck, Info, Clock } from 'lucide-react';
 import api from '../../api/axiosInstance';
 import Swal from 'sweetalert2';
 import Navbar from '../../components/Navbar/Navbar';
@@ -25,10 +25,11 @@ const PaymentPage = () => {
 
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
-  // Get delivery address from location state or fallback
+  // Get delivery address and additional note from location state or fallback
   const deliveryAddress = location.state?.deliveryAddress;
-  const deliveryFee = 0;
-  const platformFee = 0;
+  const additionalNote = location.state?.additionalNote || '';
+  const deliveryFee = location.state?.deliveryFee || 0;
+  const platformFee = location.state?.platformFee || 0;
   const total = subtotal + deliveryFee + platformFee;
 
   useEffect(() => {
@@ -57,7 +58,7 @@ const PaymentPage = () => {
           const variants = item.variants || item.sizes || [];
           const sizeData = variants.find(v => v.size === item.selectedSize);
           const price = sizeData ? sizeData.price : (item.offerPrice || 0);
-          
+
           return {
             menuItem: item._id,
             size: item.selectedSize,
@@ -70,7 +71,8 @@ const PaymentPage = () => {
         totalAmount: total,
         subtotal,
         deliveryFee,
-        platformFee
+        platformFee,
+        remarks: additionalNote
       };
 
       const response = await api.post('/api/orders', orderData);
@@ -91,7 +93,7 @@ const PaymentPage = () => {
               <div class="flex flex-col gap-3">
                 <div class="flex justify-between items-center bg-gray-50 p-4 rounded-2xl border border-gray-100">
                   <span class="text-[10px] font-black uppercase tracking-widest text-text-muted">Order ID</span>
-                  <span class="text-xs font-black text-[#D10000]">#${response.data.data.orderNumber}</span>
+                  <span class="text-sm font-mono font-black text-[#D10000] bg-[#D10000]/5 px-4 py-1.5 rounded-xl border border-[#D10000]/10 tracking-[0.1em]">${response.data.data.orderNumber}</span>
                 </div>
               </div>
             </div>
@@ -133,17 +135,17 @@ const PaymentPage = () => {
       {/* Premium Header */}
       {/* Navbar Integration */}
       <div className="bg-[#D10000]">
-        <Navbar 
-          user={user} 
-          cartItems={cartItems} 
-          showUserDropdown={showUserDropdown} 
-          setShowUserDropdown={setShowUserDropdown} 
-          handleLogout={handleLogout} 
-          navigate={navigate} 
-          dropdownRef={dropdownRef} 
+        <Navbar
+          user={user}
+          cartItems={cartItems}
+          showUserDropdown={showUserDropdown}
+          setShowUserDropdown={setShowUserDropdown}
+          handleLogout={handleLogout}
+          navigate={navigate}
+          dropdownRef={dropdownRef}
           hideCart={false}
         />
-        
+
         {/* Back header removed as requested */}
       </div>
 
@@ -158,22 +160,53 @@ const PaymentPage = () => {
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-[#D10000]/10 flex items-center justify-center text-[#D10000]">
                   <MapPin size={20} />
+                  <div className="flex items-center gap-1.5 px-3 py-1 bg-white border border-[#D10000]/10 rounded-full shadow-sm animate-pulse">
+                    <Clock size={12} className="text-[#D10000]" />
+                    <span className="text-[10px] font-black text-[#D10000] tracking-widest lowercase">45 mins</span>
+                  </div>
                 </div>
                 <h3 className="text-lg font-black text-text-primary tracking-tight">Delivery Details</h3>
               </div>
 
-              <div className="bg-white/50 rounded-2xl p-5 border border-gray-100">
-                <div className="flex justify-between items-start mb-2">
-                   <span className="text-[10px] font-black text-[#D10000] bg-[#D10000]/5 px-2 py-0.5 rounded-md">
-                    {deliveryAddress.type || 'Home'}
-                  </span>
-                  <span className="text-[10px] font-bold text-text-muted">{deliveryAddress.mobile}</span>
+              <div className="bg-white/50 rounded-2xl p-5 border border-gray-100 flex flex-col md:flex-row gap-6">
+                {/* Left: Address Info */}
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[10px] font-black text-[#D10000] bg-[#D10000]/5 px-2 py-0.5 rounded-md uppercase tracking-widest">
+                      {deliveryAddress.type || 'Home'}
+                    </span>
+                    <span className="text-[10px] font-bold text-text-muted">{deliveryAddress.mobile}</span>
+                  </div>
+                  <h4 className="font-black text-text-primary text-base tracking-tight mb-1">
+                    {deliveryAddress.recipientName && deliveryAddress.recipientName !== 'Myself' && deliveryAddress.recipientName !== 'Others' 
+                      ? deliveryAddress.recipientName 
+                      : (user?.name || 'Customer')}
+                  </h4>
+                  <p className="text-xs text-text-muted font-bold opacity-70 leading-relaxed">
+                    {deliveryAddress.address}
+                  </p>
+                  {deliveryAddress.landmark && (
+                    <p className="text-[10px] font-black text-[#D10000] mt-1 italic opacity-80">
+                      Landmark: {deliveryAddress.landmark}
+                    </p>
+                  )}
                 </div>
-                <h4 className="font-black text-text-primary text-sm mb-1">{deliveryAddress.recipientName || 'Myself'}</h4>
-                <p className="text-xs text-text-muted font-bold opacity-70 leading-relaxed">
-                  {deliveryAddress.address}
-                </p>
+
+                {/* Right: Dedicated Time Box */}
+                <div className="flex-shrink-0 w-full md:w-32 bg-white rounded-2xl border border-[#D10000]/10 shadow-sm flex flex-col items-center justify-center p-4 group hover:border-[#D10000]/30 transition-all duration-500 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-12 h-12 bg-[#D10000]/5 rounded-full blur-xl translate-x-1/2 -translate-y-1/2"></div>
+                  <Clock size={20} className="text-[#DA9133] mb-2 animate-pulse" />
+                  <p className="text-[9px] font-black text-gray-400 lowercase tracking-widest text-center">est. time</p>
+                  <h5 className="text-lg font-black text-[#D10000] tracking-tighter">45 mins</h5>
+                </div>
               </div>
+
+              {additionalNote && (
+                <div className="mt-4 p-4 bg-white/80 rounded-2xl border border-dashed border-gray-200">
+                  <p className="text-[10px] font-black text-[#DA9133] uppercase tracking-widest mb-1">Delivery Note</p>
+                  <p className="text-[11px] font-bold text-gray-600 italic">"{additionalNote}"</p>
+                </div>
+              )}
             </div>
 
             {/* Order Items Preview */}

@@ -101,6 +101,10 @@ const orderSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  deliveryFee: {
+    type: Number,
+    default: 0
+  },
   totalAmount: {
     type: Number,
     default: 0
@@ -126,7 +130,7 @@ const orderSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-orderSchema.post('save', function(doc) {
+orderSchema.post('save', function (doc) {
   if (doc._id && doc.orderStatus) {
     emitOrderStatusUpdate(doc._id.toString(), doc.orderStatus);
   }
