@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { getIO } from "../socket.js";
 
 const orderSchema = new mongoose.Schema({
   orderNumber: {
@@ -155,7 +156,6 @@ orderSchema.pre('validate', async function () {
 // Added Socket Notification from snippet
 orderSchema.post('save', function (doc) {
   try {
-    const { getIO } = require('../socket.js');
     if (doc._id) {
       getIO().emit('ordersUpdated');
     }

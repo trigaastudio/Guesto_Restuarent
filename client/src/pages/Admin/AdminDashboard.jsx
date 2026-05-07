@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useRef } from 'react';
+import { io } from 'socket.io-client';
+import { showToast } from '../../utils/sweetAlert';
+import api from '../../api/axiosInstance';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -32,7 +34,8 @@ import {
   Loader2,
   Package,
   PackageX,
-  AlertTriangle
+  AlertTriangle,
+  Trash2
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import CategorySection from './sections/CategorySection';
@@ -54,6 +57,90 @@ const AdminDashboard = () => {
   const [settings, setSettings] = useState(null);
   const [isStatsLoading, setIsStatsLoading] = useState(true);
   const [chartTimeframe, setChartTimeframe] = useState('week'); // 'week' or 'month'
+  const [notifications, setNotifications] = useState(JSON.parse(localStorage.getItem('admin_notifications') || '[]'));
+  const [showNotifications, setShowNotifications] = useState(false);
+  const admin = JSON.parse(localStorage.getItem('admin_user') || '{}');
+
+  // Notification Audio
+  const notificationSound = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'));
+
+  useEffect(() => {
+    const socket = io(`${window.location.protocol}//${window.location.hostname}:5000`);
+
+    socket.on('newOrder', (data) => {
+      const newNotif = {
+        id: Date.now() + Math.random(),
+        type: 'order',
+        title: 'New Order',
+        message: data.message,
+        time: new Date(),
+        read: false,
+        orderData: data.order
+      };
+      
+      setNotifications(() => {
+        // Read latest from localStorage to handle multi-tab sync
+        const currentLocal = JSON.parse(localStorage.getItem('admin_notifications') || '[]');
+        const updated = [newNotif, ...currentLocal].slice(0, 20);
+        localStorage.setItem('admin_notifications', JSON.stringify(updated));
+        return updated;
+      });
+
+      showToast('success', data.message);
+      notificationSound.current.play().catch(e => console.log('Audio play blocked'));
+      setRefreshKey(prev => prev + 1);
+    });
+
+    socket.on('stockAlert', (data) => {
+      const newNotif = {
+        id: Date.now() + Math.random(),
+        type: data.type,
+        title: data.type === 'outOfStock' ? 'Out of Stock' : 'Low Stock',
+        message: data.message,
+        time: new Date(),
+        read: false,
+        itemName: data.name
+      };
+
+      setNotifications(() => {
+        const currentLocal = JSON.parse(localStorage.getItem('admin_notifications') || '[]');
+        const updated = [newNotif, ...currentLocal].slice(0, 20);
+        localStorage.setItem('admin_notifications', JSON.stringify(updated));
+        return updated;
+      });
+
+      const toastType = data.type === 'outOfStock' ? 'error' : 'warning';
+      showToast(toastType, data.message);
+      notificationSound.current.play().catch(e => console.log('Audio play blocked'));
+      setRefreshKey(prev => prev + 1);
+    });
+
+    return () => socket.disconnect();
+  }, []);
+
+  const clearNotifications = () => {
+    setNotifications([]);
+    localStorage.setItem('admin_notifications', '[]');
+  };
+
+  const removeNotification = (id, e) => {
+    if (e) e.stopPropagation();
+    setNotifications(prev => {
+      const updated = prev.filter(n => n.id !== id);
+      localStorage.setItem('admin_notifications', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const markNotificationsAsRead = () => {
+    setNotifications(prev => {
+      const updated = prev.map(n => ({ ...n, read: true }));
+      localStorage.setItem('admin_notifications', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   useEffect(() => {
     fetchSettings();
@@ -61,7 +148,7 @@ const AdminDashboard = () => {
 
   const fetchSettings = async () => {
     try {
-      const response = await axios.get(`${window.location.protocol}//${window.location.hostname}:5000/api/settings`);
+      const response = await api.get('/api/settings');
       setSettings(response.data.data);
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -77,7 +164,7 @@ const AdminDashboard = () => {
   const fetchDashboardStats = async () => {
     setIsStatsLoading(true);
     try {
-      const response = await axios.get(`${window.location.protocol}//${window.location.hostname}:5000/api/dashboard/stats`);
+      const response = await api.get('/api/dashboard/stats');
       setStats(response.data.data);
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
@@ -110,8 +197,8 @@ const AdminDashboard = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_user');
     localStorage.removeItem('adminActiveTab');
     navigate('/admin/login', { replace: true });
   };
@@ -160,9 +247,9 @@ const AdminDashboard = () => {
               src={
                 (isSidebarCollapsed && !isMobileMenuOpen)
                   ? "/browser-icon.png"
-                  : (isDarkMode 
-                      ? (settings?.branding?.logoGold || "/logo-golden.png") 
-                      : (settings?.branding?.logoDark || "/logo-dark.png"))
+                  : (isDarkMode
+                    ? (settings?.branding?.logoGold || "/logo-golden.png")
+                    : (settings?.branding?.logoDark || "/logo-dark.png"))
               }
               alt="Logo"
               className={`${(isSidebarCollapsed && !isMobileMenuOpen) ? 'h-8' : 'h-10'} w-auto transition-all duration-500`}
@@ -264,19 +351,98 @@ const AdminDashboard = () => {
             >
               <RefreshCw size={20} className={`${refreshKey > 0 ? 'animate-spin-once' : ''} group-hover:rotate-180 transition-transform duration-500`} />
             </button>
-            <button className="relative text-text-secondary hover:text-primary transition-all p-2 bg-background-muted/30 rounded-lg group">
-              <Bell size={22} className="group-hover:rotate-12 transition-transform" />
-              <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-600 text-white text-[9px] font-bold flex items-center justify-center rounded-full border-2 border-background-card shadow-sm">
-                2
-              </span>
-            </button>
+
+            <div className="relative">
+              <button 
+                onClick={() => {
+                  setShowNotifications(!showNotifications);
+                  if (!showNotifications) markNotificationsAsRead();
+                }}
+                className={`relative text-text-secondary hover:text-primary transition-all p-2 rounded-lg group ${showNotifications ? 'bg-primary/10 text-primary' : 'bg-background-muted/30'}`}
+              >
+                <Bell size={22} className={`${unreadCount > 0 ? 'animate-bounce' : 'group-hover:rotate-12'} transition-transform`} />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-600 text-white text-[9px] font-bold flex items-center justify-center rounded-full border-2 border-background-card shadow-sm">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Notification Dropdown */}
+              {showNotifications && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
+                  <div className="absolute right-0 mt-4 w-80 max-h-[500px] bg-background-card border border-border-light rounded-[2rem] shadow-2xl z-50 flex flex-col overflow-hidden animate-in slide-in-from-top-2 duration-200">
+                    <div className="p-4 border-b border-border-light flex items-center justify-between bg-background-muted/20">
+                      <h4 className="font-black text-text-primary text-sm uppercase tracking-widest">Notifications</h4>
+                      {notifications.length > 0 && (
+                        <button onClick={clearNotifications} className="text-[10px] font-bold text-text-muted hover:text-status-unavailable transition-colors uppercase">
+                          Clear All
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex-1 overflow-y-auto no-scrollbar py-2">
+                      {notifications.length === 0 ? (
+                        <div className="p-10 text-center space-y-3">
+                          <div className="w-12 h-12 bg-background-muted rounded-full flex items-center justify-center mx-auto">
+                            <Bell size={20} className="text-text-muted" />
+                          </div>
+                          <p className="text-xs text-text-muted font-medium italic">No new notifications</p>
+                        </div>
+                      ) : (
+                        notifications.map((notif) => (
+                          <div 
+                            key={notif.id}
+                            onClick={() => {
+                              if (notif.type === 'order') {
+                                navigateWithFilter('Orders', 'takeaway', 'placed', notif.orderData?.orderNumber);
+                              } else if (notif.type === 'lowStock' || notif.type === 'outOfStock') {
+                                navigateWithFilter('Menu', null, null, notif.itemName);
+                              }
+                              setShowNotifications(false);
+                            }}
+                            className="p-4 border-b border-border-light/50 last:border-0 hover:bg-background-muted/30 transition-colors cursor-pointer group relative"
+                          >
+                            <div className="flex items-start space-x-3 pr-6">
+                              <div className={`p-2 rounded-xl shrink-0 ${
+                                notif.type === 'order' ? 'bg-primary/10 text-primary' : 
+                                notif.type === 'outOfStock' ? 'bg-status-off/10 text-status-unavailable' : 'bg-amber-500/10 text-amber-500'
+                              }`}>
+                                {notif.type === 'order' ? <ShoppingCart size={16} /> : <AlertTriangle size={16} />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-xs font-bold transition-colors group-hover:text-primary ${notif.read ? 'text-text-primary' : 'text-primary'}`}>
+                                  {notif.title}
+                                </p>
+                                <p className="text-[10px] text-text-secondary leading-relaxed mt-0.5 line-clamp-2">
+                                  {notif.message}
+                                </p>
+                                <p className="text-[8px] text-text-muted font-bold uppercase mt-1">
+                                  {new Date(notif.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                              </div>
+                            </div>
+                            <button 
+                              onClick={(e) => removeNotification(notif.id, e)}
+                              className="absolute top-4 right-4 p-1 text-text-muted hover:text-status-unavailable opacity-0 group-hover:opacity-100 transition-all"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
             <div className="flex items-center space-x-3 border-l pl-4 sm:pl-6 border-border-light">
               <div className="hidden sm:block text-right">
-                <p className="text-sm font-bold text-text-primary">Admin</p>
-                <p className="text-[10px] text-text-secondary uppercase tracking-wider">Superuser</p>
+                <p className="text-sm font-bold text-text-primary">{admin.name || 'Admin'}</p>
+                <p className="text-[10px] text-text-secondary uppercase tracking-wider">{admin.email || 'Superuser'}</p>
               </div>
               <div className="w-10 h-10 rounded-full bg-primary/20 border-2 border-primary/10 flex items-center justify-center text-primary font-bold shrink-0">
-                AD
+                {admin.name?.charAt(0) || 'AD'}
               </div>
             </div>
           </div>
@@ -312,7 +478,7 @@ const AdminDashboard = () => {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div 
+                    <div
                       onClick={() => navigateWithFilter('Orders', 'takeaway', 'placed')}
                       className="bg-background-card p-6 rounded-3xl border border-border-light shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer active:scale-95"
                     >
@@ -331,7 +497,7 @@ const AdminDashboard = () => {
                       <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
                     </div>
 
-                    <div 
+                    <div
                       onClick={() => navigateWithFilter('Orders', 'takeaway', 'processing')}
                       className="bg-background-card p-6 rounded-3xl border border-border-light shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer active:scale-95"
                     >
@@ -350,7 +516,7 @@ const AdminDashboard = () => {
                       <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
                     </div>
 
-                    <div 
+                    <div
                       onClick={() => navigateWithFilter('Orders', 'dine-in')}
                       className="bg-background-card p-6 rounded-3xl border border-border-light shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer active:scale-95"
                     >
@@ -484,8 +650,8 @@ const AdminDashboard = () => {
                           <div className="text-center py-12 text-text-muted italic">No recent orders</div>
                         ) : (
                           stats.recentOrders.map((order, idx) => (
-                            <div 
-                              key={idx} 
+                            <div
+                              key={idx}
                               onClick={() => navigateWithFilter('Orders', 'history', null, order.orderNumber)}
                               className="flex items-center justify-between p-4 rounded-2xl hover:bg-background-muted transition-colors border border-transparent hover:border-border-light cursor-pointer group active:scale-[0.98]"
                             >
@@ -522,22 +688,22 @@ const AdminDashboard = () => {
                           <div className="text-center py-12 text-text-muted italic">No dishes sold yet</div>
                         ) : (
                           stats.topDishes.map((dish, idx) => (
-                          <div 
-                            key={idx} 
-                            onClick={() => navigateWithFilter('Menu', null, null, dish.name)}
-                            className="flex items-center justify-between group cursor-pointer hover:bg-background-muted/50 p-2 rounded-xl transition-all active:scale-[0.98]"
-                          >
-                            <div className="flex items-center space-x-4">
-                              <div className="w-12 h-12 rounded-xl bg-background-muted flex items-center justify-center overflow-hidden border border-border-light group-hover:scale-105 transition-transform">
-                                {dish.image ? <img src={dish.image} alt={dish.name} className="w-full h-full object-cover" /> : <UtensilsCrossed size={20} className="text-text-muted" />}
+                            <div
+                              key={idx}
+                              onClick={() => navigateWithFilter('Menu', null, null, dish.name)}
+                              className="flex items-center justify-between group cursor-pointer hover:bg-background-muted/50 p-2 rounded-xl transition-all active:scale-[0.98]"
+                            >
+                              <div className="flex items-center space-x-4">
+                                <div className="w-12 h-12 rounded-xl bg-background-muted flex items-center justify-center overflow-hidden border border-border-light group-hover:scale-105 transition-transform">
+                                  {dish.image ? <img src={dish.image} alt={dish.name} className="w-full h-full object-cover" /> : <UtensilsCrossed size={20} className="text-text-muted" />}
+                                </div>
+                                <span className="font-bold text-text-primary text-sm group-hover:text-primary transition-colors">{dish.name}</span>
                               </div>
-                              <span className="font-bold text-text-primary text-sm group-hover:text-primary transition-colors">{dish.name}</span>
+                              <div className="flex items-center space-x-2">
+                                <span className="text-xl font-black text-text-primary">{dish.orders}</span>
+                                <span className="text-[10px] font-bold text-text-muted uppercase">Qty</span>
+                              </div>
                             </div>
-                            <div className="flex items-center space-x-2">
-                              <span className="text-xl font-black text-text-primary">{dish.orders}</span>
-                              <span className="text-[10px] font-bold text-text-muted uppercase">Qty</span>
-                            </div>
-                          </div>
                           ))
                         )}
                       </div>
@@ -553,7 +719,7 @@ const AdminDashboard = () => {
                           </div>
                           <h3 className="font-black text-text-primary text-xl">Inventory Alerts</h3>
                         </div>
-                        <button 
+                        <button
                           onClick={() => setActiveTab('Menu')}
                           className="text-primary text-xs font-bold hover:underline"
                         >
@@ -562,7 +728,7 @@ const AdminDashboard = () => {
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                        <div 
+                        <div
                           onClick={() => navigateWithFilter('Menu')}
                           className="flex items-center space-x-4 p-6 rounded-3xl bg-status-off/5 border border-status-off/10 cursor-pointer hover:bg-status-off/10 transition-all active:scale-95"
                         >
@@ -574,7 +740,7 @@ const AdminDashboard = () => {
                             <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Out of Stock</p>
                           </div>
                         </div>
-                        <div 
+                        <div
                           onClick={() => navigateWithFilter('Menu')}
                           className="flex items-center space-x-4 p-6 rounded-3xl bg-amber-500/5 border border-amber-500/10 cursor-pointer hover:bg-amber-500/10 transition-all active:scale-95"
                         >
@@ -625,15 +791,15 @@ const AdminDashboard = () => {
                         <div className="relative h-48 w-48 mx-auto mb-6">
                           <svg className="w-full h-full" viewBox="0 0 100 100">
                             <circle className="text-background-muted stroke-current" strokeWidth="10" fill="transparent" r="40" cx="50" cy="50" />
-                            <circle 
-                              className="text-primary stroke-current transition-all duration-1000" 
-                              strokeWidth="10" 
-                              strokeLinecap="round" 
-                              fill="transparent" 
-                              r="40" 
-                              cx="50" 
-                              cy="50" 
-                              strokeDasharray={`${( (stats.metrics.totalMenuItems - (stats.stockStats.outOfStock + stats.stockStats.lowStock)) / stats.metrics.totalMenuItems) * 251} 251`}
+                            <circle
+                              className="text-primary stroke-current transition-all duration-1000"
+                              strokeWidth="10"
+                              strokeLinecap="round"
+                              fill="transparent"
+                              r="40"
+                              cx="50"
+                              cy="50"
+                              strokeDasharray={`${((stats.metrics.totalMenuItems - (stats.stockStats.outOfStock + stats.stockStats.lowStock)) / stats.metrics.totalMenuItems) * 251} 251`}
                               transform="rotate(-90 50 50)"
                             />
                             <text x="50" y="50" className="fill-text-primary text-[14px] font-black" textAnchor="middle" dy="0.3em">

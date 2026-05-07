@@ -7,7 +7,7 @@ import {
   ChevronRight, Clock, Package, Trash2, Printer,
   CheckCircle2, Loader2, AlertTriangle, Menu
 } from 'lucide-react';
-import axios from 'axios';
+import api from '../../api/axiosInstance';
 import { useTheme } from '../../context/ThemeContext';
 import { showToast, showAlert } from '../../utils/sweetAlert';
 
@@ -93,7 +93,7 @@ const KitchenDashboard = () => {
   const [lastFetchCount, setLastFetchCount] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  const staff = JSON.parse(localStorage.getItem('user') || '{}');
+  const staff = JSON.parse(localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || '{}');
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const isDarkMode = theme === 'dark';
@@ -107,7 +107,7 @@ const KitchenDashboard = () => {
   const fetchOrders = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/orders`);
+      const response = await api.get('/api/orders');
       const allOrders = response.data.data || [];
       // Show only confirmed and ready orders in the kitchen panel
       const kitchenOrders = allOrders.filter(o =>
@@ -166,7 +166,16 @@ const KitchenDashboard = () => {
     return 'text-status-unavailable animate-pulse';
   };
 
-  const handlePrintKOT = (order) => {
+  const handlePrintKOT = async (order) => {
+    // Fetch settings for dynamic printing
+    let currentSettings = null;
+    try {
+      const response = await api.get('/api/settings');
+      currentSettings = response.data.data;
+    } catch (err) {
+      console.error('Failed to fetch settings for KOT:', err);
+    }
+
     const printWindow = window.open('', '_blank');
     const itemsHtml = order.items.map(item => `
       <tr>
@@ -179,6 +188,15 @@ const KitchenDashboard = () => {
         </td>
       </tr>
     `).join('');
+
+    // Dynamic QR Logic
+    let qrCodeUrl = '';
+    const restaurantName = currentSettings?.restaurantDetails?.name || 'GUESTO RESTAURENT';
+    const showQR = currentSettings?.printingSettings?.showKOTQRCode && (order.orderType === 'delivery' || order.orderSource === 'online' || order.orderType === 'online');
+    
+    if (showQR && currentSettings.printingSettings.kotQRCodeImage) {
+      qrCodeUrl = currentSettings.printingSettings.kotQRCodeImage;
+    }
 
     printWindow.document.write(`
       <html>
@@ -201,12 +219,14 @@ const KitchenDashboard = () => {
             .divider { border-top: 1px dashed #000; margin: 5px 0; }
             .info-grid { display: grid; grid-template-cols: 1fr 1fr; margin-bottom: 5px; font-weight: bold; }
             table { width: 100%; border-collapse: collapse; }
+            .qr-section { text-align: center; margin-top: 20px; }
+            .qr-label { font-size: 10px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
           </style>
         </head>
         <body onload="window.print(); window.close();">
           <div class="header">
             <div class="kot-title">KOT</div>
-            <div class="restaurant-name">GUESTO RESTAURENT</div>
+            <div class="restaurant-name">${restaurantName}</div>
           </div>
           <div class="divider"></div>
           <div class="info-grid">
@@ -221,12 +241,18 @@ const KitchenDashboard = () => {
               ${itemsHtml}
             </tbody>
           </table>
+          
+          ${qrCodeUrl ? `
+            <div class="qr-section">
+              <div class="qr-label">${currentSettings.printingSettings.kotQRCodeType === 'upi' ? 'Scan to Pay' : 'Scan for Info'}</div>
+              <img src="${qrCodeUrl}" style="width: 120px; height: 120px; border: 1px solid #000; padding: 5px;" />
+            </div>
+          ` : ''}
+
           <div class="divider"></div>
           <div style="text-align: center; font-weight: bold; margin-top: 10px;">
             --- END OF KOT ---
           </div>
-        </body>
-      </html>
         </body>
       </html>
     `);
@@ -239,7 +265,7 @@ const KitchenDashboard = () => {
     const labels = { placed: 'Placed', preparing: 'Preparing', ready: 'Ready', delayed: 'Delayed' };
 
     try {
-      await axios.patch(`${API_BASE_URL}/orders/${orderId}/items/${itemId}/status`, { kitchenStatus: newStatus });
+      await api.patch(`/api/orders/${orderId}/items/${itemId}/status`, { kitchenStatus: newStatus });
       showToast('success', `"${itemName}" → ${labels[newStatus]}`);
       fetchOrders(true);
     } catch (error) {
@@ -263,7 +289,7 @@ const KitchenDashboard = () => {
     if (!result.isConfirmed) return;
 
     try {
-      await axios.patch(`${API_BASE_URL}/orders/${orderId}/status`, { orderStatus: 'delivered' });
+      await api.patch(`/api/orders/${orderId}/status`, { orderStatus: 'delivered' });
       showToast('success', `Order ${orderNumber} removed from kitchen`);
       fetchOrders(true);
     } catch (error) {
@@ -272,8 +298,9 @@ const KitchenDashboard = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.removeItem('staff_token');
+    localStorage.removeItem('staff_user');
+    localStorage.removeItem('kitchenActiveTab');
     navigate('/staff/login', { replace: true });
   };
 
@@ -337,8 +364,8 @@ const KitchenDashboard = () => {
               <div className="flex items-center space-x-2 p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
                 <ChefHat size={16} className="text-amber-500 shrink-0" />
                 <div>
-                  <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Kitchen Panel</p>
-                  <p className="text-xs font-bold text-text-primary truncate">{staff.name}</p>
+                  <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">{staff.role === 'admin' ? 'Admin Access' : 'Kitchen Panel'}</p>
+                  <p className="text-xs font-bold text-text-primary truncate">{staff.name || 'Staff'}</p>
                 </div>
               </div>
             </div>
@@ -485,11 +512,13 @@ const KitchenDashboard = () => {
             {/* Staff info */}
             <div className="flex items-center space-x-3 border-l pl-4 sm:pl-6 border-border-light">
               <div className="hidden sm:block text-right">
-                <p className="text-sm font-bold text-text-primary">{staff.name}</p>
-                <p className="text-[10px] text-text-secondary uppercase tracking-wider">{staff.employeeId}</p>
+                <p className="text-sm font-bold text-text-primary">{staff.name || 'User'}</p>
+                <p className="text-[10px] text-text-secondary uppercase tracking-wider">
+                  {staff.role === 'admin' ? 'Administrator' : (staff.employeeId || 'Staff')}
+                </p>
               </div>
               <div className="w-10 h-10 rounded-full bg-amber-500/20 border-2 border-amber-500/10 flex items-center justify-center text-amber-500 font-black shrink-0 text-sm">
-                {staff.name?.charAt(0)}
+                {staff.name?.charAt(0) || staff.role?.charAt(0)?.toUpperCase() || 'U'}
               </div>
             </div>
           </div>

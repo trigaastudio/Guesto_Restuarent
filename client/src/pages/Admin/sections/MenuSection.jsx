@@ -271,7 +271,9 @@ const MenuSection = () => {
     const matchesCategory = categoryFilter === 'all' || m.category?._id === categoryFilter;
     const matchesType = typeFilter === 'all' || m.foodType === typeFilter;
     const matchesStock = stockFilter === 'all' || 
-                        (stockFilter === 'available' ? m.totalStock > 0 : m.totalStock === 0);
+                        (stockFilter === 'available' ? m.totalStock > 0 : 
+                         stockFilter === 'low-stock' ? (m.totalStock > 0 && m.totalStock <= 10) :
+                         m.totalStock === 0);
     
     return matchesSearch && matchesCategory && matchesType && matchesStock;
   });
@@ -367,6 +369,7 @@ const MenuSection = () => {
               >
                 <option value="all" className="bg-background-card text-text-primary">All Stock</option>
                 <option value="available" className="bg-background-card text-text-primary">Available</option>
+                <option value="low-stock" className="bg-background-card text-text-primary">Low Stock</option>
                 <option value="out-of-stock" className="bg-background-card text-text-primary">Out of Stock</option>
               </select>
               <button
@@ -506,12 +509,17 @@ const MenuSection = () => {
                       <div className="flex flex-col items-center">
                         {menu.totalStock > 0 ? (
                           <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300">
-                            <span className="text-sm font-black text-text-primary">
+                            <span className={`text-sm font-black ${menu.totalStock <= 10 ? 'text-amber-600' : 'text-text-primary'}`}>
                               {getCalculatedStock(menu)}
                             </span>
                             <span className="text-[9px] text-text-muted font-bold uppercase tracking-tighter">
                               {menu.variants?.find(v => v.size === selectedSizes[menu._id])?.size || 'Units'} Available
                             </span>
+                            {menu.totalStock <= 10 && (
+                              <span className="mt-1 px-1.5 py-0.5 bg-amber-500/10 text-amber-600 text-[8px] font-black uppercase rounded border border-amber-500/20">
+                                Low Stock
+                              </span>
+                            )}
                           </div>
                         ) : (
                           <span className="text-[9px] font-black text-status-unavailable uppercase bg-status-off/10 px-2 py-1 rounded border border-status-off/20">

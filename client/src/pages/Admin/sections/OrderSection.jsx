@@ -4,7 +4,7 @@ import {
   CheckCircle2, XCircle, AlertCircle, Loader2, ArrowUpDown,
   ShoppingCart, User, Phone, CreditCard, ChevronRight,
   MoreVertical, Printer, Package, Utensils, RotateCcw,
-  Copy, MapPin, ExternalLink, Minus, Truck
+  Copy, MapPin, ExternalLink, Minus, Truck, X
 } from 'lucide-react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
@@ -133,15 +133,15 @@ const OrderSection = () => {
     };
   }, []);
 
-  // Sync selectedOrder with orders list when live updates happen
   useEffect(() => {
-    if (selectedOrder) {
-      const liveOrder = orders.find(o => o._id === selectedOrder._id);
-      if (liveOrder && JSON.stringify(liveOrder) !== JSON.stringify(selectedOrder)) {
-        setSelectedOrder(liveOrder);
+    const handleEsc = (event) => {
+      if (event.key === 'Escape') {
+        setShowSuggestions(false);
       }
-    }
-  }, [orders, selectedOrder]);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
 
   const handlePrintKOT = (order) => {
     const printWindow = window.open('', '_blank');
@@ -168,8 +168,13 @@ const OrderSection = () => {
     const restaurantPhone = settings?.restaurantDetails?.contactNumber || '7034805085';
     const monochromeLogo = settings?.branding?.logoMonochrome || null;
 
-    // Static QR from public folder
-    const qrCodeUrl = '/QR-guestoPayment.jpeg';
+    // Dynamic QR Logic
+    let qrCodeUrl = '';
+    const showQR = settings?.printingSettings?.showKOTQRCode && (order.orderType === 'delivery' || order.orderSource === 'online' || order.orderType === 'online');
+    
+    if (showQR && settings.printingSettings.kotQRCodeImage) {
+      qrCodeUrl = settings.printingSettings.kotQRCodeImage;
+    }
 
     printWindow.document.write(`
       <html>
@@ -267,9 +272,9 @@ const OrderSection = () => {
             `}
           </div>
           
-          ${(order.orderType === 'delivery' || order.orderType === 'online') ? `
+          ${qrCodeUrl ? `
             <div class="qr-section">
-              <div class="qr-label">Scan to Pay</div>
+              <div class="qr-label">${settings.printingSettings.kotQRCodeType === 'upi' ? 'Scan to Pay' : 'Scan for Info'}</div>
               <img src="${qrCodeUrl}" style="width: 120px; height: 120px; border: 1px solid #000; padding: 5px;" />
             </div>
           ` : ''}
@@ -696,7 +701,6 @@ const OrderSection = () => {
         if (osrmRes.data?.routes?.[0]?.distance) {
           const roadDistKm = osrmRes.data.routes[0].distance / 1000;
           roundedDist = Math.ceil(roadDistKm * 10) / 10;
-          console.log('Road distance calculated:', roundedDist);
         }
       } catch (osrmErr) {
         console.error('OSRM failed, falling back to straight line:', osrmErr);
@@ -1022,6 +1026,14 @@ const OrderSection = () => {
                       <ArrowUpDown size={12} className={sortConfig.key === 'orderNumber' ? 'text-primary' : 'text-text-muted'} />
                     </div>
                   </th>
+                  {activeTab === 'history' && (
+                    <th className="px-3 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('orderType')}>
+                      <div className="flex items-center space-x-1">
+                        <span>Type</span>
+                        <ArrowUpDown size={12} className={sortConfig.key === 'orderType' ? 'text-primary' : 'text-text-muted'} />
+                      </div>
+                    </th>
+                  )}
                   {activeTab === 'dine-in' && (
                     <th className="px-3 py-4">
                       <div className="flex items-center space-x-1">
@@ -1057,7 +1069,7 @@ const OrderSection = () => {
               <tbody className="divide-y divide-border-light">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={activeTab === 'dine-in' ? 10 : 9} className="px-6 py-12 text-center">
+                    <td colSpan={activeTab === 'history' ? 11 : (activeTab === 'dine-in' ? 10 : 9)} className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center space-y-2">
                         <Loader2 className="animate-spin text-primary" size={32} />
                         <p className="text-text-secondary font-medium">Loading orders...</p>
@@ -1066,7 +1078,7 @@ const OrderSection = () => {
                   </tr>
                 ) : filteredOrders.length === 0 ? (
                   <tr>
-                    <td colSpan={activeTab === 'history' ? (activeTab === 'dine-in' ? 11 : 10) : (activeTab === 'dine-in' ? 10 : 9)} className="px-6 py-12 text-center text-text-muted italic">No orders found</td>
+                    <td colSpan={activeTab === 'history' ? 11 : (activeTab === 'dine-in' ? 10 : 9)} className="px-6 py-12 text-center text-text-muted italic">No orders found</td>
                   </tr>
                 ) : (
                   filteredOrders.map((order) => (
@@ -1088,6 +1100,17 @@ const OrderSection = () => {
                         </td>
                       )}
                       <td className="px-3 py-4 font-black text-text-primary">{order.orderNumber}</td>
+                      {activeTab === 'history' && (
+                        <td className="px-3 py-4">
+                          <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase border tracking-widest ${
+                            order.orderType === 'delivery' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
+                            order.orderType === 'takeaway' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                            'bg-primary/10 text-primary border-primary/20'
+                          }`}>
+                            {order.orderType}
+                          </span>
+                        </td>
+                      )}
                       {activeTab === 'dine-in' && (
                         <td className="px-3 py-4">
                           {order.table ? (
@@ -1247,21 +1270,32 @@ const OrderSection = () => {
 
                 <div className="space-y-1 pt-4">
                   <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Payment Status</p>
-                  <select
-                    value={selectedOrder.paymentStatus}
-                    onChange={(e) => handleUpdatePaymentStatus(selectedOrder._id, e.target.value)}
-                    disabled={selectedOrder.paymentMethod === 'online'}
-                    className={`text-[10px] font-black uppercase rounded-lg border px-2 py-1 outline-none cursor-pointer ${selectedOrder.paymentMethod === 'online' ? 'opacity-70 cursor-not-allowed' : ''} ${selectedOrder.paymentStatus === 'paid' ? 'bg-status-on/10 text-status-available border-status-on/20' :
+                  {activeTab === 'history' ? (
+                    <span className={`inline-block px-3 py-1 rounded-lg text-[10px] font-black uppercase border ${
+                      (selectedOrder.paymentStatus === 'paid' || selectedOrder.paymentStatus === 'completed') ? 'bg-status-on/10 text-status-available border-status-on/20' :
                       selectedOrder.paymentStatus === 'pending' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                        selectedOrder.paymentStatus === 'refunded' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
-                          'bg-status-off/10 text-status-unavailable border-status-off/20'
-                      }`}
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="paid">Paid</option>
-                    <option value="failed">Failed</option>
-                    <option value="refunded">Refunded</option>
-                  </select>
+                      selectedOrder.paymentStatus === 'refunded' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
+                      'bg-status-off/10 text-status-unavailable border-status-off/20'
+                    }`}>
+                      {selectedOrder.paymentStatus}
+                    </span>
+                  ) : (
+                    <select
+                      value={selectedOrder.paymentStatus}
+                      onChange={(e) => handleUpdatePaymentStatus(selectedOrder._id, e.target.value)}
+                      disabled={selectedOrder.paymentMethod === 'online'}
+                      className={`text-[10px] font-black uppercase rounded-lg border px-2 py-1 outline-none cursor-pointer ${selectedOrder.paymentMethod === 'online' ? 'opacity-70 cursor-not-allowed' : ''} ${selectedOrder.paymentStatus === 'paid' ? 'bg-status-on/10 text-status-available border-status-on/20' :
+                        selectedOrder.paymentStatus === 'pending' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                          selectedOrder.paymentStatus === 'refunded' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
+                            'bg-status-off/10 text-status-unavailable border-status-off/20'
+                        }`}
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="paid">Paid</option>
+                      <option value="failed">Failed</option>
+                      <option value="refunded">Refunded</option>
+                    </select>
+                  )}
                 </div>
                 {selectedOrder.paymentMethod === 'cash' && (
                   <>
@@ -1289,29 +1323,41 @@ const OrderSection = () => {
                       </span>
                     )}
                   </div>
-                  <select
-                    value={selectedOrder?.orderStatus}
-                    onChange={(e) => handleUpdateOrderStatus(selectedOrder?._id, e.target.value)}
-                    className="w-full bg-primary/10 text-primary text-[10px] font-black uppercase rounded-lg border border-primary/20 px-2 py-2 outline-none cursor-pointer hover:bg-primary/20 transition-all"
-                  >
-                    <option value="placed">Placed</option>
-                    <option value="processing">Processing</option>
-                    {selectedOrder?.orderType === 'delivery' && (
+                  {activeTab === 'history' ? (
+                    <span className={`inline-block px-3 py-1 rounded-lg text-[10px] font-black uppercase border ${
+                      selectedOrder.orderStatus === 'completed' || selectedOrder.orderStatus === 'delivered' ? 'bg-primary/10 text-primary border-primary/20' :
+                      selectedOrder.orderStatus === 'processing' || selectedOrder.orderStatus === 'out-for-delivery' ? 'bg-status-on/10 text-status-available border-status-on/20' :
+                      selectedOrder.orderStatus === 'placed' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                      selectedOrder.orderStatus === 'cancelled' ? 'bg-status-off/10 text-status-unavailable border-status-off/20' :
+                      'bg-background-muted text-text-muted border-border-light'
+                    }`}>
+                      {selectedOrder.orderStatus}
+                    </span>
+                  ) : (
+                    <select
+                      value={selectedOrder?.orderStatus}
+                      onChange={(e) => handleUpdateOrderStatus(selectedOrder?._id, e.target.value)}
+                      className="w-full bg-primary/10 text-primary text-[10px] font-black uppercase rounded-lg border border-primary/20 px-2 py-2 outline-none cursor-pointer hover:bg-primary/20 transition-all"
+                    >
+                      <option value="placed">Placed</option>
+                      <option value="processing">Processing</option>
+                      {selectedOrder?.orderType === 'delivery' && (
+                        <option
+                          value="out-for-delivery"
+                          disabled={selectedOrder?.orderStatus === 'processing' && selectedOrder?.kitchenStatus !== 'ready'}
+                        >
+                          Out for Delivery
+                        </option>
+                      )}
                       <option
-                        value="out-for-delivery"
+                        value="delivered"
                         disabled={selectedOrder?.orderStatus === 'processing' && selectedOrder?.kitchenStatus !== 'ready'}
                       >
-                        Out for Delivery
+                        Delivered
                       </option>
-                    )}
-                    <option
-                      value="delivered"
-                      disabled={selectedOrder?.orderStatus === 'processing' && selectedOrder?.kitchenStatus !== 'ready'}
-                    >
-                      Delivered
-                    </option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  )}
                 </div>
 
                 {selectedOrder.orderType === 'delivery' &&
@@ -1379,7 +1425,7 @@ const OrderSection = () => {
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-border-light pb-2">
                   <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Order Items</p>
-                  {!['cancelled', 'completed', 'delivered'].includes(selectedOrder.orderStatus) &&
+                  {activeTab !== 'history' && !['cancelled', 'completed', 'delivered'].includes(selectedOrder.orderStatus) &&
                     !(selectedOrder.orderType === 'delivery' && (selectedOrder.orderSource === 'user' || selectedOrder.orderSource === 'online')) && (
                       <button
                         onClick={() => {
@@ -1554,7 +1600,7 @@ const OrderSection = () => {
                       </div>
                       <div className="flex items-center justify-between mb-2">
                         <p className="font-bold text-text-primary text-xs line-clamp-1">{item.name}</p>
-                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${item.totalStock > 5 ? 'bg-primary/10 text-primary' : item.totalStock > 0 ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'}`}>
+                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${item.totalStock > 10 ? 'bg-primary/10 text-primary' : item.totalStock > 0 ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'}`}>
                           {item.totalStock} Left
                         </span>
                       </div>
@@ -1644,8 +1690,19 @@ const OrderSection = () => {
                   {showSuggestions && (
                     <div className="absolute top-full left-0 right-0 z-[500] mt-2 bg-background-card border-2 border-primary/20 rounded-[1.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
                       <div className="p-3 border-b border-border-light bg-primary/5 flex items-center justify-between">
-                        <p className="text-[10px] font-black text-primary uppercase tracking-widest">Customer Suggestions</p>
-                        {userSuggestions.length > 0 && <span className="text-[9px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-bold">{userSuggestions.length} Found</span>}
+                        <div className="flex items-center space-x-2">
+                          <p className="text-[10px] font-black text-primary uppercase tracking-widest">Customer Suggestions</p>
+                          {userSuggestions.length > 0 && <span className="text-[9px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-bold">{userSuggestions.length} Found</span>}
+                        </div>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowSuggestions(false);
+                          }}
+                          className="p-1 hover:bg-primary/10 rounded-full text-text-muted hover:text-primary transition-colors"
+                        >
+                          <X size={14} />
+                        </button>
                       </div>
                       
                       <div className="max-h-60 overflow-y-auto no-scrollbar">

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Search, User, Mail, Phone, Shield, Power, Loader2, ArrowUpDown, XCircle } from 'lucide-react';
-import axios from 'axios';
+import api from '../../../api/axiosInstance';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+
 
 const StaffManagement = () => {
   const [staffList, setStaffList] = useState([]);
@@ -31,7 +31,7 @@ const StaffManagement = () => {
   const fetchStaff = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/staff`);
+      const response = await api.get('/api/staff');
       setStaffList(response.data.data);
     } catch (error) {
       console.error('Error fetching staff:', error);
@@ -75,10 +75,10 @@ const StaffManagement = () => {
         const updateData = { ...currentStaff };
         if (!updateData.password) delete updateData.password;
         
-        await axios.put(`${API_BASE_URL}/staff/${currentStaff._id}`, updateData);
+        await api.put(`/api/staff/${currentStaff._id}`, updateData);
         showToast('success', 'Staff updated successfully');
       } else {
-        await axios.post(`${API_BASE_URL}/staff`, currentStaff);
+        await api.post('/api/staff', currentStaff);
         showToast('success', 'Staff created successfully');
       }
       fetchStaff();
@@ -97,7 +97,7 @@ const StaffManagement = () => {
     const result = await showDeleteConfirmation('Remove Staff?', 'This action cannot be undone.');
     if (result.isConfirmed) {
       try {
-        await axios.delete(`${API_BASE_URL}/staff/${id}`);
+        await api.delete(`/api/staff/${id}`);
         showToast('success', 'Staff removed successfully');
         fetchStaff();
       } catch (error) {

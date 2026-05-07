@@ -22,7 +22,6 @@ router.post('/expand-url', async (req, res) => {
     });
 
     const finalUrl = response.url;
-    console.log('Expanded URL:', finalUrl); // For debugging
     res.json({ expandedUrl: finalUrl });
   } catch (error) {
     console.error('Error expanding URL:', error);

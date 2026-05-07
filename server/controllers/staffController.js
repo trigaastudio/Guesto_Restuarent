@@ -98,6 +98,40 @@ class StaffController {
       });
     }
   }
+
+  async requestCredentialChange(req, res) {
+    try {
+      const { currentPassword, logoUrl } = req.body;
+      const staffId = req.user._id; // Take ID from verified token
+      const result = await staffService.requestCredentialChange(staffId, currentPassword, logoUrl);
+      res.status(200).json({
+        success: true,
+        message: result.message
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  async verifyCredentialChange(req, res) {
+    try {
+      const { otp, newEmail, newPassword } = req.body;
+      const staffId = req.user._id; // Take ID from verified token
+      const result = await staffService.verifyAndChangeCredentials(staffId, otp, newEmail, newPassword);
+      res.status(200).json({
+        success: true,
+        message: result.message
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
 }
 
 export default new StaffController();

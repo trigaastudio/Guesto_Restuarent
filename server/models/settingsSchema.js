@@ -70,7 +70,15 @@ const settingsSchema = new mongoose.Schema({
     deliveryFee: { type: Number, default: 0 },
     minOrderAmount: { type: Number, default: 0 },
     preparationTime: { type: Number, default: 30 },
-    isStoreOpen: { type: Boolean, default: true }
+    isStoreOpen: { type: Boolean, default: true },
+    isHolidayMode: { type: Boolean, default: false },
+    isBusyMode: { type: Boolean, default: false },
+    busyModeExtraTime: { type: Number, default: 15 },
+    businessHours: {
+      open: { type: String, default: '09:00' },
+      close: { type: String, default: '22:00' },
+      closedDays: [{ type: String, enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] }]
+    }
   },
 
   // 3. Payment Settings
@@ -84,7 +92,10 @@ const settingsSchema = new mongoose.Schema({
   // 4. Printing Settings
   printingSettings: {
     billHeader: { type: String, default: 'GUESTO RESTAURENT' },
-    billFooter: { type: String, default: 'THANK YOU FOR VISITING!' }
+    billFooter: { type: String, default: 'THANK YOU FOR VISITING!' },
+    showKOTQRCode: { type: Boolean, default: false },
+    kotQRCodeType: { type: String, enum: ['image'], default: 'image' },
+    kotQRCodeImage: { type: String, default: '' } // Uploaded image URL
   },
 
   lastUpdatedBy: {

@@ -12,6 +12,33 @@ const getNextOrderNumber = async () => {
   return `ORD-${counter.seq.toString().padStart(4, '0')}`;
 };
 
+const checkStockAvailability = async (items) => {
+  for (const item of items) {
+    const menuDoc = await Menu.findById(item.menuItem);
+    if (!menuDoc) continue;
+
+    const variant = menuDoc.variants.find(v => v.size === item.size);
+    const multiplier = variant && variant.stockValue ? variant.stockValue : 1;
+    const amountNeeded = item.quantity * multiplier;
+
+    if (menuDoc.totalStock < amountNeeded) {
+      return { available: false, itemName: menuDoc.name };
+    }
+
+    if (variant && variant.includedItems && variant.includedItems.length > 0) {
+      for (const included of variant.includedItems) {
+        const includedDoc = await Menu.findById(included.menuItem);
+        if (!includedDoc) continue;
+        const totalNeeded = item.quantity * included.quantity;
+        if (includedDoc.totalStock < totalNeeded) {
+          return { available: false, itemName: `${includedDoc.name} (ingredient)` };
+        }
+      }
+    }
+  }
+  return { available: true };
+};
+
 const handleStock = async (items, type = 'reduce') => {
   for (const item of items) {
     try {
@@ -24,17 +51,70 @@ const handleStock = async (items, type = 'reduce') => {
       const factor = type === 'reduce' ? -1 : 1;
 
       // Update main item stock
-      await Menu.findByIdAndUpdate(item.menuItem, {
-        $inc: { totalStock: factor * amount }
-      });
+      const updatedMenu = await Menu.findByIdAndUpdate(
+        item.menuItem,
+        { $inc: { totalStock: factor * amount } },
+        { new: true }
+      );
+
+      // Force floor at 0 if it somehow went negative
+      if (updatedMenu && updatedMenu.totalStock < 0) {
+        await Menu.findByIdAndUpdate(item.menuItem, { totalStock: 0 });
+        updatedMenu.totalStock = 0;
+      }
+
+      // Real-time Stock Alerts (Only on reduction)
+      if (type === 'reduce' && updatedMenu) {
+        if (updatedMenu.totalStock <= 0) {
+          getIO().emit('stockAlert', {
+            type: 'outOfStock',
+            itemId: updatedMenu._id,
+            name: updatedMenu.name,
+            message: `CRITICAL: ${updatedMenu.name} is now OUT OF STOCK!`
+          });
+        } else if (updatedMenu.totalStock <= 5) {
+          getIO().emit('stockAlert', {
+            type: 'lowStock',
+            itemId: updatedMenu._id,
+            name: updatedMenu.name,
+            message: `ALERT: ${updatedMenu.name} is running low (${updatedMenu.totalStock} left)`
+          });
+        }
+      }
 
       // Update included items stock
       if (variant && variant.includedItems && variant.includedItems.length > 0) {
         for (const included of variant.includedItems) {
           const includedReduction = item.quantity * included.quantity;
-          await Menu.findByIdAndUpdate(included.menuItem, {
-            $inc: { totalStock: factor * includedReduction }
-          });
+          const updatedIncluded = await Menu.findByIdAndUpdate(
+            included.menuItem,
+            { $inc: { totalStock: factor * includedReduction } },
+            { new: true }
+          );
+
+          if (updatedIncluded && updatedIncluded.totalStock < 0) {
+            await Menu.findByIdAndUpdate(included.menuItem, { totalStock: 0 });
+            updatedIncluded.totalStock = 0;
+          }
+
+          // Stock Alerts for included items
+          if (type === 'reduce' && updatedIncluded) {
+            if (updatedIncluded.totalStock <= 0) {
+              getIO().emit('stockAlert', {
+                type: 'outOfStock',
+                itemId: updatedIncluded._id,
+                name: updatedIncluded.name,
+                message: `CRITICAL: ${updatedIncluded.name} (ingredient) is now OUT OF STOCK!`
+              });
+            } else if (updatedIncluded.totalStock <= 5) {
+              getIO().emit('stockAlert', {
+                type: 'lowStock',
+                itemId: updatedIncluded._id,
+                name: updatedIncluded.name,
+                message: `ALERT: ${updatedIncluded.name} (ingredient) is running low (${updatedIncluded.totalStock} left)`
+              });
+            }
+          }
         }
       }
     } catch (error) {
@@ -51,6 +131,12 @@ class OrderController {
   async createCounterOrder(req, res) {
     try {
       const { customerDetails, items, orderType, paymentMethod, subtotal, tax, discount, totalAmount, cashReceived, balance } = req.body;
+
+      // Check Stock First
+      const stockCheck = await checkStockAvailability(items);
+      if (!stockCheck.available) {
+        return res.status(400).json({ success: false, message: `Insufficient stock for: ${stockCheck.itemName}` });
+      }
 
       const orderNumber = await getNextOrderNumber();
 
@@ -91,6 +177,12 @@ class OrderController {
       await handleStock(items, 'reduce');
 
       res.status(201).json({ success: true, data: newOrder });
+      
+      // Global Notifications
+      getIO().emit('newOrder', {
+        order: newOrder,
+        message: `🔔 New ${newOrder.orderType.toUpperCase()} Order Received! (#${newOrder.orderNumber})`
+      });
       getIO().emit('ordersUpdated');
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -224,6 +316,12 @@ class OrderController {
       const { id } = req.params;
       const { items } = req.body;
 
+      // Check Stock First
+      const stockCheck = await checkStockAvailability(items);
+      if (!stockCheck.available) {
+        return res.status(400).json({ success: false, message: `Insufficient stock for: ${stockCheck.itemName}` });
+      }
+
       const order = await Order.findById(id);
       if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
@@ -324,8 +422,14 @@ class OrderController {
 
       // Handle Stock
       const diff = quantity - item.quantity;
-      if (diff !== 0) {
-        await handleStock([{ menuItem: item.menuItem, quantity: Math.abs(diff), size: item.size }], diff > 0 ? 'reduce' : 'restore');
+      if (diff > 0) {
+        const stockCheck = await checkStockAvailability([{ menuItem: item.menuItem, quantity: diff, size: item.size }]);
+        if (!stockCheck.available) {
+          return res.status(400).json({ success: false, message: `Insufficient stock for: ${stockCheck.itemName}` });
+        }
+        await handleStock([{ menuItem: item.menuItem, quantity: diff, size: item.size }], 'reduce');
+      } else if (diff < 0) {
+        await handleStock([{ menuItem: item.menuItem, quantity: Math.abs(diff), size: item.size }], 'restore');
       }
 
       item.quantity = quantity;
@@ -347,6 +451,12 @@ class OrderController {
     try {
       const { id } = req.params;
       const { items } = req.body;
+
+      // Check Stock First
+      const stockCheck = await checkStockAvailability(items);
+      if (!stockCheck.available) {
+        return res.status(400).json({ success: false, message: `Insufficient stock for: ${stockCheck.itemName}` });
+      }
 
       const order = await Order.findById(id);
       if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
