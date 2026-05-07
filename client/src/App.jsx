@@ -10,6 +10,7 @@ import LandingPage from './pages/Landing/LandingPage';
 import CartPage from './pages/Cart/CartPage';
 import PaymentPage from './pages/Payment/PaymentPage';
 import ProfilePage from './pages/Profile/ProfilePage';
+import ReturnsRefundsPage from './pages/Profile/ReturnsRefundsPage';
 import OrdersPage from './pages/Orders/OrdersPage';
 import TrackOrderPage from './pages/Orders/TrackOrderPage';
 import MenuDetailPage from './pages/Menu/MenuDetailPage';
@@ -49,6 +50,11 @@ function App() {
               <Route path="/profile" element={
                 <ProtectedRoute>
                   <ProfilePage />
+                </ProtectedRoute>
+              } />
+              <Route path="/returns-refunds" element={
+                <ProtectedRoute>
+                  <ReturnsRefundsPage />
                 </ProtectedRoute>
               } />
               <Route path="/my-orders" element={

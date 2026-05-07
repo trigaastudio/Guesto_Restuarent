@@ -1,6 +1,8 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import menuRoutes from './routes/menuRoutes.js';
@@ -8,6 +10,7 @@ import categoryRoutes from './routes/categoryRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import http from 'http';
@@ -20,6 +23,30 @@ const __dirname = path.dirname(__filename);
 dotenv.config();
 
 const app = express();
+
+// Security Middleware with Razorpay CSP
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      "script-src": ["'self'", "'unsafe-inline'", "https://checkout.razorpay.com"],
+      "frame-src": ["'self'", "https://api.razorpay.com", "https://tds.razorpay.com"],
+      "connect-src": ["'self'", "https://api.razorpay.com"]
+    },
+  },
+}));
+
+// Rate Limiting: 1 minute request limit
+const limiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again after a minute',
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
+// Apply rate limiter to all api routes
+app.use('/api/', limiter);
 
 
 connectDB();
@@ -45,6 +72,7 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/payments', paymentRoutes);
 
 
 

@@ -1,10 +1,17 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, UtensilsCrossed, ShieldCheck, Clock } from 'lucide-react';
 import Footer from '../../components/Footer/Footer';
 
 const LandingPage = () => {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      navigate('/home', { replace: true });
+    }
+  }, [navigate]);
 
   return (
     <div className="h-[100dvh] w-full bg-[#D10000] flex flex-col relative overflow-hidden font-sans select-none text-white">
@@ -25,24 +32,11 @@ const LandingPage = () => {
       </div>
 
       {/* Header */}
-      <header className="flex justify-between items-center px-6 md:px-12 py-6 relative z-30">
+      <header className="flex justify-center md:justify-between items-center px-6 md:px-12 py-6 relative z-30">
         <div className="flex items-center gap-2">
-          <img src="/logo-light.png" alt="Guesto Restaurant" className="h-8 md:h-10 object-contain" />
+          <img src="/logo-light.png" alt="Guesto Restaurant" className="h-12 md:h-8 lg:h-8 xl:h-10 object-contain" />
         </div>
-        <div className="flex items-center gap-6">
-          <nav className="hidden lg:flex items-center gap-8 text-[11px] font-bold tracking-widest text-white/80">
-            <a href="#" className="hover:text-white transition-colors">Home</a>
-            <a href="#" className="hover:text-white transition-colors">Menu</a>
-            <a href="#" className="hover:text-white transition-colors">About</a>
-            <a href="#" className="hover:text-white transition-colors">Contact</a>
-          </nav>
-          <button
-            onClick={() => navigate('/login')}
-            className="bg-[#DA9133] hover:bg-[#C27D29] text-white px-4 py-1 md:py-1.5 rounded-full font-bold text-[10px] md:text-xs transition-all active:scale-95 shadow-lg shadow-black/10 tracking-widest"
-          >
-            Sign In
-          </button>
-        </div>
+
       </header>
 
       {/* Main Content */}
@@ -57,10 +51,10 @@ const LandingPage = () => {
             </div>
 
             <div className="flex flex-col gap-3 pt-2 md:pt-4">
-              <h1 className="text-4xl sm:text-5xl md:text-5xl lg:text-6xl font-black leading-[1.05] tracking-tighter text-white drop-shadow-2xl">
+              <h1 className="text-6xl md:text-5xl lg:text-5xl xl:text-7xl font-black leading-[1.05] tracking-tighter text-white drop-shadow-2xl">
                 Guesto <span className="block opacity-90">Restaurant</span>
               </h1>
-              <p className="text-white/90 text-sm md:text-lg lg:text-lg font-medium max-w-xl mx-auto lg:mx-0 leading-relaxed tracking-widest opacity-80">
+              <p className="text-white/90 text-lg md:text-base lg:text-base xl:text-xl font-medium max-w-xl mx-auto lg:mx-0 leading-relaxed tracking-widest opacity-80">
                 Savor the authentic flavors of Thrissur. We bring premium, chef-crafted meals directly to your dining table.
               </p>
             </div>
@@ -68,9 +62,9 @@ const LandingPage = () => {
 
           <button
             onClick={() => navigate('/login')}
-            className="group inline-flex items-center justify-center gap-2.5 bg-[#DA9133] text-white py-2 md:py-2.5 px-6 md:px-7 rounded-full font-bold text-xs md:text-sm shadow-xl shadow-black/20 hover:bg-[#C27D29] hover:-translate-y-0.5 transition-all duration-300 active:scale-95 tracking-widest"
+            className="group inline-flex items-center justify-center gap-2.5 bg-[#DA9133] text-white py-3 md:py-2.5 px-8 md:px-7 rounded-full font-bold text-base md:text-sm shadow-xl shadow-black/20 hover:bg-[#C27D29] hover:-translate-y-0.5 transition-all duration-300 active:scale-95 tracking-widest"
           >
-            Explore Menu
+            Let's Start
             <ArrowRight className="group-hover:translate-x-1.5 transition-transform duration-300" size={20} />
           </button>
         </div>

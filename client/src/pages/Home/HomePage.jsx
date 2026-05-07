@@ -506,8 +506,8 @@ const HomePage = () => {
       }
 
       const url = categoryId === 'all'
-        ? `/api/menus?page=${pageNum}&limit=10`
-        : `/api/menus?category=${categoryId}&page=${pageNum}&limit=10`;
+        ? `/api/menus?page=${pageNum}&limit=6`
+        : `/api/menus?category=${categoryId}&page=${pageNum}&limit=6`;
 
       const response = await api.get(url);
 
@@ -517,7 +517,7 @@ const HomePage = () => {
         setMenus(prev => [...prev, ...response.data]);
       }
 
-      setHasMore(response.data.length === 10);
+      setHasMore(response.data.length === 6);
     } catch (error) {
       console.error('Error fetching menus:', error);
     } finally {

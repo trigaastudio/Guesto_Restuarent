@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mail, Phone, LogOut, Camera, ShieldCheck, Lock } from 'lucide-react';
+import { Mail, Phone, LogOut, Camera, ShieldCheck, Lock, RefreshCcw, Wallet } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
 const SideNavbar = ({ user, handleLogout, navigate, onAvatarClick, fileInputRef, handleAvatarUpload, onChangePassword }) => {
@@ -93,15 +93,6 @@ const SideNavbar = ({ user, handleLogout, navigate, onAvatarClick, fileInputRef,
               Change password
             </button>
           )}
-
-          {/* Logout */}
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-red-50 hover:bg-[#D10000] text-[#D10000] hover:text-white rounded-2xl transition-all duration-500 font-black text-[10px] tracking-widest uppercase group/logout border border-red-100"
-          >
-            <LogOut size={16} className="group-logout:translate-x-1 transition-transform" />
-            Logout
-          </button>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShoppingCart, User as UserIcon, LayoutGrid, UtensilsCrossed, Menu, X, Home, Info, Phone, Utensils } from 'lucide-react';
+import { ShoppingCart, User as UserIcon, LayoutGrid, UtensilsCrossed, Menu, X, Home, Info, Phone, Utensils, Wallet } from 'lucide-react';
 
 const Navbar = React.memo(({ user, cartItems, showUserDropdown, setShowUserDropdown, handleLogout, navigate, dropdownRef, hideCart }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -110,6 +110,10 @@ const Navbar = React.memo(({ user, cartItems, showUserDropdown, setShowUserDropd
                   <button onClick={() => { setShowUserDropdown(false); navigate('/my-orders'); }} className="w-full flex items-center gap-4 px-5 py-4 text-sm font-black text-text-primary hover:bg-[#D10000]/5 rounded-2xl transition-all group/item">
                     <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center group-hover/item:bg-[#DA9133] group-hover/item:text-white transition-all"><LayoutGrid size={18} /></div>
                     <div className="flex flex-col items-start"><span>My Orders</span><span className="text-[9px] font-bold text-text-muted opacity-50 tracking-widest">Track History</span></div>
+                  </button>
+                  <button onClick={() => { setShowUserDropdown(false); navigate('/returns-refunds'); }} className="w-full flex items-center gap-4 px-5 py-4 text-sm font-black text-text-primary hover:bg-[#D10000]/5 rounded-2xl transition-all group/item">
+                    <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center group-hover/item:bg-[#DA9133] group-hover/item:text-white transition-all"><Wallet size={18} /></div>
+                    <div className="flex flex-col items-start"><span>Returns & Refunds</span><span className="text-[9px] font-bold text-text-muted opacity-50 tracking-widest">Wallet & Balance</span></div>
                   </button>
                   <div className="h-px bg-gray-100 my-2 mx-4"></div>
                   <button onClick={handleLogout} className="w-full flex items-center gap-4 px-5 py-4 text-sm font-black text-red-500 hover:bg-red-50 rounded-2xl transition-all group/item">

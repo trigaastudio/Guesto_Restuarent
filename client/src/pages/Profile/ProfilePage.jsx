@@ -195,7 +195,7 @@ const ProfilePage = () => {
         />
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-4 md:py-6 relative z-10 pb-20">
+      <main className="max-w-5xl mx-auto px-6 py-4 md:py-6 relative z-10 pb-20">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
 
           {/* Left Column: Side Navbar */}

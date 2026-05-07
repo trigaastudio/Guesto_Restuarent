@@ -126,7 +126,13 @@ const orderSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ["cash", "upi", "card", "online", "cod"]
+    enum: ["cash", "upi", "card", "online", "cod", "wallet"]
+  },
+  razorpayOrderId: {
+    type: String
+  },
+  razorpayPaymentId: {
+    type: String
   }
 }, { timestamps: true });
 

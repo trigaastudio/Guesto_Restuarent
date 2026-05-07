@@ -1,21 +1,40 @@
 import Order from '../models/orderSchema.js';
 import Cart from '../models/cartSchema.js';
+import User from '../models/userSchema.js';
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; // km
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 };
 
 const placeOrder = async (req, res) => {
   try {
-    const { items, address, paymentMethod, totalAmount, subtotal, discount, tax } = req.body;
+    const { items, address, paymentMethod, totalAmount, subtotal, discount, tax, razorpayOrderId, razorpayPaymentId } = req.body;
+
+    // Handle Wallet Payment
+    if (paymentMethod === 'wallet') {
+      const user = await User.findById(req.user._id);
+      const orderTotal = subtotal + (req.body.deliveryFee || 0) - (discount || 0) + (tax || 0);
+      
+      if (user.walletBalance < orderTotal) {
+        return res.status(400).json({ success: false, message: 'Insufficient wallet balance' });
+      }
+
+      user.walletBalance -= orderTotal;
+      user.walletTransactions.push({
+        amount: orderTotal,
+        type: 'debit',
+        description: `Payment for Order`
+      });
+      await user.save();
+    }
 
     // Determine Order Source and Type based on User Role
     const isUser = req.user.role === 'user';
@@ -66,7 +85,9 @@ const placeOrder = async (req, res) => {
       totalAmount: subtotal + deliveryFee - (discount || 0) + (tax || 0),
       orderStatus: 'placed',
       kitchenStatus: 'placed',
-      paymentStatus: (paymentMethod === 'cod' || paymentMethod === 'cash') ? 'pending' : 'paid'
+      paymentStatus: paymentMethod === 'wallet' ? 'paid' : 'pending',
+      razorpayOrderId,
+      razorpayPaymentId
     });
 
     // Handle dine-in specific fields if present
@@ -76,6 +97,14 @@ const placeOrder = async (req, res) => {
     }
 
     await newOrder.save();
+
+    // Update wallet transaction description with order number
+    if (paymentMethod === 'wallet') {
+      const user = await User.findById(req.user._id);
+      const lastTx = user.walletTransactions[user.walletTransactions.length - 1];
+      lastTx.description = `Payment for Order #${newOrder.orderNumber}`;
+      await user.save();
+    }
 
     // Clear cart after placing order
     await Cart.findOneAndDelete({ customer: req.user._id }).catch(() => { }); // Attempt both field names
@@ -130,12 +159,27 @@ const cancelOrder = async (req, res) => {
       });
     }
 
+    // Refund to wallet if paid online or via wallet
+    if (order.paymentStatus === 'paid') {
+      const user = await User.findById(req.user._id);
+      user.walletBalance += order.totalAmount;
+      user.walletTransactions.push({
+        amount: order.totalAmount,
+        type: 'credit',
+        description: `Refund for Cancelled Order #${order.orderNumber}`
+      });
+      await user.save();
+      order.paymentStatus = 'refunded';
+    }
+
     order.orderStatus = 'cancelled';
     await order.save();
 
     res.status(200).json({
       success: true,
-      message: 'Order cancelled successfully'
+      message: order.paymentStatus === 'refunded' 
+        ? 'Order cancelled and amount refunded to your wallet' 
+        : 'Order cancelled successfully'
     });
   } catch (error) {
     res.status(500).json({

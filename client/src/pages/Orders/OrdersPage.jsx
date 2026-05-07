@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axiosInstance';
-import { ArrowLeft, Package, Clock, CheckCircle2, Truck, Timer, XCircle, ShoppingBag, MapPin } from 'lucide-react';
+import { ArrowLeft, Package, Clock, CheckCircle2, Truck, Timer, XCircle, ShoppingBag, MapPin, CreditCard } from 'lucide-react';
 import Footer from '../../components/Footer/Footer';
 import Navbar from '../../components/Navbar/Navbar';
 import { useCart } from '../../context/CartContext';
@@ -21,7 +21,20 @@ const OrdersPage = () => {
 
   useEffect(() => {
     window.scrollTo(0, 0);
+
+    // Load Razorpay Script
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    document.body.appendChild(script);
+
     fetchOrders();
+
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
   }, []);
 
   const fetchOrders = async () => {
@@ -74,6 +87,85 @@ const OrdersPage = () => {
       }
     } catch (error) {
       Swal.fire('Error', error.response?.data?.message || 'Failed to cancel order', 'error');
+    }
+  };
+
+  const handleRepayment = async (order) => {
+    try {
+      setLoading(true);
+      // 1. Create Razorpay Order
+      const { data: { data: razorpayOrder } } = await api.post('/api/payments/create-order', {
+        amount: order.totalAmount,
+        currency: 'INR',
+        receipt: `receipt_${order.orderNumber}`
+      });
+
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+        name: 'Guest-O Restaurant',
+        description: 'Payment for your delicious meal',
+        image: '/logo.png',
+        order_id: razorpayOrder.id,
+        handler: async function (paymentResponse) {
+          // 2. Verify Payment and Update Order
+          try {
+            const verificationData = {
+              razorpay_order_id: paymentResponse.razorpay_order_id,
+              razorpay_payment_id: paymentResponse.razorpay_payment_id,
+              razorpay_signature: paymentResponse.razorpay_signature,
+              orderId: order._id
+            };
+
+            const { data: verificationResult } = await api.post('/api/payments/verify', verificationData);
+
+            if (verificationResult.success) {
+              Swal.fire({
+                title: 'Payment Successful!',
+                text: 'Your payment has been received.',
+                icon: 'success',
+                confirmButtonColor: '#DA9133'
+              });
+              fetchOrders();
+            }
+          } catch (err) {
+            console.error('Payment Verification Failed:', err);
+            Swal.fire({
+              title: 'Payment Failed',
+              text: 'Payment verification failed. You can try again from here.',
+              icon: 'error',
+              confirmButtonColor: '#DA9133'
+            });
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            // Just refresh the orders to show latest status
+            fetchOrders();
+          }
+        },
+        prefill: {
+          name: user?.name || '',
+          email: user?.email || '',
+          contact: order.customerDetails?.phone || ''
+        },
+        theme: {
+          color: '#D10000'
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (error) {
+      console.error('Repayment Error:', error);
+      Swal.fire({
+        title: 'Error',
+        text: 'Could not initiate payment. Please try again.',
+        icon: 'error'
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -286,6 +378,15 @@ const OrdersPage = () => {
                       {/* Footer Actions */}
                       {order.orderStatus !== 'cancelled' && (
                         <div className="px-4 md:px-6 py-4 bg-white border-t border-gray-100/50 flex flex-wrap justify-end gap-2">
+                          {order.paymentMethod === 'online' && order.paymentStatus === 'pending' && (
+                            <button
+                              onClick={() => handleRepayment(order)}
+                              className="w-full sm:w-auto px-8 py-2.5 rounded-xl bg-[#DA9133] text-white text-[10px] font-black tracking-widest uppercase hover:bg-[#C27D29] transition-all shadow-lg shadow-[#DA9133]/20 active:scale-95 flex items-center gap-2"
+                            >
+                              <CreditCard size={14} />
+                              Pay Now
+                            </button>
+                          )}
                           {order.orderStatus === 'placed' && (
                             <button
                               onClick={() => handleCancelOrder(order._id)}

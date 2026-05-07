@@ -65,7 +65,17 @@ const userSchema = new mongoose.Schema({
 
   lastLogin: {
     type: Date
-  }
+  },
+  walletBalance: {
+    type: Number,
+    default: 0
+  },
+  walletTransactions: [{
+    amount: Number,
+    type: { type: String, enum: ["credit", "debit"] },
+    description: String,
+    date: { type: Date, default: Date.now }
+  }]
 
 }, { timestamps: true });
 
