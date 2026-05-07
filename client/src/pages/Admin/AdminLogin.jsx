@@ -12,12 +12,26 @@ const AdminLogin = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [settings, setSettings] = useState(null);
   const isDarkMode = theme === 'dark';
+
+  React.useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const response = await api.get('/api/settings');
+      setSettings(response.data.data);
+    } catch (err) {
+      console.error('Error fetching settings:', err);
+    }
+  };
 
   // Prevent accessing login if already logged in as admin
   React.useEffect(() => {
-    const token = localStorage.getItem('token');
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const token = localStorage.getItem('admin_token');
+    const user = JSON.parse(localStorage.getItem('admin_user') || '{}');
     if (token && user.role === 'admin') {
       navigate('/admin/dashboard', { replace: true });
     }
@@ -32,8 +46,8 @@ const AdminLogin = () => {
       const response = await api.post('/api/auth/admin-login', { email, password });
 
       if (response.data.success) {
-        localStorage.setItem('token', response.data.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.data));
+        localStorage.setItem('admin_token', response.data.data.token);
+        localStorage.setItem('admin_user', JSON.stringify(response.data.data));
         // Use replace: true to prevent going back to login
         navigate('/admin/dashboard', { replace: true });
       }
@@ -56,7 +70,13 @@ const AdminLogin = () => {
 
       {/* Logo Section */}
       <div className="mb-12 text-center flex flex-col items-center animate-in fade-in slide-in-from-top-4 duration-700">
-        <img src={isDarkMode ? "/logo-light.png" : "/logo-dark.png"} alt="GuestO Logo" className="h-16 w-auto mb-2" />
+        <img 
+          src={isDarkMode 
+            ? (settings?.branding?.logoGold || "/logo-golden.png") 
+            : (settings?.branding?.logoDark || "/logo-dark.png")} 
+          alt="Restaurant Logo" 
+          className="h-16 w-auto mb-2" 
+        />
       </div>
 
       {/* Login Card */}

@@ -17,8 +17,8 @@ const StaffLogin = () => {
 
   // Redirect if already logged in
   React.useEffect(() => {
-    const token = localStorage.getItem('token');
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const token = localStorage.getItem('staff_token');
+    const user = JSON.parse(localStorage.getItem('staff_user') || '{}');
     if (token && user.role === 'kitchen') navigate('/kitchen/dashboard', { replace: true });
     if (token && user.role === 'waiter') navigate('/waiter/dashboard', { replace: true });
   }, [navigate]);
@@ -36,8 +36,8 @@ const StaffLogin = () => {
       
       if (response.data.success) {
         const staffData = response.data.data;
-        localStorage.setItem('token', staffData.token);
-        localStorage.setItem('user', JSON.stringify(staffData));
+        localStorage.setItem('staff_token', staffData.token);
+        localStorage.setItem('staff_user', JSON.stringify(staffData));
         showToast('success', `Welcome back, ${staffData.name}!`);
         
         if (staffData.role === 'kitchen') {
@@ -68,7 +68,7 @@ const StaffLogin = () => {
       {/* Logo */}
       <div className="mb-10 text-center flex flex-col items-center animate-in fade-in slide-in-from-top-4 duration-700">
         <img
-          src={isDarkMode ? '/logo-light.png' : '/logo-dark.png'}
+          src={isDarkMode ? '/logo-golden.png' : '/logo-dark.png'}
           alt="Restaurant Logo"
           className="h-16 w-auto mb-4"
         />

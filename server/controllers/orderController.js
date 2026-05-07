@@ -1,7 +1,6 @@
 import Order from '../models/orderSchema.js';
 import Counter from '../models/counterSchema.js';
 import Menu from '../models/menuSchema.js';
-import Size from '../models/sizeSchema.js';
 import { getIO } from '../socket.js';
 
 const getNextOrderNumber = async () => {
@@ -13,29 +12,134 @@ const getNextOrderNumber = async () => {
   return `ORD-${counter.seq.toString().padStart(4, '0')}`;
 };
 
-const restoreStock = async (items) => {
+const checkStockAvailability = async (items) => {
   for (const item of items) {
-    try {
-      const sizeDoc = await Size.findOne({ name: item.size });
-      const multiplier = sizeDoc ? sizeDoc.value : 1;
-      const restoreAmount = item.quantity * multiplier;
+    const menuDoc = await Menu.findById(item.menuItem);
+    if (!menuDoc) continue;
 
-      await Menu.findByIdAndUpdate(item.menuItem, {
-        $inc: { totalStock: restoreAmount }
-      });
-    } catch (error) {
-      console.error(`Error restoring stock for item ${item.menuItem}:`, error);
+    const variant = menuDoc.variants.find(v => v.size === item.size);
+    const multiplier = variant && variant.stockValue ? variant.stockValue : 1;
+    const amountNeeded = item.quantity * multiplier;
+
+    if (menuDoc.totalStock < amountNeeded) {
+      return { available: false, itemName: menuDoc.name };
+    }
+
+    if (variant && variant.includedItems && variant.includedItems.length > 0) {
+      for (const included of variant.includedItems) {
+        const includedDoc = await Menu.findById(included.menuItem);
+        if (!includedDoc) continue;
+        const totalNeeded = item.quantity * included.quantity;
+        if (includedDoc.totalStock < totalNeeded) {
+          return { available: false, itemName: `${includedDoc.name} (ingredient)` };
+        }
+      }
     }
   }
+  return { available: true };
+};
+
+const handleStock = async (items, type = 'reduce') => {
+  for (const item of items) {
+    try {
+      const menuDoc = await Menu.findById(item.menuItem);
+      if (!menuDoc) continue;
+
+      const variant = menuDoc.variants.find(v => v.size === item.size);
+      const multiplier = variant && variant.stockValue ? variant.stockValue : 1;
+      const amount = item.quantity * multiplier;
+      const factor = type === 'reduce' ? -1 : 1;
+
+      // Update main item stock
+      const updatedMenu = await Menu.findByIdAndUpdate(
+        item.menuItem,
+        { $inc: { totalStock: factor * amount } },
+        { new: true }
+      );
+
+      // Force floor at 0 if it somehow went negative
+      if (updatedMenu && updatedMenu.totalStock < 0) {
+        await Menu.findByIdAndUpdate(item.menuItem, { totalStock: 0 });
+        updatedMenu.totalStock = 0;
+      }
+
+      // Real-time Stock Alerts (Only on reduction)
+      if (type === 'reduce' && updatedMenu) {
+        if (updatedMenu.totalStock <= 0) {
+          getIO().emit('stockAlert', {
+            type: 'outOfStock',
+            itemId: updatedMenu._id,
+            name: updatedMenu.name,
+            message: `CRITICAL: ${updatedMenu.name} is now OUT OF STOCK!`
+          });
+        } else if (updatedMenu.totalStock <= 5) {
+          getIO().emit('stockAlert', {
+            type: 'lowStock',
+            itemId: updatedMenu._id,
+            name: updatedMenu.name,
+            message: `ALERT: ${updatedMenu.name} is running low (${updatedMenu.totalStock} left)`
+          });
+        }
+      }
+
+      // Update included items stock
+      if (variant && variant.includedItems && variant.includedItems.length > 0) {
+        for (const included of variant.includedItems) {
+          const includedReduction = item.quantity * included.quantity;
+          const updatedIncluded = await Menu.findByIdAndUpdate(
+            included.menuItem,
+            { $inc: { totalStock: factor * includedReduction } },
+            { new: true }
+          );
+
+          if (updatedIncluded && updatedIncluded.totalStock < 0) {
+            await Menu.findByIdAndUpdate(included.menuItem, { totalStock: 0 });
+            updatedIncluded.totalStock = 0;
+          }
+
+          // Stock Alerts for included items
+          if (type === 'reduce' && updatedIncluded) {
+            if (updatedIncluded.totalStock <= 0) {
+              getIO().emit('stockAlert', {
+                type: 'outOfStock',
+                itemId: updatedIncluded._id,
+                name: updatedIncluded.name,
+                message: `CRITICAL: ${updatedIncluded.name} (ingredient) is now OUT OF STOCK!`
+              });
+            } else if (updatedIncluded.totalStock <= 5) {
+              getIO().emit('stockAlert', {
+                type: 'lowStock',
+                itemId: updatedIncluded._id,
+                name: updatedIncluded.name,
+                message: `ALERT: ${updatedIncluded.name} (ingredient) is running low (${updatedIncluded.totalStock} left)`
+              });
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`Error handling stock for item ${item.menuItem}:`, error);
+    }
+  }
+};
+
+const restoreStock = async (items) => {
+  await handleStock(items, 'restore');
 };
 
 class OrderController {
   async createCounterOrder(req, res) {
     try {
       const { customerDetails, items, orderType, paymentMethod, subtotal, tax, discount, totalAmount, cashReceived, balance } = req.body;
-      
+
+      // Check Stock First
+      const stockCheck = await checkStockAvailability(items);
+      if (!stockCheck.available) {
+        return res.status(400).json({ success: false, message: `Insufficient stock for: ${stockCheck.itemName}` });
+      }
+
       const orderNumber = await getNextOrderNumber();
-      
+
       // Auto-set payment status for cash
       let paymentStatus = 'pending';
       if (paymentMethod === 'cash' && cashReceived >= totalAmount) {
@@ -44,9 +148,9 @@ class OrderController {
 
       const newOrder = new Order({
         orderNumber,
-        orderType: orderType || 'takeaway', 
+        orderType: orderType || 'takeaway',
         orderSource: 'admin',
-        status: 'confirmed',
+        orderStatus: 'placed',
         customerDetails: {
           name: customerDetails?.name || 'Walk-in',
           phone: customerDetails?.phone,
@@ -55,7 +159,7 @@ class OrderController {
         },
         items: items.map(item => ({
           ...item,
-          kitchenStatus: 'pending'
+          kitchenStatus: 'placed'
         })),
         subtotal,
         tax,
@@ -64,24 +168,21 @@ class OrderController {
         paymentMethod,
         cashReceived: cashReceived || 0,
         balance: balance || 0,
-        paymentStatus, 
-        status: 'confirmed'
+        paymentStatus
       });
 
       await newOrder.save();
 
       // Reduce Stock
-      for (const item of items) {
-        const sizeDoc = await Size.findOne({ name: item.size });
-        const multiplier = sizeDoc ? sizeDoc.value : 1;
-        const reductionAmount = item.quantity * multiplier;
-
-        await Menu.findByIdAndUpdate(item.menuItem, {
-          $inc: { totalStock: -reductionAmount }
-        });
-      }
+      await handleStock(items, 'reduce');
 
       res.status(201).json({ success: true, data: newOrder });
+      
+      // Global Notifications
+      getIO().emit('newOrder', {
+        order: newOrder,
+        message: `🔔 New ${newOrder.orderType.toUpperCase()} Order Received! (#${newOrder.orderNumber})`
+      });
       getIO().emit('ordersUpdated');
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -92,7 +193,10 @@ class OrderController {
     try {
       const { type } = req.query;
       const query = type ? { orderType: type } : {};
-      const orders = await Order.find(query).sort({ createdAt: -1 });
+      const orders = await Order.find(query)
+        .populate('items.menuItem', 'name image')
+        .populate('table', 'tableNumber')
+        .sort({ createdAt: -1 });
       res.json({ success: true, data: orders });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -108,8 +212,24 @@ class OrderController {
       const originalOrder = await Order.findById(id);
       if (!originalOrder) return res.status(404).json({ success: false, message: 'Order not found' });
 
+      // NEW OPERATIONAL RULE: Cannot move past 'processing' unless kitchen is 'ready'
+      // Allow moving TO processing, and allow CANCELLING anytime.
+      // But moving FROM processing to anything else requires kitchen 'ready'.
+      if (
+        originalOrder.orderStatus === 'processing' && 
+        updateData.orderStatus && 
+        updateData.orderStatus !== 'processing' && 
+        updateData.orderStatus !== 'cancelled' && 
+        originalOrder.kitchenStatus !== 'ready'
+      ) {
+        return res.status(403).json({ 
+          success: false, 
+          message: 'Order status cannot be updated until the Kitchen marks all items as "Ready".' 
+        });
+      }
+
       // Handle Stock Recovery if cancelled
-      if (updateData.status === 'cancelled' && originalOrder.status !== 'cancelled') {
+      if (updateData.orderStatus === 'cancelled' && originalOrder.orderStatus !== 'cancelled') {
         await restoreStock(originalOrder.items);
       }
 
@@ -122,11 +242,17 @@ class OrderController {
         }
       }
 
-      const order = await Order.findByIdAndUpdate(
-        id,
-        { $set: updateData },
-        { returnDocument: 'after' }
-      );
+      // Restrict editing items for user delivery orders
+      if (originalOrder.orderType === 'delivery' && originalOrder.orderSource === 'user' && updateData.items) {
+        return res.status(403).json({ success: false, message: 'User delivery orders cannot have their items modified by admin' });
+      }
+
+      Object.assign(originalOrder, updateData);
+      const order = await originalOrder.save();
+      await order.populate([
+        { path: 'items.menuItem', select: 'name image' },
+        { path: 'table', select: 'tableNumber' }
+      ]);
 
       getIO().emit('ordersUpdated');
       res.json({ success: true, data: order });
@@ -142,7 +268,7 @@ class OrderController {
       if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
       // Restore stock if not already cancelled
-      if (order.status !== 'cancelled') {
+      if (order.orderStatus !== 'cancelled') {
         await restoreStock(order.items);
       }
 
@@ -160,7 +286,7 @@ class OrderController {
       const { kitchenStatus } = req.body;
 
       // Validate kitchenStatus value
-      const allowedStatuses = ['pending', 'preparing', 'delayed', 'ready'];
+      const allowedStatuses = ['placed', 'preparing', 'ready', 'delayed'];
       if (!allowedStatuses.includes(kitchenStatus)) {
         return res.status(400).json({ success: false, message: `Invalid kitchen status: "${kitchenStatus}"` });
       }
@@ -173,17 +299,14 @@ class OrderController {
 
       item.kitchenStatus = kitchenStatus;
       await order.save();
-      
+      await order.populate('items.menuItem', 'name image');
+
       // Emit socket event for real-time update
       getIO().emit('ordersUpdated');
 
       res.json({ success: true, data: order });
     } catch (error) {
       console.error('Update item status error:', error);
-      // Log to a file for debugging
-      import('fs').then(fs => {
-        fs.appendFileSync('error.log', `${new Date().toISOString()} - ${error.stack}\n`);
-      });
       res.status(500).json({ success: false, message: error.message });
     }
   }
@@ -193,25 +316,35 @@ class OrderController {
       const { id } = req.params;
       const { items } = req.body;
 
+      // Check Stock First
+      const stockCheck = await checkStockAvailability(items);
+      if (!stockCheck.available) {
+        return res.status(400).json({ success: false, message: `Insufficient stock for: ${stockCheck.itemName}` });
+      }
+
       const order = await Order.findById(id);
       if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
-      if (order.isLocked) {
-        return res.status(403).json({ success: false, message: 'Order is locked and cannot be edited' });
+      if (['cancelled', 'delivered'].includes(order.orderStatus)) {
+        return res.status(403).json({ success: false, message: 'Finalized orders cannot be modified' });
       }
 
-      order.items.push(...items.map(item => ({ ...item, kitchenStatus: 'pending' })));
-      
+      if (order.orderType === 'delivery' && order.orderSource === 'user') {
+        return res.status(403).json({ success: false, message: 'User delivery orders cannot have their items modified by admin' });
+      }
+
+      order.items.push(...items.map(item => ({ ...item, kitchenStatus: 'placed' })));
+
       // Recalculate Totals
-      const newSubtotal = order.items.reduce((acc, item) => acc + item.totalPrice, 0);
+      const newSubtotal = order.items.reduce((acc, item) => acc + (item.totalPrice || 0), 0);
       order.subtotal = newSubtotal;
       order.totalAmount = newSubtotal + (order.tax || 0) - (order.discount || 0);
-      
+
       // Update cash details if provided or recalculate
       if (req.body.cashReceived !== undefined) {
         order.cashReceived = req.body.cashReceived;
       }
-      
+
       if (order.paymentMethod === 'cash') {
         order.balance = (order.cashReceived || 0) - order.totalAmount;
       }
@@ -219,16 +352,9 @@ class OrderController {
       await order.save();
 
       // Reduce Stock for new items
-      for (const item of items) {
-        const sizeDoc = await Size.findOne({ name: item.size });
-        const multiplier = sizeDoc ? sizeDoc.value : 1;
-        const reductionAmount = item.quantity * multiplier;
+      await handleStock(items, 'reduce');
 
-        await Menu.findByIdAndUpdate(item.menuItem, {
-          $inc: { totalStock: -reductionAmount }
-        });
-      }
-
+      await order.populate('items.menuItem', 'name image');
       res.json({ success: true, data: order });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -242,37 +368,174 @@ class OrderController {
       const order = await Order.findById(orderId);
       if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
-      if (order.isLocked) {
-        return res.status(403).json({ success: false, message: 'Order is locked and cannot be edited' });
+      if (['cancelled', 'delivered'].includes(order.orderStatus)) {
+        return res.status(403).json({ success: false, message: 'Finalized orders cannot be modified' });
+      }
+
+      if (order.orderType === 'delivery' && order.orderSource === 'user') {
+        return res.status(403).json({ success: false, message: 'User delivery orders cannot have their items modified by admin' });
       }
 
       const item = order.items.id(itemId);
       if (item) {
         // Restore Stock
-        const sizeDoc = await Size.findOne({ name: item.size });
-        const multiplier = sizeDoc ? sizeDoc.value : 1;
-        const restoreAmount = item.quantity * multiplier;
-
-        await Menu.findByIdAndUpdate(item.menuItem, {
-          $inc: { totalStock: restoreAmount }
-        });
-
+        await handleStock([item], 'restore');
         order.items.pull(itemId);
-        
+
         // Recalculate Totals
-        const newSubtotal = order.items.reduce((acc, item) => acc + item.totalPrice, 0);
+        const newSubtotal = order.items.reduce((acc, item) => acc + (item.totalPrice || 0), 0);
         order.subtotal = newSubtotal;
         order.totalAmount = newSubtotal + (order.tax || 0) - (order.discount || 0);
-        
+
         // Recalculate Balance if it's a cash payment
         if (order.paymentMethod === 'cash' && order.cashReceived > 0) {
           order.balance = order.cashReceived - order.totalAmount;
         }
 
         await order.save();
+        await order.populate('items.menuItem', 'name image');
       }
 
+      getIO().emit('ordersUpdated');
       res.json({ success: true, data: order });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  async updateItemQuantity(req, res) {
+    try {
+      const { orderId, itemId } = req.params;
+      const { quantity } = req.body;
+
+      if (quantity < 1) return res.status(400).json({ success: false, message: 'Quantity must be at least 1' });
+
+      const order = await Order.findById(orderId);
+      if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+      if (['cancelled', 'delivered'].includes(order.orderStatus)) {
+        return res.status(403).json({ success: false, message: 'Finalized orders cannot be modified' });
+      }
+
+      const item = order.items.id(itemId);
+      if (!item) return res.status(404).json({ success: false, message: 'Item not found' });
+
+      // Handle Stock
+      const diff = quantity - item.quantity;
+      if (diff > 0) {
+        const stockCheck = await checkStockAvailability([{ menuItem: item.menuItem, quantity: diff, size: item.size }]);
+        if (!stockCheck.available) {
+          return res.status(400).json({ success: false, message: `Insufficient stock for: ${stockCheck.itemName}` });
+        }
+        await handleStock([{ menuItem: item.menuItem, quantity: diff, size: item.size }], 'reduce');
+      } else if (diff < 0) {
+        await handleStock([{ menuItem: item.menuItem, quantity: Math.abs(diff), size: item.size }], 'restore');
+      }
+
+      item.quantity = quantity;
+      item.totalPrice = (item.unitPrice || item.price || 0) * quantity;
+
+      // Recalculate Totals
+      // Totals and balance are handled by pre-save hook
+      await order.save();
+      await order.populate('items.menuItem', 'name image');
+
+      getIO().emit('ordersUpdated');
+      res.json({ success: true, data: order });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  async updateOrderItems(req, res) {
+    try {
+      const { id } = req.params;
+      const { items } = req.body;
+
+      // Check Stock First
+      const stockCheck = await checkStockAvailability(items);
+      if (!stockCheck.available) {
+        return res.status(400).json({ success: false, message: `Insufficient stock for: ${stockCheck.itemName}` });
+      }
+
+      const order = await Order.findById(id);
+      if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+      if (['cancelled', 'delivered'].includes(order.orderStatus)) {
+        return res.status(403).json({ success: false, message: 'Finalized orders cannot be modified' });
+      }
+
+      // Restore old stock
+      await restoreStock(order.items);
+
+      // Update items
+      order.items = items.map(item => ({
+        ...item,
+        kitchenStatus: item.kitchenStatus || 'placed'
+      }));
+
+      // Recalculate Totals (Handled by pre-save hook)
+
+      // Update address/location if provided
+      if (req.body.deliveryAddress !== undefined) {
+        if (!order.address) order.address = {};
+        order.address.address = req.body.deliveryAddress;
+      }
+      if (req.body.deliveryLocation !== undefined) {
+        if (!order.address) order.address = {};
+        order.address.location = req.body.deliveryLocation;
+      }
+      if (req.body.customerDetails) {
+        order.customerDetails = req.body.customerDetails;
+      }
+
+      await order.save();
+      
+      // Reduce new stock
+      await handleStock(order.items, 'reduce');
+
+      await order.populate('items.menuItem', 'name image');
+      getIO().emit('ordersUpdated');
+      res.json({ success: true, data: order });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  async clearHistory(req, res) {
+    try {
+      const { orderType, startDate, endDate, ids } = req.query;
+      
+      let query = {};
+
+      if (ids) {
+        query = { _id: { $in: ids.split(',') } };
+      } else {
+        query = {
+          $or: [
+            { orderStatus: 'delivered', paymentStatus: 'paid' },
+            { orderStatus: 'cancelled' }
+          ]
+        };
+
+        if (orderType && orderType !== 'all') {
+          query.orderType = orderType;
+        }
+
+        if (startDate || endDate) {
+          query.createdAt = {};
+          if (startDate) query.createdAt.$gte = new Date(startDate);
+          if (endDate) {
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+            query.createdAt.$lte = end;
+          }
+        }
+      }
+
+      const result = await Order.deleteMany(query);
+      getIO().emit('ordersUpdated');
+      res.json({ success: true, message: `${result.deletedCount} orders cleared`, deletedCount: result.deletedCount });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }

@@ -7,20 +7,20 @@ import {
   ChevronRight, Clock, Package, Trash2, Printer,
   CheckCircle2, Loader2, AlertTriangle, Menu
 } from 'lucide-react';
-import axios from 'axios';
+import api from '../../api/axiosInstance';
 import { useTheme } from '../../context/ThemeContext';
 import { showToast, showAlert } from '../../utils/sweetAlert';
 
-const API_BASE_URL = 'http://localhost:5000/api';
-const SOCKET_URL = 'http://localhost:5000';
+const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:5000/api`;
+const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
 
 const NOTIFICATION_SOUND = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
 
 const KITCHEN_STATUSES = [
-  { value: 'pending', label: 'Pending', bg: 'bg-amber-500/10', text: 'text-amber-600', border: 'border-amber-400/40', dot: 'bg-amber-500' },
+  { value: 'placed', label: 'Placed', bg: 'bg-amber-500/10', text: 'text-amber-600', border: 'border-amber-400/40', dot: 'bg-amber-500' },
   { value: 'preparing', label: 'Preparing', bg: 'bg-blue-500/10', text: 'text-blue-600', border: 'border-blue-400/40', dot: 'bg-blue-500' },
-  { value: 'delayed', label: 'Delayed', bg: 'bg-red-500/10', text: 'text-red-600', border: 'border-red-400/40', dot: 'bg-red-500' },
   { value: 'ready', label: 'Ready', bg: 'bg-emerald-500/10', text: 'text-emerald-600', border: 'border-emerald-400/40', dot: 'bg-emerald-500' },
+  { value: 'delayed', label: 'Delayed', bg: 'bg-red-500/10', text: 'text-red-600', border: 'border-red-400/40', dot: 'bg-red-500' },
 ];
 
 const StatusDropdown = ({ value, onChange }) => {
@@ -80,7 +80,12 @@ const TABS = [
 const KitchenDashboard = () => {
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('takeaway');
+  const [activeTab, setActiveTab] = useState(localStorage.getItem('kitchenActiveTab') || 'takeaway');
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    localStorage.setItem('kitchenActiveTab', tab);
+  };
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -88,7 +93,7 @@ const KitchenDashboard = () => {
   const [lastFetchCount, setLastFetchCount] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  const staff = JSON.parse(localStorage.getItem('user') || '{}');
+  const staff = JSON.parse(localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || '{}');
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const isDarkMode = theme === 'dark';
@@ -102,11 +107,11 @@ const KitchenDashboard = () => {
   const fetchOrders = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/orders`);
+      const response = await api.get('/api/orders');
       const allOrders = response.data.data || [];
       // Show only confirmed and ready orders in the kitchen panel
       const kitchenOrders = allOrders.filter(o =>
-        o.status === 'confirmed' || o.status === 'ready'
+        o.orderStatus === 'processing'
       );
 
       // Detect new orders for notifications and sound
@@ -161,19 +166,37 @@ const KitchenDashboard = () => {
     return 'text-status-unavailable animate-pulse';
   };
 
-  const handlePrintKOT = (order) => {
+  const handlePrintKOT = async (order) => {
+    // Fetch settings for dynamic printing
+    let currentSettings = null;
+    try {
+      const response = await api.get('/api/settings');
+      currentSettings = response.data.data;
+    } catch (err) {
+      console.error('Failed to fetch settings for KOT:', err);
+    }
+
     const printWindow = window.open('', '_blank');
     const itemsHtml = order.items.map(item => `
       <tr>
-        <td colspan="4" style="text-transform: uppercase; font-weight: bold; padding-top: 8px;">${item.name} (${item.size})</td>
+        <td style="text-transform: uppercase; font-weight: bold; padding: 8px 0; font-size: 16px;">${item.name || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Menu Item')}</td>
       </tr>
       <tr>
-        <td style="width: 40%;"></td>
-        <td style="width: 15%; text-align: left;">${item.quantity} P</td>
-        <td style="width: 20%; text-align: right;">${item.unitPrice.toFixed(2)}</td>
-        <td style="width: 25%; text-align: right;">${item.totalPrice.toFixed(2)}</td>
+        <td style="padding-bottom: 8px; font-weight: bold;">
+          <span style="font-size: 14px;">[ ${item.size} ]</span> 
+          <span style="font-size: 18px; margin-left: 20px;">x ${item.quantity}</span>
+        </td>
       </tr>
     `).join('');
+
+    // Dynamic QR Logic
+    let qrCodeUrl = '';
+    const restaurantName = currentSettings?.restaurantDetails?.name || 'GUESTO RESTAURENT';
+    const showQR = currentSettings?.printingSettings?.showKOTQRCode && (order.orderType === 'delivery' || order.orderSource === 'online' || order.orderType === 'online');
+    
+    if (showQR && currentSettings.printingSettings.kotQRCodeImage) {
+      qrCodeUrl = currentSettings.printingSettings.kotQRCodeImage;
+    }
 
     printWindow.document.write(`
       <html>
@@ -184,69 +207,51 @@ const KitchenDashboard = () => {
             body { 
               font-family: 'Courier New', Courier, monospace; 
               width: 80mm; 
-              padding: 15px; 
+              padding: 10px; 
               margin: 0; 
               color: #000;
               font-size: 14px;
               line-height: 1.2;
             }
-            .header { text-align: center; margin-bottom: 15px; }
-            .restaurant-name { font-size: 18px; font-weight: bold; margin-bottom: 2px; }
-            .details { font-size: 13px; margin-bottom: 2px; }
-            .divider { border-top: 1px dashed #000; margin: 8px 0; }
-            .info-grid { display: grid; grid-template-cols: 1fr 1fr; margin-bottom: 10px; font-weight: bold; }
+            .header { text-align: center; margin-bottom: 10px; }
+            .kot-title { font-size: 24px; font-weight: 900; margin-bottom: 5px; border: 2px solid #000; display: inline-block; padding: 2px 10px; }
+            .restaurant-name { font-size: 14px; font-weight: bold; margin-bottom: 2px; }
+            .divider { border-top: 1px dashed #000; margin: 5px 0; }
+            .info-grid { display: grid; grid-template-cols: 1fr 1fr; margin-bottom: 5px; font-weight: bold; }
             table { width: 100%; border-collapse: collapse; }
-            .total-section { font-weight: bold; font-size: 16px; display: flex; justify-content: space-between; margin-top: 5px; }
-            .payment-info { font-size: 13px; margin-top: 10px; }
+            .qr-section { text-align: center; margin-top: 20px; }
+            .qr-label { font-size: 10px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
           </style>
         </head>
         <body onload="window.print(); window.close();">
           <div class="header">
-            <div class="restaurant-name">GUESTO RESTAURENT</div>
-            <div class="details">Chammannur,Athirthi</div>
-            <div class="details">MOB: 7034805085, 9947649007</div>
+            <div class="kot-title">KOT</div>
+            <div class="restaurant-name">${restaurantName}</div>
           </div>
           <div class="divider"></div>
           <div class="info-grid">
-            <div>BILL NO:${order.orderNumber.split('-')[1] || order.orderNumber}</div>
-            <div style="text-align: right;">DATE: ${new Date(order.createdAt).toLocaleDateString('en-GB')}</div>
-            <div></div>
-            <div style="text-align: right;">TIME: ${new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+            <div>ORDER:${order.orderNumber.split('-')[1] || order.orderNumber}</div>
+            <div style="text-align: right;">${new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+            <div>TYPE:${order.orderType.toUpperCase()}</div>
+            <div style="text-align: right;">${new Date(order.createdAt).toLocaleDateString('en-GB')}</div>
           </div>
           <div class="divider"></div>
           <table>
-            <thead>
-              <tr style="font-weight: bold;">
-                <th style="width: 40%; text-align: left;">ITEM</th>
-                <th style="width: 15%; text-align: left;">QTY</th>
-                <th style="width: 20%; text-align: right;">PRICE</th>
-                <th style="width: 25%; text-align: right;">AMOUNT</th>
-              </tr>
-            </thead>
             <tbody>
-              <tr><td colspan="4"><div class="divider"></div></td></tr>
               ${itemsHtml}
             </tbody>
           </table>
-          <div class="divider"></div>
-          <div class="total-section">
-            <span>TOTAL :</span>
-            <span>${order.totalAmount.toFixed(2)}</span>
-          </div>
-          <div class="divider"></div>
-          <div class="payment-info">
-            <div style="display: flex; justify-content: space-between;">
-              <span>CASH RECEIVED :</span>
-              <span>${order.paymentStatus === 'paid' ? order.totalAmount.toFixed(2) : '0.00'}</span>
+          
+          ${qrCodeUrl ? `
+            <div class="qr-section">
+              <div class="qr-label">${currentSettings.printingSettings.kotQRCodeType === 'upi' ? 'Scan to Pay' : 'Scan for Info'}</div>
+              <img src="${qrCodeUrl}" style="width: 120px; height: 120px; border: 1px solid #000; padding: 5px;" />
             </div>
-            <div style="display: flex; justify-content: space-between; margin-top: 3px;">
-              <span>${order.paymentStatus === 'paid' ? 'CHANGE' : 'DUE'} :</span>
-              <span>0.00</span>
-            </div>
-          </div>
+          ` : ''}
+
           <div class="divider"></div>
-          <div style="text-align: center; font-size: 11px; margin-top: 10px;">
-            THANK YOU FOR VISITING!
+          <div style="text-align: center; font-weight: bold; margin-top: 10px;">
+            --- END OF KOT ---
           </div>
         </body>
       </html>
@@ -257,28 +262,15 @@ const KitchenDashboard = () => {
   const handleUpdateItemStatus = async (orderId, itemId, newStatus, itemName, currentStatus) => {
     if (newStatus === currentStatus) return;
 
-    const labels = { pending: 'Pending', preparing: 'Preparing', delayed: 'Delayed', ready: 'Ready' };
-    const colors = { pending: '#9CA3AF', preparing: '#F59E0B', delayed: '#DC2626', ready: '#16A34A' };
-
-    const result = await showAlert({
-      icon: 'question',
-      title: 'Change Status?',
-      text: `Change "${itemName}" from ${labels[currentStatus] || currentStatus} → ${labels[newStatus]}?`,
-      showCancelButton: true,
-      confirmButtonColor: colors[newStatus] || '#C96A0A',
-      cancelButtonColor: '#9CA3AF',
-      confirmButtonText: 'Yes, Change!',
-      cancelButtonText: 'Cancel',
-    });
-
-    if (!result.isConfirmed) return;
+    const labels = { placed: 'Placed', preparing: 'Preparing', ready: 'Ready', delayed: 'Delayed' };
 
     try {
-      await axios.patch(`${API_BASE_URL}/orders/${orderId}/items/${itemId}/status`, { kitchenStatus: newStatus });
+      await api.patch(`/api/orders/${orderId}/items/${itemId}/status`, { kitchenStatus: newStatus });
       showToast('success', `"${itemName}" → ${labels[newStatus]}`);
       fetchOrders(true);
     } catch (error) {
-      showToast('error', 'Failed to update status');
+      console.error('Status update failed:', error);
+      showToast('error', error.response?.data?.message || 'Failed to update status');
     }
   };
 
@@ -297,7 +289,7 @@ const KitchenDashboard = () => {
     if (!result.isConfirmed) return;
 
     try {
-      await axios.patch(`${API_BASE_URL}/orders/${orderId}/status`, { status: 'completed' });
+      await api.patch(`/api/orders/${orderId}/status`, { orderStatus: 'delivered' });
       showToast('success', `Order ${orderNumber} removed from kitchen`);
       fetchOrders(true);
     } catch (error) {
@@ -306,15 +298,21 @@ const KitchenDashboard = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.removeItem('staff_token');
+    localStorage.removeItem('staff_user');
+    localStorage.removeItem('kitchenActiveTab');
     navigate('/staff/login', { replace: true });
   };
 
-  const filteredOrders = orders.filter(o => o.orderType === activeTab);
+  const filteredOrders = orders.filter(o => {
+    if (activeTab === 'delivery') return o.orderType === 'delivery' || o.orderType === 'online';
+    if (activeTab === 'takeaway') return o.orderType === 'takeaway' || o.orderType === 'take-away';
+    if (activeTab === 'dine-in') return o.orderType === 'dine-in' || o.orderType === 'dining';
+    return o.orderType === activeTab;
+  });
 
   const pendingCount = orders.filter(o =>
-    o.items?.some(i => i.kitchenStatus === 'pending' || i.kitchenStatus === 'preparing')
+    o.items?.some(i => i.kitchenStatus === 'placed' || i.kitchenStatus === 'preparing')
   ).length;
 
   return (
@@ -347,7 +345,7 @@ const KitchenDashboard = () => {
               src={
                 (isSidebarCollapsed && !isMobileMenuOpen)
                   ? '/browser-icon.png'
-                  : (isDarkMode ? '/logo-light.png' : '/logo-dark.png')
+                  : (isDarkMode ? '/logo-golden.png' : '/logo-dark.png')
               }
               alt="Logo"
               className={`${(isSidebarCollapsed && !isMobileMenuOpen) ? 'h-8' : 'h-10'} w-auto transition-all duration-500`}
@@ -366,8 +364,8 @@ const KitchenDashboard = () => {
               <div className="flex items-center space-x-2 p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
                 <ChefHat size={16} className="text-amber-500 shrink-0" />
                 <div>
-                  <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Kitchen Panel</p>
-                  <p className="text-xs font-bold text-text-primary truncate">{staff.name}</p>
+                  <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">{staff.role === 'admin' ? 'Admin Access' : 'Kitchen Panel'}</p>
+                  <p className="text-xs font-bold text-text-primary truncate">{staff.name || 'Staff'}</p>
                 </div>
               </div>
             </div>
@@ -376,11 +374,16 @@ const KitchenDashboard = () => {
           {/* Nav */}
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto no-scrollbar">
             {TABS.map((tab) => {
-              const count = orders.filter(o => o.orderType === tab.type).length;
+              const count = orders.filter(o => {
+                if (tab.type === 'delivery') return o.orderType === 'delivery' || o.orderType === 'online';
+                if (tab.type === 'takeaway') return o.orderType === 'takeaway' || o.orderType === 'take-away';
+                if (tab.type === 'dine-in') return o.orderType === 'dine-in' || o.orderType === 'dining';
+                return o.orderType === tab.type;
+              }).length;
               return (
                 <button
                   key={tab.type}
-                  onClick={() => { setActiveTab(tab.type); if (window.innerWidth < 1024) setIsMobileMenuOpen(false); }}
+                  onClick={() => { handleTabChange(tab.type); if (window.innerWidth < 1024) setIsMobileMenuOpen(false); }}
                   title={(isSidebarCollapsed && !isMobileMenuOpen) ? tab.name : ''}
                   className={`w-full flex items-center rounded-xl transition-all duration-200 p-3 group relative
                     ${activeTab === tab.type
@@ -509,11 +512,13 @@ const KitchenDashboard = () => {
             {/* Staff info */}
             <div className="flex items-center space-x-3 border-l pl-4 sm:pl-6 border-border-light">
               <div className="hidden sm:block text-right">
-                <p className="text-sm font-bold text-text-primary">{staff.name}</p>
-                <p className="text-[10px] text-text-secondary uppercase tracking-wider">{staff.employeeId}</p>
+                <p className="text-sm font-bold text-text-primary">{staff.name || 'User'}</p>
+                <p className="text-[10px] text-text-secondary uppercase tracking-wider">
+                  {staff.role === 'admin' ? 'Administrator' : (staff.employeeId || 'Staff')}
+                </p>
               </div>
               <div className="w-10 h-10 rounded-full bg-amber-500/20 border-2 border-amber-500/10 flex items-center justify-center text-amber-500 font-black shrink-0 text-sm">
-                {staff.name?.charAt(0)}
+                {staff.name?.charAt(0) || staff.role?.charAt(0)?.toUpperCase() || 'U'}
               </div>
             </div>
           </div>
@@ -589,9 +594,14 @@ const KitchenDashboard = () => {
                     </div>
 
                     {/* Customer info if exists */}
-                    {(order.customerName || order.tableNumber) && (
+                    {(order.customerDetails?.name || order.address?.recipientName || order.tableNumber) && (
                       <div className="px-5 pt-3 pb-0 flex items-center space-x-3 text-xs text-text-secondary font-bold">
-                        {order.customerName && <span>👤 {order.customerName}</span>}
+                        {(order.customerDetails?.name || order.address?.recipientName) && (
+                          <span>👤 {(order.orderSource === 'online' || order.orderSource === 'user') 
+                            ? (order.address?.recipientName || order.customerDetails?.name) 
+                            : (order.customerDetails?.name || order.address?.recipientName)}
+                          </span>
+                        )}
                         {order.tableNumber && <span>🪑 Table {order.tableNumber}</span>}
                       </div>
                     )}
@@ -599,29 +609,36 @@ const KitchenDashboard = () => {
                     {/* Items */}
                     <div className="flex-1 p-5 space-y-3">
                       {order.items?.map((item) => {
-                        const status = item.kitchenStatus || 'pending';
+                        const status = item.kitchenStatus || 'placed';
                         return (
                           <div key={item._id} className="flex items-center justify-between p-3 bg-background-muted/20 rounded-2xl border border-border-light gap-3">
                             <div className="flex items-center space-x-3 min-w-0">
                               <div className="w-14 h-14 bg-background-card rounded-xl flex items-center justify-center border border-border-light shrink-0 overflow-hidden">
-                                {item.image ? (
-                                  <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                                {item.image || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.image : '') ? (
+                                  <img src={item.image || item.menuItem.image} alt={item.name || item.menuItem.name} className="w-full h-full object-cover" />
                                 ) : (
                                   <Package size={20} className="text-primary/40" />
                                 )}
                               </div>
                               <div className="min-w-0">
-                                <p className="font-bold text-text-primary text-xs leading-tight truncate">{item.name}</p>
+                                <p className="font-bold text-text-primary text-xs leading-tight truncate">
+                                  {item.name || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Menu Item')}
+                                </p>
                                 <p className="text-[10px] text-text-muted font-bold uppercase tracking-tighter">
                                   {item.size} • Qty: {item.quantity}
                                 </p>
                               </div>
                             </div>
 
-                            {/* Status Dropdown */}
                             <StatusDropdown
                               value={status}
-                              onChange={(newStatus) => handleUpdateItemStatus(order._id, item._id, newStatus, item.name, status)}
+                              onChange={(newStatus) => handleUpdateItemStatus(
+                                order._id, 
+                                item._id, 
+                                newStatus, 
+                                item.name || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Menu Item'), 
+                                status
+                              )}
                             />
                           </div>
                         );
