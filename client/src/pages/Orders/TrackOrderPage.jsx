@@ -116,7 +116,7 @@ const TrackOrderPage = () => {
         <Navbar user={user} cartItems={cartItems} navigate={navigate} hideCart={true} />
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 pt-10 pb-20">
+      <main className="max-w-7xl mx-auto px-6 pt-10 pb-20">
         {/* Top Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div className="w-full">

@@ -220,7 +220,7 @@ const OrdersPage = () => {
         />
       </header>
 
-      <main className={`max-w-6xl mx-auto px-6 ${hasOrders ? 'py-4 md:py-8' : 'min-h-[70vh] flex items-center justify-center'} relative z-10 pb-24`}>
+      <main className={`max-w-7xl mx-auto px-6 ${hasOrders ? 'py-4 md:py-8' : 'min-h-[70vh] flex items-center justify-center'} relative z-10 pb-24`}>
         {loading ? (
           <div className="space-y-6 w-full">
             {[1, 2, 3].map(n => (
@@ -259,7 +259,7 @@ const OrdersPage = () => {
             </button>
           </div>
         ) : (
-          <div className="max-w-4xl mx-auto w-full space-y-6 relative z-10">
+          <div className="max-w-6xl mx-auto w-full space-y-6 relative z-10">
             {/* Orders List */}
             <div className="space-y-8 relative z-10">
               <div className="bg-white rounded-[2.5rem] p-6 md:p-8 border border-gray-100 shadow-[0_30px_100px_rgba(0,0,0,0.03)] min-h-[400px] flex flex-col relative overflow-hidden">
@@ -293,15 +293,15 @@ const OrdersPage = () => {
                           </div>
                           <div>
                             <div className="flex flex-wrap items-center gap-3 mb-1">
-                              <h3 className="font-mono font-black text-text-primary text-base md:text-lg tracking-[0.1em] bg-gray-50/50 px-3 py-1 rounded-xl border border-gray-100 flex items-center justify-center">
-                                {order.orderNumber || order._id.slice(-8).toUpperCase()}
-                              </h3>
                               <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-widest border uppercase ${getStatusColor(order.orderStatus)}`}>
                                 {getStatusIcon(order.orderStatus)}
                                 {getStatusLabel(order.orderStatus)}
                               </span>
+                              <p className="text-[10px] font-bold text-text-muted tracking-wide">Placed on {new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                             </div>
-                            <p className="text-[10px] font-bold text-text-muted tracking-wide">Placed on {new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                            <h3 className="font-mono font-black text-text-primary text-base md:text-lg tracking-[0.1em] bg-gray-50/50 px-3 py-1 rounded-xl border border-gray-100 w-fit flex items-center justify-center mt-2">
+                              {order.orderNumber || order._id.slice(-8).toUpperCase()}
+                            </h3>
                           </div>
                         </div>
                         <div className="md:text-right flex flex-col justify-center">

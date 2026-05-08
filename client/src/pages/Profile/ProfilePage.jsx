@@ -195,11 +195,11 @@ const ProfilePage = () => {
         />
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-4 md:py-6 relative z-10 pb-20">
+      <main className="max-w-7xl mx-auto px-6 py-4 md:py-6 relative z-10 pb-20">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
 
           {/* Left Column: Side Navbar */}
-          <div className="lg:col-span-4 xl:col-span-3 lg:sticky lg:top-24 z-20 w-full animate-in fade-in slide-in-from-bottom-10 duration-700">
+          <div className="lg:col-span-3 xl:col-span-3 lg:sticky lg:top-24 z-20 w-full animate-in fade-in slide-in-from-bottom-10 duration-700">
             <SideNavbar
               user={user}
               handleLogout={handleLogout}
@@ -212,7 +212,7 @@ const ProfilePage = () => {
           </div>
 
           {/* Right Column: Address Management */}
-          <div className="lg:col-span-8 xl:col-span-9 space-y-6 relative z-10">
+          <div className="lg:col-span-9 xl:col-span-9 space-y-6 relative z-10">
             <div className="bg-white rounded-[3.5rem] p-6 md:p-10 border border-gray-100 shadow-[0_30px_100px_rgba(0,0,0,0.04)] min-h-[500px] flex flex-col relative overflow-hidden">
               <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
 
