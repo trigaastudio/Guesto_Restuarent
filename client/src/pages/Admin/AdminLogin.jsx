@@ -142,7 +142,7 @@ const AdminLogin = () => {
           GuestO Restaurant &copy; 2026
         </p>
       </div>
-    </div>
+    </div >
   );
 };
 

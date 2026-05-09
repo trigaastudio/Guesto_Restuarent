@@ -169,6 +169,7 @@ class AuthService {
     if (!isMatch) {
       throw new Error('Invalid email or password');
     }
+
     if (requiredRole && user.role !== requiredRole) {
       const errorMessage = requiredRole === 'admin' 
         ? 'Access denied. Only admin accounts can log in here.' 
