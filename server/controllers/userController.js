@@ -1,7 +1,8 @@
-<<<<<<< HEAD
 import User from '../models/userSchema.js';
+import userService from '../services/userService.js';
 
 class UserController {
+  // --- USER FACING METHODS ---
   async getProfile(req, res) {
     try {
       const userId = req.user._id;
@@ -21,7 +22,7 @@ class UserController {
   async addAddress(req, res) {
     try {
       const userId = req.user._id;
-      const { name, phone, address, location, type, isDefault } = req.body;
+      const { name, phone, address, landmark, location, type, isDefault } = req.body;
 
       const user = await User.findById(userId);
       if (!user) {
@@ -31,7 +32,7 @@ class UserController {
       // If this is the first address, make it default
       const defaultStatus = user.addresses.length === 0 ? true : isDefault;
 
-      user.addresses.push({ name, phone, address, location, type, isDefault: defaultStatus });
+      user.addresses.push({ name, phone, address, landmark, location, type, isDefault: defaultStatus });
       await user.save();
 
       res.status(200).json({
@@ -87,7 +88,7 @@ class UserController {
     try {
       const userId = req.user._id;
       const { addressId } = req.params;
-      const { name, phone, address, location, type } = req.body;
+      const { name, phone, address, landmark, location, type } = req.body;
 
       const user = await User.findById(userId);
       if (!user) {
@@ -104,6 +105,7 @@ class UserController {
         name,
         phone,
         address,
+        landmark,
         location,
         type
       };
@@ -176,16 +178,12 @@ class UserController {
       if (!req.file) {
         return res.status(400).json({ success: false, message: 'Please upload an image' });
       }
-
-      // The path should be something like /uploads/randomname.jpg
       const avatarPath = `/uploads/${req.file.filename}`;
-
       const user = await User.findByIdAndUpdate(
         userId,
         { avatar: avatarPath },
         { new: true }
       ).select('-password');
-
       res.status(200).json({
         success: true,
         message: 'Profile picture updated',
@@ -193,10 +191,10 @@ class UserController {
       });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });
-=======
-import userService from '../services/userService.js';
+    }
+  }
 
-class UserController {
+  // --- ADMIN FACING METHODS ---
   async getAllUsers(req, res) {
     try {
       const users = await userService.getAllUsers();
@@ -284,7 +282,6 @@ class UserController {
         success: false,
         message: error.message
       });
->>>>>>> develop
     }
   }
 }

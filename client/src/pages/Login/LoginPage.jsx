@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useGoogleLogin } from '@react-oauth/google';
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import api from '../../api/axiosInstance';
+import { useTheme } from '../../context/ThemeContext';
 import ForgotPasswordModal from '../../components/ForgotPasswordModal/ForgotPasswordModal';
 
 const GoogleIcon = () => (
@@ -20,13 +21,10 @@ const LoginPage = () => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState('');
-<<<<<<< HEAD
   const [showPassword, setShowPassword] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
-=======
-
+  const { theme } = useTheme();
   const logoSrc = theme === 'dark' ? "/logo-golden.png" : "/logo-dark.png";
->>>>>>> develop
 
   React.useEffect(() => {
     const token = localStorage.getItem('token');
@@ -46,10 +44,19 @@ const LoginPage = () => {
           token: tokenResponse.access_token
         });
         if (response.data.success) {
-          localStorage.setItem('token', response.data.data.token);
-          localStorage.setItem('user', JSON.stringify(response.data.data));
+          const userData = response.data.data;
+          localStorage.setItem('token', userData.token);
+          localStorage.setItem('user', JSON.stringify(userData));
           window.dispatchEvent(new Event('cart-refresh'));
-          navigate('/home', { replace: true });
+
+          // Role-based redirection
+          if (userData.role === 'admin') {
+            localStorage.setItem('admin_token', userData.token);
+            localStorage.setItem('admin_user', JSON.stringify(userData));
+            navigate('/admin/dashboard', { replace: true });
+          } else {
+            navigate('/home', { replace: true });
+          }
         }
       } catch (err) {
         setApiError(err.response?.data?.message || err.message || 'Google Login failed.');
@@ -82,10 +89,21 @@ const LoginPage = () => {
     try {
       const response = await api.post('/api/auth/login', fields);
       if (response.data.success) {
-        localStorage.setItem('token', response.data.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.data));
+        const userData = response.data.data;
+        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('token', userData.token);
+
+        // Dispatch cart refresh
         window.dispatchEvent(new Event('cart-refresh'));
-        navigate('/home', { replace: true });
+
+        // Role-based redirection
+        if (userData.role === 'admin') {
+          localStorage.setItem('admin_token', userData.token);
+          localStorage.setItem('admin_user', JSON.stringify(userData));
+          navigate('/admin/dashboard', { replace: true });
+        } else {
+          navigate('/home', { replace: true });
+        }
       }
     } catch (err) {
       setApiError(err.response?.data?.message || 'Login failed. Please try again.');
@@ -265,9 +283,9 @@ const LoginPage = () => {
             transition: background-color 5000s ease-in-out 0s;
         }
       `}} />
-      <ForgotPasswordModal 
-        isOpen={showResetModal} 
-        onClose={() => setShowResetModal(false)} 
+      <ForgotPasswordModal
+        isOpen={showResetModal}
+        onClose={() => setShowResetModal(false)}
       />
     </div>
   );

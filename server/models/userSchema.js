@@ -44,30 +44,16 @@ const userSchema = new mongoose.Schema({
   },
 
   addresses: [{
-<<<<<<< HEAD
     name: { type: String, trim: true },
     phone: { type: String, trim: true },
     address: { type: String, trim: true },
     landmark: { type: String, trim: true },
     location: { type: String, trim: true },
-=======
->>>>>>> develop
     type: {
       type: String,
       enum: ["home", "office"],
       default: "home"
     },
-<<<<<<< HEAD
-=======
-    address: {
-      type: String,
-      trim: true
-    },
-    location: {
-      type: String,
-      trim: true
-    },
->>>>>>> develop
     isDefault: {
       type: Boolean,
       default: false

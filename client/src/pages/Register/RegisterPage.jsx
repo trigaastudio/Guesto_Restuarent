@@ -1,18 +1,15 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../../api/axiosInstance';
+import { useTheme } from '../../context/ThemeContext';
 import Swal from 'sweetalert2';
 import { User, Mail, Phone, Lock, CheckCircle2, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import OTPModal from '../../components/OTPModal/OTPModal';
 
 const RegisterPage = () => {
   const navigate = useNavigate();
-<<<<<<< HEAD
-=======
-  const { theme, toggleTheme } = useTheme();
-
+  const { theme } = useTheme();
   const logoSrc = theme === 'dark' ? "/logo-golden.png" : "/logo-dark.png";
->>>>>>> develop
 
   const [fields, setFields] = useState({
     name: '',

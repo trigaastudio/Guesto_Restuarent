@@ -12,6 +12,8 @@ import userRoutes from './routes/userRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
+import dashboardRoutes from './routes/dashboardRoutes.js';
+import settingsRoutes from './routes/settingsRoutes.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import http from 'http';
@@ -74,6 +76,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/settings', settingsRoutes);
 
 
 app.get('/health', (req, res) => {
