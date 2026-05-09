@@ -20,8 +20,13 @@ const LoginPage = () => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState('');
+<<<<<<< HEAD
   const [showPassword, setShowPassword] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
+=======
+
+  const logoSrc = theme === 'dark' ? "/logo-golden.png" : "/logo-dark.png";
+>>>>>>> develop
 
   React.useEffect(() => {
     const token = localStorage.getItem('token');

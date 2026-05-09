@@ -25,7 +25,7 @@ class MenuRepository {
   }
 
   async update(id, data) {
-    return await Menu.findByIdAndUpdate(id, data, { new: true });
+    return await Menu.findByIdAndUpdate(id, data, { returnDocument: 'after' });
   }
 
   async delete(id) {

@@ -16,8 +16,8 @@ const userSchema = new mongoose.Schema({
 
   email: {
     type: String,
-    required: [true, "Email is required"],
     unique: true,
+    sparse: true,
     lowercase: true,
     trim: true,
     match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, "Please provide a valid email"]
@@ -38,20 +38,36 @@ const userSchema = new mongoose.Schema({
 
   phone: { 
     type: String, 
+    unique: true,
+    sparse: true,
     trim: true 
   },
 
   addresses: [{
+<<<<<<< HEAD
     name: { type: String, trim: true },
     phone: { type: String, trim: true },
     address: { type: String, trim: true },
     landmark: { type: String, trim: true },
     location: { type: String, trim: true },
+=======
+>>>>>>> develop
     type: {
       type: String,
       enum: ["home", "office"],
       default: "home"
     },
+<<<<<<< HEAD
+=======
+    address: {
+      type: String,
+      trim: true
+    },
+    location: {
+      type: String,
+      trim: true
+    },
+>>>>>>> develop
     isDefault: {
       type: Boolean,
       default: false

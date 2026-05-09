@@ -7,6 +7,12 @@ import OTPModal from '../../components/OTPModal/OTPModal';
 
 const RegisterPage = () => {
   const navigate = useNavigate();
+<<<<<<< HEAD
+=======
+  const { theme, toggleTheme } = useTheme();
+
+  const logoSrc = theme === 'dark' ? "/logo-golden.png" : "/logo-dark.png";
+>>>>>>> develop
 
   const [fields, setFields] = useState({
     name: '',

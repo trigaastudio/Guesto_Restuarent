@@ -10,7 +10,27 @@ class CategoryRepository {
   }
 
   async findAll() {
-    return await Category.find().sort({ createdAt: -1 });
+    return await Category.aggregate([
+      {
+        $lookup: {
+          from: "menus",
+          localField: "_id",
+          foreignField: "category",
+          as: "menus"
+        }
+      },
+      {
+        $project: {
+          name: 1,
+          image: 1,
+          isActive: 1,
+          createdAt: 1,
+          itemCount: { $size: "$menus" },
+          totalStock: { $sum: "$menus.totalStock" }
+        }
+      },
+      { $sort: { createdAt: -1 } }
+    ]);
   }
 
   async findById(id) {
@@ -18,7 +38,7 @@ class CategoryRepository {
   }
 
   async update(id, data) {
-    return await Category.findByIdAndUpdate(id, data, { new: true });
+    return await Category.findByIdAndUpdate(id, data, { returnDocument: 'after' });
   }
 
   async delete(id) {

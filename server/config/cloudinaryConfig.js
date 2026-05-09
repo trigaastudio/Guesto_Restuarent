@@ -20,11 +20,15 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: 'menu-items',
+    folder: 'guesto',
     allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
+    transformation: [{ width: 800, height: 800, crop: 'limit', quality: 'auto' }],
   },
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 3 * 1024 * 1024 } // 3MB limit
+});
 
 export { cloudinary, upload };

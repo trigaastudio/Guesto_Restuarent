@@ -606,6 +606,11 @@ const HomePage = () => {
     return cat ? cat.name : 'Dishes';
   };
 
+<<<<<<< HEAD
+=======
+  const logoSrc = theme === 'dark' ? "/logo-golden.png" : "/logo-dark.png";
+
+>>>>>>> develop
   return (
     <div className={`min-h-screen bg-background font-sans ${theme}`}>
       <div className="relative min-h-0 md:min-h-0 w-full overflow-hidden flex flex-col bg-[#D10000]">
