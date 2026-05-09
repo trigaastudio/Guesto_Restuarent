@@ -160,7 +160,7 @@ class AuthService {
     return await userRepository.create(userData);
   }
 
-  async login(email, password) {
+  async login(email, password, requiredRole = 'user') {
     const user = await userRepository.findByEmailWithPassword(email);
     if (!user) {
       throw new Error('Invalid email or password');
@@ -169,8 +169,11 @@ class AuthService {
     if (!isMatch) {
       throw new Error('Invalid email or password');
     }
-    if (user.role !== 'user') {
-      const error = new Error('Access denied. Admin accounts cannot log in from the user portal.');
+    if (requiredRole && user.role !== requiredRole) {
+      const errorMessage = requiredRole === 'admin' 
+        ? 'Access denied. Only admin accounts can log in here.' 
+        : 'Access denied. Admin accounts cannot log in from the user portal.';
+      const error = new Error(errorMessage);
       error.statusCode = 403;
       throw error;
     }

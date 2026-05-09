@@ -27,11 +27,20 @@ function App() {
         <CartProvider>
           <BrowserRouter>
             <Routes>
+              {/* Admin Routes */}
               <Route path="/admin/login" element={<AdminLogin />} />
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/dashboard" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } />
+
+              {/* General Routes */}
               <Route path="/" element={<LandingPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/login" element={<LoginPage />} />
+
+              {/* Protected User Routes */}
               <Route path="/home" element={
                 <ProtectedRoute>
                   <HomePage />

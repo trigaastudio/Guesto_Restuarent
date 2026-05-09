@@ -1,17 +1,47 @@
 import React, { useState } from 'react';
-import { User, Lock, ArrowRight, Eye, EyeOff, Sun, Moon } from 'lucide-react';
+import { User, Lock, ArrowRight, Eye, EyeOff, Sun, Moon, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
+import api from '../../api/axiosInstance';
 
 const AdminLogin = () => {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const isDarkMode = theme === 'dark';
 
-  const handleSubmit = (e) => {
+  // Prevent accessing login if already logged in as admin
+  React.useEffect(() => {
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (token && user.role === 'admin') {
+      navigate('/admin/dashboard', { replace: true });
+    }
+  }, [navigate]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    navigate('/admin/dashboard');
+    setError('');
+    setLoading(true);
+
+    try {
+      const response = await api.post('/api/auth/admin-login', { email, password });
+
+      if (response.data.success) {
+        localStorage.setItem('token', response.data.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.data));
+        // Use replace: true to prevent going back to login
+        navigate('/admin/dashboard', { replace: true });
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -23,6 +53,7 @@ const AdminLogin = () => {
         {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
       </button>
 
+      {/* Logo Section */}
       <div className="mb-12 text-center flex flex-col items-center animate-in fade-in slide-in-from-top-4 duration-700">
         <img src={isDarkMode ? "/logo-light.png" : "/logo-dark.png"} alt="GuestO Logo" className="h-16 w-auto mb-2" />
       </div>
@@ -32,20 +63,28 @@ const AdminLogin = () => {
           Admin Entrance
         </h2>
 
+        {error && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 text-red-500 text-sm rounded-xl text-center animate-in fade-in slide-in-from-top-2">
+            {error}
+          </div>
+        )}
+
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-2">
             <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider ml-1">
-              Admin ID
+              Admin Email
             </label>
             <div className="relative group">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                 <User className="h-4 w-4 text-text-muted group-focus-within:text-primary transition-colors" />
               </div>
               <input
-                type="text"
+                type="email"
                 required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="block w-full pl-11 pr-4 py-4 bg-background-muted border border-transparent focus:border-primary/50 focus:bg-white dark:focus:bg-background-card rounded-xl text-sm transition-all outline-none text-text-primary placeholder:text-text-muted"
-                placeholder="Enter Admin ID"
+                placeholder="Enter Admin Email"
               />
             </div>
           </div>
@@ -61,6 +100,8 @@ const AdminLogin = () => {
               <input
                 type={showPassword ? "text" : "password"}
                 required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="block w-full pl-11 pr-12 py-4 bg-background-muted border border-transparent focus:border-primary/50 focus:bg-white dark:focus:bg-background-card rounded-xl text-sm transition-all outline-none text-text-primary placeholder:text-text-muted"
                 placeholder="••••••••"
               />
@@ -76,10 +117,17 @@ const AdminLogin = () => {
 
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-[#B15D09] to-primary hover:from-primary hover:to-primary-light text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/30 flex items-center justify-center space-x-2 transition-all active:scale-[0.98] mt-4"
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-[#B15D09] to-primary hover:from-primary hover:to-primary-light text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/30 flex items-center justify-center space-x-2 transition-all active:scale-[0.98] mt-4 disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            <span className="uppercase tracking-widest text-sm">Enter Dashboard</span>
-            <ArrowRight className="h-4 w-4" />
+            {loading ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <>
+                <span className="uppercase tracking-widest text-sm">Enter Dashboard</span>
+                <ArrowRight className="h-4 w-4" />
+              </>
+            )}
           </button>
         </form>
       </div>
