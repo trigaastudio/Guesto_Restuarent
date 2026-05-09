@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 const userSchema = new mongoose.Schema({
 
@@ -7,6 +7,11 @@ const userSchema = new mongoose.Schema({
     type: String, 
     required: [true, "Name is required"], 
     trim: true 
+  },
+
+  avatar: {
+    type: String,
+    default: ""
   },
 
   email: {
@@ -39,11 +44,21 @@ const userSchema = new mongoose.Schema({
   },
 
   addresses: [{
+<<<<<<< HEAD
+    name: { type: String, trim: true },
+    phone: { type: String, trim: true },
+    address: { type: String, trim: true },
+    landmark: { type: String, trim: true },
+    location: { type: String, trim: true },
+=======
+>>>>>>> develop
     type: {
       type: String,
       enum: ["home", "office"],
       default: "home"
     },
+<<<<<<< HEAD
+=======
     address: {
       type: String,
       trim: true
@@ -52,6 +67,7 @@ const userSchema = new mongoose.Schema({
       type: String,
       trim: true
     },
+>>>>>>> develop
     isDefault: {
       type: Boolean,
       default: false
@@ -65,7 +81,17 @@ const userSchema = new mongoose.Schema({
 
   lastLogin: {
     type: Date
-  }
+  },
+  walletBalance: {
+    type: Number,
+    default: 0
+  },
+  walletTransactions: [{
+    amount: Number,
+    type: { type: String, enum: ["credit", "debit"] },
+    description: String,
+    date: { type: Date, default: Date.now }
+  }]
 
 }, { timestamps: true });
 

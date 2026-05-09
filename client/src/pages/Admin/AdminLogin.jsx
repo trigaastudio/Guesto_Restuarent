@@ -60,7 +60,6 @@ const AdminLogin = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative transition-colors duration-300">
-      {/* Theme Toggle */}
       <button
         onClick={toggleTheme}
         className="absolute top-8 right-8 p-3 bg-background-card rounded-full border border-border-light text-text-secondary hover:text-primary transition-all shadow-sm"
@@ -79,7 +78,6 @@ const AdminLogin = () => {
         />
       </div>
 
-      {/* Login Card */}
       <div className="bg-background-card w-full max-w-md rounded-[2.5rem] p-10 shadow-xl shadow-primary/5 border border-border-light transition-all duration-500">
         <h2 className="text-xl font-medium text-text-primary text-center mb-8 italic opacity-70 border-b border-border-light pb-6">
           Admin Entrance
@@ -164,7 +162,6 @@ const AdminLogin = () => {
         </form>
       </div>
 
-      {/* Footer */}
       <div className="mt-12 text-center">
         <div className="flex space-x-6 text-[10px] text-text-secondary font-medium mb-4">
           <a href="#" className="hover:text-primary transition-colors">Privacy Policy</a>
@@ -175,7 +172,7 @@ const AdminLogin = () => {
           GuestO Restaurant &copy; 2026
         </p>
       </div>
-    </div>
+    </div >
   );
 };
 

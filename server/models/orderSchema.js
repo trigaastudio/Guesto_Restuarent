@@ -1,5 +1,9 @@
 import mongoose from "mongoose";
+<<<<<<< HEAD
+import { emitOrderStatusUpdate } from "../socket.js";
+=======
 import { getIO } from "../socket.js";
+>>>>>>> develop
 
 const orderSchema = new mongoose.Schema({
   orderNumber: {
@@ -19,6 +23,99 @@ const orderSchema = new mongoose.Schema({
     enum: ["admin", "waiter", "user"],
     required: true
   },
+<<<<<<< HEAD
+  customer: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: function () {
+      return this.orderType === "delivery";
+    }
+  },
+  table: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Table",
+    required: function () {
+      return this.orderType === "dine-in";
+    }
+  },
+  sessionId: {
+    type: String,
+    required: function () {
+      return this.orderType === "dine-in";
+    }
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Staff"
+  },
+  items: [
+    {
+      menuItem: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Menu",
+        required: true
+      },
+      size: String,
+      quantity: {
+        type: Number,
+        required: true,
+        min: 1
+      },
+      price: {
+        type: Number,
+        required: true,
+        min: 0
+      }
+    }
+  ],
+  customerDetails: {
+    name: {
+      type: String,
+      required: function () {
+        return this.orderType === "takeaway" || this.orderType === "delivery";
+      }
+    },
+    phone: {
+      type: String,
+      required: function () {
+        return this.orderType === "takeaway" || this.orderType === "delivery";
+      }
+    },
+    address: {
+      type: String,
+      required: function () {
+        return this.orderType === "delivery";
+      }
+    },
+    location: {
+      type: String,
+      trim: true
+    },
+    remarks: {
+      type: String
+    }
+  },
+  subtotal: {
+    type: Number,
+    default: 0
+  },
+  tax: {
+    type: Number,
+    default: 0
+  },
+  discount: {
+    type: Number,
+    default: 0
+  },
+  deliveryFee: {
+    type: Number,
+    default: 0
+  },
+  totalAmount: {
+    type: Number,
+    default: 0
+  },
+=======
 
   // Linked Entities (Bidirectional compatibility)
   customer: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
@@ -77,10 +174,19 @@ const orderSchema = new mongoose.Schema({
   balance: { type: Number, default: 0 },
 
   // Status Management
+>>>>>>> develop
   orderStatus: {
     type: String,
     enum: ["placed", "processing", "out-for-delivery", "delivered", "cancelled"],
     default: "placed"
+<<<<<<< HEAD
+  },
+  kitchenStatus: {
+    type: String,
+    enum: ["placed", "preparing", "ready"],
+    default: "placed"
+  },
+=======
   },
 
   kitchenStatus: {
@@ -91,6 +197,7 @@ const orderSchema = new mongoose.Schema({
 
   remarks: { type: String, trim: true }, // Added for easy top-level access
   isLocked: { type: Boolean, default: false },
+>>>>>>> develop
   paymentStatus: {
     type: String,
     enum: ["pending", "paid", "failed", "refunded"],
@@ -98,8 +205,25 @@ const orderSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ["cash", "upi", "card", "online", "cod"]
+    enum: ["cash", "upi", "card", "online", "cod", "wallet"]
+  },
+  razorpayOrderId: {
+    type: String
+  },
+  razorpayPaymentId: {
+    type: String
   }
+<<<<<<< HEAD
+}, { timestamps: true });
+
+orderSchema.post('save', function (doc) {
+  if (doc._id && doc.orderStatus) {
+    emitOrderStatusUpdate(doc._id.toString(), doc.orderStatus);
+  }
+});
+
+export default mongoose.model("Order", orderSchema);
+=======
 }, { timestamps: true, strict: true });
 
 // Pre-validation hook: Data Consistency & Calculations
@@ -165,3 +289,4 @@ orderSchema.post('save', function (doc) {
 });
 
 export default mongoose.model("Order", orderSchema);
+>>>>>>> develop

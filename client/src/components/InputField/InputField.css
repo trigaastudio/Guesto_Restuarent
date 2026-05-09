@@ -52,7 +52,7 @@
 .custom-input::placeholder {
   color: var(--text-muted);
   font-weight: 400;
-  opacity: 1; /* For cross-browser support */
+  opacity: 1;
 }
 
 .custom-input:focus {

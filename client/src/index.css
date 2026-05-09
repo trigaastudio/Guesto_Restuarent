@@ -36,7 +36,6 @@
     --color-border: #E5E5E5;
     --color-border-light: #F1F1F1;
 
-    /* Responsive/Legacy Mappings for existing components */
     --bg: var(--color-background);
     --bg-secondary: var(--color-background-muted);
     --card-bg: var(--color-background-card);
@@ -69,7 +68,6 @@
     --color-border: #333333;
     --color-border-light: #2A2A2A;
 
-    /* Dark Mode Legacy Mappings */
     --bg: var(--color-background);
     --bg-secondary: var(--color-background-muted);
     --card-bg: var(--color-background-card);
@@ -95,6 +93,7 @@
   body {
     @apply bg-background text-text-primary font-sans transition-colors duration-300;
     scrollbar-gutter: stable;
+    @apply pb-24 lg:pb-0;
   }
 
   .no-scrollbar::-webkit-scrollbar {
@@ -107,7 +106,6 @@
   }
 }
 
-/* Animations from develop branch */
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -128,6 +126,24 @@
   animation: fadeInUp 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
+<<<<<<< HEAD
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-15px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+=======
 @keyframes spin {
   from {
     transform: rotate(0deg);
@@ -140,4 +156,5 @@
 
 .animate-spin-once {
   animation: spin 0.6s ease-in-out;
+>>>>>>> develop
 }

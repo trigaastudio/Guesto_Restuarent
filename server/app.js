@@ -1,22 +1,52 @@
 import express from 'express';
 import dotenv from 'dotenv';
-// Force restart to apply schema changes
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
-import categoryRoutes from './routes/categoryRoutes.js';
 import menuRoutes from './routes/menuRoutes.js';
-import uploadRoutes from './routes/uploadRoutes.js';
-import orderRoutes from './routes/orderRoutes.js';
-import staffRoutes from './routes/staffRoutes.js';
+import categoryRoutes from './routes/categoryRoutes.js';
+import cartRoutes from './routes/cartRoutes.js';
 import userRoutes from './routes/userRoutes.js';
-import dashboardRoutes from './routes/dashboardRoutes.js';
-import settingsRoutes from './routes/settingsRoutes.js';
-import utilRoutes from './routes/utilRoutes.js';
+import orderRoutes from './routes/orderRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
+import uploadRoutes from './routes/uploadRoutes.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import http from 'http';
+import { initSocket } from './socket.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
 const app = express();
+
+// Security Middleware with Razorpay CSP
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      "script-src": ["'self'", "'unsafe-inline'", "https://checkout.razorpay.com"],
+      "frame-src": ["'self'", "https://api.razorpay.com", "https://tds.razorpay.com"],
+      "connect-src": ["'self'", "https://api.razorpay.com"]
+    },
+  },
+}));
+
+// Rate Limiting: 1 minute request limit
+const limiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again after a minute',
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
+// Apply rate limiter to all api routes
+app.use('/api/', limiter);
 
 
 connectDB();
@@ -24,6 +54,7 @@ connectDB();
 
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
 app.use((req, res, next) => {
@@ -36,33 +67,26 @@ app.use((req, res, next) => {
 
 
 app.use('/api/auth', authRoutes);
+app.use('/api/menus', menuRoutes);
 app.use('/api/categories', categoryRoutes);
-app.use('/api/menu', menuRoutes);
-app.use('/api/upload', uploadRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/staff', staffRoutes);
+app.use('/api/cart', cartRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/settings', settingsRoutes);
-app.use('/api/utils', utilRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/upload', uploadRoutes);
 
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'Server is running' });
 });
 
-import http from 'http';
-import * as socketIO from './socket.js';
-
 const PORT = process.env.PORT || 5000;
-const server = http.createServer(app);
 
-// Initialize Socket.io
-socketIO.init(server);
+const server = http.createServer(app);
+initSocket(server);
 
 server.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
 });
 
-export { app, server };
 export default app;

@@ -1,8 +1,12 @@
-import Category from "../models/categorySchema.js";
+import Category from '../models/categorySchema.js';
 
 class CategoryRepository {
   async create(data) {
     return await Category.create(data);
+  }
+
+  async getAll() {
+    return await Category.find({ isActive: true });
   }
 
   async findAll() {

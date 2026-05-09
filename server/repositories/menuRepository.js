@@ -1,8 +1,15 @@
-import Menu from "../models/menuSchema.js";
+import Menu from '../models/menuSchema.js';
 
 class MenuRepository {
   async create(data) {
     return await Menu.create(data);
+  }
+
+  async getAll(filter = {}, skip = 0, limit = 0) {
+    let query = Menu.find({ isBlocked: false, ...filter }).populate('category');
+    if (skip > 0) query = query.skip(skip);
+    if (limit > 0) query = query.limit(limit);
+    return await query;
   }
 
   async findAll() {
@@ -10,7 +17,11 @@ class MenuRepository {
   }
 
   async findById(id) {
-    return await Menu.findById(id).populate("category");
+    return await Menu.findById(id).populate('category');
+  }
+
+  async getByCategory(categoryId) {
+    return await Menu.find({ category: categoryId, isBlocked: false }).populate('category');
   }
 
   async update(id, data) {

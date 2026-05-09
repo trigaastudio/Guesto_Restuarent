@@ -2,17 +2,22 @@ import { Server } from 'socket.io';
 
 let io;
 
-export const init = (httpServer) => {
+export const initSocket = (httpServer) => {
   io = new Server(httpServer, {
     cors: {
-      origin: "*", // Adjust this for production
+      origin: process.env.CLIENT_URL || "http://localhost:5173",
       methods: ["GET", "POST", "PATCH", "DELETE"]
     }
   });
 
   io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
-    
+
+    socket.on('joinOrder', (orderId) => {
+      socket.join(orderId);
+      console.log(`Socket ${socket.id} joined order room: ${orderId}`);
+    });
+
     socket.on('disconnect', () => {
       console.log('Client disconnected:', socket.id);
     });
@@ -23,7 +28,13 @@ export const init = (httpServer) => {
 
 export const getIO = () => {
   if (!io) {
-    throw new Error('Socket.io not initialized!');
+    throw new Error("Socket.io not initialized!");
   }
   return io;
+};
+
+export const emitOrderStatusUpdate = (orderId, status) => {
+  if (io) {
+    io.to(orderId).emit('orderStatusUpdated', { orderId, status });
+  }
 };

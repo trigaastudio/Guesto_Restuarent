@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { OAuth2Client } from 'google-auth-library';
 import userRepository from '../repositories/userRepository.js';
 import mailSender from '../Utilities/mailSender.js';
 
@@ -11,11 +12,25 @@ class AuthService {
     });
   }
 
-  async sendOTP(email) {
+  async sendOTP(email, phone) {
+    // Check if user already exists with this email
+    const existingEmail = await userRepository.findByEmail(email);
+    if (existingEmail) {
+      throw new Error('User with this email already exists');
+    }
+
+    // Check if user already exists with this phone
+    if (phone) {
+      const existingPhone = await userRepository.findByPhone(phone);
+      if (existingPhone) {
+        throw new Error('User with this phone number already exists');
+      }
+    }
+
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = Date.now() + 5 * 60 * 1000;
     otps.set(email.toLowerCase(), { otp, expiresAt });
-    
+
     const title = "Verification Code for GuestO";
     const body = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
@@ -40,25 +55,63 @@ class AuthService {
     }
     if (data.otp.toString().trim() === otp.toString().trim()) {
       otps.delete(email.toLowerCase());
-
       return true;
     }
     return false;
   }
 
+  async sendPasswordResetOTP(email) {
+    const user = await userRepository.findByEmail(email.toLowerCase().trim());
+    if (!user) {
+      throw new Error('User with this email does not exist');
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 5 * 60 * 1000;
+    otps.set(email.toLowerCase(), { otp, expiresAt });
+
+    const title = "Password Reset OTP for GuestO";
+    const body = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+        <h2 style="color: #D10000; text-align: center;">Password Reset Request</h2>
+        <p>You requested to reset your password. Your verification code is:</p>
+        <div style="background: #f3f4f6; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px; border-radius: 8px; color: #D10000;">
+          ${otp}
+        </div>
+        <p>This code will expire in 5 minutes. If you did not request this, please ignore this email.</p>
+      </div>
+    `;
+    await mailSender(email, title, body);
+    return true;
+  }
+
   async googleLogin(token) {
     try {
-      const response = await fetch(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${token}`);
-      const payload = await response.json();
+      console.log('🚀 Starting Google login with token...');
 
-      if (!payload || payload.error || !payload.email) {
-        throw new Error(payload?.error_description || 'Invalid Google token');
+      // Create a local client instance for thread-safety and set credentials
+      const oauth2Client = new OAuth2Client();
+      oauth2Client.setCredentials({ access_token: token });
+
+      // Use the library's request mechanism which handles SSL better than default fetch
+      const response = await oauth2Client.request({
+        url: 'https://www.googleapis.com/oauth2/v3/userinfo'
+      });
+
+      const payload = response.data;
+
+      if (!payload || !payload.email) {
+        console.error('❌ Google API Error: Invalid payload', payload);
+        throw new Error('Failed to retrieve user info from Google');
       }
 
-      const { email, name } = payload;
+      console.log('✅ Google User Info retrieved:', payload.email);
+
+      const { email, name, picture } = payload;
       let user = await userRepository.findByEmail(email);
 
       if (!user) {
+        console.log('👤 Creating new user from Google info...');
         user = await userRepository.create({
           name,
           email,
@@ -69,6 +122,7 @@ class AuthService {
       }
 
       if (user.role !== 'user') {
+        console.warn('🚫 Non-user role attempted Google login:', user.role);
         const error = new Error('Access denied. Admin accounts cannot use Google login here.');
         error.statusCode = 403;
         throw error;
@@ -76,6 +130,7 @@ class AuthService {
 
       return user;
     } catch (error) {
+      console.error('🔥 Google Login Service Error:', error.message);
       throw new Error(error.message || 'Google authentication failed');
     }
   }
@@ -86,7 +141,7 @@ class AuthService {
 
   async register(userData) {
     const { email, phone } = userData;
-    
+
     console.log(`🔍 Checking registration for Email: "${email}" and Phone: "${phone}"`);
 
     const existingUserByEmail = await userRepository.findByEmail(email);
@@ -105,7 +160,6 @@ class AuthService {
     return await userRepository.create(userData);
   }
 
-  // Updated to handle both User and Admin logins
   async login(email, password, requiredRole = 'user') {
     const user = await userRepository.findByEmailWithPassword(email);
     if (!user) {
@@ -115,21 +169,27 @@ class AuthService {
     if (!isMatch) {
       throw new Error('Invalid email or password');
     }
-    
-    // Role validation
-    if (requiredRole === 'admin' && user.role !== 'admin') {
-      const error = new Error('Access denied. Not an administrator.');
-      error.statusCode = 403;
-      throw error;
-    }
-    
-    if (requiredRole === 'user' && user.role !== 'user') {
 
-      const error = new Error('Access denied. Admin accounts cannot log in from the user portal.');
+    if (requiredRole && user.role !== requiredRole) {
+      const errorMessage = requiredRole === 'admin' 
+        ? 'Access denied. Only admin accounts can log in here.' 
+        : 'Access denied. Admin accounts cannot log in from the user portal.';
+      const error = new Error(errorMessage);
       error.statusCode = 403;
       throw error;
     }
     return user;
+  }
+
+  async resetPassword(email, newPassword) {
+    const user = await userRepository.findByEmailWithPassword(email.toLowerCase().trim());
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    user.password = newPassword;
+    await user.save();
+    return true;
   }
 }
 
