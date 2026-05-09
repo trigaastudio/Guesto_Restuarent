@@ -46,9 +46,13 @@ const AdminLogin = () => {
       const response = await api.post('/api/auth/admin-login', { email, password });
 
       if (response.data.success) {
-        localStorage.setItem('admin_token', response.data.data.token);
-        localStorage.setItem('admin_user', JSON.stringify(response.data.data));
-        // Use replace: true to prevent going back to login
+        const userData = response.data.data;
+        localStorage.setItem('admin_token', userData.token);
+        localStorage.setItem('admin_user', JSON.stringify(userData));
+        // Also set general keys for consistency across the app
+        localStorage.setItem('token', userData.token);
+        localStorage.setItem('user', JSON.stringify(userData));
+        
         navigate('/admin/dashboard', { replace: true });
       }
     } catch (err) {

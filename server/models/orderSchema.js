@@ -1,9 +1,5 @@
 import mongoose from "mongoose";
-<<<<<<< HEAD
-import { emitOrderStatusUpdate } from "../socket.js";
-=======
-import { getIO } from "../socket.js";
->>>>>>> develop
+import { getIO, emitOrderStatusUpdate } from "../socket.js";
 
 const orderSchema = new mongoose.Schema({
   orderNumber: {
@@ -14,7 +10,6 @@ const orderSchema = new mongoose.Schema({
   },
   orderType: {
     type: String,
-    // Standardized to kebab-case, removed redundancies
     enum: ["dine-in", "takeaway", "delivery"],
     required: true
   },
@@ -23,101 +18,8 @@ const orderSchema = new mongoose.Schema({
     enum: ["admin", "waiter", "user"],
     required: true
   },
-<<<<<<< HEAD
-  customer: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: function () {
-      return this.orderType === "delivery";
-    }
-  },
-  table: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Table",
-    required: function () {
-      return this.orderType === "dine-in";
-    }
-  },
-  sessionId: {
-    type: String,
-    required: function () {
-      return this.orderType === "dine-in";
-    }
-  },
-  createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Staff"
-  },
-  items: [
-    {
-      menuItem: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Menu",
-        required: true
-      },
-      size: String,
-      quantity: {
-        type: Number,
-        required: true,
-        min: 1
-      },
-      price: {
-        type: Number,
-        required: true,
-        min: 0
-      }
-    }
-  ],
-  customerDetails: {
-    name: {
-      type: String,
-      required: function () {
-        return this.orderType === "takeaway" || this.orderType === "delivery";
-      }
-    },
-    phone: {
-      type: String,
-      required: function () {
-        return this.orderType === "takeaway" || this.orderType === "delivery";
-      }
-    },
-    address: {
-      type: String,
-      required: function () {
-        return this.orderType === "delivery";
-      }
-    },
-    location: {
-      type: String,
-      trim: true
-    },
-    remarks: {
-      type: String
-    }
-  },
-  subtotal: {
-    type: Number,
-    default: 0
-  },
-  tax: {
-    type: Number,
-    default: 0
-  },
-  discount: {
-    type: Number,
-    default: 0
-  },
-  deliveryFee: {
-    type: Number,
-    default: 0
-  },
-  totalAmount: {
-    type: Number,
-    default: 0
-  },
-=======
 
-  // Linked Entities (Bidirectional compatibility)
+  // Linked Entities
   customer: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   user: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // Team app compatibility
   table: { type: mongoose.Schema.Types.ObjectId, ref: "Table" },
@@ -148,7 +50,7 @@ const orderSchema = new mongoose.Schema({
     }
   }],
 
-  // Customer & Delivery Info (Bidirectional sync)
+  // Customer & Delivery Info
   customerDetails: {
     name: { type: String, default: "Walk-in" },
     phone: String,
@@ -168,36 +70,22 @@ const orderSchema = new mongoose.Schema({
   subtotal: { type: Number, default: 0 },
   tax: { type: Number, default: 0 },
   discount: { type: Number, default: 0 },
-  deliveryFee: { type: Number, default: 0 }, // Added from snippet
+  deliveryFee: { type: Number, default: 0 },
   totalAmount: { type: Number, default: 0 },
   cashReceived: { type: Number, default: 0 },
   balance: { type: Number, default: 0 },
 
   // Status Management
->>>>>>> develop
   orderStatus: {
     type: String,
     enum: ["placed", "processing", "out-for-delivery", "delivered", "cancelled"],
     default: "placed"
-<<<<<<< HEAD
   },
-  kitchenStatus: {
-    type: String,
-    enum: ["placed", "preparing", "ready"],
-    default: "placed"
-  },
-=======
-  },
-
   kitchenStatus: {
     type: String,
     enum: ["placed", "preparing", "ready", "delayed"],
     default: "placed"
   },
-
-  remarks: { type: String, trim: true }, // Added for easy top-level access
-  isLocked: { type: Boolean, default: false },
->>>>>>> develop
   paymentStatus: {
     type: String,
     enum: ["pending", "paid", "failed", "refunded"],
@@ -207,33 +95,19 @@ const orderSchema = new mongoose.Schema({
     type: String,
     enum: ["cash", "upi", "card", "online", "cod", "wallet"]
   },
-  razorpayOrderId: {
-    type: String
-  },
-  razorpayPaymentId: {
-    type: String
-  }
-<<<<<<< HEAD
-}, { timestamps: true });
-
-orderSchema.post('save', function (doc) {
-  if (doc._id && doc.orderStatus) {
-    emitOrderStatusUpdate(doc._id.toString(), doc.orderStatus);
-  }
-});
-
-export default mongoose.model("Order", orderSchema);
-=======
+  razorpayOrderId: { type: String },
+  razorpayPaymentId: { type: String },
+  remarks: { type: String, trim: true },
+  isLocked: { type: Boolean, default: false },
 }, { timestamps: true, strict: true });
 
 // Pre-validation hook: Data Consistency & Calculations
 orderSchema.pre('validate', async function () {
-  // 1. Financial Calculations (Including Delivery Fee)
+  // 1. Financial Calculations
   if (this.isModified('items') || this.isModified('tax') || this.isModified('discount') || this.isModified('deliveryFee')) {
     this.subtotal = this.items.reduce((acc, item) =>
       acc + (item.totalPrice || (item.price * item.quantity) || 0), 0
     );
-    // Formula: Subtotal + Tax + DeliveryFee - Discount
     this.totalAmount = Math.max(0, this.subtotal + (this.tax || 0) + (this.deliveryFee || 0) - (this.discount || 0));
   }
 
@@ -243,8 +117,10 @@ orderSchema.pre('validate', async function () {
   }
 
   // 3. Payment Status Auto-Update
-  if (this.paymentMethod === 'online') {
-    this.paymentStatus = 'paid';
+  if (this.paymentMethod === 'online' || this.paymentMethod === 'wallet') {
+    if (this.paymentStatus === 'pending') {
+      this.paymentStatus = 'paid';
+    }
   }
 
   // 4. Kitchen Status Aggregation
@@ -277,16 +153,21 @@ orderSchema.pre('validate', async function () {
   }
 });
 
-// Added Socket Notification from snippet
+// Post-save hook for real-time notifications
 orderSchema.post('save', function (doc) {
   try {
     if (doc._id) {
+      // General update for all listeners
       getIO().emit('ordersUpdated');
+      
+      // Specific status update for tracking
+      if (doc.orderStatus) {
+        emitOrderStatusUpdate(doc._id.toString(), doc.orderStatus);
+      }
     }
   } catch (err) {
-    // Silent catch if socket isn't ready
+    console.error("Socket error in orderSchema post-save:", err);
   }
 });
 
 export default mongoose.model("Order", orderSchema);
->>>>>>> develop

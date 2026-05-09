@@ -23,11 +23,11 @@ api.interceptors.request.use((config) => {
   // Portal-aware token selection
   if (path.startsWith('/admin')) {
     token = localStorage.getItem('admin_token');
-  } else if (path.startsWith('/kitchen') || path.startsWith('/waiter')) {
+  } else if (path.startsWith('/kitchen') || path.startsWith('/waiter') || path.startsWith('/staff')) {
     token = localStorage.getItem('staff_token');
   } else {
-    // Fallback for other paths (like home or general login)
-    token = localStorage.getItem('admin_token') || localStorage.getItem('staff_token');
+    // Fallback for other paths (like home or general user pages)
+    token = localStorage.getItem('token') || localStorage.getItem('admin_token') || localStorage.getItem('staff_token');
   }
 
   if (token) {
@@ -42,7 +42,13 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       const path = window.location.pathname;
+      const isLoginRequest = error.config.url.includes('/api/auth/login');
       
+      // Don't redirect if we're already on a login page or it's a login attempt
+      if (isLoginRequest || path === '/login' || path === '/admin/login' || path === '/staff/login') {
+        return Promise.reject(error);
+      }
+
       if (path.startsWith('/admin')) {
         localStorage.removeItem('admin_token');
         localStorage.removeItem('admin_user');

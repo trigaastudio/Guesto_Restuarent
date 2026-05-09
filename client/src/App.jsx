@@ -6,7 +6,6 @@ import AdminDashboard from './pages/Admin/AdminDashboard';
 import RegisterPage from './pages/Register/RegisterPage';
 import LoginPage from './pages/Login/LoginPage';
 import HomePage from './pages/Home/HomePage';
-<<<<<<< HEAD
 import LandingPage from './pages/Landing/LandingPage';
 import CartPage from './pages/Cart/CartPage';
 import PaymentPage from './pages/Payment/PaymentPage';
@@ -15,10 +14,8 @@ import ReturnsRefundsPage from './pages/Profile/ReturnsRefundsPage';
 import OrdersPage from './pages/Orders/OrdersPage';
 import TrackOrderPage from './pages/Orders/TrackOrderPage';
 import MenuDetailPage from './pages/Menu/MenuDetailPage';
-=======
 import StaffLogin from './pages/Staff/StaffLogin';
 import KitchenDashboard from './pages/Kitchen/KitchenDashboard';
->>>>>>> develop
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 import { ThemeProvider } from './context/ThemeContext';
 import { CartProvider } from './context/CartContext';
@@ -29,7 +26,6 @@ function App() {
   return (
     <GoogleOAuthProvider clientId="791498024436-f3oa2eu8g31hpkieajgi2ma3vndvp0bc.apps.googleusercontent.com">
       <ThemeProvider>
-<<<<<<< HEAD
         <CartProvider>
           <BrowserRouter>
             <Routes>
@@ -40,17 +36,10 @@ function App() {
                   <AdminDashboard />
                 </ProtectedRoute>
               } />
-=======
-        <BrowserRouter>
-          <Routes>
-            {/* Admin Routes */}
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
 
-            {/* Staff Routes */}
-            <Route path="/staff/login" element={<StaffLogin />} />
-            <Route path="/kitchen/dashboard" element={<KitchenDashboard />} />
->>>>>>> develop
+              {/* Staff Routes */}
+              <Route path="/staff/login" element={<StaffLogin />} />
+              <Route path="/kitchen/dashboard" element={<KitchenDashboard />} />
 
               {/* General Routes */}
               <Route path="/" element={<LandingPage />} />

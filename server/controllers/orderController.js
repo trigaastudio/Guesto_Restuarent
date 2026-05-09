@@ -1,7 +1,9 @@
 import Order from '../models/orderSchema.js';
-<<<<<<< HEAD
 import Cart from '../models/cartSchema.js';
 import User from '../models/userSchema.js';
+import Counter from '../models/counterSchema.js';
+import Menu from '../models/menuSchema.js';
+import { getIO } from '../socket.js';
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; // km
@@ -14,220 +16,6 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 };
-
-const placeOrder = async (req, res) => {
-  try {
-    const { items, address, paymentMethod, totalAmount, subtotal, discount, tax, razorpayOrderId, razorpayPaymentId } = req.body;
-
-    // Handle Wallet Payment
-    if (paymentMethod === 'wallet') {
-      const user = await User.findById(req.user._id);
-      const orderTotal = subtotal + (req.body.deliveryFee || 0) - (discount || 0) + (tax || 0);
-      
-      if (user.walletBalance < orderTotal) {
-        return res.status(400).json({ success: false, message: 'Insufficient wallet balance' });
-      }
-
-      user.walletBalance -= orderTotal;
-      user.walletTransactions.push({
-        amount: orderTotal,
-        type: 'debit',
-        description: `Payment for Order`
-      });
-      await user.save();
-    }
-
-    // Determine Order Source and Type based on User Role
-    const isUser = req.user.role === 'user';
-    const finalOrderSource = isUser ? 'user' : (req.user.role || 'admin');
-    const finalOrderType = isUser ? 'delivery' : (req.body.orderType || 'dine-in');
-
-    const orderNumber = `GO-${Math.floor(1000 + Math.random() * 9000)}`;
-
-    // Calculate delivery fee on server for security
-    let deliveryFee = 0;
-    if (finalOrderType === 'delivery' && address.location) {
-      const urlMatch = address.location.match(/q=([-.\d]+),([-.\d]+)/);
-      if (urlMatch) {
-        const userLat = parseFloat(urlMatch[1]);
-        const userLng = parseFloat(urlMatch[2]);
-        const restLat = parseFloat(process.env.RESTAURANT_LAT || '10.668194');
-        const restLng = parseFloat(process.env.RESTAURANT_LNG || '76.025111');
-        const distance = calculateDistance(userLat, userLng, restLat, restLng);
-        if (distance > 5) {
-          deliveryFee = Math.ceil(distance - 5) * 10;
-        }
-      }
-    }
-
-    const newOrder = new Order({
-      customer: req.user._id,
-      orderNumber,
-      orderType: finalOrderType,
-      orderSource: finalOrderSource,
-      items: items.map(item => ({
-        menuItem: item.menuItem,
-        size: item.size,
-        quantity: item.quantity,
-        price: item.price
-      })),
-      customerDetails: {
-        name: address.recipientName || address.name || req.user.name,
-        phone: address.mobile || address.phone || req.user.phone,
-        address: address.address,
-        location: address.location || '',
-        remarks: req.body.remarks || ''
-      },
-      paymentMethod: paymentMethod || 'cod',
-      subtotal,
-      deliveryFee: deliveryFee || req.body.deliveryFee || 0,
-      discount: discount || 0,
-      tax: tax || 0,
-      totalAmount: subtotal + deliveryFee - (discount || 0) + (tax || 0),
-      orderStatus: 'placed',
-      kitchenStatus: 'placed',
-      paymentStatus: paymentMethod === 'wallet' ? 'paid' : 'pending',
-      razorpayOrderId,
-      razorpayPaymentId
-    });
-
-    // Handle dine-in specific fields if present
-    if (finalOrderType === 'dine-in') {
-      newOrder.table = req.body.tableId;
-      newOrder.sessionId = req.body.sessionId || `SES-${Date.now()}`;
-    }
-
-    await newOrder.save();
-
-    // Update wallet transaction description with order number
-    if (paymentMethod === 'wallet') {
-      const user = await User.findById(req.user._id);
-      const lastTx = user.walletTransactions[user.walletTransactions.length - 1];
-      lastTx.description = `Payment for Order #${newOrder.orderNumber}`;
-      await user.save();
-    }
-
-    // Clear cart after placing order
-    await Cart.findOneAndDelete({ customer: req.user._id }).catch(() => { }); // Attempt both field names
-    await Cart.findOneAndDelete({ user: req.user._id }).catch(() => { });
-
-    res.status(201).json({
-      success: true,
-      message: 'Order placed successfully',
-      data: newOrder
-    });
-  } catch (error) {
-    console.error('Order Error Details:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Error placing order'
-    });
-  }
-};
-
-const getMyOrders = async (req, res) => {
-  try {
-    const orders = await Order.find({ customer: req.user._id })
-      .populate('items.menuItem')
-      .sort({ createdAt: -1 });
-
-    res.status(200).json({
-      success: true,
-      data: orders
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching orders',
-      error: error.message
-    });
-  }
-};
-
-const cancelOrder = async (req, res) => {
-  try {
-    const order = await Order.findOne({ _id: req.params.id, customer: req.user._id });
-
-    if (!order) {
-      return res.status(404).json({ success: false, message: 'Order not found' });
-    }
-
-    const cancellableStatuses = ['placed'];
-    if (!cancellableStatuses.includes(order.orderStatus)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Only newly placed orders can be cancelled. Your order is already ' + order.orderStatus
-      });
-    }
-
-    // Refund to wallet if paid online or via wallet
-    if (order.paymentStatus === 'paid') {
-      const user = await User.findById(req.user._id);
-      user.walletBalance += order.totalAmount;
-      user.walletTransactions.push({
-        amount: order.totalAmount,
-        type: 'credit',
-        description: `Refund for Cancelled Order #${order.orderNumber}`
-      });
-      await user.save();
-      order.paymentStatus = 'refunded';
-    }
-
-    order.orderStatus = 'cancelled';
-    await order.save();
-
-    res.status(200).json({
-      success: true,
-      message: order.paymentStatus === 'refunded' 
-        ? 'Order cancelled and amount refunded to your wallet' 
-        : 'Order cancelled successfully'
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error cancelling order',
-      error: error.message
-    });
-  }
-};
-
-const updateOrderStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { orderStatus } = req.body;
-
-    const order = await Order.findById(id);
-    if (!order) {
-      return res.status(404).json({ success: false, message: 'Order not found' });
-    }
-
-    order.orderStatus = orderStatus;
-    await order.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Order status updated successfully',
-      data: order
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error updating order status',
-      error: error.message
-    });
-  }
-};
-
-export default {
-  placeOrder,
-  getMyOrders,
-  cancelOrder,
-  updateOrderStatus
-};
-=======
-import Counter from '../models/counterSchema.js';
-import Menu from '../models/menuSchema.js';
-import { getIO } from '../socket.js';
 
 const getNextOrderNumber = async () => {
   const counter = await Counter.findOneAndUpdate(
@@ -354,9 +142,11 @@ const restoreStock = async (items) => {
 };
 
 class OrderController {
-  async createCounterOrder(req, res) {
+  // --- USER FACING METHODS ---
+
+  async placeOrder(req, res) {
     try {
-      const { customerDetails, items, orderType, paymentMethod, subtotal, tax, discount, totalAmount, cashReceived, balance } = req.body;
+      const { items, address, paymentMethod, totalAmount, subtotal, discount, tax, razorpayOrderId, razorpayPaymentId } = req.body;
 
       // Check Stock First
       const stockCheck = await checkStockAvailability(items);
@@ -364,9 +154,211 @@ class OrderController {
         return res.status(400).json({ success: false, message: `Insufficient stock for: ${stockCheck.itemName}` });
       }
 
+      // Handle Wallet Payment
+      if (paymentMethod === 'wallet') {
+        const user = await User.findById(req.user._id);
+        const orderTotal = totalAmount; // totalAmount should already include fee/tax/discount
+        
+        if (user.walletBalance < orderTotal) {
+          return res.status(400).json({ success: false, message: 'Insufficient wallet balance' });
+        }
+
+        user.walletBalance -= orderTotal;
+        user.walletTransactions.push({
+          amount: orderTotal,
+          type: 'debit',
+          description: `Payment for Order`
+        });
+        await user.save();
+      }
+
+      // Determine Order Source and Type
+      const isUser = req.user.role === 'user';
+      const finalOrderSource = isUser ? 'user' : (req.user.role || 'admin');
+      const finalOrderType = isUser ? 'delivery' : (req.body.orderType || 'dine-in');
+
       const orderNumber = await getNextOrderNumber();
 
-      // Auto-set payment status for cash
+      // Calculate delivery fee on server for security
+      let deliveryFee = 0;
+      if (finalOrderType === 'delivery' && address.location) {
+        // Try to match coordinates from Google Maps URL or string
+        const urlMatch = address.location.match(/q=([-.\d]+),([-.\d]+)/);
+        if (urlMatch) {
+          const userLat = parseFloat(urlMatch[1]);
+          const userLng = parseFloat(urlMatch[2]);
+          const restLat = parseFloat(process.env.RESTAURANT_LAT || '10.668194');
+          const restLng = parseFloat(process.env.RESTAURANT_LNG || '76.025111');
+          const distance = calculateDistance(userLat, userLng, restLat, restLng);
+          if (distance > 5) {
+            deliveryFee = Math.ceil(distance - 5) * 10;
+          }
+        }
+      }
+
+      const newOrder = new Order({
+        customer: req.user._id,
+        orderNumber,
+        orderType: finalOrderType,
+        orderSource: finalOrderSource,
+        items: items.map(item => ({
+          menuItem: item.menuItem,
+          size: item.size,
+          quantity: item.quantity,
+          price: item.price,
+          unitPrice: item.price,
+          totalPrice: item.price * item.quantity,
+          kitchenStatus: 'placed'
+        })),
+        customerDetails: {
+          name: address.recipientName || address.name || req.user.name,
+          phone: address.mobile || address.phone || req.user.phone,
+          address: address.address,
+          location: address.location || '',
+          remarks: req.body.remarks || ''
+        },
+        address: {
+          recipientName: address.recipientName || address.name || req.user.name,
+          mobile: address.mobile || address.phone || req.user.phone,
+          address: address.address,
+          location: address.location || ''
+        },
+        paymentMethod: paymentMethod || 'cod',
+        subtotal,
+        deliveryFee: deliveryFee || req.body.deliveryFee || 0,
+        discount: discount || 0,
+        tax: tax || 0,
+        totalAmount: subtotal + (deliveryFee || req.body.deliveryFee || 0) - (discount || 0) + (tax || 0),
+        orderStatus: 'placed',
+        kitchenStatus: 'placed',
+        paymentStatus: (paymentMethod === 'wallet' || paymentMethod === 'online') ? 'paid' : 'pending',
+        razorpayOrderId,
+        razorpayPaymentId
+      });
+
+      if (finalOrderType === 'dine-in') {
+        newOrder.table = req.body.tableId;
+        newOrder.sessionId = req.body.sessionId || `SES-${Date.now()}`;
+      }
+
+      await newOrder.save();
+
+      // Reduce Stock
+      await handleStock(items, 'reduce');
+
+      // Update wallet transaction description with order number
+      if (paymentMethod === 'wallet') {
+        const user = await User.findById(req.user._id);
+        const lastTx = user.walletTransactions[user.walletTransactions.length - 1];
+        lastTx.description = `Payment for Order #${newOrder.orderNumber}`;
+        await user.save();
+      }
+
+      // Clear cart
+      await Cart.findOneAndDelete({ customer: req.user._id }).catch(() => { });
+      await Cart.findOneAndDelete({ user: req.user._id }).catch(() => { });
+
+      res.status(201).json({
+        success: true,
+        message: 'Order placed successfully',
+        data: newOrder
+      });
+
+      // Global Notification
+      getIO().emit('newOrder', {
+        order: newOrder,
+        message: `🔔 New ${newOrder.orderType.toUpperCase()} Order Received! (#${newOrder.orderNumber})`
+      });
+    } catch (error) {
+      console.error('Order Error Details:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Error placing order'
+      });
+    }
+  }
+
+  async getMyOrders(req, res) {
+    try {
+      const orders = await Order.find({ customer: req.user._id })
+        .populate('items.menuItem')
+        .sort({ createdAt: -1 });
+
+      res.status(200).json({
+        success: true,
+        data: orders
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Error fetching orders',
+        error: error.message
+      });
+    }
+  }
+
+  async cancelOrder(req, res) {
+    try {
+      const order = await Order.findOne({ _id: req.params.id, customer: req.user._id });
+
+      if (!order) {
+        return res.status(404).json({ success: false, message: 'Order not found' });
+      }
+
+      if (order.orderStatus !== 'placed') {
+        return res.status(400).json({
+          success: false,
+          message: `Only newly placed orders can be cancelled. Current status: ${order.orderStatus}`
+        });
+      }
+
+      // Restore Stock
+      await restoreStock(order.items);
+
+      // Refund to wallet if paid
+      if (order.paymentStatus === 'paid') {
+        const user = await User.findById(req.user._id);
+        user.walletBalance += order.totalAmount;
+        user.walletTransactions.push({
+          amount: order.totalAmount,
+          type: 'credit',
+          description: `Refund for Cancelled Order #${order.orderNumber}`
+        });
+        await user.save();
+        order.paymentStatus = 'refunded';
+      }
+
+      order.orderStatus = 'cancelled';
+      await order.save();
+
+      res.status(200).json({
+        success: true,
+        message: order.paymentStatus === 'refunded' 
+          ? 'Order cancelled and amount refunded to your wallet' 
+          : 'Order cancelled successfully'
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Error cancelling order',
+        error: error.message
+      });
+    }
+  }
+
+  // --- ADMIN FACING METHODS ---
+
+  async createCounterOrder(req, res) {
+    try {
+      const { customerDetails, items, orderType, paymentMethod, subtotal, tax, discount, totalAmount, cashReceived, balance } = req.body;
+
+      const stockCheck = await checkStockAvailability(items);
+      if (!stockCheck.available) {
+        return res.status(400).json({ success: false, message: `Insufficient stock for: ${stockCheck.itemName}` });
+      }
+
+      const orderNumber = await getNextOrderNumber();
+
       let paymentStatus = 'pending';
       if (paymentMethod === 'cash' && cashReceived >= totalAmount) {
         paymentStatus = 'paid';
@@ -398,13 +390,10 @@ class OrderController {
       });
 
       await newOrder.save();
-
-      // Reduce Stock
       await handleStock(items, 'reduce');
 
       res.status(201).json({ success: true, data: newOrder });
       
-      // Global Notifications
       getIO().emit('newOrder', {
         order: newOrder,
         message: `🔔 New ${newOrder.orderType.toUpperCase()} Order Received! (#${newOrder.orderNumber})`
@@ -434,13 +423,10 @@ class OrderController {
       const { id } = req.params;
       const updateData = { ...req.body };
 
-      // Fetch original order first to check status change
       const originalOrder = await Order.findById(id);
       if (!originalOrder) return res.status(404).json({ success: false, message: 'Order not found' });
 
-      // NEW OPERATIONAL RULE: Cannot move past 'processing' unless kitchen is 'ready'
-      // Allow moving TO processing, and allow CANCELLING anytime.
-      // But moving FROM processing to anything else requires kitchen 'ready'.
+      // Operational Rule
       if (
         originalOrder.orderStatus === 'processing' && 
         updateData.orderStatus && 
@@ -454,12 +440,10 @@ class OrderController {
         });
       }
 
-      // Handle Stock Recovery if cancelled
       if (updateData.orderStatus === 'cancelled' && originalOrder.orderStatus !== 'cancelled') {
         await restoreStock(originalOrder.items);
       }
 
-      // Handle Auto-Payment Status for cash updates
       if (updateData.cashReceived !== undefined || updateData.totalAmount !== undefined) {
         const cash = updateData.cashReceived ?? originalOrder.cashReceived;
         const total = updateData.totalAmount ?? originalOrder.totalAmount;
@@ -468,7 +452,6 @@ class OrderController {
         }
       }
 
-      // Restrict editing items for user delivery orders
       if (originalOrder.orderType === 'delivery' && originalOrder.orderSource === 'user' && updateData.items) {
         return res.status(403).json({ success: false, message: 'User delivery orders cannot have their items modified by admin' });
       }
@@ -493,7 +476,6 @@ class OrderController {
       const order = await Order.findById(id);
       if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
-      // Restore stock if not already cancelled
       if (order.orderStatus !== 'cancelled') {
         await restoreStock(order.items);
       }
@@ -511,7 +493,6 @@ class OrderController {
       const { orderId, itemId } = req.params;
       const { kitchenStatus } = req.body;
 
-      // Validate kitchenStatus value
       const allowedStatuses = ['placed', 'preparing', 'ready', 'delayed'];
       if (!allowedStatuses.includes(kitchenStatus)) {
         return res.status(400).json({ success: false, message: `Invalid kitchen status: "${kitchenStatus}"` });
@@ -527,12 +508,9 @@ class OrderController {
       await order.save();
       await order.populate('items.menuItem', 'name image');
 
-      // Emit socket event for real-time update
       getIO().emit('ordersUpdated');
-
       res.json({ success: true, data: order });
     } catch (error) {
-      console.error('Update item status error:', error);
       res.status(500).json({ success: false, message: error.message });
     }
   }
@@ -542,7 +520,6 @@ class OrderController {
       const { id } = req.params;
       const { items } = req.body;
 
-      // Check Stock First
       const stockCheck = await checkStockAvailability(items);
       if (!stockCheck.available) {
         return res.status(400).json({ success: false, message: `Insufficient stock for: ${stockCheck.itemName}` });
@@ -560,24 +537,7 @@ class OrderController {
       }
 
       order.items.push(...items.map(item => ({ ...item, kitchenStatus: 'placed' })));
-
-      // Recalculate Totals
-      const newSubtotal = order.items.reduce((acc, item) => acc + (item.totalPrice || 0), 0);
-      order.subtotal = newSubtotal;
-      order.totalAmount = newSubtotal + (order.tax || 0) - (order.discount || 0);
-
-      // Update cash details if provided or recalculate
-      if (req.body.cashReceived !== undefined) {
-        order.cashReceived = req.body.cashReceived;
-      }
-
-      if (order.paymentMethod === 'cash') {
-        order.balance = (order.cashReceived || 0) - order.totalAmount;
-      }
-
       await order.save();
-
-      // Reduce Stock for new items
       await handleStock(items, 'reduce');
 
       await order.populate('items.menuItem', 'name image');
@@ -604,20 +564,8 @@ class OrderController {
 
       const item = order.items.id(itemId);
       if (item) {
-        // Restore Stock
         await handleStock([item], 'restore');
         order.items.pull(itemId);
-
-        // Recalculate Totals
-        const newSubtotal = order.items.reduce((acc, item) => acc + (item.totalPrice || 0), 0);
-        order.subtotal = newSubtotal;
-        order.totalAmount = newSubtotal + (order.tax || 0) - (order.discount || 0);
-
-        // Recalculate Balance if it's a cash payment
-        if (order.paymentMethod === 'cash' && order.cashReceived > 0) {
-          order.balance = order.cashReceived - order.totalAmount;
-        }
-
         await order.save();
         await order.populate('items.menuItem', 'name image');
       }
@@ -646,7 +594,6 @@ class OrderController {
       const item = order.items.id(itemId);
       if (!item) return res.status(404).json({ success: false, message: 'Item not found' });
 
-      // Handle Stock
       const diff = quantity - item.quantity;
       if (diff > 0) {
         const stockCheck = await checkStockAvailability([{ menuItem: item.menuItem, quantity: diff, size: item.size }]);
@@ -661,8 +608,6 @@ class OrderController {
       item.quantity = quantity;
       item.totalPrice = (item.unitPrice || item.price || 0) * quantity;
 
-      // Recalculate Totals
-      // Totals and balance are handled by pre-save hook
       await order.save();
       await order.populate('items.menuItem', 'name image');
 
@@ -678,7 +623,6 @@ class OrderController {
       const { id } = req.params;
       const { items } = req.body;
 
-      // Check Stock First
       const stockCheck = await checkStockAvailability(items);
       if (!stockCheck.available) {
         return res.status(400).json({ success: false, message: `Insufficient stock for: ${stockCheck.itemName}` });
@@ -691,33 +635,17 @@ class OrderController {
         return res.status(403).json({ success: false, message: 'Finalized orders cannot be modified' });
       }
 
-      // Restore old stock
       await restoreStock(order.items);
-
-      // Update items
       order.items = items.map(item => ({
         ...item,
         kitchenStatus: item.kitchenStatus || 'placed'
       }));
 
-      // Recalculate Totals (Handled by pre-save hook)
-
-      // Update address/location if provided
-      if (req.body.deliveryAddress !== undefined) {
-        if (!order.address) order.address = {};
-        order.address.address = req.body.deliveryAddress;
-      }
-      if (req.body.deliveryLocation !== undefined) {
-        if (!order.address) order.address = {};
-        order.address.location = req.body.deliveryLocation;
-      }
       if (req.body.customerDetails) {
         order.customerDetails = req.body.customerDetails;
       }
 
       await order.save();
-      
-      // Reduce new stock
       await handleStock(order.items, 'reduce');
 
       await order.populate('items.menuItem', 'name image');
@@ -731,7 +659,6 @@ class OrderController {
   async clearHistory(req, res) {
     try {
       const { orderType, startDate, endDate, ids } = req.query;
-      
       let query = {};
 
       if (ids) {
@@ -769,4 +696,3 @@ class OrderController {
 }
 
 export default new OrderController();
->>>>>>> develop
