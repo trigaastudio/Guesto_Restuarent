@@ -48,7 +48,7 @@ const MenuSection = () => {
     setIsLoading(true);
     try {
       const [menuRes, catRes] = await Promise.all([
-        axios.get(`${API_BASE_URL}/menu`),
+        axios.get(`${API_BASE_URL}/menus`),
         axios.get(`${API_BASE_URL}/categories`)
       ]);
       setMenus(menuRes.data);
@@ -128,9 +128,9 @@ const MenuSection = () => {
 
     try {
       if (isEditing) {
-        await axios.put(`${API_BASE_URL}/menu/${currentMenu._id}`, currentMenu);
+        await axios.put(`${API_BASE_URL}/menus/${currentMenu._id}`, currentMenu);
       } else {
-        await axios.post(`${API_BASE_URL}/menu`, currentMenu);
+        await axios.post(`${API_BASE_URL}/menus`, currentMenu);
       }
       fetchData();
       setIsModalOpen(false);
@@ -150,7 +150,7 @@ const MenuSection = () => {
     
     if (result.isConfirmed) {
       try {
-        await axios.delete(`${API_BASE_URL}/menu/${id}`);
+        await axios.delete(`${API_BASE_URL}/menus/${id}`);
         fetchData();
         showToast('success', 'Menu item deleted successfully');
       } catch (error) {

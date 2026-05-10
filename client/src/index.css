@@ -2,9 +2,9 @@
 @import "@fontsource/inter";
 
 @theme {
-  --color-primary: #C96A0A;
-  --color-primary-light: #E88A1A;
-  --color-primary-dark: #A35405;
+  --color-primary: #B91C1C;
+  --color-primary-light: #DA9133;
+  --color-primary-dark: #991b1b;
 
   --color-background: #F6F1EA;
   --color-background-card: #FFFFFF;
@@ -18,7 +18,7 @@
   --color-border-light: #F1F1F1;
 
   --color-status-available: #16A34A;
-  --color-status-unavailable: #DC2626;
+  --color-status-unavailable: #B91C1C;
 
   --font-sans: "Inter", "sans-serif";
 }
@@ -93,7 +93,7 @@
   body {
     @apply bg-background text-text-primary font-sans transition-colors duration-300;
     scrollbar-gutter: stable;
-    @apply pb-24 lg:pb-0;
+    @apply lg:pb-0;
   }
 
   .no-scrollbar::-webkit-scrollbar {
@@ -103,6 +103,60 @@
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  /* Custom Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-muted);
+  }
+
+  /* SweetAlert Theme Overrides */
+  .swal2-popup {
+    background-color: var(--color-background-card) !important;
+    color: var(--color-text-primary) !important;
+    border-radius: 2rem !important;
+    padding: 2rem !important;
+  }
+  .swal2-title {
+    color: var(--color-text-primary) !important;
+    font-weight: 900 !important;
+    letter-spacing: -0.025em !important;
+  }
+  .swal2-html-container {
+    color: var(--color-text-muted) !important;
+    font-weight: 700 !important;
+  }
+  .swal2-confirm {
+    background-color: var(--color-primary) !important;
+    border-radius: 1rem !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.1em !important;
+    font-size: 0.75rem !important;
+    padding: 1rem 2rem !important;
+    box-shadow: 0 10px 15px -3px rgba(185, 28, 28, 0.2) !important;
+  }
+  .swal2-cancel {
+    border-radius: 1rem !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.1em !important;
+    font-size: 0.75rem !important;
+    padding: 1rem 2rem !important;
+  }
+  .dark .swal2-popup {
+    border: 1px solid var(--color-border) !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
   }
 }
 
@@ -156,4 +210,13 @@
 
 .animate-spin-once {
   animation: spin 0.6s ease-in-out;
+}
+
+@keyframes progress-vertical {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+.animate-progress-vertical {
+  animation: progress-vertical 1s ease-out forwards;
 }

@@ -1,21 +1,24 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-  --sw-primary: #C96A0A;
-  /* User's color */
-  --sw-text: #282c3f;
-  --sw-text-light: #686b78;
-  --sw-border: #e9e9eb;
-  --sw-bg: #ffffff;
-  --sw-green: #48c479;
+  --sw-primary: #DA9133;
+  --sw-text-primary: #1A1A1A;
+  --sw-text-muted: #6B7280;
+  --sw-border-light: #F3F4F6;
+  --sw-bg: #FFFFFF;
+  --sw-red: #B91C1C; /* Premium Crimson Red */
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --premium-shadow: 0 20px 50px rgba(0, 0, 0, 0.05);
 }
 
 .home-page {
-  font-family: 'Outfit', sans-serif;
-  color: var(--sw-text);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--sw-text-primary);
   background: var(--sw-bg);
   min-height: 100vh;
 }
+
 
 .dark.home-page {
   --sw-bg: #121212;
@@ -600,8 +603,46 @@
   .s-nav-item .label {
     display: none;
   }
+}
 
-  .s-nav-item .icon {
-    font-size: 24px;
+/* Premium Utilities */
+.hero-text-shadow {
+  text-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+}
+
+.premium-gradient-red {
+  background: linear-gradient(135deg, #B91C1C 0%, #991b1b 100%);
+}
+
+.hide-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Entry Animations */
+.hero-fade-in {
+  opacity: 0;
+  transform: translateY(30px);
+  animation: heroFadeIn 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes heroFadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
+}
+
+/* Float Animation */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
 }

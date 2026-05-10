@@ -109,49 +109,36 @@ const SettingsSection = () => {
 
   const handleLogoUploadClick = (field) => {
     setCurrentLogoField(field);
-    // Set aspect ratio based on logo type
-    if (field === 'logoMonochrome') {
-      setAspectRatio(4 / 1); // Wide for receipts
-    } else {
-      setAspectRatio(3 / 1); // Standard for dashboard
-    }
+    // Allow freeform cropping (aspectRatio null) to preserve original logo shape/format
+    setAspectRatio(null);
     document.getElementById('logo-upload-input').click();
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      setImageToCrop(reader.result);
-      setShowCropper(true);
-    };
-    reader.readAsDataURL(file);
     e.target.value = ''; // Reset input
-  };
 
-  const handleCropComplete = async (croppedFile) => {
-    setShowCropper(false);
+    // Upload directly without cropping to avoid canvas security issues
     const formData = new FormData();
-    formData.append('image', croppedFile);
+    formData.append('image', file, file.name);
 
     setIsUploading(true);
     try {
-      const response = await axios.post(`${API_BASE_URL}/upload/image`, formData);
+      const response = await api.post('/api/upload/image', formData);
       const imageUrl = response.data.url;
 
-      setSettings({
-        ...settings,
+      setSettings((prev) => ({
+        ...prev,
         [currentLogoField === 'kotQRCodeImage' ? 'printingSettings' : 'branding']: {
-          ...(currentLogoField === 'kotQRCodeImage' ? settings.printingSettings : settings.branding),
+          ...(currentLogoField === 'kotQRCodeImage' ? prev.printingSettings : prev.branding),
           [currentLogoField === 'kotQRCodeImage' ? 'kotQRCodeImage' : currentLogoField]: imageUrl
         }
-      });
-      showToast('success', 'Logo uploaded successfully');
+      }));
+      showToast('success', 'Logo uploaded successfully!');
     } catch (error) {
       console.error('Error uploading logo:', error);
-      showToast('error', 'Upload failed');
+      showToast('error', 'Upload failed. Please try again.');
     } finally {
       setIsUploading(false);
     }
@@ -503,9 +490,10 @@ const SettingsSection = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
               {/* Gold Logo */}
               <div className="space-y-4">
-                <div className="flex flex-col items-center p-6 rounded-[2rem] bg-black border border-white/10 space-y-4 relative group">
-                  <span className="text-[10px] font-black uppercase text-white/50 absolute top-4 left-6">Gold Logo (Dark Mode)</span>
-                  <div className="w-32 h-32 flex items-center justify-center overflow-hidden">
+                <div className="flex flex-col items-center p-6 rounded-[2rem] bg-black border border-white/10 space-y-4 relative group overflow-hidden">
+                  <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'repeating-conic-gradient(#808080 0% 25%, #000000 0% 50%)', backgroundSize: '20px 20px' }}></div>
+                  <span className="text-[10px] font-black uppercase text-white/50 absolute top-4 left-6 z-10">Gold Logo (Dark Mode)</span>
+                  <div className="w-32 h-32 flex items-center justify-center overflow-hidden z-10">
                     {settings.branding.logoGold ? (
                       <img src={settings.branding.logoGold} alt="Gold Logo" className="max-w-full max-h-full object-contain" />
                     ) : (
@@ -514,35 +502,36 @@ const SettingsSection = () => {
                   </div>
                   <button
                     onClick={() => handleLogoUploadClick('logoGold')}
-                    className="w-full py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-2"
+                    className="w-full py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-2 z-10"
                   >
                     <Upload size={14} />
                     <span>Upload Logo</span>
                   </button>
                 </div>
-                <p className="text-[10px] text-text-muted text-center px-4 font-medium italic">Used for the Admin Dashboard and Kitchen Panel sidebar.</p>
+                <p className="text-[10px] text-text-muted text-center px-4 font-medium italic">Transparent PNG with gold or white content recommended for dark mode.</p>
               </div>
 
               {/* Dark Logo */}
               <div className="space-y-4">
-                <div className="flex flex-col items-center p-6 rounded-[2rem] bg-white border border-border-light space-y-4 relative group">
-                  <span className="text-[10px] font-black uppercase text-text-muted absolute top-4 left-6">Dark Logo (Light Mode)</span>
-                  <div className="w-32 h-32 flex items-center justify-center overflow-hidden">
+                <div className="flex flex-col items-center p-6 rounded-[2rem] bg-white border border-border-light space-y-4 relative group overflow-hidden">
+                  <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'repeating-conic-gradient(#808080 0% 25%, #ffffff 0% 50%)', backgroundSize: '20px 20px' }}></div>
+                  <span className="text-[10px] font-black uppercase text-black/40 absolute top-4 left-6 z-10">Dark Logo (Light Mode)</span>
+                  <div className="w-32 h-32 flex items-center justify-center overflow-hidden z-10">
                     {settings.branding.logoDark ? (
                       <img src={settings.branding.logoDark} alt="Dark Logo" className="max-w-full max-h-full object-contain" />
                     ) : (
-                      <ImageIcon size={48} className="text-text-muted/20" />
+                      <ImageIcon size={48} className="text-black/10" />
                     )}
                   </div>
                   <button
                     onClick={() => handleLogoUploadClick('logoDark')}
-                    className="w-full py-2.5 bg-background-muted hover:bg-background-muted-dark text-text-primary rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-2"
+                    className="w-full py-2.5 bg-black/5 hover:bg-black/10 text-black rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-2 z-10"
                   >
                     <Upload size={14} />
                     <span>Upload Logo</span>
                   </button>
                 </div>
-                <p className="text-[10px] text-text-muted text-center px-4 font-medium italic">Used for Light Mode and customer-facing interfaces.</p>
+                <p className="text-[10px] text-text-muted text-center px-4 font-medium italic">Transparent PNG with black or colored content for light mode.</p>
               </div>
 
               {/* Monochrome Logo */}
@@ -643,6 +632,43 @@ const SettingsSection = () => {
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Platform Fee Card */}
+              <div className="group p-8 rounded-[2.5rem] border bg-background-muted/20 border-border-light hover:border-primary/20 transition-all duration-500 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center space-x-5">
+                    <div className="p-4 rounded-[1.5rem] bg-primary/10 text-primary group-hover:scale-110 transition-transform duration-500 shadow-sm border border-primary/5">
+                      <CreditCard size={24} />
+                    </div>
+                    <div>
+                      <h4 className="text-base font-black text-text-primary uppercase tracking-tight">Platform Fee</h4>
+                      <p className="text-[10px] text-text-muted font-black uppercase tracking-[0.1em] mt-1">Per Order Charge</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between bg-white/5 p-4 rounded-2xl border border-border-light">
+                    <label className="text-[11px] font-black text-text-secondary uppercase">Fee Amount:</label>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-[10px] font-black text-primary uppercase">₹</span>
+                      <input
+                        type="number"
+                        value={settings.operationalSettings?.platformFee || 0}
+                        onChange={(e) => setSettings({
+                          ...settings,
+                          operationalSettings: { ...settings.operationalSettings, platformFee: parseFloat(e.target.value) }
+                        })}
+                        className="w-20 px-3 py-2 bg-white rounded-xl border-none outline-none font-black text-xs text-primary text-center shadow-inner"
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[9px] text-text-muted font-bold italic text-center uppercase tracking-tight opacity-40 leading-relaxed">
+                    This fee will be automatically added to every customer's bill total.
+                  </p>
+                </div>
               </div>
             </div>
 

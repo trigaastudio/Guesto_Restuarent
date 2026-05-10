@@ -52,7 +52,7 @@ const MenuDetailPage = () => {
         icon: 'error',
         title: 'Oops...',
         text: 'Failed to load dish details. Please try again later.',
-        confirmButtonColor: '#D10000'
+        confirmButtonColor: '#B91C1C'
       });
     } finally {
       setLoading(false);
@@ -111,7 +111,7 @@ const MenuDetailPage = () => {
           navigate={navigate}
         />
         <div className="flex-1 flex items-center justify-center">
-          <div className="w-12 h-12 border-4 border-[#D10000]/20 border-t-[#D10000] rounded-full animate-spin"></div>
+          <div className="w-12 h-12 border-4 border-[#B91C1C]/20 border-t-[#B91C1C] rounded-full animate-spin"></div>
         </div>
       </div>
     );
@@ -122,10 +122,10 @@ const MenuDetailPage = () => {
       <div className={`min-h-screen bg-background ${theme} flex flex-col`}>
         <Navbar user={user} cartItems={cartItems} navigate={navigate} />
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4">
-          <AlertCircle size={64} className="text-[#D10000] opacity-20" />
+          <AlertCircle size={64} className="text-[#B91C1C] opacity-20" />
           <h2 className="text-2xl font-black text-text-primary uppercase tracking-tighter">Dish Not Found</h2>
           <p className="text-text-muted font-bold opacity-60">The dish you're looking for doesn't exist or has been removed.</p>
-          <button onClick={() => navigate('/home')} className="px-8 py-3 bg-[#D10000] text-white rounded-full font-black uppercase tracking-widest transition-all hover:bg-[#B10000]">Back to Home</button>
+          <button onClick={() => navigate('/home')} className="px-8 py-3 bg-[#B91C1C] text-white rounded-full font-black uppercase tracking-widest transition-all hover:bg-[#B10000]">Back to Home</button>
         </div>
         <Footer />
       </div>
@@ -136,7 +136,7 @@ const MenuDetailPage = () => {
 
   return (
     <div className={`min-h-screen bg-background font-sans ${theme}`}>
-      <header className="relative bg-[#D10000] sticky top-0 z-50 shadow-xl overflow-hidden">
+      <header className="relative bg-[#B91C1C] sticky top-0 z-50 shadow-xl overflow-hidden">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3 blur-[120px] pointer-events-none"></div>
         <Navbar
           user={user}
@@ -153,7 +153,7 @@ const MenuDetailPage = () => {
         <div className="mb-12 flex items-center justify-between">
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-text-muted hover:text-[#D10000] font-black text-[10px] uppercase tracking-[0.2em] transition-all group"
+            className="flex items-center gap-2 text-text-muted hover:text-[#B91C1C] font-black text-[10px] uppercase tracking-[0.2em] transition-all group"
           >
             <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
             Back to Menu
@@ -171,7 +171,7 @@ const MenuDetailPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
           {/* Left: Image Hero */}
           <div className="relative group">
-            <div className="absolute -inset-4 bg-[#D10000]/5 rounded-[3rem] blur-2xl group-hover:bg-[#D10000]/10 transition-all duration-700"></div>
+            <div className="absolute -inset-4 bg-[#B91C1C]/5 rounded-[3rem] blur-2xl group-hover:bg-[#B91C1C]/10 transition-all duration-700"></div>
             <div className="relative bg-white rounded-[3rem] p-8 md:p-12 border border-gray-100 shadow-[0_30px_100px_rgba(0,0,0,0.05)] overflow-hidden">
               <img
                 src={menu.image || '/placeholder-food.jpg'}
@@ -195,8 +195,8 @@ const MenuDetailPage = () => {
           <div className="space-y-10 py-4">
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <span className="w-8 h-1 bg-[#D10000] rounded-full"></span>
-                <p className="text-[10px] font-black text-[#D10000] uppercase tracking-[0.2em]">{menu.category?.name || 'Main Course'}</p>
+                <span className="w-8 h-1 bg-[#B91C1C] rounded-full"></span>
+                <p className="text-[10px] font-black text-[#B91C1C] uppercase tracking-[0.2em]">{menu.category?.name || 'Main Course'}</p>
               </div>
               <h1 className="text-4xl md:text-6xl font-black text-text-primary tracking-tighter uppercase leading-[0.95]">
                 {menu.name}
@@ -230,7 +230,7 @@ const MenuDetailPage = () => {
                     <button
                       key={idx}
                       onClick={() => setSelectedSize(s)}
-                      className={`px-8 py-4 rounded-2xl border-2 transition-all font-black text-xs uppercase tracking-widest active:scale-95 ${selectedSize?.size === s.size ? 'border-[#D10000] bg-[#D10000]/5 text-[#D10000] shadow-lg shadow-[#D10000]/10' : 'border-gray-100 bg-gray-50 text-text-muted hover:border-[#D10000]/30'}`}
+                      className={`px-8 py-4 rounded-2xl border-2 transition-all font-black text-xs uppercase tracking-widest active:scale-95 ${selectedSize?.size === s.size ? 'border-[#B91C1C] bg-[#B91C1C]/5 text-[#B91C1C] shadow-lg shadow-[#B91C1C]/10' : 'border-gray-100 bg-gray-50 text-text-muted hover:border-[#B91C1C]/30'}`}
                     >
                       {s.size}
                     </button>
@@ -259,7 +259,7 @@ const MenuDetailPage = () => {
                   <span className="w-12 text-center font-black text-xl">{quantity}</span>
                   <button
                     onClick={() => handleQuantityChange('inc')}
-                    className="w-12 h-12 rounded-xl flex items-center justify-center text-white bg-[#D10000] shadow-lg shadow-[#D10000]/20 active:scale-90 transition-all"
+                    className="w-12 h-12 rounded-xl flex items-center justify-center text-white bg-[#B91C1C] shadow-lg shadow-[#B91C1C]/20 active:scale-90 transition-all"
                   >
                     <Plus size={20} />
                   </button>
@@ -272,7 +272,7 @@ const MenuDetailPage = () => {
               <button
                 onClick={handleAddToCart}
                 disabled={menu.stockStatus === 'out-of-stock'}
-                className={`flex-1 flex items-center justify-center gap-3 px-10 py-5 rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] transition-all active:scale-95 shadow-2xl ${menu.stockStatus === 'out-of-stock' ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-[#D10000] text-white hover:bg-[#B10000] shadow-[#D10000]/30 hover:-translate-y-1'}`}
+                className={`flex-1 flex items-center justify-center gap-3 px-10 py-5 rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] transition-all active:scale-95 shadow-2xl ${menu.stockStatus === 'out-of-stock' ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-[#B91C1C] text-white hover:bg-[#B10000] shadow-[#B91C1C]/30 hover:-translate-y-1'}`}
               >
                 <ShoppingCart size={20} />
                 {menu.stockStatus === 'out-of-stock' ? 'Out of Stock' : 'Add to Cart'}
@@ -304,7 +304,7 @@ const MenuDetailPage = () => {
         <div className="mt-32 space-y-12">
           <div className="flex flex-col items-center text-center space-y-4">
             <h2 className="text-3xl md:text-5xl font-black text-text-primary tracking-tighter uppercase">
-              You Might Also <span className="text-[#D10000]">Love</span>
+              You Might Also <span className="text-[#B91C1C]">Love</span>
             </h2>
             <div className="w-24 h-1.5 bg-[#DA9133] rounded-full"></div>
           </div>

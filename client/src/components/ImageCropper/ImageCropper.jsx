@@ -21,6 +21,7 @@ const ImageCropper = ({ image, onCropComplete, onCancel, aspect = 1 }) => {
   }, []);
 
   const handleCrop = async () => {
+    if (!croppedAreaPixels) return;
     try {
       const croppedImageFile = await getCroppedImgFile(image, croppedAreaPixels);
       onCropComplete(croppedImageFile);
@@ -32,7 +33,7 @@ const ImageCropper = ({ image, onCropComplete, onCancel, aspect = 1 }) => {
   return (
     <div className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-4 sm:p-8">
       <div className="relative w-full max-w-4xl h-[60vh] sm:h-[70vh] bg-background-card rounded-[2.5rem] overflow-hidden border border-border-light shadow-2xl animate-in zoom-in-95 duration-300">
-        <div className="absolute inset-0">
+        <div className="absolute inset-0" style={{ backgroundImage: 'repeating-conic-gradient(#333 0% 25%, #222 0% 50%)', backgroundSize: '20px 20px' }}>
           <Cropper
             image={image}
             crop={crop}

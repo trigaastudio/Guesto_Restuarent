@@ -156,6 +156,7 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => {
+    document.title = `Admin | ${activeTab}`;
     if (activeTab === 'Overview') {
       fetchDashboardStats();
     }
@@ -175,6 +176,7 @@ const AdminDashboard = () => {
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
+    document.title = `Admin | ${tab}`;
     localStorage.setItem('adminActiveTab', tab);
   };
 
@@ -230,15 +232,15 @@ const AdminDashboard = () => {
         <button
           onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           className={`
-            hidden lg:flex absolute -right-3 top-10 p-1.5 bg-primary text-white rounded-full shadow-lg border-2 border-bg-card z-20 transition-transform duration-300
+            hidden lg:flex absolute -right-3 top-10 p-1.5 bg-primary text-white rounded-full shadow-xl border-2 border-background-card z-20 transition-transform duration-300 hover:scale-110
             ${!isSidebarCollapsed ? 'rotate-180' : ''}
           `}
         >
-          <ChevronRight size={14} />
+          <ChevronRight size={14} strokeWidth={3} />
         </button>
 
         <div className="flex-1 flex flex-col overflow-x-hidden no-scrollbar relative">
-          <div className="p-6 border-b border-border-light flex items-center justify-center relative">
+          <div className="p-6 border-b border-border/40 flex items-center justify-center relative">
             <img
               src={
                 (isSidebarCollapsed && !isMobileMenuOpen)
@@ -252,7 +254,7 @@ const AdminDashboard = () => {
             />
             <button
               onClick={() => setIsMobileMenuOpen(false)}
-              className="lg:hidden absolute right-6 p-2 text-text-secondary hover:text-status-unavailable transition-colors"
+              className="lg:hidden absolute right-6 p-2 text-text-secondary hover:text-primary transition-colors"
             >
               <X size={24} />
             </button>
@@ -291,14 +293,14 @@ const AdminDashboard = () => {
             ))}
           </nav>
 
-          <div className="p-4 border-t border-border-light space-y-2">
+          <div className="p-4 border-t border-border/40 space-y-2">
             <button
               onClick={handleLogout}
-              className={`w-full flex items-center rounded-xl text-status-unavailable hover:bg-status-off/5 transition-all p-3 ${(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : ''}`}
+              className={`w-full flex items-center rounded-xl text-red-500 hover:bg-red-500/5 transition-all p-3 group ${(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : ''}`}
             >
-              <LogOut size={20} className="shrink-0" />
+              <LogOut size={20} className="shrink-0 group-hover:-translate-x-1 transition-transform" />
               <span className={`
-                transition-all duration-300 overflow-hidden whitespace-nowrap font-medium
+                transition-all duration-300 overflow-hidden whitespace-nowrap font-black uppercase tracking-widest text-[10px]
                 ${(isSidebarCollapsed && !isMobileMenuOpen) ? 'max-w-0 opacity-0 ml-0' : 'max-w-[200px] opacity-100 ml-3'}
               `}>
                 Logout
@@ -326,7 +328,7 @@ const AdminDashboard = () => {
               <input
                 type="text"
                 placeholder="Search..."
-                className="w-full pl-10 pr-4 py-2 bg-background-muted rounded-lg border-transparent focus:bg-white focus:border-primary/20 transition-all outline-none text-sm dark:bg-background-muted/50 dark:focus:bg-background-muted"
+                className="w-full pl-10 pr-4 py-2 bg-background border border-border/40 rounded-xl focus:bg-background-card focus:border-primary/40 transition-all outline-none text-sm placeholder:text-text-muted/40"
               />
             </div>
           </div>
@@ -473,66 +475,66 @@ const AdminDashboard = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div
                       onClick={() => navigateWithFilter('Orders', 'takeaway', 'placed')}
-                      className="bg-background-card p-6 rounded-3xl border border-border-light shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer active:scale-95"
+                      className="bg-background-card p-8 rounded-[2.5rem] border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)] transition-all relative overflow-hidden group cursor-pointer active:scale-[0.98]"
                     >
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-2">
-                          <div className="p-2 bg-orange-500/10 text-orange-500 rounded-lg">
-                            <ShoppingCart size={18} />
+                      <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center space-x-3">
+                          <div className="p-3 bg-orange-500/10 text-orange-500 rounded-2xl group-hover:scale-110 transition-transform">
+                            <ShoppingCart size={20} />
                           </div>
-                          <span className="text-sm font-bold text-text-secondary">Placed Orders</span>
+                          <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Placed Orders</span>
                         </div>
                         <ChevronRight size={16} className="text-text-muted group-hover:translate-x-1 transition-transform" />
                       </div>
                       <div className="flex items-end space-x-4">
-                        <span className="text-4xl font-black text-text-primary">{stats.orderStats.placed}</span>
+                        <span className="text-5xl font-black text-text-primary tracking-tighter">{stats.orderStats.placed}</span>
                       </div>
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-125" />
                     </div>
 
                     <div
                       onClick={() => navigateWithFilter('Orders', 'takeaway', 'processing')}
-                      className="bg-background-card p-6 rounded-3xl border border-border-light shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer active:scale-95"
+                      className="bg-background-card p-8 rounded-[2.5rem] border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)] transition-all relative overflow-hidden group cursor-pointer active:scale-[0.98]"
                     >
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-2">
-                          <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg">
-                            <Clock size={18} />
+                      <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center space-x-3">
+                          <div className="p-3 bg-blue-500/10 text-blue-500 rounded-2xl group-hover:scale-110 transition-transform">
+                            <Clock size={20} />
                           </div>
-                          <span className="text-sm font-bold text-text-secondary">Processing Orders</span>
+                          <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">In Progress</span>
                         </div>
                         <ChevronRight size={16} className="text-text-muted group-hover:translate-x-1 transition-transform" />
                       </div>
                       <div className="flex items-end space-x-4">
-                        <span className="text-4xl font-black text-text-primary">{stats.orderStats.processing}</span>
+                        <span className="text-5xl font-black text-text-primary tracking-tighter">{stats.orderStats.processing}</span>
                       </div>
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-125" />
                     </div>
 
                     <div
                       onClick={() => navigateWithFilter('Orders', 'dine-in')}
-                      className="bg-background-card p-6 rounded-3xl border border-border-light shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer active:scale-95"
+                      className="bg-background-card p-8 rounded-[2.5rem] border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)] transition-all relative overflow-hidden group cursor-pointer active:scale-[0.98]"
                     >
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-2">
-                          <div className="p-2 bg-primary/10 text-primary rounded-lg">
-                            <LayoutDashboard size={18} />
+                      <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center space-x-3">
+                          <div className="p-3 bg-primary/10 text-primary rounded-2xl group-hover:scale-110 transition-transform">
+                            <LayoutDashboard size={20} />
                           </div>
-                          <span className="text-sm font-bold text-text-secondary">Available Tables</span>
+                          <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Dining Status</span>
                         </div>
                         <ChevronRight size={16} className="text-text-muted group-hover:translate-x-1 transition-transform" />
                       </div>
                       <div className="flex items-end space-x-4">
-                        <div className="flex items-baseline space-x-1">
-                          <span className="text-4xl font-black text-text-primary">{stats.tableStats.available}</span>
+                        <div className="flex items-baseline space-x-2">
+                          <span className="text-5xl font-black text-text-primary tracking-tighter">{stats.tableStats.available}</span>
                           <span className="text-xl font-bold text-text-muted">/{stats.tableStats.total}</span>
                         </div>
-                        <div className="flex items-center space-x-1 mb-1.5 text-status-available text-[11px] font-bold">
+                        <div className="flex items-center space-x-1 mb-1.5 text-status-available text-[9px] font-black uppercase">
                           <span>{stats.tableStats.total > 0 ? Math.round(((stats.tableStats.total - stats.tableStats.available) / stats.tableStats.total) * 100) : 0}%</span>
-                          <span className="text-text-muted font-normal uppercase">Occupied</span>
+                          <span className="text-text-muted opacity-40 font-bold">Occupied</span>
                         </div>
                       </div>
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-125" />
                     </div>
                   </div>
 

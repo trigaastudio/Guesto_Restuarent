@@ -84,6 +84,8 @@ const KitchenDashboard = () => {
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
+    const tabName = TABS.find(t => t.type === tab)?.name || 'Kitchen';
+    document.title = `Kitchen | ${tabName}`;
     localStorage.setItem('kitchenActiveTab', tab);
   };
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -137,7 +139,8 @@ const KitchenDashboard = () => {
   useEffect(() => {
     // Initial fetch
     fetchOrders();
-    document.title = "Guesto-Kitchen panel";
+    const tabName = TABS.find(t => t.type === activeTab)?.name || 'Kitchen';
+    document.title = `Kitchen | ${tabName}`;
 
     // Socket Setup
     socketRef.current = io(SOCKET_URL);

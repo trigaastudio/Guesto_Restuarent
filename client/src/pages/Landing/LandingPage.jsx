@@ -1,10 +1,37 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useTheme } from '../../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, UtensilsCrossed, ShieldCheck, Clock } from 'lucide-react';
+import '../Home/HomePage.css'; // Reuse HomePage styles
+import api from '../../api/axiosInstance';
 import Footer from '../../components/Footer/Footer';
+import Navbar from '../../components/Navbar/Navbar';
+import HeroSection from '../../components/Hero/HeroSection';
+import CategorySection from '../../components/Category/CategorySection';
+import MenuSection from '../../components/Menu/MenuSection';
+import MenuModal from '../../components/Menu/MenuModal';
+import { useCart } from '../../context/CartContext';
+
+const heroImages = ['/heroSection/hero1.png', '/heroSection/hero2.png', '/heroSection/hero3.png', '/heroSection/hero4.png'];
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const { theme } = useTheme();
+  const [menus, setMenus] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [trendingItems, setTrendingItems] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState('default');
+  const [dietaryFilter, setDietaryFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [selectedMenu, setSelectedMenu] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const observerTarget = useRef(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -13,111 +40,196 @@ const LandingPage = () => {
     }
   }, [navigate]);
 
+  useEffect(() => {
+    document.title = "GuestO | Premium Dining Experience";
+    fetchTrendingDishes();
+    fetchCategories();
+    fetchMenus(1, true);
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const fetchTrendingDishes = useCallback(async () => {
+    try {
+      const response = await api.get('/api/dashboard/stats');
+      if (response.data && response.data.success) {
+        setTrendingItems(response.data.data.topDishes || []);
+      }
+    } catch (error) {
+      console.error('Error fetching trending dishes:', error);
+    }
+  }, []);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await api.get('/api/categories');
+      setCategories(response.data);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  }, []);
+
+  const fetchMenus = useCallback(async (pageNum = 1, isInitial = false) => {
+    if (isInitial) setLoading(true);
+    else setLoadingMore(true);
+
+    try {
+      const response = await api.get('/api/menus', {
+        params: {
+          page: pageNum,
+          limit: 10,
+          category: selectedCategory !== 'all' ? selectedCategory : undefined,
+          search: debouncedSearchQuery || undefined,
+          foodType: dietaryFilter !== 'all' ? dietaryFilter : undefined,
+          sort: sortBy !== 'default' ? sortBy : undefined
+        }
+      });
+
+      const newMenus = response.data;
+      if (isInitial) {
+        setMenus(newMenus);
+      } else {
+        setMenus(prev => [...prev, ...newMenus]);
+      }
+      setHasMore(newMenus.length === 10);
+      setPage(pageNum);
+    } catch (error) {
+      console.error('Error fetching menus:', error);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [selectedCategory, searchQuery, dietaryFilter, sortBy]);
+
+  useEffect(() => {
+    fetchMenus(1, true);
+  }, [selectedCategory, searchQuery, dietaryFilter, sortBy]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
+          fetchMenus(page + 1);
+        }
+      },
+      { threshold: 1.0 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasMore, loading, loadingMore, page, fetchMenus]);
+
+  const handleCategoryChange = (categoryId) => {
+    setSelectedCategory(categoryId);
+    setPage(1);
+    setHasMore(true);
+  };
+
+  const filteredMenus = useMemo(() => {
+    return menus;
+  }, [menus]);
+
+  // Action for public users: Redirect to login
+  const handlePublicAction = () => {
+    navigate('/login');
+  };
+
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const dropdownRef = useRef(null);
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  const { cartItems } = useCart();
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowUserDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.replace('/login');
+  };
+
   return (
-    <div className="h-[100dvh] w-full bg-[#D10000] flex flex-col relative overflow-hidden font-sans select-none text-white">
-
-      {/* Background Image with Vibrant Red Studio Overlay */}
-      <div className="absolute inset-0 z-0">
-        <img
-          src="/heroSection/hero.png"
-          alt="Guesto Restaurant"
-          className="w-full h-full object-cover object-center lg:object-[center_35%] opacity-60 md:opacity-70 animate-slow-zoom brightness-75 contrast-125 transition-all duration-700"
+    <div className={`min-h-screen bg-background font-sans select-none overflow-x-hidden ${theme}`}>
+      <div className="relative w-full overflow-hidden flex flex-col bg-[#B91C1C]">
+        <div className="absolute inset-0 z-0 bg-[#B91C1C]"></div>
+        <Navbar 
+          user={user}
+          cartItems={cartItems}
+          showUserDropdown={showUserDropdown}
+          setShowUserDropdown={setShowUserDropdown}
+          handleLogout={handleLogout}
+          navigate={navigate}
+          dropdownRef={dropdownRef}
+          hideCart={true} 
         />
-        {/* Studio-style red gradient matching the reference */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#FF0000]/90 via-[#D10000]/80 to-[#800000]/90 z-10 mix-blend-multiply"></div>
-        <div className="absolute inset-0 bg-gradient-to-r from-[#D10000] via-transparent to-transparent z-10"></div>
-
-        {/* Horizon shadow to mimic the studio floor look - balanced for face and bike visibility */}
-        <div className="absolute bottom-0 left-0 w-full h-[25%] bg-gradient-to-t from-black/40 to-transparent z-15"></div>
+        
+        <HeroSection
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          navigate={navigate}
+          heroImages={heroImages}
+          trendingItems={trendingItems}
+        />
       </div>
 
-      {/* Header */}
-      <header className="flex justify-center md:justify-between items-center px-6 md:px-12 py-6 relative z-30">
-        <div className="flex items-center gap-2">
-          <img src="/logo-light.png" alt="Guesto Restaurant" className="h-12 md:h-8 lg:h-8 xl:h-10 object-contain" />
-        </div>
+      <div className="relative z-10 bg-background rounded-t-[3rem] -mt-12 md:-mt-20">
+        <main className="max-w-7xl mx-auto px-6 py-0">
+          <CategorySection
+            categories={categories}
+            selectedCategory={selectedCategory}
+            handleCategoryChange={(id) => {
+              handleCategoryChange(id);
+              const menuElement = document.getElementById('menu');
+              if (menuElement) {
+                menuElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }}
+          />
 
-      </header>
-
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col lg:flex-row items-center justify-center lg:justify-between px-6 md:px-12 pt-10 pb-12 lg:pt-0 lg:pb-0 relative z-20 max-w-6xl mx-auto w-full gap-6 md:gap-16 lg:gap-20">
-
-        {/* Left Side: Content */}
-        <div className="flex-1 text-center lg:text-left space-y-6 md:space-y-10 page-fade-in">
-          <div className="space-y-4 md:space-y-6">
-            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 text-white/90 px-4 py-1.5 rounded-full text-[10px] md:text-xs font-bold tracking-widest mx-auto lg:mx-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
-              Chef's Signature
-            </div>
-
-            <div className="flex flex-col gap-3 pt-2 md:pt-4">
-              <h1 className="text-6xl md:text-5xl lg:text-5xl xl:text-7xl font-black leading-[1.05] tracking-tighter text-white drop-shadow-2xl">
-                Guesto <span className="block opacity-90">Restaurant</span>
-              </h1>
-              <p className="text-white/90 text-lg md:text-base lg:text-base xl:text-xl font-medium max-w-xl mx-auto lg:mx-0 leading-relaxed tracking-widest opacity-80">
-                Savor the authentic flavors of Thrissur. We bring premium, chef-crafted meals directly to your dining table.
-              </p>
-            </div>
+          <div className="pb-32">
+            <MenuSection
+              loading={loading}
+              filteredMenus={filteredMenus}
+              sortBy={sortBy}
+              setSortBy={setSortBy}
+              dietaryFilter={dietaryFilter}
+              setDietaryFilter={setDietaryFilter}
+              setSearchQuery={setSearchQuery}
+              observerTarget={observerTarget}
+              hasMore={hasMore}
+              loadingMore={loadingMore}
+              onAddClick={(menu) => {
+                setSelectedMenu(menu);
+                setIsModalOpen(true);
+              }}
+            />
           </div>
+        </main>
+      </div>
 
-          <button
-            onClick={() => navigate('/login')}
-            className="group inline-flex items-center justify-center gap-2.5 bg-[#DA9133] text-white py-3 md:py-2.5 px-8 md:px-7 rounded-full font-bold text-base md:text-sm shadow-xl shadow-black/20 hover:bg-[#C27D29] hover:-translate-y-0.5 transition-all duration-300 active:scale-95 tracking-widest"
-          >
-            Let's Start
-            <ArrowRight className="group-hover:translate-x-1.5 transition-transform duration-300" size={20} />
-          </button>
-        </div>
+      <Footer />
 
-        {/* Right Side: Glassmorphism Card */}
-        <div className="flex flex-col gap-4 w-full max-w-sm sm:max-w-md page-fade-in" style={{ animationDelay: '0.3s' }}>
-          <div className="backdrop-blur-3xl bg-white/10 border border-white/20 p-6 md:p-8 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.4)] space-y-4 md:space-y-10 relative overflow-hidden group">
-            {/* Decorative Glow */}
-            <div className="absolute -top-24 -right-24 w-48 h-48 bg-white/10 rounded-full blur-[70px]"></div>
-
-            <div className="flex items-center gap-4 md:gap-6 relative z-10">
-              <div className="p-4 md:p-5 bg-white/20 rounded-2xl text-white shrink-0 shadow-inner">
-                <Clock size={28} className="md:w-8 md:h-8" />
-              </div>
-              <div className="space-y-0.5">
-                <h3 className="font-bold text-lg md:text-2xl text-white tracking-tight">Hot & Fresh</h3>
-                <p className="text-white/70 font-black text-sm md:text-lg tracking-wider">Served in 18-24 mins</p>
-              </div>
-            </div>
-
-            <div className="w-full h-px bg-white/20 relative z-10"></div>
-
-            <div className="flex items-center gap-4 md:gap-6 relative z-10">
-              <div className="p-4 md:p-5 bg-white/10 rounded-2xl text-white shrink-0 border border-white/20 shadow-lg">
-                <UtensilsCrossed size={28} className="md:w-8 md:h-8" />
-              </div>
-              <div className="space-y-0.5">
-                <h3 className="font-bold text-lg md:text-2xl text-white tracking-tight">Signature Dishes</h3>
-                <p className="text-white/60 text-xs md:text-sm font-semibold tracking-widest">By expert chefs</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
-
-      {/* Custom Styles */}
-      <style dangerouslySetInnerHTML={{
-        __html: `
-        @keyframes slow-zoom {
-          0% { transform: scale(1); }
-          100% { transform: scale(1.05); }
-        }
-        .animate-slow-zoom {
-          animation: slow-zoom 20s ease-out infinite alternate;
-        }
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .page-fade-in {
-          animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-        }
-      `}} />
+      <MenuModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        menu={selectedMenu}
+        onAction={handlePublicAction}
+      />
     </div>
   );
 };

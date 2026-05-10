@@ -10,9 +10,18 @@ const BottomNavbar = () => {
   const [showProfileOptions, setShowProfileOptions] = React.useState(false);
   const [activeSection, setActiveSection] = React.useState('hero'); // 'hero' or 'menu'
 
+  const [isVisible, setIsVisible] = React.useState(false);
+
   React.useEffect(() => {
     const handleScroll = () => {
-      if (location.pathname === '/home') {
+      // Auto-hide at top to prevent covering hero images
+      if (window.scrollY > 100) {
+        setIsVisible(true);
+      } else {
+        setIsVisible(false);
+      }
+
+      if (['/home', '/'].includes(location.pathname)) {
         const menuSection = document.getElementById('menu');
         if (menuSection) {
           const menuTop = menuSection.offsetTop - 200;
@@ -37,7 +46,8 @@ const BottomNavbar = () => {
   ];
 
   const isActive = (path, item) => {
-    if (location.pathname === '/home') {
+    const isHomePage = ['/home', '/'].includes(location.pathname);
+    if (isHomePage) {
       if (item.isHome) return activeSection === 'hero' && !showProfileOptions;
       if (item.isMenu) return activeSection === 'menu' && !showProfileOptions;
     }
@@ -48,7 +58,7 @@ const BottomNavbar = () => {
   };
 
   // Paths where the bottom navbar should NOT be shown
-  const excludedPaths = ['/', '/login', '/register', '/admin/login', '/admin/dashboard'];
+  const excludedPaths = ['/login', '/register', '/admin/login', '/admin/dashboard'];
   if (excludedPaths.includes(location.pathname) || location.pathname.startsWith('/admin')) {
     return null;
   }
@@ -56,7 +66,7 @@ const BottomNavbar = () => {
   const handleItemClick = (item) => {
     setShowProfileOptions(false);
     if (item.isMenu) {
-      if (location.pathname === '/home') {
+      if (['/home', '/'].includes(location.pathname)) {
         const menuSection = document.getElementById('menu');
         if (menuSection) {
           menuSection.scrollIntoView({ behavior: 'smooth' });
@@ -69,7 +79,7 @@ const BottomNavbar = () => {
         }, 100);
       }
     } else if (item.isHome) {
-      if (location.pathname === '/home') {
+      if (['/home', '/'].includes(location.pathname)) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         navigate('/home');
@@ -84,60 +94,80 @@ const BottomNavbar = () => {
   return (
     <>
       {/* Radial Profile Menu */}
-      <div className={`fixed bottom-[90px] right-8 z-[1001] transition-all duration-500 ${showProfileOptions ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}>
+      <div className={`fixed bottom-[110px] right-6 z-[1001] transition-all duration-700 cubic-bezier(0.4, 0, 0.2, 1) ${showProfileOptions ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}>
         {/* Address Option - Top */}
         <button
           onClick={() => { navigate('/profile'); setShowProfileOptions(false); }}
-          className={`absolute bottom-0 right-0 w-12 h-12 bg-blue-500 text-white rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 transform ${showProfileOptions ? '-translate-y-32 scale-100' : 'translate-y-0 scale-0'}`}
+          className={`absolute bottom-0 right-0 w-14 h-14 bg-blue-500 text-white rounded-2xl flex items-center justify-center shadow-[0_20px_50px_rgba(59,130,246,0.3)] transition-all duration-500 transform hover:scale-110 active:scale-90 ${showProfileOptions ? '-translate-y-40 scale-100 rotate-0' : 'translate-y-0 scale-0 rotate-45'}`}
         >
-          <MapPin size={20} strokeWidth={2.5} />
-          <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-md text-blue-500 text-[8px] font-black px-2.5 py-1.5 rounded-xl shadow-lg border border-blue-100 uppercase tracking-widest whitespace-nowrap">Address</div>
+          <MapPin size={24} strokeWidth={2.5} />
+          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-background-card/90 backdrop-blur-xl text-blue-500 text-[9px] font-black px-3 py-2 rounded-xl shadow-xl border border-blue-500/20 uppercase tracking-widest whitespace-nowrap">Address</div>
         </button>
 
         {/* Orders Option - Diagonal */}
         <button
           onClick={() => { navigate('/my-orders'); setShowProfileOptions(false); }}
-          className={`absolute bottom-0 right-0 w-12 h-12 bg-orange-500 text-white rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 delay-75 transform ${showProfileOptions ? '-translate-y-24 -translate-x-24 scale-100' : 'translate-y-0 scale-0'}`}
+          className={`absolute bottom-0 right-0 w-14 h-14 bg-orange-500 text-white rounded-2xl flex items-center justify-center shadow-[0_20px_50px_rgba(249,115,22,0.3)] transition-all duration-500 delay-75 transform hover:scale-110 active:scale-90 ${showProfileOptions ? '-translate-y-28 -translate-x-28 scale-100 rotate-0' : 'translate-y-0 scale-0 rotate-45'}`}
         >
-          <Package size={20} strokeWidth={2.5} />
-          <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-md text-orange-500 text-[8px] font-black px-2.5 py-1.5 rounded-xl shadow-lg border border-orange-100 uppercase tracking-widest whitespace-nowrap">Orders</div>
+          <Package size={24} strokeWidth={2.5} />
+          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-background-card/90 backdrop-blur-xl text-orange-500 text-[9px] font-black px-3 py-2 rounded-xl shadow-xl border border-orange-500/20 uppercase tracking-widest whitespace-nowrap">Orders</div>
         </button>
 
         {/* Wallet Option - Left */}
         <button
           onClick={() => { navigate('/returns-refunds'); setShowProfileOptions(false); }}
-          className={`absolute bottom-0 right-0 w-12 h-12 bg-green-500 text-white rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 delay-150 transform ${showProfileOptions ? '-translate-x-32 scale-100' : 'translate-x-0 scale-0'}`}
+          className={`absolute bottom-0 right-0 w-14 h-14 bg-green-500 text-white rounded-2xl flex items-center justify-center shadow-[0_20px_50px_rgba(34,197,94,0.3)] transition-all duration-500 delay-150 transform hover:scale-110 active:scale-90 ${showProfileOptions ? '-translate-x-40 scale-100 rotate-0' : 'translate-x-0 scale-0 rotate-45'}`}
         >
-          <Wallet size={20} strokeWidth={2.5} />
-          <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-md text-green-500 text-[8px] font-black px-2.5 py-1.5 rounded-xl shadow-lg border border-green-100 uppercase tracking-widest whitespace-nowrap">Wallet</div>
+          <Wallet size={24} strokeWidth={2.5} />
+          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-background-card/90 backdrop-blur-xl text-green-500 text-[9px] font-black px-3 py-2 rounded-xl shadow-xl border border-green-500/20 uppercase tracking-widest whitespace-nowrap">Wallet</div>
         </button>
       </div>
 
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[1000] bg-white/90 dark:bg-black/95 backdrop-blur-2xl border-t border-gray-100 dark:border-white/5 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] px-6 py-3 pb-8 flex items-center justify-around transition-all duration-300">
-        {navItems.map((item) => {
-          const ActiveIcon = item.isProfile && showProfileOptions ? X : item.icon;
-          const active = isActive(item.path, item) && !showProfileOptions;
+      {/* Main Floating Bottom Nav */}
+      <div className={`lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[1000] w-[92%] max-w-md transition-all duration-500 ${isVisible ? 'translate-y-0 opacity-100 visible' : 'translate-y-24 opacity-0 invisible pointer-events-none'}`}>
+        <div className="relative bg-background-card/80 backdrop-blur-3xl border border-white/20 dark:border-white/10 shadow-[0_25px_80px_rgba(0,0,0,0.25)] rounded-[2.5rem] px-4 py-3 flex items-center justify-between transition-all duration-500">
+          
+          {/* Active Indicator Backdrop */}
+          <div 
+            className="absolute h-12 w-12 bg-white dark:bg-white/90 rounded-full transition-all duration-500 ease-out shadow-[0_10px_30px_rgba(0,0,0,0.1)]"
+            style={{ 
+              left: `calc(${(navItems.findIndex(i => isActive(i.path, i) && !showProfileOptions) * 25) + 12.5}% - 24px)`,
+              opacity: navItems.findIndex(i => isActive(i.path, i) && !showProfileOptions) === -1 ? 0 : 1
+            }}
+          ></div>
 
-          return (
-            <button
-              key={item.name}
-              onClick={() => handleItemClick(item)}
-              className="flex-1 flex flex-col items-center gap-1 relative group active:scale-95 transition-transform"
-            >
-              <div className={`relative p-2.5 rounded-2xl transition-all duration-300 ${active || (item.isProfile && showProfileOptions) ? 'bg-[#D10000] text-white shadow-lg shadow-[#D10000]/30 scale-110' : 'text-gray-400 dark:text-gray-500 hover:text-[#D10000]'}`}>
-                <ActiveIcon size={22} strokeWidth={active || (item.isProfile && showProfileOptions) ? 3 : 2} />
-                {item.showBadge && cartItems.length > 0 && (
-                  <span className={`absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center rounded-full text-[9px] font-black border-2 ${active ? 'bg-white text-[#D10000] border-[#D10000]' : 'bg-[#D10000] text-white border-white'}`}>
-                    {cartItems.length}
-                  </span>
-                )}
-              </div>
-              <span className={`text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${active || (item.isProfile && showProfileOptions) ? 'text-[#D10000] opacity-100 mt-1' : 'text-gray-400 dark:text-gray-500 opacity-60'}`}>
-                {item.name}
-              </span>
-            </button>
-          );
-        })}
+          {navItems.map((item, idx) => {
+            const ActiveIcon = item.isProfile && showProfileOptions ? X : item.icon;
+            const active = isActive(item.path, item) && !showProfileOptions;
+            const isAnyActive = navItems.findIndex(i => isActive(i.path, i) && !showProfileOptions) !== -1;
+
+            return (
+              <button
+                key={item.name}
+                onClick={() => handleItemClick(item)}
+                className="relative flex-1 flex flex-col items-center justify-center h-14 z-20 cursor-pointer outline-none"
+              >
+                <div className={`relative transition-all duration-500 flex flex-col items-center ${active ? '-translate-y-1' : ''}`}>
+                  <div className={`p-2 rounded-full transition-all duration-500 ${active ? 'text-primary' : 'text-text-muted/50'}`}>
+                    <ActiveIcon size={22} strokeWidth={active ? 3 : 2} className="transition-transform duration-500" />
+                  </div>
+                  
+                  {/* Badge for Cart */}
+                  {item.showBadge && cartItems.length > 0 && (
+                    <span className={`absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center rounded-full text-[9px] font-black border-2 transition-colors duration-500 ${active ? 'bg-white text-primary border-primary' : 'bg-primary text-white border-white'}`}>
+                      {cartItems.length}
+                    </span>
+                  )}
+                </div>
+
+                {/* Label (Optional or small) */}
+                <span className={`absolute -bottom-1 text-[7px] font-black uppercase tracking-[0.2em] transition-all duration-500 ${active ? 'opacity-100 translate-y-0 text-primary' : 'opacity-0 translate-y-2 text-text-muted'}`}>
+                  {item.name}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </>
   );

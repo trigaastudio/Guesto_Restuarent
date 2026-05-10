@@ -180,22 +180,23 @@ const ProfilePage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF9F6] font-sans selection:bg-primary/10 overflow-x-hidden">
-      <header className="relative bg-[#D10000] sticky top-0 z-40 transition-all duration-500 shadow-xl">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3 blur-[120px] pointer-events-none"></div>
+    <div className="min-h-screen bg-background font-sans selection:bg-primary/10 overflow-x-hidden">
+      <Navbar
+        user={user}
+        cartItems={cartItems}
+        showUserDropdown={showUserDropdown}
+        setShowUserDropdown={setShowUserDropdown}
+        handleLogout={handleLogout}
+        navigate={navigate}
+        dropdownRef={dropdownRef}
+      />
 
-        <Navbar
-          user={user}
-          cartItems={cartItems}
-          showUserDropdown={showUserDropdown}
-          setShowUserDropdown={setShowUserDropdown}
-          handleLogout={handleLogout}
-          navigate={navigate}
-          dropdownRef={dropdownRef}
-        />
-      </header>
-
-      <main className="max-w-7xl mx-auto px-6 py-4 md:py-6 relative z-10 pb-20">
+      <div className="relative">
+        <div className="absolute top-0 left-0 w-full h-[120px] bg-primary z-0">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
+        </div>
+        
+        <main className="max-w-7xl mx-auto px-6 pt-24 md:pt-32 relative z-10 pb-20">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
 
           {/* Left Column: Side Navbar */}
@@ -213,7 +214,7 @@ const ProfilePage = () => {
 
           {/* Right Column: Address Management */}
           <div className="lg:col-span-9 xl:col-span-9 space-y-6 relative z-10">
-            <div className="bg-white rounded-[3.5rem] p-6 md:p-10 border border-gray-100 shadow-[0_30px_100px_rgba(0,0,0,0.04)] min-h-[500px] flex flex-col relative overflow-hidden">
+            <div className="bg-background-card rounded-[3.5rem] p-6 md:p-10 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.04)] min-h-[500px] flex flex-col relative overflow-hidden">
               <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
 
               <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-10 md:mb-12">
@@ -228,7 +229,7 @@ const ProfilePage = () => {
 
                 <button
                   onClick={() => setIsAddressModalOpen(true)}
-                  className="group relative w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center hover:bg-primary-dark transition-all duration-500 shadow-[0_8px_25px_rgba(201,106,10,0.15)] hover:-translate-y-0.5 active:scale-95"
+                  className="group relative w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center hover:bg-primary-dark transition-all duration-500 shadow-[0_8px_25px_rgba(185,28,28,0.15)] hover:-translate-y-0.5 active:scale-95"
                 >
                   <Plus size={18} strokeWidth={3} className="group-hover:rotate-90 transition-transform duration-500" />
                 </button>
@@ -237,12 +238,12 @@ const ProfilePage = () => {
               {loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {[1, 2].map(n => (
-                    <div key={n} className="h-56 bg-gray-50/50 rounded-[2.5rem] animate-pulse border border-gray-100"></div>
+                    <div key={n} className="h-56 bg-background-muted/50 rounded-[2.5rem] animate-pulse border border-border/40"></div>
                   ))}
                 </div>
               ) : addresses.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-center py-24 px-10 border border-dashed border-gray-200 rounded-[3rem] bg-gray-50/20">
-                  <div className="w-20 h-20 bg-white rounded-[2rem] flex items-center justify-center text-gray-200 mb-6 shadow-sm border border-gray-50">
+                <div className="flex-1 flex flex-col items-center justify-center text-center py-24 px-10 border border-dashed border-border/40 rounded-[3rem] bg-background-muted/20">
+                  <div className="w-20 h-20 bg-background-card rounded-[2rem] flex items-center justify-center text-text-muted/30 mb-6 shadow-sm border border-border/40">
                     <MapPin size={32} strokeWidth={1.5} />
                   </div>
                   <h4 className="text-lg font-black text-text-primary mb-2 tracking-tight">No Saved Addresses</h4>
@@ -259,33 +260,33 @@ const ProfilePage = () => {
                   {addresses.map((address, idx) => (
                     <div
                       key={address._id}
-                      className="group/card bg-[#FAF9F6] hover:bg-white p-3 rounded-2xl border border-gray-100 hover:border-primary/30 hover:shadow-[0_15px_45px_rgba(0,0,0,0.04)] transition-all duration-500 relative flex flex-col h-full animate-in fade-in slide-in-from-bottom-5 duration-700"
+                      className="group/card bg-background hover:bg-background-card p-3 rounded-2xl border border-border/40 hover:border-primary/30 hover:shadow-[0_15px_45px_rgba(0,0,0,0.04)] transition-all duration-500 relative flex flex-col h-full animate-in fade-in slide-in-from-bottom-5 duration-700"
                       style={{ animationDelay: `${idx * 100}ms` }}
                     >
                       <div className="flex justify-between items-start mb-3">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm transition-transform group-hover/card:scale-110 duration-500 ${address.type === 'home' ? 'bg-blue-50 text-blue-500 border border-blue-100' : 'bg-orange-50 text-orange-500 border border-orange-100'}`}>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm transition-transform group-hover/card:scale-110 duration-500 ${address.type === 'home' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' : 'bg-orange-500/10 text-orange-500 border border-orange-500/20'}`}>
                           {address.type === 'home' ? <Home size={14} strokeWidth={2.5} /> : <Briefcase size={14} strokeWidth={2.5} />}
                         </div>
                         {address.isDefault && (
-                          <span className="text-[7px] font-black tracking-widest text-green-600 bg-green-50 px-2 py-1 rounded-lg border border-green-100 shadow-sm">Primary</span>
+                          <span className="text-[7px] font-black tracking-widest text-green-600 bg-green-500/10 px-2 py-1 rounded-lg border border-green-500/20 shadow-sm">Primary</span>
                         )}
                       </div>
 
                       <div className="flex-1 space-y-0.5 mb-2">
                         <div className="flex items-center gap-1.5 mb-0.5">
                           <h4 className="text-[6px] font-black text-primary tracking-widest uppercase">{address.type}</h4>
-                          <span className="w-1 h-1 rounded-full bg-gray-200"></span>
+                          <span className="w-1 h-1 rounded-full bg-border/40"></span>
                           <span className="text-[6px] font-black text-text-muted tracking-widest">{address.phone || user.phone}</span>
                         </div>
                         <h5 className="text-xs font-black text-text-primary tracking-tight group-hover/card:text-primary transition-colors duration-500">{address.name || user.name}</h5>
                         <p className="text-[9px] font-bold text-text-muted opacity-70 leading-relaxed line-clamp-1">{address.address}</p>
                       </div>
 
-                      <div className="pt-3 border-t border-gray-100/50 flex items-center gap-1.5">
+                      <div className="pt-3 border-t border-border/40 flex items-center gap-1.5">
                         {!address.isDefault && (
                           <button
                             onClick={() => handleSetDefaultAddress(address._id)}
-                            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-green-50 hover:bg-green-100 text-green-600 text-[6px] font-black tracking-widest transition-all group/btn"
+                            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-600 text-[6px] font-black tracking-widest transition-all group/btn"
                             title="Set as Primary"
                           >
                             <ShieldCheck size={10} className="group-hover/btn:scale-110 transition-transform" />
@@ -297,7 +298,7 @@ const ProfilePage = () => {
                             setEditingAddress(address);
                             setIsAddressModalOpen(true);
                           }}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 text-[6px] font-black tracking-widest transition-all group/btn"
+                          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 text-[6px] font-black tracking-widest transition-all group/btn"
                           title="Edit Address"
                         >
                           <PenLine size={10} className="group-hover/btn:scale-110 transition-transform" />
@@ -305,7 +306,7 @@ const ProfilePage = () => {
                         </button>
                         <button
                           onClick={() => handleDeleteAddress(address._id)}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 text-[6px] font-black tracking-widest transition-all group/btn"
+                          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-600 text-[6px] font-black tracking-widest transition-all group/btn"
                           title="Delete Address"
                         >
                           <Trash size={10} className="group-hover/btn:scale-110 transition-transform" />
@@ -321,6 +322,7 @@ const ProfilePage = () => {
 
         </div>
       </main>
+    </div>
 
       <AddressModal
         isOpen={isAddressModalOpen}

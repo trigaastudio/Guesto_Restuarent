@@ -67,6 +67,7 @@ const settingsSchema = new mongoose.Schema({
   operationalSettings: {
     taxPercentage: { type: Number, default: 0 },
     serviceCharge: { type: Number, default: 0 },
+    platformFee: { type: Number, default: 10 },
     deliveryFee: { type: Number, default: 0 },
     minOrderAmount: { type: Number, default: 0 },
     preparationTime: { type: Number, default: 30 },

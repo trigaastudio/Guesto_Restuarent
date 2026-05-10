@@ -35,7 +35,8 @@ const menuSchema = new mongoose.Schema({
     {
       size: {
         type: String,
-        required: true
+        required: true,
+        trim: true
       },
       price: {
         type: Number,
@@ -44,8 +45,7 @@ const menuSchema = new mongoose.Schema({
       },
       stockValue: {
         type: Number,
-        default: 1,
-        min: 0.1
+        default: 1
       },
       includedItems: [
         {
@@ -53,30 +53,13 @@ const menuSchema = new mongoose.Schema({
             type: mongoose.Schema.Types.ObjectId,
             ref: "Menu"
           },
+          name: String, // Optional: store name for easy display if needed
           quantity: {
             type: Number,
             default: 1
           }
         }
       ]
-    }
-  ],
-
-  variants: [
-    {
-      size: {
-        type: String,
-        trim: true
-      },
-      price: {
-        type: Number,
-        min: 0
-      },
-      stockValue: {
-        type: Number,
-        default: 1
-      },
-      includedItems: [String]
     }
   ],
 

@@ -1,4 +1,4 @@
-import express from 'express';
+import express from 'express'; // Reloaded to sync upload fixes
 import dotenv from 'dotenv';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -14,6 +14,7 @@ import paymentRoutes from './routes/paymentRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
+import staffRoutes from './routes/staffRoutes.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import http from 'http';
@@ -78,6 +79,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/staff', staffRoutes);
 
 
 app.get('/health', (req, res) => {

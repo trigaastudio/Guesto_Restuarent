@@ -6,22 +6,43 @@ class MenuRepository {
   }
 
   async getAll(filter = {}, skip = 0, limit = 0) {
-    let query = Menu.find({ isBlocked: false, ...filter }).populate('category');
+    let query = Menu.find({ isBlocked: false, ...filter })
+      .populate('category')
+      .populate({
+        path: 'variants.includedItems.menuItem',
+        select: 'name'
+      });
     if (skip > 0) query = query.skip(skip);
     if (limit > 0) query = query.limit(limit);
     return await query;
   }
 
   async findAll() {
-    return await Menu.find().populate("category").sort({ createdAt: -1 });
+    return await Menu.find()
+      .populate("category")
+      .populate({
+        path: 'variants.includedItems.menuItem',
+        select: 'name'
+      })
+      .sort({ createdAt: -1 });
   }
 
   async findById(id) {
-    return await Menu.findById(id).populate('category');
+    return await Menu.findById(id)
+      .populate('category')
+      .populate({
+        path: 'variants.includedItems.menuItem',
+        select: 'name'
+      });
   }
 
   async getByCategory(categoryId) {
-    return await Menu.find({ category: categoryId, isBlocked: false }).populate('category');
+    return await Menu.find({ category: categoryId, isBlocked: false })
+      .populate('category')
+      .populate({
+        path: 'variants.includedItems.menuItem',
+        select: 'name'
+      });
   }
 
   async update(id, data) {

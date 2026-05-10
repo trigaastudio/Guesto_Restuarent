@@ -1,6 +1,38 @@
 import Cart from '../models/cartSchema.js';
 
 class CartController {
+  constructor() {
+    this.addToCart = this.addToCart.bind(this);
+    this.getCart = this.getCart.bind(this);
+    this.updateQuantity = this.updateQuantity.bind(this);
+    this.removeFromCart = this.removeFromCart.bind(this);
+    this.clearCart = this.clearCart.bind(this);
+  }
+
+  _transformCartItems(cart) {
+    if (!cart || !cart.items) return [];
+    
+    return cart.items
+      .filter(item => item.menuItem) // Filter out items where the menu item might have been deleted
+      .map(item => {
+        let menuData = {};
+        
+        // Handle both populated and non-populated menuItem
+        if (item.menuItem.toObject) {
+          menuData = item.menuItem.toObject();
+        } else if (typeof item.menuItem === 'object') {
+          menuData = item.menuItem;
+        }
+
+        return {
+          ...menuData,
+          quantity: item.quantity,
+          selectedSize: item.size,
+          cartItemId: item._id
+        };
+      });
+  }
+
   // @desc    Add item to cart or update quantity in array
   // @route   POST /api/cart
   // @access  Private
@@ -12,71 +44,66 @@ class CartController {
       let cart = await Cart.findOne({ user: userId });
 
       if (!cart) {
-        // Create new cart for user
         cart = await Cart.create({
           user: userId,
           items: [{ menuItem: menuItemId, quantity: quantity || 1, size }]
         });
       } else {
-        // Check if item already exists in items array with SAME size
         const itemIndex = cart.items.findIndex(item => 
           item.menuItem.toString() === menuItemId && item.size === size
         );
 
         if (itemIndex > -1) {
-          // Update existing item quantity
           cart.items[itemIndex].quantity += (quantity || 1);
         } else {
-          // Add new item to array
           cart.items.push({ menuItem: menuItemId, quantity: quantity || 1, size });
         }
         await cart.save();
       }
 
-      await cart.populate('items.menuItem');
+      await cart.populate({
+        path: 'items.menuItem',
+        populate: {
+          path: 'variants.includedItems.menuItem',
+          model: 'Menu'
+        }
+      });
 
       res.status(200).json({
         success: true,
         message: 'Cart updated',
-        data: cart
+        data: this._transformCartItems(cart)
       });
     } catch (error) {
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
+      res.status(400).json({ success: false, message: error.message });
     }
   }
 
-  // @desc    Get user's cart (single document)
+  // @desc    Get user's cart
   // @route   GET /api/cart
   // @access  Private
   async getCart(req, res) {
     try {
       const userId = req.user._id;
-      const cart = await Cart.findOne({ user: userId }).populate('items.menuItem');
-
-      const transformedItems = cart ? cart.items.map(item => ({
-        ...item.menuItem.toObject(),
-        quantity: item.quantity,
-        selectedSize: item.size,
-        cartItemId: item._id
-      })) : [];
+      const cart = await Cart.findOne({ user: userId }).populate({
+        path: 'items.menuItem',
+        populate: {
+          path: 'variants.includedItems.menuItem',
+          model: 'Menu'
+        }
+      });
 
       res.status(200).json({
         success: true,
-        data: transformedItems
+        data: this._transformCartItems(cart)
       });
     } catch (error) {
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
+      res.status(400).json({ success: false, message: error.message });
     }
   }
 
-  // @desc    Update quantity of an item in the items array
-  // @route   PUT /api/cart/:menuItemId
+  // @desc    Update quantity
+  // @route   PUT /api/cart/:id
   // @access  Private
   async updateQuantity(req, res) {
     try {
@@ -100,18 +127,21 @@ class CartController {
           cart.items[itemIndex].quantity = quantity;
         }
         await cart.save();
-        await cart.populate('items.menuItem');
+        await cart.populate({
+          path: 'items.menuItem',
+          populate: {
+            path: 'variants.includedItems.menuItem',
+            model: 'Menu'
+          }
+        });
       }
 
       res.status(200).json({
         success: true,
-        data: cart.items
+        data: this._transformCartItems(cart)
       });
     } catch (error) {
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
+      res.status(400).json({ success: false, message: error.message });
     }
   }
 

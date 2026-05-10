@@ -160,9 +160,9 @@ const ChangePasswordModal = ({ isOpen, onClose, userEmail }) => {
   return (
     <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 sm:p-6">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose}></div>
-      <div className="bg-[#FAF9F6] w-full max-w-md rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden animate-in fade-in zoom-in duration-300">
+      <div className="bg-background-card w-full max-w-md rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden animate-in fade-in zoom-in duration-300">
         {/* Header */}
-        <div className="p-6 bg-[#D10000] text-white flex justify-between items-center relative overflow-hidden">
+        <div className="p-6 bg-primary text-white flex justify-between items-center relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl"></div>
           <div className="relative z-10">
             <h3 className="text-xl font-black tracking-tight">Change Password</h3>
@@ -187,11 +187,11 @@ const ChangePasswordModal = ({ isOpen, onClose, userEmail }) => {
           <div className="flex items-center justify-between mb-8 px-4">
             {[1, 2, 3].map((s) => (
               <div key={s} className="flex items-center flex-1 last:flex-none">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all duration-500 ${step >= s ? 'bg-[#DA9133] text-white shadow-lg' : 'bg-gray-100 text-gray-400'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all duration-500 ${step >= s ? 'bg-primary-light text-white shadow-lg' : 'bg-background-muted text-text-muted'}`}>
                   {step > s || step === 4 ? <CheckCircle2 size={16} /> : s}
                 </div>
                 {s < 3 && (
-                  <div className={`h-0.5 flex-1 mx-2 rounded-full transition-all duration-500 ${step > s || step === 4 ? 'bg-[#DA9133]' : 'bg-gray-100'}`}></div>
+                  <div className={`h-0.5 flex-1 mx-2 rounded-full transition-all duration-500 ${step > s || step === 4 ? 'bg-primary-light' : 'bg-background-muted'}`}></div>
                 )}
               </div>
             ))}
@@ -202,13 +202,13 @@ const ChangePasswordModal = ({ isOpen, onClose, userEmail }) => {
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">Email Address</label>
                 <div className="relative group">
-                  <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#DA9133] transition-colors" size={18} />
+                  <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary-light transition-colors" size={18} />
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-14 pr-5 py-4 bg-white border border-gray-100 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#DA9133]/10 focus:border-[#DA9133]/20 transition-all shadow-sm"
+                    className="w-full pl-14 pr-5 py-4 bg-background border border-border/40 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary-light/10 focus:border-primary-light/20 transition-all shadow-sm text-text-primary"
                     placeholder="Enter your email"
                   />
                 </div>
@@ -217,7 +217,7 @@ const ChangePasswordModal = ({ isOpen, onClose, userEmail }) => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#DA9133] hover:bg-[#C27D29] text-white font-black py-4 rounded-2xl transition-all shadow-xl shadow-[#DA9133]/20 active:scale-[0.98] uppercase tracking-widest text-xs flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full bg-primary-light hover:bg-primary-dark text-white font-black py-4 rounded-2xl transition-all shadow-xl shadow-primary-light/20 active:scale-[0.98] uppercase tracking-widest text-xs flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {loading ? 'Sending OTP...' : 'Send Verification Code'}
               </button>
@@ -238,19 +238,19 @@ const ChangePasswordModal = ({ isOpen, onClose, userEmail }) => {
                       value={digit}
                       onChange={(e) => handleOtpChange(e.target.value, index)}
                       onKeyDown={(e) => handleOtpKeyDown(e, index)}
-                      className="w-10 h-12 sm:w-12 sm:h-14 bg-white border border-gray-100 rounded-xl sm:rounded-2xl text-xl sm:text-2xl font-black text-center focus:outline-none focus:ring-2 focus:ring-[#DA9133]/10 focus:border-[#DA9133]/20 transition-all shadow-sm"
+                      className="w-10 h-12 sm:w-12 sm:h-14 bg-background border border-border/40 rounded-xl sm:rounded-2xl text-xl sm:text-2xl font-black text-center focus:outline-none focus:ring-2 focus:ring-primary-light/10 focus:border-primary-light/20 transition-all shadow-sm text-text-primary"
                     />
                   ))}
                 </div>
                 <div className="flex justify-between items-center px-1 pt-2">
                   <p className="text-[9px] font-bold text-text-muted opacity-60 uppercase tracking-widest">Check your email</p>
-                  <button type="button" onClick={handleSendOTP} className="text-[9px] font-black text-[#DA9133] uppercase tracking-widest hover:underline">Resend Code</button>
+                  <button type="button" onClick={handleSendOTP} className="text-[9px] font-black text-primary-light uppercase tracking-widest hover:underline">Resend Code</button>
                 </div>
               </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#DA9133] hover:bg-[#C27D29] text-white font-black py-4 rounded-2xl transition-all shadow-xl shadow-[#DA9133]/20 active:scale-[0.98] uppercase tracking-widest text-xs flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full bg-primary-light hover:bg-primary-dark text-white font-black py-4 rounded-2xl transition-all shadow-xl shadow-primary-light/20 active:scale-[0.98] uppercase tracking-widest text-xs flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {loading ? 'Verifying...' : 'Verify & Continue'}
               </button>
@@ -263,16 +263,16 @@ const ChangePasswordModal = ({ isOpen, onClose, userEmail }) => {
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">New Password</label>
                   <div className="relative group">
-                    <ShieldCheck className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#DA9133] transition-colors" size={18} />
+                    <ShieldCheck className="absolute left-5 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary-light transition-colors" size={18} />
                     <input
                       type={showPasswords.new ? 'text' : 'password'}
                       required
                       value={formData.newPassword}
                       onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
-                      className="w-full pl-14 pr-12 py-4 bg-white border border-gray-100 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#DA9133]/10 focus:border-[#DA9133]/20 transition-all shadow-sm"
+                      className="w-full pl-14 pr-12 py-4 bg-background border border-border/40 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary-light/10 focus:border-primary-light/20 transition-all shadow-sm text-text-primary"
                       placeholder="••••••••"
                     />
-                    <button type="button" onClick={() => togglePassword('new')} className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-text-primary transition-colors">
+                    <button type="button" onClick={() => togglePassword('new')} className="absolute right-5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors">
                       {showPasswords.new ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
@@ -281,16 +281,16 @@ const ChangePasswordModal = ({ isOpen, onClose, userEmail }) => {
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">Confirm New Password</label>
                   <div className="relative group">
-                    <ShieldCheck className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#DA9133] transition-colors" size={18} />
+                    <ShieldCheck className="absolute left-5 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary-light transition-colors" size={18} />
                     <input
                       type={showPasswords.confirm ? 'text' : 'password'}
                       required
                       value={formData.confirmPassword}
                       onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                      className="w-full pl-14 pr-12 py-4 bg-white border border-gray-100 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#DA9133]/10 focus:border-[#DA9133]/20 transition-all shadow-sm"
+                      className="w-full pl-14 pr-12 py-4 bg-background border border-border/40 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary-light/10 focus:border-primary-light/20 transition-all shadow-sm text-text-primary"
                       placeholder="••••••••"
                     />
-                    <button type="button" onClick={() => togglePassword('confirm')} className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-text-primary transition-colors">
+                    <button type="button" onClick={() => togglePassword('confirm')} className="absolute right-5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors">
                       {showPasswords.confirm ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
@@ -299,7 +299,7 @@ const ChangePasswordModal = ({ isOpen, onClose, userEmail }) => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#DA9133] hover:bg-[#C27D29] text-white font-black py-4 rounded-2xl transition-all shadow-[0_15px_40px_rgba(218,145,51,0.2)] active:scale-[0.98] uppercase tracking-widest text-xs flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full bg-primary-light hover:bg-primary-dark text-white font-black py-4 rounded-2xl transition-all shadow-[0_15px_40px_rgba(218,145,51,0.2)] active:scale-[0.98] uppercase tracking-widest text-xs flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {loading ? 'Updating Password...' : 'Update Password'}
               </button>
@@ -321,8 +321,8 @@ const ChangePasswordModal = ({ isOpen, onClose, userEmail }) => {
                 </p>
               </div>
 
-              <div className="mt-12 w-12 h-1 bg-gray-100 rounded-full overflow-hidden">
-                <div className="w-full h-full bg-[#DA9133] origin-left animate-progress"></div>
+              <div className="mt-12 w-12 h-1 bg-background-muted rounded-full overflow-hidden">
+                <div className="w-full h-full bg-primary-light origin-left animate-progress"></div>
               </div>
             </div>
           )}

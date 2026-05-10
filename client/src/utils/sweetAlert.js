@@ -13,74 +13,63 @@ const Toast = Swal.mixin({
 });
 
 const themeColors = {
-  primary: '#C96A0A',
-  background: '#F6F1EA',
-  text: '#2D2D2D',
-  error: '#DC2626',
+  primary: '#B91C1C',
+  secondary: '#DA9133',
+  background: '#FAF9F6',
+  text: '#1A1A1A',
+  error: '#B91C1C',
   success: '#16A34A',
-  warning: '#E88A1A'
+  warning: '#DA9133'
 };
 
 export const showAlert = (options) => {
-  const isDarkMode = document.documentElement.classList.contains('dark') || 
-                     document.body.classList.contains('dark') ||
-                     document.querySelector('[data-theme="dark"]');
-
   return Swal.fire({
     icon: options.icon || 'info',
     title: options.title || '',
     text: options.text || '',
-    background: isDarkMode ? '#1E1E1E' : '#FFFFFF',
-    color: isDarkMode ? '#F5F5F5' : '#2D2D2D',
     confirmButtonColor: themeColors.primary,
     iconColor: options.icon === 'error' ? themeColors.error : 
                options.icon === 'success' ? themeColors.success : 
                themeColors.primary,
     customClass: {
-      popup: 'rounded-2xl border border-border-light shadow-2xl',
-      title: 'text-xl font-bold',
-      confirmButton: 'px-6 py-2 rounded-xl font-semibold shadow-lg shadow-primary/20 transition-all'
+      popup: 'rounded-[2.5rem] border-none shadow-2xl max-w-[400px] bg-background-card text-text-primary',
+      title: 'text-xl font-black tracking-tight pt-6 text-text-primary',
+      htmlContainer: 'text-[11px] font-bold opacity-60 px-6 pb-2 text-text-muted',
+      confirmButton: 'rounded-xl px-8 py-3 font-black uppercase tracking-widest text-[9px] shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all mb-6'
     },
     ...options
   });
 };
 
 export const showToast = (icon, title) => {
-  const isDarkMode = document.documentElement.classList.contains('dark') || 
-                     document.body.classList.contains('dark') ||
-                     document.querySelector('[data-theme="dark"]');
-
   return Toast.fire({
     icon,
     title,
-    background: isDarkMode ? '#1E1E1E' : '#FFFFFF',
-    color: isDarkMode ? '#F5F5F5' : '#2D2D2D',
     iconColor: icon === 'error' ? themeColors.error : 
                icon === 'success' ? themeColors.success : 
                themeColors.primary,
+    customClass: {
+      popup: 'rounded-xl font-black text-[9px] tracking-widest uppercase px-6 bg-background-card text-text-primary shadow-xl border border-border/40'
+    }
   });
 };
 
 export const showDeleteConfirmation = (title = 'Are you sure?', text = "You won't be able to revert this!") => {
-  const isDarkMode = document.documentElement.classList.contains('dark') || 
-                     document.body.classList.contains('dark') ||
-                     document.querySelector('[data-theme="dark"]');
-
   return Swal.fire({
     title,
     text,
     icon: 'warning',
     showCancelButton: true,
-    confirmButtonColor: themeColors.error,
+    confirmButtonColor: themeColors.primary,
     cancelButtonColor: '#9CA3AF',
-    confirmButtonText: 'Yes, delete it!',
-    background: isDarkMode ? '#1E1E1E' : '#FFFFFF',
-    color: isDarkMode ? '#F5F5F5' : '#2D2D2D',
+    confirmButtonText: 'Yes, proceed',
+    cancelButtonText: 'Cancel',
     customClass: {
-      popup: 'rounded-2xl border border-border-light shadow-2xl',
-      title: 'text-xl font-bold',
-      confirmButton: 'px-6 py-2 rounded-xl font-semibold transition-all',
-      cancelButton: 'px-6 py-2 rounded-xl font-semibold transition-all'
+      popup: 'rounded-[2.5rem] border-none shadow-2xl p-6 max-w-[400px] bg-background-card text-text-primary',
+      title: 'text-xl font-black tracking-tight text-text-primary',
+      htmlContainer: 'text-[10px] font-bold opacity-60 text-text-muted',
+      confirmButton: 'rounded-xl px-6 py-3 font-black uppercase tracking-widest text-[9px] shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all',
+      cancelButton: 'rounded-xl px-6 py-3 font-black uppercase tracking-widest text-[9px] bg-background text-text-muted hover:bg-background-muted transition-all'
     }
   });
 };

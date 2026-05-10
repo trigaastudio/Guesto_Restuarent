@@ -126,7 +126,7 @@ const StaffLogin = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-gradient-to-r from-[#B15D09] to-primary hover:from-primary hover:to-primary-light text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/30 flex items-center justify-center space-x-2 transition-all active:scale-[0.98] mt-4 disabled:opacity-70 disabled:cursor-not-allowed"
+            className="w-full bg-gradient-to-r from-[#991b1b] to-primary hover:from-primary hover:to-primary-light text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/30 flex items-center justify-center space-x-2 transition-all active:scale-[0.98] mt-4 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {isLoading ? (
               <Loader2 className="h-5 w-5 animate-spin" />

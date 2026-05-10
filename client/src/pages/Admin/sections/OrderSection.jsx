@@ -11,7 +11,7 @@ import { io } from 'socket.io-client';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 
 const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:5000/api`;
-const SOCKET_URL = 'http://localhost:5000';
+const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
 
 const OrderSection = () => {
   const handleCopyForWhatsApp = (order) => {
@@ -332,7 +332,7 @@ const OrderSection = () => {
 
   const fetchMenu = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/menu`);
+      const response = await axios.get(`${API_BASE_URL}/menus`);
       setMenuItems(response.data.filter(m => !m.isBlocked));
     } catch (error) {
       console.error('Error fetching menu:', error);
@@ -793,24 +793,16 @@ const OrderSection = () => {
         matchesType = o.orderType === activeTab;
       }
     }
-
     return matchesSearch && matchesStatus && matchesPayment && matchesType;
   });
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'placed':
-        return 'bg-status-off/10 text-status-unavailable border-status-off/20';
-      case 'preparing':
-      case 'processing':
-        return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
-      case 'out-for-delivery':
-        return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
-      case 'delayed':
-        return 'bg-red-500/10 text-red-500 border-red-500/20';
-      case 'ready':
-      case 'delivered':
-        return 'bg-status-on/10 text-status-available border-status-on/20';
+      case 'delivered': return 'bg-green-500/10 text-green-500 border-green-500/20';
+      case 'processing': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+      case 'out-for-delivery': return 'bg-orange-500/10 text-orange-500 border-orange-500/20';
+      case 'cancelled': return 'bg-red-500/10 text-red-500 border-red-500/20';
+      case 'placed': return 'bg-primary/10 text-primary border-primary/20';
       default: return 'bg-background-muted text-text-muted border-border-light';
     }
   };
@@ -844,7 +836,7 @@ const OrderSection = () => {
           </button>
         </div>
 
-        <div className="flex items-center space-x-2 bg-background-card p-1.5 rounded-2xl border border-border-light w-fit">
+        <div className="flex items-center space-x-2 bg-background-card p-1.5 rounded-2xl border border-border/40 w-fit shadow-sm">
           {[
             { id: 'takeaway', label: 'Counter', icon: ShoppingCart },
             { id: 'dine-in', label: 'Dine In', icon: Utensils },
@@ -856,12 +848,12 @@ const OrderSection = () => {
               onClick={() => handleTabChange(tab.id)}
               className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id
                   ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                  : 'text-text-muted hover:bg-background-muted hover:text-text-primary'
+                  : 'text-text-muted hover:bg-background hover:text-text-primary'
                 }`}
             >
               <tab.icon size={14} />
               <span>{tab.label}</span>
-              <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[8px] ${activeTab === tab.id ? 'bg-white/20' : 'bg-background-muted'
+              <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[8px] ${activeTab === tab.id ? 'bg-white/20' : 'bg-background border border-border/40'
                 }`}>
                 {orders.filter(o => {
                   const isHistory = (o.orderStatus === 'delivered' && o.paymentStatus === 'paid') || o.orderStatus === 'cancelled';
@@ -877,7 +869,7 @@ const OrderSection = () => {
           ))}
         </div>
 
-        <div className="bg-background-card rounded-[2rem] border border-border-light shadow-sm overflow-hidden">
+        <div className="bg-background-card rounded-[2.5rem] border border-border/40 shadow-[0_10px_30px_rgba(0,0,0,0.02)] overflow-hidden">
           <div className="p-4 border-b border-border-light bg-background-muted/30 space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="relative flex-1 max-w-md">
@@ -1566,7 +1558,7 @@ const OrderSection = () => {
       {/* POS Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-hidden print:hidden">
-          <div className="bg-background-card w-full max-w-5xl h-[85vh] rounded-[2.5rem] border border-border-light shadow-2xl flex overflow-hidden animate-in zoom-in-95 duration-300">
+          <div className="bg-background-card w-full max-w-5xl h-[85vh] rounded-[3rem] border border-border/40 shadow-2xl flex overflow-hidden animate-in zoom-in-95 duration-300">
             {/* Menu Selection Side */}
             <div className="flex-1 flex flex-col border-r border-border-light">
               <div className="p-6 border-b border-border-light flex items-center justify-between">

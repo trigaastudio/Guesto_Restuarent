@@ -3,7 +3,10 @@ export const createImage = (url) =>
     const image = new Image();
     image.addEventListener('load', () => resolve(image));
     image.addEventListener('error', (error) => reject(error));
-    image.setAttribute('crossOrigin', 'anonymous'); // needed to avoid cross-origin issues
+    // Only set crossOrigin if it's not a data URL to prevent browser security blocks
+    if (!url.startsWith('data:')) {
+      image.setAttribute('crossOrigin', 'anonymous');
+    }
     image.src = url;
   });
 
@@ -24,54 +27,56 @@ export default async function getCroppedImg(imageSrc, pixelCrop, rotation = 0) {
   const maxSize = Math.max(image.width, image.height);
   const safeArea = 2 * ((maxSize / 2) * Math.sqrt(2));
 
-  // set each dimensions to double largest dimension to allow for a safe area for the
-  // image to rotate in without being clipped by canvas context
   canvas.width = safeArea;
   canvas.height = safeArea;
 
-  // translate canvas context to a central point of image to allow rotating around the center.
   ctx.translate(safeArea / 2, safeArea / 2);
   ctx.rotate(getRadianAngle(rotation));
   ctx.translate(-safeArea / 2, -safeArea / 2);
 
-  // draw rotated image and store data.
   ctx.drawImage(
     image,
     safeArea / 2 - image.width * 0.5,
     safeArea / 2 - image.height * 0.5
   );
-  const data = ctx.getImageData(0, 0, safeArea, safeArea);
 
-  // set canvas width to final desired crop size - this will clear existing context
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
+  const croppedCanvas = document.createElement('canvas');
+  const croppedCtx = croppedCanvas.getContext('2d');
 
-  // paste generated rotate image with correct offsets for x,y crop values.
-  ctx.putImageData(
-    data,
-    Math.round(0 - safeArea / 2 + image.width * 0.5 - pixelCrop.x),
-    Math.round(0 - safeArea / 2 + image.height * 0.5 - pixelCrop.y)
+  croppedCanvas.width = pixelCrop.width;
+  croppedCanvas.height = pixelCrop.height;
+  
+  croppedCtx.clearRect(0, 0, croppedCanvas.width, croppedCanvas.height);
+
+  croppedCtx.drawImage(
+    canvas,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
+    pixelCrop.width,
+    pixelCrop.height
   );
 
-  // As Base64 string
-  // return canvas.toDataURL('image/jpeg');
-
-  // As a blob
   return new Promise((resolve) => {
-    canvas.toBlob((file) => {
+    croppedCanvas.toBlob((file) => {
       resolve(URL.createObjectURL(file));
     }, 'image/png');
   });
 }
 
 export async function getCroppedImgFile(imageSrc, pixelCrop, rotation = 0, fileName = 'cropped_image.png') {
+  console.log('Cropping image with:', { pixelCrop, rotation });
   const image = await createImage(imageSrc);
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
 
   const maxSize = Math.max(image.width, image.height);
-  const safeArea = 2 * ((maxSize / 2) * Math.sqrt(2));
+  const safeArea = Math.round(2 * ((maxSize / 2) * Math.sqrt(2)));
 
+  // 1. Setup Safe Area Canvas for rotation handling
   canvas.width = safeArea;
   canvas.height = safeArea;
 
@@ -81,24 +86,41 @@ export async function getCroppedImgFile(imageSrc, pixelCrop, rotation = 0, fileN
 
   ctx.drawImage(
     image,
-    safeArea / 2 - image.width * 0.5,
-    safeArea / 2 - image.height * 0.5
-  );
-  const data = ctx.getImageData(0, 0, safeArea, safeArea);
-
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
-
-  ctx.putImageData(
-    data,
-    Math.round(0 - safeArea / 2 + image.width * 0.5 - pixelCrop.x),
-    Math.round(0 - safeArea / 2 + image.height * 0.5 - pixelCrop.y)
+    Math.round(safeArea / 2 - image.width * 0.5),
+    Math.round(safeArea / 2 - image.height * 0.5)
   );
 
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => {
-      const file = new File([blob], fileName, { type: 'image/png' });
-      resolve(file);
+  // 2. Extract the cropped area from the safe area canvas
+  const croppedCanvas = document.createElement('canvas');
+  const croppedCtx = croppedCanvas.getContext('2d');
+
+  // Ensure dimensions are valid integers >= 1
+  const cropWidth = Math.max(1, Math.round(pixelCrop.width));
+  const cropHeight = Math.max(1, Math.round(pixelCrop.height));
+  
+  croppedCanvas.width = cropWidth;
+  croppedCanvas.height = cropHeight;
+
+  croppedCtx.drawImage(
+    canvas,
+    Math.round(pixelCrop.x),
+    Math.round(pixelCrop.y),
+    cropWidth,
+    cropHeight,
+    0,
+    0,
+    cropWidth,
+    cropHeight
+  );
+
+  return new Promise((resolve, reject) => {
+    croppedCanvas.toBlob((blob) => {
+      if (!blob) {
+        console.error('❌ Canvas toBlob failed. Dimensions:', cropWidth, 'x', cropHeight);
+        reject(new Error('Canvas is empty'));
+        return;
+      }
+      resolve(new File([blob], fileName, { type: 'image/png' }));
     }, 'image/png');
   });
 }

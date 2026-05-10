@@ -22,6 +22,14 @@ const ReturnsRefundsPage = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
     fetchUserData();
+
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowUserDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const fetchUserData = async () => {
@@ -79,8 +87,8 @@ const ReturnsRefundsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF9F6] font-sans overflow-x-hidden">
-      <header className="relative bg-[#D10000] sticky top-0 z-40 transition-all duration-500 shadow-xl">
+    <div className="min-h-screen bg-background font-sans overflow-x-hidden">
+      <header className="relative bg-primary sticky top-0 z-40 transition-all duration-500 shadow-xl">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3 blur-[120px] pointer-events-none"></div>
 
         <Navbar
@@ -113,24 +121,24 @@ const ReturnsRefundsPage = () => {
           {/* Right Column: Wallet Content */}
           <div className="lg:col-span-9 xl:col-span-9 space-y-6 relative z-10">
             {/* Wallet Balance Card */}
-            <div className="bg-white rounded-[3.5rem] p-8 md:p-12 border border-gray-100 shadow-[0_30px_100px_rgba(0,0,0,0.04)] relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-[#D10000]/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none transition-colors duration-700 group-hover:bg-[#D10000]/8"></div>
+            <div className="bg-background-card rounded-[3.5rem] p-8 md:p-12 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.04)] relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none transition-colors duration-700 group-hover:bg-primary/8"></div>
               
               <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
                 <div className="space-y-6">
                   <div className="flex items-center gap-3">
-                    <span className="w-6 h-1 bg-[#D10000] rounded-full"></span>
-                    <p className="text-[9px] font-black text-[#D10000] tracking-widest uppercase">Refunds & Returns</p>
+                    <span className="w-6 h-1 bg-primary rounded-full"></span>
+                    <p className="text-[9px] font-black text-primary tracking-widest uppercase">Refunds & Returns</p>
                   </div>
-                  <h3 className="text-3xl md:text-4xl font-black text-text-primary tracking-tight leading-tight">Your Digital <br/><span className="text-[#D10000]">Wallet Balance</span></h3>
+                  <h3 className="text-3xl md:text-4xl font-black text-text-primary tracking-tight leading-tight">Your Digital <br/><span className="text-primary">Wallet Balance</span></h3>
                   <p className="text-xs font-bold text-text-muted tracking-wide max-w-sm opacity-60 leading-relaxed">
                     Automatically get refunds for cancelled orders and use your balance for future delicious feasts.
                   </p>
                 </div>
 
                 <div className="relative">
-                  <div className="bg-[#FAF9F6] rounded-[2.5rem] p-8 md:p-10 border border-gray-100 shadow-inner flex flex-col items-center justify-center text-center group/balance transition-all duration-500 hover:shadow-xl hover:bg-white">
-                    <div className="w-16 h-16 bg-[#D10000]/10 rounded-2xl flex items-center justify-center text-[#D10000] mb-4 group-hover/balance:scale-110 transition-transform">
+                  <div className="bg-background-muted rounded-[2.5rem] p-8 md:p-10 border border-border/40 shadow-inner flex flex-col items-center justify-center text-center group/balance transition-all duration-500 hover:shadow-xl hover:bg-background-card">
+                    <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-4 group-hover/balance:scale-110 transition-transform">
                       <Wallet size={32} />
                     </div>
                     <span className="text-[10px] font-black text-text-muted tracking-[0.3em] uppercase mb-1 opacity-40">Available Balance</span>
@@ -143,13 +151,13 @@ const ReturnsRefundsPage = () => {
             </div>
 
             {/* Transaction History */}
-            <div className="bg-white rounded-[3.5rem] p-8 md:p-10 border border-gray-100 shadow-[0_30px_100px_rgba(0,0,0,0.03)] min-h-[400px] flex flex-col relative overflow-hidden">
+            <div className="bg-background-card rounded-[3.5rem] p-8 md:p-10 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.03)] min-h-[400px] flex flex-col relative overflow-hidden">
                <div className="flex items-center justify-between mb-10">
                  <div className="space-y-1">
                    <h4 className="text-xl font-black text-text-primary tracking-tight">Recent Activity</h4>
                    <p className="text-[10px] font-black text-text-muted tracking-widest opacity-40 uppercase">Your wallet transaction history</p>
                  </div>
-                 <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-text-muted">
+                 <div className="w-10 h-10 bg-background-muted rounded-xl flex items-center justify-center text-text-muted">
                    <Clock size={18} />
                  </div>
                </div>
@@ -157,12 +165,12 @@ const ReturnsRefundsPage = () => {
                {loading ? (
                  <div className="space-y-4">
                    {[1, 2, 3].map(n => (
-                     <div key={n} className="h-20 bg-gray-50/50 rounded-2xl animate-pulse border border-gray-100"></div>
+                     <div key={n} className="h-20 bg-background-muted/50 rounded-2xl animate-pulse border border-border/40"></div>
                    ))}
                  </div>
                ) : !user.walletTransactions || user.walletTransactions.length === 0 ? (
                  <div className="flex-1 flex flex-col items-center justify-center text-center py-10">
-                   <div className="w-20 h-20 bg-gray-50 rounded-[2rem] flex items-center justify-center text-gray-200 mb-6 border border-gray-100">
+                   <div className="w-20 h-20 bg-background-muted rounded-[2rem] flex items-center justify-center text-text-muted/30 mb-6 border border-border/40">
                      <ShoppingBag size={32} strokeWidth={1.5} />
                    </div>
                    <h5 className="text-lg font-black text-text-primary mb-2">No Transactions Yet</h5>
@@ -171,13 +179,13 @@ const ReturnsRefundsPage = () => {
                ) : (
                  <div className="space-y-4">
                    {user.walletTransactions.slice().reverse().map((tx, idx) => (
-                     <div key={idx} className="bg-[#FAF9F6] hover:bg-white p-5 rounded-[2rem] border border-gray-100 hover:border-[#D10000]/20 hover:shadow-xl transition-all duration-500 flex items-center justify-between group/tx animate-in fade-in slide-in-from-bottom-5" style={{ animationDelay: `${idx * 50}ms` }}>
+                     <div key={idx} className="bg-background hover:bg-background-card p-5 rounded-[2rem] border border-border/40 hover:border-primary/20 hover:shadow-xl transition-all duration-500 flex items-center justify-between group/tx animate-in fade-in slide-in-from-bottom-5" style={{ animationDelay: `${idx * 50}ms` }}>
                        <div className="flex items-center gap-5">
-                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover/tx:scale-110 duration-500 ${tx.type === 'credit' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover/tx:scale-110 duration-500 ${tx.type === 'credit' ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
                            {tx.type === 'credit' ? <ArrowDownLeft size={20} strokeWidth={3} /> : <ArrowUpRight size={20} strokeWidth={3} />}
                          </div>
                          <div className="space-y-0.5">
-                           <h5 className="text-[11px] font-black text-text-primary tracking-tight uppercase group-hover/tx:text-[#D10000] transition-colors">{tx.description}</h5>
+                           <h5 className="text-[11px] font-black text-text-primary tracking-tight uppercase group-hover/tx:text-primary transition-colors">{tx.description}</h5>
                            <p className="text-[9px] font-bold text-text-muted opacity-60 flex items-center gap-1.5 uppercase tracking-widest">
                              <Clock size={10} />
                              {new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
@@ -188,7 +196,7 @@ const ReturnsRefundsPage = () => {
                          <p className={`text-lg font-black tracking-tighter ${tx.type === 'credit' ? 'text-green-600' : 'text-text-primary'}`}>
                            {tx.type === 'credit' ? '+' : '-'} ₹{tx.amount}
                          </p>
-                         <span className={`text-[8px] font-black tracking-[0.2em] uppercase px-2 py-0.5 rounded-lg border ${tx.type === 'credit' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-red-50 text-red-600 border-red-100'}`}>
+                         <span className={`text-[8px] font-black tracking-[0.2em] uppercase px-2 py-0.5 rounded-lg border ${tx.type === 'credit' ? 'bg-green-500/10 text-green-600 border-green-500/20' : 'bg-red-500/10 text-red-600 border-red-500/20'}`}>
                            {tx.type === 'credit' ? 'Received' : 'Paid'}
                          </span>
                        </div>

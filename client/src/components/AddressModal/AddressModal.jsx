@@ -138,10 +138,10 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
 
   return (
     <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-white w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 relative flex flex-col max-h-[90vh]">
+      <div className="bg-background-card w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 relative flex flex-col max-h-[90vh]">
         
         {/* Modal Header */}
-        <div className="bg-[#D10000] p-6 md:p-8 text-white relative">
+        <div className="bg-primary p-6 md:p-8 text-white relative">
           <button onClick={onClose} className="absolute top-6 right-6 p-2 hover:bg-white/20 rounded-full transition-colors">
             <X size={20} />
           </button>
@@ -151,16 +151,16 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
 
         <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
           {/* Recipient Toggle */}
-          <div className="flex bg-gray-50 p-1.5 rounded-2xl border border-gray-100">
+          <div className="flex bg-background-muted p-1.5 rounded-2xl border border-border/40">
             <button
               onClick={() => setRecipientType('myself')}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${recipientType === 'myself' ? 'bg-white shadow-md text-primary' : 'text-gray-400 hover:text-gray-600'}`}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${recipientType === 'myself' ? 'bg-background-card shadow-md text-primary' : 'text-text-muted hover:text-text-secondary'}`}
             >
               <UserIcon size={14} /> Myself
             </button>
             <button
               onClick={() => setRecipientType('others')}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${recipientType === 'others' ? 'bg-white shadow-md text-[#D10000]' : 'text-gray-400 hover:text-gray-600'}`}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${recipientType === 'others' ? 'bg-background-card shadow-md text-primary' : 'text-text-muted hover:text-text-secondary'}`}
             >
               <Users size={14} /> Others
             </button>
@@ -178,7 +178,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
                   if (errors.name) setErrors(prev => ({ ...prev, name: null }));
                 }}
                 disabled={recipientType === 'myself'}
-                className={`w-full px-5 py-3.5 bg-gray-50 border ${errors.name ? 'border-red-500' : 'border-gray-100'} rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-50`}
+                className={`w-full px-5 py-3.5 bg-background-muted border ${errors.name ? 'border-primary' : 'border-border/40'} rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-50 text-text-primary`}
                 placeholder="Enter name"
               />
             </div>
@@ -192,7 +192,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
                   setFormData({ ...formData, phone: e.target.value });
                   if (errors.phone) setErrors(prev => ({ ...prev, phone: null }));
                 }}
-                className={`w-full px-5 py-3.5 bg-gray-50 border ${errors.phone ? 'border-red-500' : 'border-gray-100'} rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all`}
+                className={`w-full px-5 py-3.5 bg-background-muted border ${errors.phone ? 'border-primary' : 'border-border/40'} rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary`}
                 placeholder="Enter mobile number"
               />
             </div>
@@ -206,7 +206,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
                 setFormData({ ...formData, address: e.target.value });
                 if (errors.address) setErrors(prev => ({ ...prev, address: null }));
               }}
-              className={`w-full px-5 py-3.5 bg-gray-50 border ${errors.address ? 'border-red-500' : 'border-gray-100'} rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all min-h-[80px] resize-none`}
+              className={`w-full px-5 py-3.5 bg-background-muted border ${errors.address ? 'border-primary' : 'border-border/40'} rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all min-h-[80px] resize-none text-text-primary`}
               placeholder="Flat/House No., Building, Apartment"
             />
           </div>
@@ -223,7 +223,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
                 setFormData({ ...formData, landmark: e.target.value });
                 if (errors.landmark) setErrors(prev => ({ ...prev, landmark: null }));
               }}
-              className={`w-full px-5 py-3.5 bg-gray-50 border ${errors.landmark ? 'border-red-500' : 'border-gray-100'} rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all`}
+              className={`w-full px-5 py-3.5 bg-background-muted border ${errors.landmark ? 'border-primary' : 'border-border/40'} rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary`}
               placeholder="E.g. Near City Hospital, Beside Park"
             />
           </div>
@@ -268,7 +268,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
                   }
                 }}
                 id="locate-me-btn"
-                className="text-[9px] font-black text-[#D10000] uppercase tracking-widest bg-[#D10000]/5 px-2 py-1 rounded-lg hover:bg-[#D10000] hover:text-white transition-all flex items-center gap-1 shadow-sm"
+                className="text-[9px] font-black text-primary uppercase tracking-widest bg-primary/5 px-2 py-1 rounded-lg hover:bg-primary hover:text-white transition-all flex items-center gap-1 shadow-sm"
               >
                 Send Location
               </button>
@@ -282,17 +282,17 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
                   setFormData({ ...formData, location: e.target.value });
                   if (errors.location) setErrors(prev => ({ ...prev, location: null }));
                 }}
-                className={`w-full pl-12 pr-5 py-3.5 bg-gray-50/50 border ${errors.location ? 'border-red-500' : 'border-gray-100'} rounded-2xl text-[10px] font-bold text-gray-400 focus:outline-none transition-all`}
+                className={`w-full pl-12 pr-5 py-3.5 bg-background-muted/50 border ${errors.location ? 'border-primary' : 'border-border/40'} rounded-2xl text-[10px] font-bold text-text-muted focus:outline-none transition-all`}
                 placeholder={recipientType === 'myself' ? "GPS link will appear here or paste Google Maps link" : "Paste Google Maps link or click Send Location to pick"}
               />
             </div>
-            <p className="text-[8px] font-bold text-gray-400 mt-1 ml-1 italic opacity-80">
+            <p className="text-[8px] font-bold text-text-muted mt-1 ml-1 italic opacity-80">
               Tip: You can paste a Google Maps link directly here if you have one.
             </p>
             {recipientType === 'myself' && (
               <button 
                 onClick={() => setIsMapOpen(true)}
-                className="mt-2 text-[8px] font-black text-gray-400 uppercase tracking-widest hover:text-[#DA9133] transition-all flex items-center gap-1"
+                className="mt-2 text-[8px] font-black text-text-muted uppercase tracking-widest hover:text-primary-light transition-all flex items-center gap-1"
               >
                 <MapPin size={10} /> Pick on Map instead of GPS?
               </button>
@@ -311,7 +311,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
                 <button
                   key={type.id}
                   onClick={() => setFormData({ ...formData, type: type.id })}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all border ${formData.type === type.id ? 'bg-[#D10000]/5 border-[#D10000] text-[#D10000]' : 'bg-gray-50 border-gray-100 text-gray-400'}`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all border ${formData.type === type.id ? 'bg-primary/5 border-primary text-primary' : 'bg-background-muted border-border/40 text-text-muted'}`}
                 >
                   {type.icon} {type.label}
                 </button>
@@ -321,10 +321,10 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
         </div>
 
         {/* Modal Footer */}
-        <div className="p-6 md:p-8 border-t border-gray-100 bg-gray-50/50 pb-10 md:pb-8">
+        <div className="p-6 md:p-8 border-t border-border/40 bg-background-muted/50 pb-10 md:pb-8">
           <button
             onClick={handleFinalSave}
-            className="w-full bg-[#DA9133] text-white font-black py-4 rounded-2xl hover:bg-[#C27D29] transition-all shadow-[0_15px_40px_rgba(0,0,0,0.1)] active:scale-[0.98] uppercase tracking-widest text-sm"
+            className="w-full bg-primary-light text-white font-black py-4 rounded-2xl hover:bg-primary-dark transition-all shadow-[0_15px_40px_rgba(0,0,0,0.1)] active:scale-[0.98] uppercase tracking-widest text-sm"
           >
             Save Address & Continue
           </button>
@@ -332,8 +332,8 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
 
         {/* Map Picker Modal Overlay */}
         {isMapOpen && (
-          <div className="fixed inset-0 z-[3000] flex flex-col bg-white">
-            <div className="p-4 bg-[#DA9133] text-white flex justify-between items-center">
+          <div className="fixed inset-0 z-[3000] flex flex-col bg-background-card">
+            <div className="p-4 bg-primary-light text-white flex justify-between items-center">
               <div>
                 <h3 className="font-black tracking-tight">Pick Delivery Location</h3>
                 <p className="text-[10px] opacity-80 font-bold uppercase tracking-widest">Move the pin to your exact spot</p>
@@ -344,15 +344,15 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
             </div>
             <div className="flex-1 relative">
               <div ref={mapRef} className="absolute inset-0 z-10" />
-              <div className="absolute top-4 left-4 z-[20] bg-white/90 backdrop-blur p-3 rounded-xl shadow-lg border border-gray-100 max-w-[200px]">
-                <p className="text-[10px] font-black text-[#DA9133] uppercase tracking-widest mb-1">Tip</p>
-                <p className="text-[10px] font-bold text-gray-600">You can drag the red marker or click anywhere on the map to set the pin.</p>
+              <div className="absolute top-4 left-4 z-[20] bg-background-card/90 backdrop-blur p-3 rounded-xl shadow-lg border border-border/40 max-w-[200px]">
+                <p className="text-[10px] font-black text-primary-light uppercase tracking-widest mb-1">Tip</p>
+                <p className="text-[10px] font-bold text-text-secondary">You can drag the red marker or click anywhere on the map to set the pin.</p>
               </div>
             </div>
-            <div className="p-6 bg-white border-t border-gray-100">
+            <div className="p-6 bg-background-card border-t border-border/40">
               <button
                 onClick={handleSaveMapLocation}
-                className="w-full bg-[#D10000] text-white font-black py-4 rounded-2xl hover:bg-[#B00000] transition-all shadow-xl uppercase tracking-widest text-sm"
+                className="w-full bg-primary text-white font-black py-4 rounded-2xl hover:bg-primary-dark transition-all shadow-xl uppercase tracking-widest text-sm"
               >
                 Confirm Location & Save Pin
               </button>
