@@ -11,6 +11,7 @@ import CategorySection from '../../components/Category/CategorySection';
 import MenuSection from '../../components/Menu/MenuSection';
 import MenuModal from '../../components/Menu/MenuModal';
 import StoreStatusBanner from '../../components/StoreStatus/StoreStatusBanner';
+import Loader from '../../components/Loader/Loader';
 
 const heroImages = ['/heroSection/hero1.png', '/heroSection/hero2.png', '/heroSection/hero3.png', '/heroSection/hero4.png'];
 
@@ -194,6 +195,10 @@ const HomePage = () => {
   };
 
   const logoSrc = theme === 'dark' ? "/logo-golden.png" : "/logo-dark.png";
+
+  if (loading && menus.length === 0 && categories.length === 0) {
+    return <Loader fullPage={true} />;
+  }
 
   return (
     <div className={`min-h-screen bg-background font-sans ${theme}`}>

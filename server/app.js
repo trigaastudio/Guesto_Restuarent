@@ -27,35 +27,39 @@ dotenv.config();
 
 const app = express();
 
-// Security Middleware with Razorpay CSP
+// 1. CORS Middleware (Must be at the top)
+app.use(cors({
+  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// 2. Security Middleware with Razorpay CSP
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),
       "script-src": ["'self'", "'unsafe-inline'", "https://checkout.razorpay.com"],
       "frame-src": ["'self'", "https://api.razorpay.com", "https://tds.razorpay.com"],
-      "connect-src": ["'self'", "https://api.razorpay.com"]
+      "connect-src": ["'self'", "https://api.razorpay.com", "http://localhost:5000"]
     },
   },
 }));
 
-// Rate Limiting: 1 minute request limit
+// 3. Rate Limiting
 const limiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 200, // increased for development
   message: 'Too many requests from this IP, please try again after a minute',
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
-// Apply rate limiter to all api routes
 app.use('/api/', limiter);
-
 
 connectDB();
 
-
-app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 

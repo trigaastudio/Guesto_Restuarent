@@ -8,6 +8,7 @@ import Footer from '../../components/Footer/Footer';
 import { useCart } from '../../context/CartContext';
 import ChangePasswordModal from '../../components/ChangePasswordModal/ChangePasswordModal';
 import Swal from 'sweetalert2';
+import Loader from '../../components/Loader/Loader';
 
 const ReturnsRefundsPage = () => {
   const navigate = useNavigate();
@@ -163,10 +164,11 @@ const ReturnsRefundsPage = () => {
                </div>
 
                {loading ? (
-                 <div className="space-y-4">
-                   {[1, 2, 3].map(n => (
-                     <div key={n} className="h-20 bg-background-muted/50 rounded-2xl animate-pulse border border-border/40"></div>
-                   ))}
+                 <div className="flex flex-col items-center justify-center py-20 w-full">
+                   <Loader size="medium" />
+                   <p className="mt-6 text-[10px] font-black uppercase tracking-[0.3em] text-primary animate-pulse">
+                     Loading transaction history...
+                   </p>
                  </div>
                ) : !user.walletTransactions || user.walletTransactions.length === 0 ? (
                  <div className="flex-1 flex flex-col items-center justify-center text-center py-10">

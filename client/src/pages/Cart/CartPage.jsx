@@ -8,6 +8,7 @@ import AddressModal from '../../components/AddressModal/AddressModal';
 import Footer from '../../components/Footer/Footer';
 import Navbar from '../../components/Navbar/Navbar';
 import { useTheme } from '../../context/ThemeContext';
+import Loader from '../../components/Loader/Loader';
 
 const AddressListModal = ({ isOpen, onClose, addresses, onSelect, onAddAddress }) => {
   useEffect(() => {
@@ -242,11 +243,7 @@ const CartPage = () => {
   };
 
   if (cartLoading && cartItems.length === 0) {
-    return (
-      <div className={`min-h-screen bg-background flex items-center justify-center ${theme}`}>
-        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
+    return <Loader fullPage={true} />;
   }
 
   if (cartItems.length === 0) {

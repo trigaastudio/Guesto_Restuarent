@@ -10,6 +10,7 @@ import {
 import api from '../../api/axiosInstance';
 import { useTheme } from '../../context/ThemeContext';
 import { showToast, showAlert } from '../../utils/sweetAlert';
+import Loader from '../../components/Loader/Loader';
 
 const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:5000/api`;
 const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
@@ -530,9 +531,9 @@ const KitchenDashboard = () => {
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 lg:p-8">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
-              <Loader2 className="animate-spin text-primary" size={48} />
-              <p className="text-text-secondary font-bold uppercase tracking-widest text-sm">Loading Orders...</p>
+            <div className="flex flex-col items-center justify-center h-[60vh] space-y-6">
+              <Loader size="large" />
+              <p className="text-text-secondary text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Loading Orders...</p>
             </div>
           ) : filteredOrders.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-[60vh] space-y-6 text-center animate-in fade-in zoom-in duration-500">

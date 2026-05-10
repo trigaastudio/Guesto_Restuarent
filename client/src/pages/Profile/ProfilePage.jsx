@@ -9,6 +9,7 @@ import Navbar from '../../components/Navbar/Navbar';
 import SideNavbar from '../../components/SideNavbar/SideNavbar';
 import ChangePasswordModal from '../../components/ChangePasswordModal/ChangePasswordModal';
 import { useCart } from '../../context/CartContext';
+import Loader from '../../components/Loader/Loader';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -236,10 +237,11 @@ const ProfilePage = () => {
               </div>
 
               {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {[1, 2].map(n => (
-                    <div key={n} className="h-56 bg-background-muted/50 rounded-[2.5rem] animate-pulse border border-border/40"></div>
-                  ))}
+                <div className="flex flex-col items-center justify-center py-20 w-full">
+                  <Loader size="medium" />
+                  <p className="mt-6 text-[10px] font-black uppercase tracking-[0.3em] text-primary animate-pulse">
+                    Loading your directory...
+                  </p>
                 </div>
               ) : addresses.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-center py-24 px-10 border border-dashed border-border/40 rounded-[3rem] bg-background-muted/20">

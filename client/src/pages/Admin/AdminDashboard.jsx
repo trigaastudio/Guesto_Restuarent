@@ -31,7 +31,6 @@ import {
   Layers,
   Filter,
   RefreshCw,
-  Loader2,
   Package,
   PackageX,
   AlertTriangle,
@@ -44,6 +43,7 @@ import OrderSection from './sections/OrderSection';
 import StaffManagement from './sections/StaffManagement';
 import UserManagement from './sections/UserManagement';
 import SettingsSection from './sections/SettingsSection';
+import Loader from '../../components/Loader/Loader';
 
 const AdminDashboard = () => {
   const { theme, toggleTheme } = useTheme();
@@ -448,9 +448,9 @@ const AdminDashboard = () => {
           {activeTab === 'Overview' && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
               {isStatsLoading && !stats ? (
-                <div className="flex flex-col items-center justify-center h-96 space-y-4">
-                  <Loader2 className="animate-spin text-primary" size={48} />
-                  <p className="text-text-secondary font-bold animate-pulse">Loading real-time analytics...</p>
+                <div className="flex flex-col items-center justify-center h-96 space-y-6">
+                  <Loader size="large" />
+                  <p className="text-text-secondary text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Loading real-time analytics...</p>
                 </div>
               ) : stats ? (
                 <React.Fragment>

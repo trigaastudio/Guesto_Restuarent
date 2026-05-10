@@ -7,6 +7,7 @@ import Navbar from '../../components/Navbar/Navbar';
 import { useCart } from '../../context/CartContext';
 import { useTheme } from '../../context/ThemeContext';
 import Swal from 'sweetalert2';
+import Loader from '../../components/Loader/Loader';
 
 const OrdersPage = () => {
   const navigate = useNavigate();
@@ -254,10 +255,11 @@ const OrdersPage = () => {
 
         <main className={`max-w-7xl mx-auto px-6 pt-24 md:pt-32 ${hasOrders ? '' : 'min-h-[70vh] flex items-center justify-center'} relative z-10 pb-24`}>
         {loading ? (
-          <div className="space-y-6 w-full">
-            {[1, 2, 3].map(n => (
-              <div key={n} className="h-48 bg-background-card rounded-[2rem] animate-pulse border border-border/40"></div>
-            ))}
+          <div className="flex flex-col items-center justify-center py-20 w-full">
+            <Loader size="large" />
+            <p className="mt-6 text-[10px] font-black uppercase tracking-[0.3em] text-primary animate-pulse">
+              Fetching your orders...
+            </p>
           </div>
         ) : orders.length === 0 ? (
             <div className="flex flex-col items-center justify-center w-full py-10 px-10 text-center space-y-10 relative overflow-hidden animate-in fade-in zoom-in duration-1000">

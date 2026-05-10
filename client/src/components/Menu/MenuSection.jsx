@@ -1,5 +1,6 @@
 import React from 'react';
 import { LayoutGrid, UtensilsCrossed, Plus } from 'lucide-react';
+import Loader from '../Loader/Loader';
 
 const MenuSection = React.memo(({ loading, filteredMenus, addToCart, navigate, sortBy, setSortBy, dietaryFilter, setDietaryFilter, setSearchQuery, observerTarget, hasMore, loadingMore, onAddClick }) => {
   return (
@@ -62,7 +63,7 @@ const MenuSection = React.memo(({ loading, filteredMenus, addToCart, navigate, s
 
         {loading ? (
           <div className="min-h-[400px] flex items-center justify-center">
-            <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+            <Loader size="medium" />
           </div>
         ) : (!filteredMenus || filteredMenus.length === 0) ? (
           <div className="py-20 text-center space-y-6 animate-fade-in bg-background-muted/50 rounded-[3rem] border border-dashed border-border/60">
@@ -139,7 +140,7 @@ const MenuSection = React.memo(({ loading, filteredMenus, addToCart, navigate, s
         <div ref={observerTarget} className="h-10 flex items-center justify-center mt-2">
           {loadingMore && (
             <div className="flex items-center gap-3">
-              <div className="w-5 h-5 border-3 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+              <Loader size="small" />
               <span className="text-[10px] font-black tracking-widest text-primary opacity-60">Loading more dishes...</span>
             </div>
           )}
