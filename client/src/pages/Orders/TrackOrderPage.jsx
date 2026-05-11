@@ -322,11 +322,11 @@ const TrackOrderPage = () => {
                   <div className="pt-6 border-t border-border/40 space-y-3">
                     <div className="flex justify-between text-[11px] font-bold text-text-muted tracking-widest uppercase opacity-60">
                       <span>Subtotal</span>
-                      <span>₹{order.subtotal || order.totalAmount - 45}</span>
+                      <span>₹{order.subtotal || (order.totalAmount - (order.deliveryFee || 0))}</span>
                     </div>
                     <div className="flex justify-between text-[11px] font-bold text-text-muted tracking-widest uppercase opacity-60">
                       <span>Delivery & Service</span>
-                      <span>₹45</span>
+                      <span>₹{order.deliveryFee || 0}</span>
                     </div>
                     <div className="pt-4 border-t border-border/40 flex justify-between items-end">
                       <p className="text-[10px] font-black text-text-muted uppercase tracking-widest opacity-40">Total Amount</p>

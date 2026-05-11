@@ -17,17 +17,19 @@ const SideNavbar = ({ user, handleLogout, navigate, onAvatarClick, fileInputRef,
         {/* Avatar Section */}
         <div className="relative mb-4 md:mb-6 group/avatar cursor-pointer" onClick={onAvatarClick}>
           <div className="w-28 h-28 md:w-36 md:h-36 rounded-full bg-background-card p-1 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-border/40 relative overflow-hidden group-hover/avatar:shadow-[0_30px_70px_rgba(185,28,28,0.15)] transition-all duration-700">
-            <div className="w-full h-full rounded-full overflow-hidden border-4 border-background shadow-inner bg-background-muted">
-              <img
-                src={user.avatar ? `http://localhost:5000${user.avatar}` : '/user-avatar.png'}
-                alt={user.name}
-                className="w-full h-full object-cover group-hover/avatar:scale-110 transition-transform duration-1000"
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                  e.target.nextSibling.style.display = 'flex';
-                }}
-              />
-              <div className="hidden w-full h-full items-center justify-center bg-primary/5 text-primary text-4xl font-black">
+            <div className="w-full h-full rounded-full overflow-hidden border-4 border-background shadow-inner bg-background-muted flex items-center justify-center">
+              {user.avatar ? (
+                <img
+                  src={`http://localhost:5000${user.avatar}`}
+                  alt={user.name}
+                  className="w-full h-full object-cover group-hover/avatar:scale-110 transition-transform duration-1000"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'flex';
+                  }}
+                />
+              ) : null}
+              <div className={`${user.avatar ? 'hidden' : 'flex'} w-full h-full items-center justify-center bg-primary/5 text-primary text-4xl font-black`}>
                 {user.name?.[0]?.toUpperCase()}
               </div>
             </div>
@@ -56,7 +58,9 @@ const SideNavbar = ({ user, handleLogout, navigate, onAvatarClick, fileInputRef,
           <h2 className="text-xl md:text-2xl font-black text-text-primary tracking-tight mb-1">{user.name}</h2>
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-background-muted rounded-full border border-border/40">
             <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-            <p className="text-[8px] font-black text-text-muted tracking-widest uppercase">Member since Apr 2024</p>
+            <p className="text-[8px] font-black text-text-muted tracking-widest uppercase">
+              Member since {user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Recently'}
+            </p>
           </div>
         </div>
 

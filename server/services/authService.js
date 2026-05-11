@@ -2,6 +2,13 @@ import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import userRepository from '../repositories/userRepository.js';
 import mailSender from '../Utilities/mailSender.js';
+import Settings from '../models/settingsSchema.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const otps = new Map();
 
@@ -10,6 +17,72 @@ class AuthService {
     return jwt.sign({ id }, process.env.JWT_SECRET, {
       expiresIn: '30d',
     });
+  }
+
+  async _sendStylishEmail(email, title, headerText, subText, otp, settings) {
+    const restaurantName = settings.restaurantDetails.name || "GuestO";
+    
+    // Explicitly use the golden logo from public folder for maximum visibility in all modes
+    let primaryLogoPath = '/logo-golden.png';
+    
+    const attachments = [];
+    let logoSrc = '';
+
+    // Function to handle logo resolution
+    const resolveLogo = (logoPathToUse, cidName) => {
+      const logoFileName = 'logo-golden.png';
+      const logoPath = path.join(__dirname, '..', '..', 'client', 'public', logoFileName);
+        
+      if (fs.existsSync(logoPath)) {
+        attachments.push({
+          filename: logoFileName,
+          path: logoPath,
+          cid: cidName
+        });
+        return `cid:${cidName}`;
+      }
+      return '';
+    };
+
+    logoSrc = resolveLogo(primaryLogoPath, 'restaurantLogo');
+
+    const body = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #000000;">
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background-color: #000000;">
+          <div style="background-color: #0a0a0a; border-radius: 24px; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; border: 1px solid #1a1a1a;">
+            <div style="margin-bottom: 30px;">
+              ${logoSrc ? `<img src="${logoSrc}" alt="${restaurantName}" style="height: 60px; width: auto; margin-bottom: 20px; display: block; margin-left: auto; margin-right: auto;">` : ''}
+            </div>
+            
+            <h1 style="color: #ffffff; font-size: 28px; font-weight: 800; margin-bottom: 10px; letter-spacing: -0.5px;">${headerText}</h1>
+            <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6; margin-bottom: 35px;">
+              ${subText}
+            </p>
+            
+            <div style="background-color: #B91C1C; color: #ffffff; padding: 25px; border-radius: 20px; font-size: 36px; font-weight: 900; letter-spacing: 12px; margin-bottom: 35px; box-shadow: 0 8px 20px rgba(185, 28, 28, 0.4);">
+              ${otp}
+            </div>
+            
+            <p style="color: #666666; font-size: 12px; font-weight: 600; text-transform: uppercase; tracking-wider;">
+              Valid for 5 minutes only
+            </p>
+            
+            <div style="margin-top: 40px; pt-30px; border-top: 1px solid #1a1a1a; padding-top: 30px;">
+              <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 5px;">If you didn't request this code, you can safely ignore this email.</p>
+              <p style="color: #ffffff; font-size: 14px; font-weight: 800;">Team ${restaurantName}</p>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await mailSender(email, title, body, attachments);
   }
 
   async sendOTP(email, phone) {
@@ -31,18 +104,17 @@ class AuthService {
     const expiresAt = Date.now() + 5 * 60 * 1000;
     otps.set(email.toLowerCase(), { otp, expiresAt });
 
-    const title = "Verification Code for GuestO";
-    const body = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
-        <h2 style="color: #f59e0b; text-align: center;">Welcome to GuestO!</h2>
-        <p>Your verification code is:</p>
-        <div style="background: #f3f4f6; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px; border-radius: 8px;">
-          ${otp}
-        </div>
-        <p>This code will expire in 5 minutes.</p>
-      </div>
-    `;
-    await mailSender(email, title, body);
+    const settings = await Settings.getSettings();
+    const restaurantName = settings.restaurantDetails.name || "GuestO";
+    
+    await this._sendStylishEmail(
+      email, 
+      `Verify your account with ${restaurantName}`,
+      "Verification Code",
+      `Thank you for choosing <strong>${restaurantName}</strong>. Please use the following code to complete your registration.`,
+      otp,
+      settings
+    );
     return true;
   }
 
@@ -70,18 +142,17 @@ class AuthService {
     const expiresAt = Date.now() + 5 * 60 * 1000;
     otps.set(email.toLowerCase(), { otp, expiresAt });
 
-    const title = "Password Reset OTP for GuestO";
-    const body = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
-        <h2 style="color: #D10000; text-align: center;">Password Reset Request</h2>
-        <p>You requested to reset your password. Your verification code is:</p>
-        <div style="background: #f3f4f6; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px; border-radius: 8px; color: #D10000;">
-          ${otp}
-        </div>
-        <p>This code will expire in 5 minutes. If you did not request this, please ignore this email.</p>
-      </div>
-    `;
-    await mailSender(email, title, body);
+    const settings = await Settings.getSettings();
+    const restaurantName = settings.restaurantDetails.name || "GuestO";
+
+    await this._sendStylishEmail(
+      email,
+      `Password Reset for ${restaurantName}`,
+      "Reset Your Password",
+      `You requested to reset your password. Please use the following code to verify your identity.`,
+      otp,
+      settings
+    );
     return true;
   }
 

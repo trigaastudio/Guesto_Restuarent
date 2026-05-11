@@ -118,7 +118,7 @@ const CartPage = () => {
     const { freeDistanceLimit, chargePerExtraKm, pricingType } = settings.deliverySettings || {};
     
     if (pricingType === 'distance' && distance > freeDistanceLimit) {
-      return Math.round((distance - freeDistanceLimit) * chargePerExtraKm);
+      return Math.ceil((distance - freeDistanceLimit) * chargePerExtraKm);
     }
     return 0; // Free if within limit or settings not loaded
   };
@@ -145,27 +145,72 @@ const CartPage = () => {
 
   // Distance calculation logic
   useEffect(() => {
-    if (settings?.restaurantDetails?.location && deliveryAddress?.location) {
-      const restaurantLoc = settings.restaurantDetails.location;
-      const userLocMatch = deliveryAddress.location.match(/q=([\d.-]+),([\d.-]+)/);
-      
-      if (userLocMatch && restaurantLoc.lat && restaurantLoc.lng) {
-        const userLat = parseFloat(userLocMatch[1]);
-        const userLng = parseFloat(userLocMatch[2]);
+    const getRoadDistance = async () => {
+      if (settings?.restaurantDetails?.location && deliveryAddress?.location) {
+        const restaurantLoc = settings.restaurantDetails.location;
+        let targetUrl = deliveryAddress.location;
+
+        // Extract coordinates helper
+        const extractCoords = (url) => {
+          if (!url) return null;
+          const coordRegex = /([-.\d]+),([-.\d]+)/g;
+          let match;
+          while ((match = coordRegex.exec(url)) !== null) {
+            const lat = parseFloat(match[1]);
+            const lng = parseFloat(match[2]);
+            if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && Math.abs(lat) > 0.01) {
+              return { lat, lng };
+            }
+          }
+          return null;
+        };
+
+        // Expand URL if it's a short link
+        if (targetUrl.includes('maps.app.goo.gl') || targetUrl.includes('share.google')) {
+          try {
+            const res = await api.post('/api/utils/expand-url', { url: targetUrl });
+            targetUrl = res.data.expandedUrl;
+          } catch (err) {
+            console.error('URL Expansion failed:', err);
+          }
+        }
+
+        const coords = extractCoords(targetUrl);
         
-        // Haversine Formula
-        const R = 6371; // km
-        const dLat = (userLat - restaurantLoc.lat) * Math.PI / 180;
-        const dLon = (userLng - restaurantLoc.lng) * Math.PI / 180;
-        const a = 
-          Math.sin(dLat/2) * Math.sin(dLat/2) +
-          Math.cos(restaurantLoc.lat * Math.PI / 180) * Math.cos(userLat * Math.PI / 180) * 
-          Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        const dist = R * c;
-        setDistance(dist);
+        if (coords && restaurantLoc.lat && restaurantLoc.lng) {
+          const { lat: userLat, lng: userLng } = coords;
+          
+          try {
+            // Try OSRM for accurate road distance
+            const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${userLng},${userLat};${restaurantLoc.lng},${restaurantLoc.lat}?overview=false`;
+            const response = await fetch(osrmUrl);
+            const data = await response.json();
+            
+            if (data.routes && data.routes.length > 0) {
+              const roadDistKm = data.routes[0].distance / 1000;
+              setDistance(roadDistKm);
+              return; // Success
+            }
+          } catch (error) {
+            console.error('OSRM Fetch Error:', error);
+          }
+
+          // Fallback: Haversine Formula
+          const R = 6371; // km
+          const dLat = (userLat - restaurantLoc.lat) * Math.PI / 180;
+          const dLon = (userLng - restaurantLoc.lng) * Math.PI / 180;
+          const a = 
+            Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(restaurantLoc.lat * Math.PI / 180) * Math.cos(userLat * Math.PI / 180) * 
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+          const dist = R * c;
+          setDistance(dist);
+        }
       }
-    }
+    };
+
+    getRoadDistance();
   }, [settings, deliveryAddress]);
 
   const fetchAddresses = async () => {

@@ -13,7 +13,7 @@ import MenuModal from '../../components/Menu/MenuModal';
 import StoreStatusBanner from '../../components/StoreStatus/StoreStatusBanner';
 import Loader from '../../components/Loader/Loader';
 
-const heroImages = ['/heroSection/hero1.png', '/heroSection/hero2.png', '/heroSection/hero3.png', '/heroSection/hero4.png'];
+const heroImages = ['/heroSection/hero1.png', '/heroSection/hero2.png', '/heroSection/hero3.png', '/heroSection/hero4.png', '/heroSection/hero5.png'];
 
 
 const HomePage = () => {
@@ -38,7 +38,16 @@ const HomePage = () => {
 
   const { addToCart, cartItems } = useCart();
   const { theme } = useTheme();
-  const user = useMemo(() => JSON.parse(localStorage.getItem('user') || '{}'), []);
+  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('user') || '{}'));
+
+  // Listen for storage changes (useful if updated in another tab or component)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setUser(JSON.parse(localStorage.getItem('user') || '{}'));
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   useEffect(() => {
     document.title = "GuestO | Fresh & Delicious";

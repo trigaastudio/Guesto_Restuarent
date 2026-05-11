@@ -667,13 +667,27 @@ const OrderSection = () => {
     if (!url) return;
 
     let targetUrl = url;
-    const coordRegex = /([0-9.-]+),([0-9.-]+)/;
+    
+    // Improved coordinate extraction helper
+    const extractCoords = (text) => {
+      if (!text) return null;
+      const coordRegex = /([-.\d]+),([-.\d]+)/g;
+      let match;
+      while ((match = coordRegex.exec(text)) !== null) {
+        const lat = parseFloat(match[1]);
+        const lng = parseFloat(match[2]);
+        if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && Math.abs(lat) > 0.01) {
+          return { lat, lng };
+        }
+      }
+      return null;
+    };
 
-    // If coordinates aren't immediately visible, try expanding it via the server
-    if (!url.match(coordRegex) || url.includes('maps.app.goo.gl') || url.includes('share.google')) {
+    // If it's a short link or no coords found, expand it first
+    if (url.includes('maps.app.goo.gl') || url.includes('share.google') || !extractCoords(url)) {
       try {
         setIsResolvingLink(true);
-        showToast('info', 'Expanding link...');
+        showToast('info', 'Processing link...');
         const res = await axios.post(`${API_BASE_URL}/utils/expand-url`, { url });
         targetUrl = res.data.expandedUrl;
       } catch (err) {
@@ -683,16 +697,14 @@ const OrderSection = () => {
       }
     }
 
-    const match = targetUrl.match(coordRegex);
+    const coords = extractCoords(targetUrl);
 
-    if (match && settings?.restaurantDetails?.location?.lat) {
-      const destLat = parseFloat(match[1]);
-      const destLng = parseFloat(match[2]);
+    if (coords && settings?.restaurantDetails?.location?.lat) {
+      const { lat: destLat, lng: destLng } = coords;
       const restLat = settings.restaurantDetails.location.lat;
       const restLng = settings.restaurantDetails.location.lng;
 
-      const distanceStraight = calculateDistance(restLat, restLng, destLat, destLng);
-      let roundedDist = Math.ceil(distanceStraight * 10) / 10;
+      let roundedDist = Math.ceil(calculateDistance(restLat, restLng, destLat, destLng) * 10) / 10;
 
       // Try to get Road Distance from OSRM (FREE)
       try {

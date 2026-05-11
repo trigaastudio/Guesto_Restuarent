@@ -10,9 +10,9 @@ const Footer = React.memo(() => {
   const navigate = useNavigate();
 
   const brandName = settings?.restaurantDetails?.name || "GuestO";
-  const address = settings?.restaurantDetails?.address || "123 Royal Arcade, Palace Road, Thrissur";
-  const phone = settings?.restaurantDetails?.contactNumber || "+91 98765 43210";
-  const email = settings?.restaurantDetails?.email || "hello@guesto.com";
+  const address = settings?.restaurantDetails?.address || "Chammannur, Athirthi, Kunnamkulam";
+  const phone = settings?.restaurantDetails?.contactNumber || "7034805085,9947649007";
+  const email = settings?.restaurantDetails?.email || "restaurantguesto@gmail.com";
 
   return (
     <footer className="relative bg-primary dark:bg-background-card text-white dark:text-text-primary pt-6 pb-24 md:pb-6 overflow-hidden border-t border-border/10">
@@ -27,17 +27,17 @@ const Footer = React.memo(() => {
           {/* Brand Section */}
           <div className="space-y-8">
             <div className="space-y-4">
-              <img 
-                src="/logo-light.png" 
-                alt={brandName} 
-                className="h-12 w-auto object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.2)]" 
+              <img
+                src="/logo-light.png"
+                alt={brandName}
+                className="h-12 w-auto object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.2)]"
                 onClick={() => navigate('/home')}
               />
               <p className="text-white/80 dark:text-text-muted text-[11px] font-bold leading-relaxed tracking-wide max-w-xs">
-                Crafting extraordinary culinary experiences since 2010. We bring the authentic heart of our heritage to your table with a modern twist.
+                Crafting extraordinary culinary experiences since 2020. We bring the authentic heart of our heritage to your table with a modern twist.
               </p>
             </div>
-            
+
             {/* Stylish Social Icons */}
             <div className="flex items-center gap-4">
               {[
@@ -45,9 +45,9 @@ const Footer = React.memo(() => {
                 { name: 'Web', Icon: Globe },
                 { name: 'Love', Icon: Heart }
               ].map(({ Icon }, i) => (
-                <a 
-                  key={i} 
-                  href="#" 
+                <a
+                  key={i}
+                  href="#"
                   className="w-11 h-11 rounded-2xl bg-white/10 dark:bg-background-muted backdrop-blur-md border border-white/20 dark:border-border/60 flex items-center justify-center hover:bg-white hover:text-primary dark:hover:bg-primary dark:hover:text-white transition-all duration-500 group shadow-lg"
                 >
                   <Icon size={20} className="group-hover:scale-110 transition-transform duration-500" strokeWidth={2.5} />
@@ -63,11 +63,10 @@ const Footer = React.memo(() => {
               {[
                 { name: 'Home', path: '/home' },
                 { name: 'Menu', path: '/home#menu' },
-                { name: 'About Our Story', path: '/about' },
-                { name: 'Contact Support', path: '/contact' }
+                { name: 'About Our Story', path: '/about' }
               ].map((item) => (
                 <li key={item.name}>
-                  <button 
+                  <button
                     onClick={() => navigate(item.path)}
                     className="text-xs font-black text-white/70 dark:text-text-muted hover:text-white dark:hover:text-primary hover:translate-x-3 transition-all duration-300 flex items-center gap-3 group"
                   >
@@ -125,18 +124,18 @@ const Footer = React.memo(() => {
         <div className="pb-12 md:pb-0 pt-6 border-t border-white/10 dark:border-border/10 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex flex-col items-center md:items-start gap-2">
             <p className="text-[10px] font-black text-white/40 dark:text-text-muted/40 tracking-[0.2em] uppercase">
-              © {currentYear} {brandName} Restaurant Group
+              © {currentYear} {brandName}
             </p>
             <p className="text-[8px] font-bold text-white/20 dark:text-text-muted/20 tracking-widest uppercase">
-              Designed with passion in Kerala
+              Designed with Logic Loop Solution
             </p>
           </div>
-          
+
           <div className="flex gap-10">
             {['Privacy', 'Terms', 'Cookies'].map((link) => (
-              <a 
-                key={link} 
-                href="#" 
+              <a
+                key={link}
+                href="#"
                 className="text-[10px] font-black text-white/40 dark:text-text-muted/40 hover:text-white dark:hover:text-primary transition-all tracking-[0.2em] uppercase relative group"
               >
                 {link}

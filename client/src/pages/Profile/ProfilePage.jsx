@@ -8,6 +8,7 @@ import Footer from '../../components/Footer/Footer';
 import Navbar from '../../components/Navbar/Navbar';
 import SideNavbar from '../../components/SideNavbar/SideNavbar';
 import ChangePasswordModal from '../../components/ChangePasswordModal/ChangePasswordModal';
+import ImageCropperModal from '../../components/ImageCropper/ImageCropperModal';
 import { useCart } from '../../context/CartContext';
 import Loader from '../../components/Loader/Loader';
 
@@ -20,6 +21,11 @@ const ProfilePage = () => {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [editingAddress, setEditingAddress] = useState(null);
+  
+  // Cropper State
+  const [isCropperOpen, setIsCropperOpen] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState(null);
+
   const dropdownRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -149,8 +155,22 @@ const ProfilePage = () => {
     const file = e.target.files[0];
     if (!file) return;
 
+    // Read file and open cropper
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImageToCrop(reader.result);
+      setIsCropperOpen(true);
+    };
+    reader.readAsDataURL(file);
+    
+    // Reset input so same file can be selected again
+    e.target.value = '';
+  };
+
+  const handleCropComplete = async (croppedFile) => {
+    setIsCropperOpen(false);
     const formData = new FormData();
-    formData.append('avatar', file);
+    formData.append('avatar', croppedFile);
 
     try {
       setLoading(true);
@@ -163,9 +183,10 @@ const ProfilePage = () => {
       if (response.data.success) {
         setUser(response.data.data);
         localStorage.setItem('user', JSON.stringify(response.data.data));
+        window.dispatchEvent(new Event('storage'));
         Swal.fire({
-          title: 'Success!',
-          text: 'Profile picture updated successfully.',
+          title: 'Profile Updated!',
+          text: 'Your new picture looks great.',
           icon: 'success',
           toast: true,
           position: 'top-end',
@@ -177,6 +198,7 @@ const ProfilePage = () => {
       Swal.fire('Error', error.response?.data?.message || 'Failed to upload image', 'error');
     } finally {
       setLoading(false);
+      setImageToCrop(null);
     }
   };
 
@@ -340,6 +362,15 @@ const ProfilePage = () => {
         isOpen={isPasswordModalOpen}
         onClose={() => setIsPasswordModalOpen(false)}
         userEmail={user.email}
+      />
+      <ImageCropperModal
+        isOpen={isCropperOpen}
+        image={imageToCrop}
+        onCropComplete={handleCropComplete}
+        onCancel={() => {
+          setIsCropperOpen(false);
+          setImageToCrop(null);
+        }}
       />
       <Footer />
     </div>

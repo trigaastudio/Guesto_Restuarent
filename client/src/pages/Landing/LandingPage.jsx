@@ -12,7 +12,7 @@ import MenuModal from '../../components/Menu/MenuModal';
 import { useCart } from '../../context/CartContext';
 import Loader from '../../components/Loader/Loader';
 
-const heroImages = ['/heroSection/hero1.png', '/heroSection/hero2.png', '/heroSection/hero3.png', '/heroSection/hero4.png'];
+const heroImages = ['/heroSection/hero1.png', '/heroSection/hero2.png', '/heroSection/hero3.png', '/heroSection/hero4.png', '/heroSection/hero5.png'];
 
 const LandingPage = () => {
   const navigate = useNavigate();

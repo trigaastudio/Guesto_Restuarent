@@ -3,6 +3,7 @@ import Cart from '../models/cartSchema.js';
 import User from '../models/userSchema.js';
 import Counter from '../models/counterSchema.js';
 import Menu from '../models/menuSchema.js';
+import Settings from '../models/settingsSchema.js';
 import { getIO } from '../socket.js';
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -15,6 +16,52 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
+};
+
+const expandUrl = async (url) => {
+  if (!url || !url.includes('maps.app.goo.gl') && !url.includes('share.google')) return url;
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      redirect: 'follow',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
+    return response.url;
+  } catch (error) {
+    console.error('Expand URL Error:', error);
+    return url;
+  }
+};
+
+const extractCoordinates = (url) => {
+  if (!url) return null;
+  // Look for lat,lng pair. Try to find one that looks like coordinates.
+  const coordRegex = /([-.\d]+),([-.\d]+)/g;
+  let match;
+  while ((match = coordRegex.exec(url)) !== null) {
+    const lat = parseFloat(match[1]);
+    const lng = parseFloat(match[2]);
+    if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && Math.abs(lat) > 0.01) {
+      return { lat, lng };
+    }
+  }
+  return null;
+};
+
+const calculateRoadDistance = async (lat1, lon1, lat2, lon2) => {
+  try {
+    const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`);
+    const data = await response.json();
+    if (data.routes && data.routes.length > 0) {
+      return data.routes[0].distance / 1000; // convert meters to km
+    }
+    return calculateDistance(lat1, lon1, lat2, lon2);
+  } catch (error) {
+    console.error('OSRM Distance Error:', error);
+    return calculateDistance(lat1, lon1, lat2, lon2);
+  }
 };
 
 const getNextOrderNumber = async () => {
@@ -182,16 +229,23 @@ class OrderController {
       // Calculate delivery fee on server for security
       let deliveryFee = 0;
       if (finalOrderType === 'delivery' && address.location) {
+        const settings = await Settings.getSettings();
+        const { freeDistanceLimit, chargePerExtraKm } = settings.deliverySettings || { freeDistanceLimit: 5, chargePerExtraKm: 10 };
+        const restLat = settings.restaurantDetails?.location?.lat || parseFloat(process.env.RESTAURANT_LAT || '10.668194');
+        const restLng = settings.restaurantDetails?.location?.lng || parseFloat(process.env.RESTAURANT_LNG || '76.025111');
+
         // Try to match coordinates from Google Maps URL or string
-        const urlMatch = address.location.match(/q=([-.\d]+),([-.\d]+)/);
-        if (urlMatch) {
-          const userLat = parseFloat(urlMatch[1]);
-          const userLng = parseFloat(urlMatch[2]);
-          const restLat = parseFloat(process.env.RESTAURANT_LAT || '10.668194');
-          const restLng = parseFloat(process.env.RESTAURANT_LNG || '76.025111');
-          const distance = calculateDistance(userLat, userLng, restLat, restLng);
-          if (distance > 5) {
-            deliveryFee = Math.ceil(distance - 5) * 10;
+        let targetUrl = address.location;
+        if (targetUrl.includes('maps.app.goo.gl') || targetUrl.includes('share.google')) {
+          targetUrl = await expandUrl(targetUrl);
+        }
+
+        const coords = extractCoordinates(targetUrl);
+        if (coords) {
+          const { lat: userLat, lng: userLng } = coords;
+          const distance = await calculateRoadDistance(userLat, userLng, restLat, restLng);
+          if (distance > freeDistanceLimit) {
+            deliveryFee = Math.ceil(distance - freeDistanceLimit) * chargePerExtraKm;
           }
         }
       }
@@ -350,7 +404,7 @@ class OrderController {
 
   async createCounterOrder(req, res) {
     try {
-      const { customerDetails, items, orderType, paymentMethod, subtotal, tax, discount, totalAmount, cashReceived, balance } = req.body;
+      const { customerDetails, items, orderType, paymentMethod, subtotal, tax, deliveryFee, discount, totalAmount, cashReceived, balance } = req.body;
 
       const stockCheck = await checkStockAvailability(items);
       if (!stockCheck.available) {
@@ -381,6 +435,7 @@ class OrderController {
         })),
         subtotal,
         tax,
+        deliveryFee: deliveryFee || 0,
         discount,
         totalAmount,
         paymentMethod,

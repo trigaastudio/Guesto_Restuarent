@@ -15,6 +15,7 @@ import uploadRoutes from './routes/uploadRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import staffRoutes from './routes/staffRoutes.js';
+import utilRoutes from './routes/utilRoutes.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import http from 'http';
@@ -42,9 +43,11 @@ app.use(helmet({
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),
       "script-src": ["'self'", "'unsafe-inline'", "https://checkout.razorpay.com"],
       "frame-src": ["'self'", "https://api.razorpay.com", "https://tds.razorpay.com"],
-      "connect-src": ["'self'", "https://api.razorpay.com", "http://localhost:5000"]
+      "connect-src": ["'self'", "https://api.razorpay.com", "http://localhost:5000"],
+      "img-src": ["'self'", "data:", "http://localhost:5000", "blob:"]
     },
   },
+  crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
 
 // 3. Rate Limiting
@@ -84,6 +87,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/staff', staffRoutes);
+app.use('/api/utils', utilRoutes);
 
 
 app.get('/health', (req, res) => {

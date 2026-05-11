@@ -10,18 +10,32 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
   const isDarkMode = theme === 'dark';
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [localUser, setLocalUser] = useState(user);
+
+  useEffect(() => {
+    setLocalUser(user);
+  }, [user]);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
+    const handleStorageChange = () => {
+      const updatedUser = JSON.parse(localStorage.getItem('user') || 'null');
+      if (updatedUser) setLocalUser(updatedUser);
+    };
+
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   const navLinks = [
     { name: 'Home', icon: Home, path: '/home' },
     { name: 'Menu', icon: Utensils, path: '/home' },
     { name: 'About', icon: Info, path: '/about' },
-    { name: 'Contact', icon: Phone, path: '/contact' },
   ];
 
   const handleNavClick = (e, path, name) => {
@@ -133,7 +147,7 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
               </div>
             )}
 
-            {user && user.name ? (
+            {localUser && localUser.name ? (
               <div className="relative" ref={dropdownRef}>
                 <div
                   onClick={() => setShowUserDropdown(!showUserDropdown)}
@@ -143,13 +157,23 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
                     : 'bg-white/10 border-white/20 hover:bg-white/20'
                   }`}
                 >
-                  <div className="w-7 h-7 md:w-8 h-8 rounded-full bg-[#DA9133] flex items-center justify-center text-white font-black text-xs md:text-sm shadow-lg">
-                    {user.name[0].toUpperCase()}
+                  <div className="w-7 h-7 md:w-8 h-8 rounded-full bg-[#DA9133] flex items-center justify-center text-white font-black text-xs md:text-sm shadow-lg overflow-hidden border border-white/20">
+                    {localUser.avatar ? (
+                      <img 
+                        src={`http://localhost:5000${localUser.avatar}`} 
+                        alt={localUser.name} 
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    ) : null}
+                    <span className={localUser.avatar ? 'hidden' : ''}>{localUser.name[0].toUpperCase()}</span>
                   </div>
                   <span className={`text-[10px] font-black tracking-widest hidden md:block ${
                     isScrolled ? 'text-text-primary' : 'text-white'
                   }`}>
-                    {user.name.split(' ')[0]}
+                    {localUser.name.split(' ')[0]}
                   </span>
                 </div>
 
@@ -160,7 +184,7 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
                   <div className="p-8 bg-primary/5 border-b border-border relative">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-[#B91C1C]/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl"></div>
                     <p className="text-[10px] font-black text-[#B91C1C] opacity-60 uppercase tracking-widest mb-1">Signed in as</p>
-                    <p className="text-xl font-black text-text-primary truncate">{user.name}</p>
+                    <p className="text-xl font-black text-text-primary truncate">{localUser.name}</p>
                   </div>
                   <div className="p-4 space-y-2">
                     <button onClick={() => { setShowUserDropdown(false); navigate('/profile'); }} className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl hover:bg-background-muted transition-all group text-text-primary">

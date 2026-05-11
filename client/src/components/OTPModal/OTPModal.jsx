@@ -7,6 +7,15 @@ const OTPModal = ({ email, onVerify, onResend, onClose, loading }) => {
   const [canResend, setCanResend] = useState(false);
 
   useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    document.body.classList.add('modal-open');
+    return () => {
+      document.body.style.overflow = 'unset';
+      document.body.classList.remove('modal-open');
+    };
+  }, []);
+
+  useEffect(() => {
     let interval;
     if (timer > 0) {
       interval = setInterval(() => {

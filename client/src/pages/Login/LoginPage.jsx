@@ -47,6 +47,7 @@ const LoginPage = () => {
           const userData = response.data.data;
           localStorage.setItem('token', userData.token);
           localStorage.setItem('user', JSON.stringify(userData));
+          window.dispatchEvent(new Event('storage'));
           window.dispatchEvent(new Event('cart-refresh'));
 
           // Role-based redirection
@@ -93,7 +94,8 @@ const LoginPage = () => {
         localStorage.setItem('user', JSON.stringify(userData));
         localStorage.setItem('token', userData.token);
 
-        // Dispatch cart refresh
+        // Dispatch events
+        window.dispatchEvent(new Event('storage'));
         window.dispatchEvent(new Event('cart-refresh'));
 
         // Role-based redirection

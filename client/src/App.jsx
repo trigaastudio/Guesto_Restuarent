@@ -20,7 +20,6 @@ const MenuDetailPage = lazy(() => import('./pages/Menu/MenuDetailPage'));
 const StaffLogin = lazy(() => import('./pages/Staff/StaffLogin'));
 const KitchenDashboard = lazy(() => import('./pages/Kitchen/KitchenDashboard'));
 const AboutPage = lazy(() => import('./pages/About/AboutPage'));
-const ContactPage = lazy(() => import('./pages/Contact/ContactPage'));
 
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 import { ThemeProvider } from './context/ThemeContext';
@@ -100,7 +99,6 @@ function App() {
                   </ProtectedRoute>
                 } />
                 <Route path="/about" element={<AboutPage />} />
-                <Route path="/contact" element={<ContactPage />} />
               </Routes>
             </Suspense>
             <BottomNavbar />

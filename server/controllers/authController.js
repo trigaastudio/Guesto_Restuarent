@@ -11,7 +11,10 @@ class AuthController {
           id: user._id,
           name: user.name,
           email: user.email,
+          phone: user.phone,
+          avatar: user.avatar,
           role: user.role,
+          createdAt: user.createdAt,
           token: authService.generateToken(user._id)
         }
       });
@@ -35,7 +38,10 @@ class AuthController {
           id: user._id,
           name: user.name,
           email: user.email,
+          phone: user.phone,
+          avatar: user.avatar,
           role: user.role,
+          createdAt: user.createdAt,
           token: authService.generateToken(user._id)
         }
       });
@@ -60,7 +66,10 @@ class AuthController {
           id: user._id,
           name: user.name,
           email: user.email,
+          phone: user.phone,
+          avatar: user.avatar,
           role: user.role,
+          createdAt: user.createdAt,
           token: authService.generateToken(user._id)
         }
       });
@@ -90,7 +99,10 @@ class AuthController {
           id: user._id,
           name: user.name,
           email: user.email,
+          phone: user.phone,
+          avatar: user.avatar,
           role: user.role,
+          createdAt: user.createdAt,
           token: authService.generateToken(user._id)
         }
       });
@@ -140,7 +152,10 @@ class AuthController {
           id: user._id,
           name: user.name,
           email: user.email,
+          phone: user.phone,
+          avatar: user.avatar,
           role: user.role,
+          createdAt: user.createdAt,
           token: authService.generateToken(user._id)
         }
       });

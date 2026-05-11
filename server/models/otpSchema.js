@@ -26,70 +26,82 @@ const otpSchema = new mongoose.Schema({
   },
 });
 
+import Settings from './settingsSchema.js';
+
 // Define a function to send emails
-async function sendVerificationEmail(email, otp, logoUrl) {
+async function sendVerificationEmail(email, otp) {
   try {
+    const settings = await Settings.getSettings();
+    const restaurantName = settings.restaurantDetails.name || "GuestO";
+    
+    // Explicitly use the golden logo from public folder for maximum visibility in all modes
+    let primaryLogoPath = '/logo-golden.png';
+    
     const attachments = [];
-    let logoCid = null;
+    let logoSrc = '';
 
-    // If logoUrl is a local path (from public folder), try to embed it as CID
-    // We'll look for logo-golden.png or logo-dark.png as defaults if logoUrl is localhost
-    if (logoUrl && (logoUrl.includes('localhost') || logoUrl.includes('127.0.0.1'))) {
-      const publicPath = path.join(__dirname, '..', '..', 'client', 'public');
-      const logoFileName = logoUrl.split('/').pop();
-      const logoFilePath = path.join(publicPath, logoFileName);
-
-      if (fs.existsSync(logoFilePath)) {
-        logoCid = 'logo';
+    // Function to handle logo resolution
+    const resolveLogo = (logoPathToUse, cidName) => {
+      const logoFileName = 'logo-golden.png';
+      const logoPath = path.join(__dirname, '..', '..', 'client', 'public', logoFileName);
+        
+      if (fs.existsSync(logoPath)) {
         attachments.push({
           filename: logoFileName,
-          path: logoFilePath,
-          cid: logoCid
+          path: logoPath,
+          cid: cidName
         });
+        return `cid:${cidName}`;
       }
-    }
+      return '';
+    };
 
-    const mailResponse = await mailSender(
+    logoSrc = resolveLogo(primaryLogoPath, 'restaurantLogo');
+
+    const body = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #000000;">
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background-color: #000000;">
+          <div style="background-color: #0a0a0a; border-radius: 24px; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; border: 1px solid #1a1a1a;">
+            <div style="margin-bottom: 30px;">
+              ${logoSrc ? `<img src="${logoSrc}" alt="${restaurantName}" style="height: 60px; width: auto; margin-bottom: 20px; display: block; margin-left: auto; margin-right: auto;">` : ''}
+            </div>
+            
+            <h1 style="color: #ffffff; font-size: 28px; font-weight: 800; margin-bottom: 10px; letter-spacing: -0.5px;">Verification Code</h1>
+            <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6; margin-bottom: 35px;">
+              You requested to update your administrative credentials. Please use the following code to verify your identity.
+            </p>
+            
+            <div style="background-color: #B91C1C; color: #ffffff; padding: 25px; border-radius: 20px; font-size: 36px; font-weight: 900; letter-spacing: 12px; margin-bottom: 35px; box-shadow: 0 8px 20px rgba(185, 28, 28, 0.4);">
+              ${otp}
+            </div>
+            
+            <p style="color: #666666; font-size: 12px; font-weight: 600; text-transform: uppercase; tracking-wider;">
+              Valid for 5 minutes only
+            </p>
+            
+            <div style="margin-top: 40px; pt-30px; border-top: 1px solid #1a1a1a; padding-top: 30px;">
+              <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 5px;">If you didn't request this code, you can safely ignore this email.</p>
+              <p style="color: #ffffff; font-size: 14px; font-weight: 800;">Team ${restaurantName} Admin</p>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await mailSender(
       email,
       "Verification Code - GuestO Admin",
-      `
-      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 500px; margin: 40px auto; background-color: #ffffff; color: #1e293b; border-radius: 32px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
-        <div style="background-color: #0f172a; padding: 50px 20px; text-align: center;">
-          ${logoCid ? `
-            <img src="cid:${logoCid}" alt="GuestO Logo" style="height: 60px; width: auto; margin-bottom: 10px;">
-          ` : (logoUrl && !logoUrl.includes('localhost') ? `
-            <img src="${logoUrl}" alt="GuestO Logo" style="height: 60px; width: auto; margin-bottom: 10px;">
-          ` : `
-            <div style="margin-bottom: 10px;">
-              <span style="font-size: 32px; font-weight: 900; color: #D97706; letter-spacing: 4px; text-transform: uppercase; border-bottom: 4px solid #D97706; padding-bottom: 4px;">GuestO</span>
-            </div>
-          `)}
-          <p style="margin: 15px 0 0 0; font-size: 13px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 3px;">Advanced Restaurant Systems</p>
-        </div>
-        
-        <div style="padding: 50px 40px; text-align: center;">
-          <h2 style="margin: 0 0 15px 0; font-size: 22px; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">Verification Code</h2>
-          <p style="margin: 0 0 40px 0; font-size: 14px; color: #64748b; line-height: 1.6;">Use the code below to complete your credential update. This code will expire in 5 minutes.</p>
-          
-          <div style="background-color: #f8fafc; padding: 30px; border-radius: 24px; border: 2px dashed #e2e8f0; display: inline-block; min-width: 200px;">
-            <span style="font-size: 48px; font-weight: 900; letter-spacing: 12px; color: #D97706; font-family: 'Courier New', Courier, monospace; margin-left: 12px;">${otp}</span>
-          </div>
-          
-          <div style="margin-top: 50px; padding-top: 30px; border-top: 1px solid #f1f5f9;">
-            <p style="margin: 0; font-size: 11px; color: #94a3b8; line-height: 1.5;">If you didn't request this, you can safely ignore this email. Someone may have entered your email by mistake.</p>
-          </div>
-        </div>
-        
-        <div style="background-color: #f8fafc; padding: 25px; text-align: center;">
-          <p style="margin: 0; font-size: 10px; color: #cbd5e1; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">&copy; 2026 GuestO Restaurant Systems</p>
-        </div>
-      </div>
-      `,
+      body,
       attachments
     );
-    // Email sent successfully
   } catch (error) {
-    // Error occurred while sending email
+    console.error("Error in OTP sendVerificationEmail:", error);
     throw error;
   }
 }
@@ -98,7 +110,7 @@ async function sendVerificationEmail(email, otp, logoUrl) {
 otpSchema.pre("save", async function () {
   // Only send an email when a new document is created
   if (this.isNew) {
-    await sendVerificationEmail(this.email, this.otp, this.logoUrl);
+    await sendVerificationEmail(this.email, this.otp);
   }
 });
 
