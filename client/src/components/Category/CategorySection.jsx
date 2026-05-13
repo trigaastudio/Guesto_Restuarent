@@ -20,7 +20,7 @@ const CategorySection = React.memo(({ categories, selectedCategory, handleCatego
             <h2 className="text-xl md:text-4xl font-black text-text-primary tracking-tighter flex items-center gap-3">
               Browse <span className="text-primary">Categories</span>
             </h2>
-            <p className="text-[9px] md:text-sm text-text-muted font-bold tracking-widest uppercase opacity-60">Find exactly what you're craving today</p>
+            <p className="text-[9px] md:text-sm text-text-muted font-bold tracking-widest uppercase opacity-80">Find exactly what you're craving today</p>
           </div>
           
           <div className="hidden md:flex gap-3">

@@ -12,15 +12,25 @@ export const createMenu = async (req, res) => {
 
 export const getMenus = async (req, res) => {
   try {
-    const { category, page = 1, limit = 10 } = req.query;
+    const { category, page, limit, all } = req.query;
+
+    if (all === 'true') {
+      const menus = await menuService.getAllMenus();
+      return res.status(200).json(menus);
+    }
+
     let filter = {};
     if (category && category !== 'all') {
       filter.category = category;
     }
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    
-    // Prefer repository if specialized logic is needed, or service if standard
-    const menus = await menuRepository.getAll(filter, skip, parseInt(limit));
+
+    if (page && limit) {
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+      const menus = await menuRepository.getAll(filter, skip, parseInt(limit));
+      return res.status(200).json(menus);
+    }
+
+    const menus = await menuRepository.getAll(filter);
     res.status(200).json(menus);
   } catch (error) {
     res.status(500).json({ message: error.message });

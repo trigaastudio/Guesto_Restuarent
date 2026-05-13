@@ -72,7 +72,7 @@ const ProfilePage = () => {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    window.location.replace('/login');
+    navigate('/login', { replace: true });
   };
 
   const handleDeleteAddress = async (addressId) => {
@@ -247,7 +247,7 @@ const ProfilePage = () => {
                     <p className="text-[9px] font-black text-primary tracking-widest uppercase">Location management</p>
                   </div>
                   <h3 className="text-xl md:text-2xl font-black text-text-primary tracking-tight">Address Directory</h3>
-                  <p className="text-[10px] font-black text-text-muted tracking-widest opacity-40">Manage your frequent delivery locations</p>
+                  <p className="text-[10px] font-black text-text-muted tracking-widest opacity-80">Manage your frequent delivery locations</p>
                 </div>
 
                 <button
@@ -271,7 +271,7 @@ const ProfilePage = () => {
                     <MapPin size={32} strokeWidth={1.5} />
                   </div>
                   <h4 className="text-lg font-black text-text-primary mb-2 tracking-tight">No Saved Addresses</h4>
-                  <p className="text-[10px] font-bold text-text-muted tracking-widest opacity-40 max-w-xs mx-auto mb-10 leading-relaxed">Your delivery directory is currently empty</p>
+                  <p className="text-[10px] font-bold text-text-muted tracking-widest opacity-80 max-w-xs mx-auto mb-10 leading-relaxed">Your delivery directory is currently empty</p>
                   <button
                     onClick={() => setIsAddressModalOpen(true)}
                     className="bg-primary/10 text-primary hover:bg-primary hover:text-white px-10 py-4 rounded-2xl font-black text-xs tracking-widest transition-all duration-500"
@@ -303,7 +303,7 @@ const ProfilePage = () => {
                           <span className="text-[6px] font-black text-text-muted tracking-widest">{address.phone || user.phone}</span>
                         </div>
                         <h5 className="text-xs font-black text-text-primary tracking-tight group-hover/card:text-primary transition-colors duration-500">{address.name || user.name}</h5>
-                        <p className="text-[9px] font-bold text-text-muted opacity-70 leading-relaxed line-clamp-1">{address.address}</p>
+                        <p className="text-[9px] font-bold text-text-muted opacity-90 leading-relaxed line-clamp-1">{address.address}</p>
                       </div>
 
                       <div className="pt-3 border-t border-border/40 flex items-center gap-1.5">

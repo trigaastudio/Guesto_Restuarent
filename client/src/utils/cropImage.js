@@ -34,11 +34,10 @@ export default async function getCroppedImg(imageSrc, pixelCrop, rotation = 0) {
   ctx.rotate(getRadianAngle(rotation));
   ctx.translate(-safeArea / 2, -safeArea / 2);
 
-  ctx.drawImage(
-    image,
-    safeArea / 2 - image.width * 0.5,
-    safeArea / 2 - image.height * 0.5
-  );
+  const imageOffsetX = safeArea / 2 - image.width * 0.5;
+  const imageOffsetY = safeArea / 2 - image.height * 0.5;
+
+  ctx.drawImage(image, imageOffsetX, imageOffsetY);
 
   const croppedCanvas = document.createElement('canvas');
   const croppedCtx = croppedCanvas.getContext('2d');
@@ -50,8 +49,8 @@ export default async function getCroppedImg(imageSrc, pixelCrop, rotation = 0) {
 
   croppedCtx.drawImage(
     canvas,
-    pixelCrop.x,
-    pixelCrop.y,
+    imageOffsetX + pixelCrop.x,
+    imageOffsetY + pixelCrop.y,
     pixelCrop.width,
     pixelCrop.height,
     0,
@@ -68,55 +67,60 @@ export default async function getCroppedImg(imageSrc, pixelCrop, rotation = 0) {
 }
 
 export async function getCroppedImgFile(imageSrc, pixelCrop, rotation = 0, fileName = 'cropped_image.png') {
-  console.log('Cropping image with:', { pixelCrop, rotation });
   const image = await createImage(imageSrc);
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
 
-  const maxSize = Math.max(image.width, image.height);
-  const safeArea = Math.round(2 * ((maxSize / 2) * Math.sqrt(2)));
+  if (!ctx) {
+    return null;
+  }
 
-  // 1. Setup Safe Area Canvas for rotation handling
-  canvas.width = safeArea;
-  canvas.height = safeArea;
+  // Set the canvas size to the desired crop size
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
 
-  ctx.translate(safeArea / 2, safeArea / 2);
-  ctx.rotate(getRadianAngle(rotation));
-  ctx.translate(-safeArea / 2, -safeArea / 2);
+  // Handle rotation
+  if (rotation !== 0) {
+    const safeArea = Math.max(image.width, image.height) * 2;
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCanvas.width = safeArea;
+    tempCanvas.height = safeArea;
 
-  ctx.drawImage(
-    image,
-    Math.round(safeArea / 2 - image.width * 0.5),
-    Math.round(safeArea / 2 - image.height * 0.5)
-  );
+    tempCtx.translate(safeArea / 2, safeArea / 2);
+    tempCtx.rotate(getRadianAngle(rotation));
+    tempCtx.translate(-safeArea / 2, -safeArea / 2);
+    tempCtx.drawImage(image, safeArea / 2 - image.width / 2, safeArea / 2 - image.height / 2);
 
-  // 2. Extract the cropped area from the safe area canvas
-  const croppedCanvas = document.createElement('canvas');
-  const croppedCtx = croppedCanvas.getContext('2d');
-
-  // Ensure dimensions are valid integers >= 1
-  const cropWidth = Math.max(1, Math.round(pixelCrop.width));
-  const cropHeight = Math.max(1, Math.round(pixelCrop.height));
-  
-  croppedCanvas.width = cropWidth;
-  croppedCanvas.height = cropHeight;
-
-  croppedCtx.drawImage(
-    canvas,
-    Math.round(pixelCrop.x),
-    Math.round(pixelCrop.y),
-    cropWidth,
-    cropHeight,
-    0,
-    0,
-    cropWidth,
-    cropHeight
-  );
+    ctx.drawImage(
+      tempCanvas,
+      safeArea / 2 - image.width / 2 + pixelCrop.x,
+      safeArea / 2 - image.height / 2 + pixelCrop.y,
+      pixelCrop.width,
+      pixelCrop.height,
+      0,
+      0,
+      pixelCrop.width,
+      pixelCrop.height
+    );
+  } else {
+    // Simple path for no rotation
+    ctx.drawImage(
+      image,
+      pixelCrop.x,
+      pixelCrop.y,
+      pixelCrop.width,
+      pixelCrop.height,
+      0,
+      0,
+      pixelCrop.width,
+      pixelCrop.height
+    );
+  }
 
   return new Promise((resolve, reject) => {
-    croppedCanvas.toBlob((blob) => {
+    canvas.toBlob((blob) => {
       if (!blob) {
-        console.error('❌ Canvas toBlob failed. Dimensions:', cropWidth, 'x', cropHeight);
         reject(new Error('Canvas is empty'));
         return;
       }

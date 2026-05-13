@@ -3,6 +3,7 @@ import { User, Lock, ArrowRight, Eye, EyeOff, Sun, Moon, Loader2 } from 'lucide-
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../api/axiosInstance';
+import Loader from '../../components/Loader/Loader';
 
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -145,7 +146,7 @@ const AdminLogin = () => {
             className="w-full bg-gradient-to-r from-[#991b1b] to-primary hover:from-primary hover:to-primary-light text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/30 flex items-center justify-center space-x-2 transition-all active:scale-[0.98] mt-4 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {loading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader size="small" />
             ) : (
               <>
                 <span className="uppercase tracking-widest text-sm">Enter Dashboard</span>

@@ -272,6 +272,15 @@ class UserController {
   async toggleUserStatus(req, res) {
     try {
       const user = await userService.toggleUserStatus(req.params.id);
+      
+      // Real-time socket notification for status change
+      try {
+        const { emitAccountStatusUpdate } = await import('../socket.js');
+        emitAccountStatusUpdate(user._id.toString(), user.isActive);
+      } catch (err) {
+        console.error('Socket notification failed:', err);
+      }
+
       res.status(200).json({
         success: true,
         message: `User ${user.isActive ? 'unblocked' : 'blocked'} successfully`,

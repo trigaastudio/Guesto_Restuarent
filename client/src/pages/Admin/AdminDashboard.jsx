@@ -34,7 +34,9 @@ import {
   Package,
   PackageX,
   AlertTriangle,
-  Trash2
+  Trash2,
+  Ticket,
+  ExternalLink
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import CategorySection from './sections/CategorySection';
@@ -43,6 +45,8 @@ import OrderSection from './sections/OrderSection';
 import StaffManagement from './sections/StaffManagement';
 import UserManagement from './sections/UserManagement';
 import SettingsSection from './sections/SettingsSection';
+import OfferSection from './sections/OfferSection';
+import SalesSection from './sections/SalesSection';
 import Loader from '../../components/Loader/Loader';
 
 const AdminDashboard = () => {
@@ -206,12 +210,12 @@ const AdminDashboard = () => {
   };
 
   const metrics = stats ? [
-    { label: 'Total Revenue', value: `₹${stats.metrics.totalRevenue.toLocaleString()}`, description: 'Lifetime earnings', icon: DollarSign, color: 'text-primary' },
-    { label: 'Today Revenue', value: `₹${stats.metrics.todayRevenue.toLocaleString()}`, description: 'Daily earnings', icon: TrendingUp, color: 'text-status-available' },
-    { label: 'Total Orders', value: stats.metrics.totalOrders.toString(), description: 'Order count', icon: ShoppingCart, color: 'text-blue-500' },
-    { label: 'Customers', value: stats.metrics.totalCustomers.toString(), description: 'Unique customers', icon: Users, color: 'text-purple-500' },
-    { label: 'Menu Items', value: stats.metrics.totalMenuItems.toString(), description: 'Catalogue size', icon: BookOpen, color: 'text-amber-500' },
-    { label: 'Avg Order Value', value: `₹${stats.metrics.avgOrderValue.toFixed(2)}`, description: 'Average spend', icon: BarChart3, color: 'text-pink-500' },
+    { label: 'Today Revenue', value: `₹${stats.metrics.todayRevenue.toLocaleString()}`, description: 'Daily sales', icon: TrendingUp, color: 'text-blue-500' },
+    { label: 'Daily Profit', value: `₹${stats.metrics.todayProfit.toLocaleString()}`, description: 'Net earnings today', icon: DollarSign, color: 'text-status-available' },
+    { label: 'Total Orders', value: stats.metrics.totalOrders.toString(), description: 'Order count', icon: ShoppingCart, color: 'text-purple-500' },
+    { label: 'Customers', value: stats.metrics.totalCustomers.toString(), description: 'Unique customers', icon: Users, color: 'text-amber-500' },
+    { label: 'Menu Items', value: stats.metrics.totalMenuItems.toString(), description: 'Catalogue size', icon: BookOpen, color: 'text-pink-500' },
+    { label: 'Avg Order Value', value: `₹${stats.metrics.avgOrderValue.toFixed(2)}`, description: 'Average spend', icon: BarChart3, color: 'text-orange-500' },
   ] : [];
 
   return (
@@ -241,17 +245,22 @@ const AdminDashboard = () => {
 
         <div className="flex-1 flex flex-col overflow-x-hidden no-scrollbar relative">
           <div className="p-6 border-b border-border/40 flex items-center justify-center relative">
-            <img
-              src={
-                (isSidebarCollapsed && !isMobileMenuOpen)
-                  ? "/browser-icon.png"
-                  : (isDarkMode
-                    ? (settings?.branding?.logoGold || "/logo-golden.png")
-                    : (settings?.branding?.logoDark || "/logo-dark.png"))
-              }
-              alt="Logo"
-              className={`${(isSidebarCollapsed && !isMobileMenuOpen) ? 'h-8' : 'h-10'} w-auto transition-all duration-500`}
-            />
+            <button 
+              onClick={() => handleTabChange('Overview')}
+              className="transition-transform active:scale-95 outline-none"
+            >
+              <img
+                src={
+                  (isSidebarCollapsed && !isMobileMenuOpen)
+                    ? "/browser-icon.png"
+                    : (isDarkMode
+                      ? (settings?.branding?.logoGold || "/logo-golden.png")
+                      : (settings?.branding?.logoDark || "/logo-dark.png"))
+                }
+                alt="Logo"
+                className={`${(isSidebarCollapsed && !isMobileMenuOpen) ? 'h-8' : 'h-10'} w-auto transition-all duration-500`}
+              />
+            </button>
             <button
               onClick={() => setIsMobileMenuOpen(false)}
               className="lg:hidden absolute right-6 p-2 text-text-secondary hover:text-primary transition-colors"
@@ -260,47 +269,91 @@ const AdminDashboard = () => {
             </button>
           </div>
 
-          <nav className="flex-1 p-4 space-y-2 overflow-y-auto no-scrollbar">
+          <nav className="flex-1 p-4 space-y-8 overflow-y-auto no-scrollbar">
             {[
-              { name: 'Overview', icon: LayoutDashboard },
-              { name: 'Orders', icon: ShoppingCart },
-              { name: 'Staff', icon: UserCheck },
-              { name: 'Categories', icon: Filter },
-              { name: 'Menu', icon: UtensilsCrossed },
-              { name: 'Users', icon: Users },
-              { name: 'Settings', icon: Settings },
-            ].map((item) => (
-              <button
-                key={item.name}
-                onClick={() => {
-                  handleTabChange(item.name);
-                  if (window.innerWidth < 1024) setIsMobileMenuOpen(false);
-                }}
-                title={isSidebarCollapsed && !isMobileMenuOpen ? item.name : ''}
-                className={`w-full flex items-center rounded-xl transition-all duration-200 p-3 group ${activeTab === item.name
-                  ? 'bg-primary text-white shadow-lg shadow-primary/20 font-semibold'
-                  : 'text-text-secondary hover:bg-background-muted hover:text-text-primary'
-                  } ${(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'}`}
-              >
-                <item.icon size={20} className="shrink-0 transition-transform duration-300 group-hover:scale-110" />
-                <span className={`
-                  transition-all duration-300 overflow-hidden whitespace-nowrap
-                  ${(isSidebarCollapsed && !isMobileMenuOpen) ? 'max-w-0 opacity-0 ml-0' : 'max-w-[200px] opacity-100 ml-3'}
-                `}>
-                  {item.name}
-                </span>
-              </button>
+              {
+                group: 'Main',
+                items: [
+                  { name: 'Overview', icon: LayoutDashboard },
+                  { name: 'Sales', icon: LineChart },
+                  { name: 'Orders', icon: ShoppingCart },
+                ]
+              },
+              {
+                group: 'Inventory',
+                items: [
+                  { name: 'Categories', icon: Filter },
+                  { name: 'Menu', icon: UtensilsCrossed },
+                  { name: 'Offers', icon: Ticket },
+                ]
+              },
+              {
+                group: 'Administration',
+                items: [
+                  { name: 'Users', icon: Users },
+                  { name: 'Staff', icon: UserCheck },
+                  { name: 'Settings', icon: Settings },
+                ]
+              }
+            ].map((section) => (
+              <div key={section.group} className="space-y-2">
+                {!isSidebarCollapsed && (
+                  <h3 className="px-4 text-[9px] font-black text-text-muted uppercase tracking-[0.25em] mb-3 opacity-60">
+                    {section.group}
+                  </h3>
+                )}
+                <div className="space-y-1">
+                  {section.items.map((item) => (
+                    <button
+                      key={item.name}
+                      onClick={() => {
+                        handleTabChange(item.name);
+                        if (window.innerWidth < 1024) setIsMobileMenuOpen(false);
+                      }}
+                      title={isSidebarCollapsed && !isMobileMenuOpen ? item.name : ''}
+                      className={`w-full flex items-center rounded-2xl transition-all duration-300 p-3 group relative ${activeTab === item.name
+                        ? 'bg-primary text-white shadow-lg shadow-primary/25 font-bold'
+                        : 'text-text-secondary hover:bg-background-muted hover:text-text-primary'
+                        } ${(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'}`}
+                    >
+                      {activeTab === item.name && (
+                        <div className="absolute left-0 w-1 h-6 bg-white rounded-r-full animate-in slide-in-from-left duration-300" />
+                      )}
+                      <item.icon size={20} className={`shrink-0 transition-all duration-300 ${activeTab === item.name ? 'scale-110' : 'group-hover:scale-110 group-hover:text-primary'}`} />
+                      <span className={`
+                        transition-all duration-300 overflow-hidden whitespace-nowrap text-sm
+                        ${(isSidebarCollapsed && !isMobileMenuOpen) ? 'max-w-0 opacity-0 ml-0' : 'max-w-[200px] opacity-100 ml-3'}
+                      `}>
+                        {item.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
           </nav>
 
-          <div className="p-4 border-t border-border/40 space-y-2">
+          <div className="p-4 border-t border-border/40 space-y-1">
+            <button
+              onClick={() => navigate('/home')}
+              className={`w-full flex items-center rounded-2xl transition-all duration-300 p-3 text-primary hover:bg-primary/5 group ${(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'}`}
+            >
+              <ExternalLink size={20} className="shrink-0 group-hover:scale-110 transition-transform" />
+              <span className={`
+                transition-all duration-300 overflow-hidden whitespace-nowrap font-black uppercase tracking-[0.2em] text-[9px]
+                ${(isSidebarCollapsed && !isMobileMenuOpen) ? 'max-w-0 opacity-0 ml-0' : 'max-w-[200px] opacity-100 ml-3'}
+              `}>
+                View Website
+              </span>
+            </button>
+            
             <button
               onClick={handleLogout}
-              className={`w-full flex items-center rounded-xl text-red-500 hover:bg-red-500/5 transition-all p-3 group ${(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : ''}`}
+              className={`w-full flex items-center rounded-2xl text-status-unavailable hover:bg-status-off/5 transition-all p-3 group ${(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'}`}
             >
               <LogOut size={20} className="shrink-0 group-hover:-translate-x-1 transition-transform" />
               <span className={`
-                transition-all duration-300 overflow-hidden whitespace-nowrap font-black uppercase tracking-widest text-[10px]
+                transition-all duration-300 overflow-hidden whitespace-nowrap font-black uppercase tracking-[0.2em] text-[9px]
                 ${(isSidebarCollapsed && !isMobileMenuOpen) ? 'max-w-0 opacity-0 ml-0' : 'max-w-[200px] opacity-100 ml-3'}
               `}>
                 Logout
@@ -334,6 +387,14 @@ const AdminDashboard = () => {
           </div>
 
           <div className="flex items-center space-x-2 sm:space-x-6">
+            <button
+              onClick={() => navigate('/home')}
+              className="p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all flex items-center space-x-2 group"
+              title="Go to Customer View"
+            >
+              <ExternalLink size={20} className="group-hover:scale-110 transition-transform" />
+              <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Website</span>
+            </button>
             <button
               onClick={toggleTheme}
               className="p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all"
@@ -460,9 +521,6 @@ const AdminDashboard = () => {
                       <p className="text-text-secondary text-sm font-medium">Welcome back! Here's what's happening today.</p>
                     </div>
                     <div className="flex space-x-2">
-                      <button className="bg-background-card border border-border-main text-text-primary px-4 py-2 rounded-xl text-sm font-semibold hover:bg-background-muted transition-colors">
-                        Export Table
-                      </button>
                       <button 
                         onClick={handleRefresh}
                         className="bg-primary text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-lg shadow-primary/20 hover:bg-primary-light transition-all"
@@ -536,6 +594,21 @@ const AdminDashboard = () => {
                       </div>
                       <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-125" />
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {metrics.slice(0, 3).map((metric, idx) => (
+                      <div key={idx} className="bg-background-card p-8 rounded-[2.5rem] border border-border/40 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className={`p-3 rounded-2xl ${metric.color.replace('text-', 'bg-')}/10 ${metric.color}`}>
+                            <metric.icon size={22} />
+                          </div>
+                          <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">{metric.label}</span>
+                        </div>
+                        <div className="text-4xl font-black text-text-primary tracking-tighter">{metric.value}</div>
+                        <div className="text-[10px] text-text-muted font-bold mt-2 uppercase tracking-widest">{metric.description}</div>
+                      </div>
+                    ))}
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -827,7 +900,9 @@ const AdminDashboard = () => {
           {activeTab === 'Staff' && <StaffManagement key={`staff-${refreshKey}`} />}
           {activeTab === 'Users' && <UserManagement key={`users-${refreshKey}`} />}
 
-          {activeTab === 'Settings' && <SettingsSection key={`settings-${refreshKey}`} />}
+          { activeTab === 'Settings' && <SettingsSection key={`settings-${refreshKey}`} />}
+          { activeTab === 'Offers' && <OfferSection key={`offers-${refreshKey}`} />}
+          { activeTab === 'Sales' && <SalesSection key={`sales-${refreshKey}`} />}
         </div>
       </main>
     </div>

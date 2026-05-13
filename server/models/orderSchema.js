@@ -37,6 +37,11 @@ const orderSchema = new mongoose.Schema({
       min: 0,
       required: function () { return !this.price; }
     },
+    costPrice: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
     price: Number, // Team app compatibility
     totalPrice: {
       type: Number,
@@ -117,7 +122,7 @@ orderSchema.pre('validate', async function () {
   }
 
   // 3. Payment Status Auto-Update
-  if (this.paymentMethod === 'online' || this.paymentMethod === 'wallet') {
+  if (this.paymentMethod === 'wallet') {
     if (this.paymentStatus === 'pending') {
       this.paymentStatus = 'paid';
     }

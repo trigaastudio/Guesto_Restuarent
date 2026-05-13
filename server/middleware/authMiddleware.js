@@ -20,6 +20,10 @@ export const protect = async (req, res, next) => {
         return res.status(401).json({ success: false, message: 'Not authorized, account not found' });
       }
       
+      if (!user.isActive) {
+        return res.status(401).json({ success: false, message: 'Not authorized, account deactivated' });
+      }
+      
       // Add user to request object
       req.user = user;
       next();

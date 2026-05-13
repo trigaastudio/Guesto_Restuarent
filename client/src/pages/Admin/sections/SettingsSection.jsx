@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../../api/axiosInstance';
 import {
   Store,
@@ -32,10 +33,12 @@ import {
 import { showToast, showAlert } from '../../../utils/sweetAlert';
 import ImageCropper from '../../../components/ImageCropper/ImageCropper';
 import { useTheme } from '../../../context/ThemeContext';
+import Loader from '../../../components/Loader/Loader';
 
 
 
 const SettingsSection = () => {
+  const navigate = useNavigate();
   const [settings, setSettings] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -209,7 +212,7 @@ const SettingsSection = () => {
         showToast('info', 'Security credentials updated. Please log in again.');
         setTimeout(() => {
           localStorage.clear();
-          window.location.href = '/login';
+          navigate('/login', { replace: true });
         }, 2000);
       }
     } catch (error) {
@@ -222,9 +225,9 @@ const SettingsSection = () => {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-96 space-y-4">
-        <Loader2 className="animate-spin text-primary" size={48} />
-        <p className="text-text-secondary font-bold animate-pulse">Loading settings...</p>
+      <div className="flex flex-col items-center justify-center h-96 space-y-6">
+        <Loader size="large" />
+        <p className="text-text-secondary text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Loading settings...</p>
       </div>
     );
   }
@@ -615,7 +618,7 @@ const SettingsSection = () => {
                 </div>
                 {settings.operationalSettings?.isBusyMode && (
                   <div className="mt-6 space-y-4 animate-in slide-in-from-top-4">
-                    <div className="flex items-center justify-between bg-white/5 p-4 rounded-2xl border border-amber-500/10">
+                    <div className="flex items-center justify-between bg-background-muted/30 p-4 rounded-2xl border border-amber-500/10">
                       <label className="text-[11px] font-black text-amber-500 uppercase">Extra Minutes:</label>
                       <div className="flex items-center space-x-2">
                         <input
@@ -649,7 +652,7 @@ const SettingsSection = () => {
                 </div>
                 
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between bg-white/5 p-4 rounded-2xl border border-border-light">
+                  <div className="flex items-center justify-between bg-background-muted/30 p-4 rounded-2xl border border-border-light">
                     <label className="text-[11px] font-black text-text-secondary uppercase">Fee Amount:</label>
                     <div className="flex items-center space-x-2">
                       <span className="text-[10px] font-black text-primary uppercase">₹</span>
@@ -700,7 +703,7 @@ const SettingsSection = () => {
                             businessHours: { ...settings.operationalSettings.businessHours, open: e.target.value }
                           }
                         })}
-                        className="w-full px-6 py-4 bg-white/5 rounded-2xl border border-white/10 outline-none font-black text-xl text-text-primary transition-all focus:border-primary/50 focus:bg-white/10 appearance-none"
+                        className="w-full px-6 py-4 bg-background-muted/50 rounded-2xl border border-border-light outline-none font-black text-xl text-text-primary transition-all focus:border-primary/50 focus:bg-white focus:text-black appearance-none"
                       />
                     </div>
                   </div>
@@ -718,7 +721,7 @@ const SettingsSection = () => {
                             businessHours: { ...settings.operationalSettings.businessHours, close: e.target.value }
                           }
                         })}
-                        className="w-full px-6 py-4 bg-white/5 rounded-2xl border border-white/10 outline-none font-black text-xl text-text-primary transition-all focus:border-primary/50 focus:bg-white/10 appearance-none"
+                        className="w-full px-6 py-4 bg-background-muted/50 rounded-2xl border border-border-light outline-none font-black text-xl text-text-primary transition-all focus:border-primary/50 focus:bg-white focus:text-black appearance-none"
                       />
                     </div>
                   </div>
@@ -751,8 +754,8 @@ const SettingsSection = () => {
                           }}
                           className={`px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 border
                                  ${isClosed
-                              ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-105'
-                              : 'bg-white/5 border-white/10 text-text-muted hover:border-primary/50 hover:text-primary'}
+                              ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20'
+                              : 'bg-background-muted/50 border-border-light text-text-muted hover:border-primary/50 hover:text-primary'}
                                `}
                         >
                           {day.slice(0, 3)}
@@ -937,7 +940,7 @@ const SettingsSection = () => {
                           setAspectRatio(1);
                           document.getElementById('logo-upload-input').click();
                         }}
-                        className={`w-full h-56 bg-white/5 rounded-[2.5rem] border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center cursor-pointer overflow-hidden group
+                        className={`w-full h-56 bg-background-muted/30 rounded-[2.5rem] border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center cursor-pointer overflow-hidden group
                                ${settings.printingSettings?.kotQRCodeImage ? 'border-primary/30 bg-primary/5 shadow-inner' : 'border-white/10 hover:border-primary/50 hover:bg-primary/5'}
                              `}
                       >
@@ -952,7 +955,7 @@ const SettingsSection = () => {
                           </div>
                         ) : (
                           <>
-                            <div className="p-5 bg-white/5 rounded-2xl group-hover:bg-primary/10 group-hover:scale-110 transition-all duration-500">
+                            <div className="p-5 bg-background-muted/50 rounded-2xl group-hover:bg-primary/10 group-hover:scale-110 transition-all duration-500">
                               <Upload size={28} className="text-text-muted group-hover:text-primary" />
                             </div>
                             <div className="text-center mt-5">

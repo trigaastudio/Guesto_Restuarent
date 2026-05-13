@@ -199,6 +199,12 @@ class AuthService {
         throw error;
       }
 
+      if (!user.isActive) {
+        const error = new Error('Your account has been deactivated. Please contact support.');
+        error.statusCode = 403;
+        throw error;
+      }
+
       return user;
     } catch (error) {
       console.error('🔥 Google Login Service Error:', error.message);
@@ -249,6 +255,13 @@ class AuthService {
       error.statusCode = 403;
       throw error;
     }
+
+    if (!user.isActive) {
+      const error = new Error('Your account has been deactivated. Please contact support.');
+      error.statusCode = 403;
+      throw error;
+    }
+
     return user;
   }
 

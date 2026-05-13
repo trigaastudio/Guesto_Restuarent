@@ -13,30 +13,33 @@ const BottomNavbar = () => {
   const [isVisible, setIsVisible] = React.useState(false);
 
   React.useEffect(() => {
+    let ticking = false;
     const handleScroll = () => {
-      // Auto-hide at top to prevent covering hero images
-      if (window.scrollY > 100) {
-        setIsVisible(true);
-      } else {
-        setIsVisible(false);
-      }
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          // Auto-hide at top to prevent covering hero images
+          const scrolled = window.scrollY > 100;
+          if (isVisible !== scrolled) setIsVisible(scrolled);
 
-      if (['/home', '/'].includes(location.pathname)) {
-        const menuSection = document.getElementById('menu');
-        if (menuSection) {
-          const menuTop = menuSection.offsetTop - 200;
-          if (window.scrollY >= menuTop) {
-            setActiveSection('menu');
-          } else {
-            setActiveSection('hero');
+          if (['/home', '/'].includes(location.pathname)) {
+            const menuSection = document.getElementById('menu');
+            if (menuSection) {
+              const menuTop = menuSection.offsetTop - 200;
+              const inMenu = window.scrollY >= menuTop;
+              if (activeSection !== (inMenu ? 'menu' : 'hero')) {
+                setActiveSection(inMenu ? 'menu' : 'hero');
+              }
+            }
           }
-        }
+          ticking = false;
+        });
+        ticking = true;
       }
     };
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [location.pathname]);
+  }, [location.pathname, isVisible, activeSection]);
 
   const navItems = [
     { name: 'Home', icon: Home, path: '/home', isHome: true },
@@ -101,7 +104,7 @@ const BottomNavbar = () => {
           className={`absolute bottom-0 right-0 w-14 h-14 md:w-16 md:h-16 bg-blue-500 text-white rounded-2xl flex items-center justify-center shadow-[0_20px_50px_rgba(59,130,246,0.3)] transition-all duration-500 transform hover:scale-110 active:scale-90 ${showProfileOptions ? '-translate-y-36 md:-translate-y-44 scale-100 rotate-0' : 'translate-y-0 scale-0 rotate-45'}`}
         >
           <MapPin size={24} className="md:size-7" strokeWidth={2.5} />
-          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-background-card/90 backdrop-blur-xl text-blue-500 text-[9px] font-black px-3 py-2 rounded-xl shadow-xl border border-blue-500/20 uppercase tracking-widest whitespace-nowrap">Address</div>
+          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-background-card/90 backdrop-blur-sm text-blue-500 text-[9px] font-black px-3 py-2 rounded-xl shadow-xl border border-blue-500/20 uppercase tracking-widest whitespace-nowrap">Address</div>
         </button>
 
         {/* Orders Option - Diagonal */}
@@ -110,7 +113,7 @@ const BottomNavbar = () => {
           className={`absolute bottom-0 right-0 w-14 h-14 md:w-16 md:h-16 bg-orange-500 text-white rounded-2xl flex items-center justify-center shadow-[0_20px_50px_rgba(249,115,22,0.3)] transition-all duration-500 delay-75 transform hover:scale-110 active:scale-90 ${showProfileOptions ? '-translate-y-24 -translate-x-24 md:-translate-y-32 md:-translate-x-32 scale-100 rotate-0' : 'translate-y-0 scale-0 rotate-45'}`}
         >
           <Package size={24} className="md:size-7" strokeWidth={2.5} />
-          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-background-card/90 backdrop-blur-xl text-orange-500 text-[9px] font-black px-3 py-2 rounded-xl shadow-xl border border-orange-500/20 uppercase tracking-widest whitespace-nowrap">Orders</div>
+          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-background-card/90 backdrop-blur-sm text-orange-500 text-[9px] font-black px-3 py-2 rounded-xl shadow-xl border border-orange-500/20 uppercase tracking-widest whitespace-nowrap">Orders</div>
         </button>
 
         {/* Wallet Option - Left */}
@@ -119,17 +122,17 @@ const BottomNavbar = () => {
           className={`absolute bottom-0 right-0 w-14 h-14 md:w-16 md:h-16 bg-green-500 text-white rounded-2xl flex items-center justify-center shadow-[0_20px_50px_rgba(34,197,94,0.3)] transition-all duration-500 delay-150 transform hover:scale-110 active:scale-90 ${showProfileOptions ? '-translate-x-36 md:-translate-x-44 scale-100 rotate-0' : 'translate-x-0 scale-0 rotate-45'}`}
         >
           <Wallet size={24} className="md:size-7" strokeWidth={2.5} />
-          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-background-card/90 backdrop-blur-xl text-green-500 text-[9px] font-black px-3 py-2 rounded-xl shadow-xl border border-green-500/20 uppercase tracking-widest whitespace-nowrap">Wallet</div>
+          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-background-card/90 backdrop-blur-sm text-green-500 text-[9px] font-black px-3 py-2 rounded-xl shadow-xl border border-green-500/20 uppercase tracking-widest whitespace-nowrap">Wallet</div>
         </button>
       </div>
 
       {/* Main Floating Bottom Nav */}
       <div className={`lg:hidden fixed bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 z-[1000] w-[92%] md:w-auto md:min-w-[500px] transition-all duration-500 ${isVisible ? 'translate-y-0 opacity-100 visible' : 'translate-y-24 opacity-0 invisible pointer-events-none'}`}>
-        <div className="relative bg-background-card/80 backdrop-blur-3xl border border-white/20 dark:border-white/10 shadow-[0_25px_80px_rgba(0,0,0,0.25)] rounded-[2.5rem] md:rounded-[3rem] px-4 md:px-8 py-3 md:py-4 flex items-center justify-between transition-all duration-500 gap-2 md:gap-8">
+        <div className="relative bg-[#1A1A1A]/95 backdrop-blur-sm border border-white/10 shadow-[0_25px_80px_rgba(0,0,0,0.4)] rounded-[2.5rem] md:rounded-[3rem] px-4 md:px-8 py-3 md:py-4 flex items-center justify-between transition-all duration-500 gap-2 md:gap-8">
           
           {/* Active Indicator Backdrop */}
           <div 
-            className="absolute h-12 w-12 md:h-14 md:w-14 bg-white dark:bg-white/90 rounded-full transition-all duration-500 ease-out shadow-[0_10px_30px_rgba(0,0,0,0.1)]"
+            className="absolute h-12 w-12 md:h-14 md:w-14 bg-white rounded-full transition-all duration-500 ease-out shadow-[0_10px_30px_rgba(0,0,0,0.2)]"
             style={{ 
               left: `calc(${(navItems.findIndex(i => isActive(i.path, i) && !showProfileOptions) * (100 / navItems.length)) + (100 / (navItems.length * 2))}% - ${window.innerWidth >= 768 ? '28px' : '24px'})`,
               opacity: navItems.findIndex(i => isActive(i.path, i) && !showProfileOptions) === -1 ? 0 : 1
@@ -147,20 +150,20 @@ const BottomNavbar = () => {
                 className="relative flex-1 md:flex-none flex flex-col items-center justify-center h-14 md:w-16 z-20 cursor-pointer outline-none group"
               >
                 <div className={`relative transition-all duration-500 flex flex-col items-center ${active ? '-translate-y-1' : 'group-hover:-translate-y-1'}`}>
-                  <div className={`p-2 rounded-full transition-all duration-500 ${active ? 'text-primary' : 'text-text-muted/50 group-hover:text-text-primary'}`}>
+                  <div className={`p-2 rounded-full transition-all duration-500 ${active ? 'text-primary' : 'text-white/40 group-hover:text-white'}`}>
                     <ActiveIcon size={22} className="md:size-6" strokeWidth={active ? 3 : 2} />
                   </div>
                   
                   {/* Badge for Cart */}
                   {item.showBadge && cartItems.length > 0 && (
-                    <span className={`absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center rounded-full text-[9px] font-black border-2 transition-colors duration-500 ${active ? 'bg-white text-primary border-primary' : 'bg-primary text-white border-white'}`}>
+                    <span className={`absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center rounded-full text-[9px] font-black border-2 transition-colors duration-500 ${active ? 'bg-white text-primary border-primary' : 'bg-primary text-white border-[#1A1A1A]'}`}>
                       {cartItems.length}
                     </span>
                   )}
                 </div>
 
                 {/* Label (Optional or small) */}
-                <span className={`absolute -bottom-1 md:-bottom-2 text-[7px] md:text-[8px] font-black uppercase tracking-[0.2em] transition-all duration-500 ${active ? 'opacity-100 translate-y-0 text-primary' : 'opacity-0 translate-y-2 text-text-muted'}`}>
+                <span className={`absolute -bottom-1 md:-bottom-2 text-[7px] md:text-[8px] font-black uppercase tracking-[0.2em] transition-all duration-500 ${active ? 'opacity-100 translate-y-0 text-primary' : 'opacity-0 translate-y-2 text-white/40'}`}>
                   {item.name}
                 </span>
               </button>

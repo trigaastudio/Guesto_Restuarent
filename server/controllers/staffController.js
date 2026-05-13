@@ -65,6 +65,17 @@ class StaffController {
           message: 'Staff not found'
         });
       }
+
+      // Real-time socket notification for status change
+      if (req.body.hasOwnProperty('isActive')) {
+        try {
+          const { emitAccountStatusUpdate } = await import('../socket.js');
+          emitAccountStatusUpdate(staff._id.toString(), staff.isActive);
+        } catch (err) {
+          console.error('Socket notification failed:', err);
+        }
+      }
+
       res.status(200).json({
         success: true,
         message: 'Staff updated successfully',

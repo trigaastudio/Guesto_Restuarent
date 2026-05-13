@@ -32,10 +32,20 @@ class DashboardService {
         { $group: { _id: null, total: { $sum: '$totalAmount' } } }
       ]),
 
-      // 2. Today Revenue
+      // 2. Today Revenue & Profit
       Order.aggregate([
         { $match: { orderStatus: { $ne: 'cancelled' }, createdAt: { $gte: today } } },
-        { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+        { 
+          $group: { 
+            _id: null, 
+            total: { $sum: '$totalAmount' },
+            totalCost: { $sum: { $reduce: {
+              input: '$items',
+              initialValue: 0,
+              in: { $add: ['$$value', { $multiply: ['$$this.quantity', '$$this.costPrice'] }] }
+            }}}
+          } 
+        }
       ]),
 
       // 3. Total Orders
@@ -115,6 +125,8 @@ class DashboardService {
 
     const totalRevenue = totalRevenueData[0]?.total || 0;
     const todayRevenue = todayRevenueData[0]?.total || 0;
+    const todayCost = todayRevenueData[0]?.totalCost || 0;
+    const todayProfit = todayRevenue - todayCost;
     const activeOrdersCount = await Order.countDocuments({ orderStatus: { $ne: 'cancelled' } });
     const avgOrderValue = activeOrdersCount > 0 ? (totalRevenue / activeOrdersCount) : 0;
 
@@ -122,6 +134,7 @@ class DashboardService {
       metrics: {
         totalRevenue,
         todayRevenue,
+        todayProfit,
         totalOrders,
         totalCustomers,
         totalMenuItems,

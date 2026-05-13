@@ -11,15 +11,20 @@ export const initSocket = (httpServer) => {
   });
 
   io.on('connection', (socket) => {
-    console.log('Client connected:', socket.id);
+    // Client connected log removed for cleaner terminal output
 
     socket.on('joinOrder', (orderId) => {
       socket.join(orderId);
-      console.log(`Socket ${socket.id} joined order room: ${orderId}`);
+      // Joined order room log removed
+    });
+
+    socket.on('joinUser', (userId) => {
+      socket.join(userId);
+      // Joined user room log removed
     });
 
     socket.on('disconnect', () => {
-      console.log('Client disconnected:', socket.id);
+      // Client disconnected log removed
     });
   });
 
@@ -36,5 +41,11 @@ export const getIO = () => {
 export const emitOrderStatusUpdate = (orderId, status) => {
   if (io) {
     io.to(orderId).emit('orderStatusUpdated', { orderId, status });
+  }
+};
+
+export const emitAccountStatusUpdate = (userId, isActive) => {
+  if (io) {
+    io.to(userId).emit('accountStatusChanged', { userId, isActive });
   }
 };

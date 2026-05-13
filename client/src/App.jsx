@@ -26,10 +26,11 @@ import { ThemeProvider } from './context/ThemeContext';
 import { CartProvider } from './context/CartContext';
 import BottomNavbar from './components/Navbar/BottomNavbar';
 
+import Loader from './components/Loader/Loader';
+import GlobalSocketListener from './components/GlobalSocketListener/GlobalSocketListener';
+
 const PageLoader = () => (
-  <div className="h-screen w-full flex items-center justify-center bg-background">
-    <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-  </div>
+  <Loader fullPage={true} />
 );
 
 function App() {
@@ -38,6 +39,7 @@ function App() {
       <ThemeProvider>
         <CartProvider>
           <BrowserRouter>
+            <GlobalSocketListener />
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 {/* Admin Routes */}

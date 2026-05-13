@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useCart } from '../../context/CartContext';
-import { ShoppingCart, User as UserIcon, LayoutGrid, UtensilsCrossed, Menu, X, Home, Info, Phone, Utensils, Wallet, LogOut, Sun, Moon } from 'lucide-react';
+import { ShoppingCart, User as UserIcon, LayoutGrid, UtensilsCrossed, Menu, X, Home, Info, Phone, Utensils, Wallet, LogOut, Sun, Moon, LayoutDashboard } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
 const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown, handleLogout, navigate, dropdownRef, hideCart }) => {
@@ -68,26 +68,28 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
   return (
     <header 
       className={`fixed top-0 left-0 w-full z-[100] transition-all duration-500 ${
-        isScrolled ? 'py-1.5 md:py-3' : 'py-2 md:py-5'
+        isScrolled ? 'py-1 md:py-2' : 'py-1.5 md:py-3'
       }`}
     >
       <div className="max-w-7xl mx-auto px-3 md:px-6">
         <div 
           className={`flex items-center justify-between px-3 md:px-6 py-2 rounded-[2rem] transition-all duration-500 ${
             isScrolled 
-            ? 'bg-background-card/80 backdrop-blur-xl border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.1)]' 
+            ? 'bg-background-card/80 backdrop-blur-md border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.1)]' 
             : 'bg-transparent border border-transparent'
           }`}
         >
-          {/* Logo */}
           <div className="flex items-center gap-4">
             <img
               src={isDarkMode 
-                ? (settings?.branding?.logoGold || "/logo-light.png") 
-                : (settings?.branding?.logoDark || "/logo-dark.png")
+                ? (settings?.branding?.logoGold || "/logo-golden.png") 
+                : (isScrolled 
+                    ? (settings?.branding?.logoDark || "/logo-dark.png") 
+                    : (settings?.branding?.logoGold || "/logo-golden.png")
+                  )
               }
               alt={settings?.restaurantDetails?.name || "GuestO"}
-              className={`h-7 md:h-10 cursor-pointer transition-all duration-500 ${isScrolled ? '' : (isDarkMode ? '' : 'brightness-0 invert')}`}
+              className={`h-7 md:h-10 cursor-pointer transition-all duration-500`}
               onClick={() => navigate('/home')}
             />
             {!storeStatus.isOpen && (
@@ -104,7 +106,7 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
                 key={link.name}
                 onClick={(e) => handleNavClick(e, link.path, link.name)}
                 className={`relative px-6 py-2 text-[11px] font-black tracking-[0.1em] uppercase transition-all duration-300 group ${
-                  isScrolled ? 'text-text-primary' : 'text-white'
+                  isScrolled ? 'text-text-primary' : (isDarkMode ? 'text-white' : 'text-white')
                 }`}
               >
                 {link.name}
@@ -196,6 +198,29 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
                         <p className="text-[9px] font-bold text-text-muted opacity-60">Account Settings</p>
                       </div>
                     </button>
+                    {localUser && (localUser.role === 'admin' || localUser.role === 'staff' || localUser.role === 'kitchen' || localUser.role === 'waiter') && (
+                      <button 
+                        onClick={() => { 
+                          setShowUserDropdown(false); 
+                          if (localUser.role === 'admin') {
+                            navigate('/admin/dashboard');
+                          } else {
+                            navigate('/kitchen/dashboard');
+                          }
+                        }} 
+                        className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl bg-primary/5 hover:bg-primary/10 transition-all group text-primary border border-primary/10"
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white transition-all shadow-lg shadow-primary/20">
+                          <LayoutDashboard size={18} />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-sm font-black uppercase tracking-wider">Dashboard</p>
+                          <p className="text-[9px] font-bold opacity-60">
+                            {localUser.role === 'admin' ? 'Management' : 'Staff'} Portal
+                          </p>
+                        </div>
+                      </button>
+                    )}
                     <button onClick={() => { setShowUserDropdown(false); navigate('/my-orders'); }} className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl hover:bg-background-muted transition-all group text-text-primary">
                       <div className="w-10 h-10 rounded-xl bg-background-muted flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
                         <LayoutGrid size={18} />
@@ -251,7 +276,7 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
           <div className="p-6 md:p-8 bg-[#B91C1C] text-white flex flex-col gap-8 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl"></div>
             <div className="flex items-center justify-between relative z-10">
-              <img src="/logo-light.png" alt="GuestO" className="h-8" />
+              <img src={settings?.branding?.logoGold || "/logo-golden.png"} alt={settings?.restaurantDetails?.name || "GuestO"} className="h-8" />
               <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={24} /></button>
             </div>
             <div className="relative z-10">
@@ -272,6 +297,20 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
                 <span className="font-black text-sm uppercase tracking-[0.2em] text-text-primary">{link.name}</span>
               </button>
             ))}
+            {localUser && (localUser.role === 'admin' || localUser.role === 'kitchen' || localUser.role === 'waiter') && (
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  navigate(localUser.role === 'admin' ? '/admin/dashboard' : '/kitchen/dashboard');
+                }}
+                className="w-full flex items-center gap-4 px-5 py-5 rounded-2xl bg-primary/5 text-primary border border-primary/10 transition-all group"
+              >
+                <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-white transition-all shadow-lg shadow-primary/20">
+                  <LayoutDashboard size={20} />
+                </div>
+                <span className="font-black text-sm uppercase tracking-[0.2em]">Dashboard</span>
+              </button>
+            )}
           </nav>
         </div>
       </div>

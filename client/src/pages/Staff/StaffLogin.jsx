@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { User, Lock, Loader2, ArrowRight, Sun, Moon, ChefHat } from 'lucide-react';
 import axios from 'axios';
 import { useTheme } from '../../context/ThemeContext';
+import { useCart } from '../../context/CartContext';
 import { showToast } from '../../utils/sweetAlert';
+import Loader from '../../components/Loader/Loader';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
@@ -13,6 +15,7 @@ const StaffLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const { settings } = useCart();
   const isDarkMode = theme === 'dark';
 
   // Redirect if already logged in
@@ -68,7 +71,7 @@ const StaffLogin = () => {
       {/* Logo */}
       <div className="mb-10 text-center flex flex-col items-center animate-in fade-in slide-in-from-top-4 duration-700">
         <img
-          src={isDarkMode ? '/logo-golden.png' : '/logo-dark.png'}
+          src={isDarkMode ? (settings?.branding?.logoGold || '/logo-golden.png') : (settings?.branding?.logoDark || '/logo-dark.png')}
           alt="Restaurant Logo"
           className="h-16 w-auto mb-4"
         />
@@ -129,7 +132,7 @@ const StaffLogin = () => {
             className="w-full bg-gradient-to-r from-[#991b1b] to-primary hover:from-primary hover:to-primary-light text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/30 flex items-center justify-center space-x-2 transition-all active:scale-[0.98] mt-4 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {isLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader size="small" />
             ) : (
               <>
                 <span className="uppercase tracking-widest text-sm">Login to Panel</span>

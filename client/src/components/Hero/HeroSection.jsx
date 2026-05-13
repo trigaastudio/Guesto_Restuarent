@@ -30,17 +30,17 @@ const HeroSection = React.memo(({ searchQuery, setSearchQuery, heroImages, trend
   }, [heroImages.length]);
 
   return (
-    <div className="relative pt-24 sm:pt-32 md:pt-40 lg:pt-48 pb-16 sm:pb-20 md:pb-24 lg:pb-32 overflow-hidden">
+    <div className="relative pt-10 sm:pt-12 md:pt-14 lg:pt-16 pb-12 sm:pb-16 md:pb-20 lg:pb-24 overflow-hidden">
       {/* Decorative Background Elements */}
-      <div className="absolute top-0 right-0 w-[400px] sm:w-[600px] md:w-[800px] h-[400px] sm:h-[600px] md:h-[800px] bg-white/10 rounded-full -translate-y-1/2 translate-x-1/4 blur-[60px] sm:blur-[80px] md:blur-[120px] pointer-events-none"></div>
-      <div className="absolute bottom-0 left-0 w-[300px] sm:w-[400px] md:w-[500px] h-[300px] sm:h-[400px] md:h-[500px] bg-black/10 rounded-full translate-y-1/2 -translate-x-1/4 blur-[40px] sm:blur-[60px] md:blur-[100px] pointer-events-none"></div>
+      <div className="absolute top-0 right-0 w-[400px] sm:w-[600px] md:w-[800px] h-[400px] sm:h-[600px] md:h-[800px] bg-white/10 rounded-full -translate-y-1/2 translate-x-1/4 blur-[60px] sm:blur-[70px] md:blur-[80px] pointer-events-none"></div>
+      <div className="absolute bottom-0 left-0 w-[300px] sm:w-[400px] md:w-[500px] h-[300px] sm:h-[400px] md:h-[500px] bg-black/10 rounded-full translate-y-1/2 -translate-x-1/4 blur-[40px] sm:blur-[50px] md:blur-[60px] pointer-events-none"></div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
         <div className="flex flex-col lg:flex-row items-center gap-6 sm:gap-8 md:gap-12 lg:gap-24">
 
           {/* Right Side: Hero Image Carousel - Top on Mobile/Tablet */}
-          <div className="w-full lg:flex-1 relative flex justify-center lg:justify-end order-1 lg:order-2 min-h-[220px] sm:min-h-[280px] md:min-h-[420px] lg:min-h-[450px]">
-            <div className="relative w-full max-w-[180px] sm:max-w-[240px] md:max-w-[400px] lg:max-w-[450px] aspect-square">
+          <div className="w-full lg:flex-1 relative flex justify-center lg:justify-end order-1 lg:order-2 min-h-[350px] sm:min-h-[450px] md:min-h-[600px] lg:min-h-[650px]">
+            <div className="relative w-full max-w-[320px] sm:max-w-[420px] md:max-w-[580px] lg:max-w-[750px] aspect-square">
               {/* Background Glow */}
               <div className="absolute inset-0 bg-white/20 rounded-full blur-[60px] sm:blur-[80px] md:blur-[100px] animate-pulse"></div>
 
@@ -61,7 +61,7 @@ const HeroSection = React.memo(({ searchQuery, setSearchQuery, heroImages, trend
           </div>
 
           {/* Left Side: Content */}
-          <div className="flex-1 text-center lg:text-left space-y-5 sm:space-y-6 md:space-y-8 hero-fade-in order-2 lg:order-1 w-full flex flex-col items-center lg:items-start">
+          <div className="flex-1 text-center lg:text-left space-y-4 sm:space-y-5 md:space-y-6 hero-fade-in order-2 lg:order-1 w-full flex flex-col items-center lg:items-start">
             <div className="inline-flex items-center gap-2 sm:gap-3 bg-white/10 backdrop-blur-md border border-white/20 text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] shadow-xl mx-auto lg:mx-0">
               <span className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-white animate-pulse shadow-[0_0_10px_white]"></span>
               Experience the best flavors 🍕

@@ -16,6 +16,8 @@ import dashboardRoutes from './routes/dashboardRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import staffRoutes from './routes/staffRoutes.js';
 import utilRoutes from './routes/utilRoutes.js';
+import offerRoutes from './routes/offerRoutes.js';
+import reportRoutes from './routes/reportRoutes.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import http from 'http';
@@ -88,6 +90,8 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/utils', utilRoutes);
+app.use('/api/offers', offerRoutes);
+app.use('/api/reports', reportRoutes);
 
 
 app.get('/health', (req, res) => {

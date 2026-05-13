@@ -161,7 +161,7 @@ const LandingPage = () => {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    window.location.replace('/login');
+    navigate('/login', { replace: true });
   };
 
   if (loading && menus.length === 0 && categories.length === 0) {
@@ -169,7 +169,7 @@ const LandingPage = () => {
   }
   
   return (
-    <div className={`min-h-screen bg-background font-sans select-none overflow-x-hidden ${theme}`}>
+    <div className={`min-h-screen bg-background font-sans overflow-x-hidden ${theme}`}>
       <div className="relative w-full overflow-hidden flex flex-col bg-[#B91C1C]">
         <div className="absolute inset-0 z-0 bg-[#B91C1C]"></div>
         <Navbar 
@@ -180,7 +180,6 @@ const LandingPage = () => {
           handleLogout={handleLogout}
           navigate={navigate}
           dropdownRef={dropdownRef}
-          hideCart={true} 
         />
         
         <HeroSection

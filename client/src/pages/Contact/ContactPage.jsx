@@ -6,6 +6,7 @@ import { useCart } from '../../context/CartContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { showToast } from '../../utils/sweetAlert';
+import Loader from '../../components/Loader/Loader';
 
 const ContactPage = () => {
   const { settings, cartItems } = useCart();
@@ -217,7 +218,7 @@ const ContactPage = () => {
                     className="w-full py-5 bg-primary text-white rounded-[1.5rem] font-black text-xs uppercase tracking-[0.3em] hover:bg-primary-dark transition-all active:scale-[0.98] shadow-xl shadow-primary/20 flex items-center justify-center gap-4 disabled:opacity-70 disabled:cursor-not-allowed group"
                   >
                     {isSubmitting ? (
-                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                       <Loader size="small" className="border-white/30 text-white" />
                     ) : (
                       <>
                         <Send size={18} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />

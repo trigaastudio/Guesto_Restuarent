@@ -12,6 +12,7 @@ import MenuSection from '../../components/Menu/MenuSection';
 import MenuModal from '../../components/Menu/MenuModal';
 import StoreStatusBanner from '../../components/StoreStatus/StoreStatusBanner';
 import Loader from '../../components/Loader/Loader';
+import OffersCarousel from '../../components/Offers/OffersCarousel';
 
 const heroImages = ['/heroSection/hero1.png', '/heroSection/hero2.png', '/heroSection/hero3.png', '/heroSection/hero4.png', '/heroSection/hero5.png'];
 
@@ -160,8 +161,8 @@ const HomePage = () => {
   const handleLogout = useCallback(() => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    window.location.replace('/login');
-  }, []);
+    navigate('/login', { replace: true });
+  }, [navigate]);
 
   const filteredMenus = useMemo(() => {
     let result = menus.filter(menu => {
@@ -195,7 +196,7 @@ const HomePage = () => {
     }
 
     return result;
-  }, [menus, searchQuery, sortBy, dietaryFilter]);
+  }, [menus, debouncedSearchQuery, sortBy, dietaryFilter]);
 
   const getCategoryName = () => {
     if (selectedCategory === 'all') return 'All Dishes';
@@ -234,6 +235,24 @@ const HomePage = () => {
           trendingItems={trendingItems}
         />
       </div>
+
+      {/* Weekend & Special Offers Banner */}
+      <OffersCarousel 
+        onOfferClick={(offer) => {
+          // If it's a category offer, filter by category
+          if (offer.applicableCategories?.length > 0) {
+            handleCategoryChange(offer.applicableCategories[0]._id);
+          } else {
+            // Otherwise show all and let the filter handle tags (Future expansion)
+            setSelectedCategory('all');
+          }
+          
+          const menuElement = document.getElementById('menu');
+          if (menuElement) {
+            menuElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }}
+      />
 
       <main className="max-w-7xl mx-auto px-6 py-0">
         <CategorySection

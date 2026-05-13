@@ -39,7 +39,7 @@ const MenuModal = ({ isOpen, onClose, menu, onAction }) => {
       <div className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose}></div>
       <div className="bg-background-card w-full max-w-[400px] rounded-[2rem] shadow-2xl relative z-10 overflow-hidden animate-in fade-in zoom-in duration-300 border border-border/10">
         {/* Modal Header/Image */}
-        <div className="relative h-44 md:h-48 bg-background-muted/50 flex items-center justify-center p-4">
+        <div className="relative h-60 md:h-72 bg-background-muted/50 flex items-center justify-center p-4">
           <img
             src={menu.image || '/placeholder-food.jpg'}
             alt={menu.name}
@@ -97,7 +97,7 @@ const MenuModal = ({ isOpen, onClose, menu, onAction }) => {
               <span className="text-2xl font-black text-text-primary tracking-tighter leading-none">₹{currentPrice}</span>
             </div>
             <button
-              onClick={() => { onAction(menu, selectedSize); onClose(); }}
+              onClick={() => { onAction(menu, 1, selectedSize); onClose(); }}
               className="bg-primary-light hover:bg-primary-light/90 text-white px-4 py-2 rounded-xl font-black text-[9px] tracking-wider transition-all shadow-xl shadow-primary-light/20 active:scale-95 flex items-center gap-2 uppercase"
             >
               Add to cart <Plus size={14} strokeWidth={3} />

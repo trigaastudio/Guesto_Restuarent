@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import api from '../../api/axiosInstance';
 import { useTheme } from '../../context/ThemeContext';
+import { useCart } from '../../context/CartContext';
 import { showToast, showAlert } from '../../utils/sweetAlert';
 import Loader from '../../components/Loader/Loader';
 
@@ -99,6 +100,7 @@ const KitchenDashboard = () => {
   const staff = JSON.parse(localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || '{}');
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const { settings } = useCart();
   const isDarkMode = theme === 'dark';
   const socketRef = useRef();
   const audioRef = useRef(new Audio(NOTIFICATION_SOUND));
@@ -349,7 +351,7 @@ const KitchenDashboard = () => {
               src={
                 (isSidebarCollapsed && !isMobileMenuOpen)
                   ? '/browser-icon.png'
-                  : (isDarkMode ? '/logo-golden.png' : '/logo-dark.png')
+                  : (isDarkMode ? (settings?.branding?.logoGold || '/logo-golden.png') : (settings?.branding?.logoDark || '/logo-dark.png'))
               }
               alt="Logo"
               className={`${(isSidebarCollapsed && !isMobileMenuOpen) ? 'h-8' : 'h-10'} w-auto transition-all duration-500`}

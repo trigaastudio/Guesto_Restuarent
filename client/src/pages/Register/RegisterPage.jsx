@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../../api/axiosInstance';
 import { useTheme } from '../../context/ThemeContext';
+import { useCart } from '../../context/CartContext';
 import Swal from 'sweetalert2';
 import { User, Mail, Phone, Lock, CheckCircle2, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import OTPModal from '../../components/OTPModal/OTPModal';
@@ -9,7 +10,8 @@ import OTPModal from '../../components/OTPModal/OTPModal';
 const RegisterPage = () => {
   const navigate = useNavigate();
   const { theme } = useTheme();
-  const logoSrc = theme === 'dark' ? "/logo-golden.png" : "/logo-dark.png";
+  const { settings } = useCart();
+  const logoSrc = theme === 'dark' ? (settings?.branding?.logoGold || "/logo-golden.png") : (settings?.branding?.logoDark || "/logo-dark.png");
 
   const [fields, setFields] = useState({
     name: '',
@@ -158,7 +160,7 @@ const RegisterPage = () => {
       {/* Header / Logo */}
       <header className="relative w-full px-6 md:px-12 py-3 z-30">
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-          <img src="/logo-light.png" alt="Guesto Restaurant" className="h-6 md:h-8 object-contain" />
+          <img src={settings?.branding?.logoGold || "/logo-golden.png"} alt={settings?.restaurantDetails?.name || "Guesto Restaurant"} className="h-6 md:h-8 object-contain" />
         </div>
       </header>
 
@@ -167,7 +169,7 @@ const RegisterPage = () => {
 
         {/* Register Card */}
         <div className="w-full max-w-xl page-fade-in scale-[0.85] md:scale-95 lg:scale-100 origin-center">
-          <div className="backdrop-blur-3xl bg-white/10 border border-white/20 p-5 md:p-8 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden group">
+          <div className="backdrop-blur-xl bg-white/10 border border-white/20 p-5 md:p-8 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden group">
 
             {/* Decorative Glow */}
             <div className="absolute -top-24 -right-24 w-48 h-48 bg-white/10 rounded-full blur-[70px]"></div>

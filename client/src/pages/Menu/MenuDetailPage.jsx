@@ -18,6 +18,7 @@ import { useCart } from '../../context/CartContext';
 import { useTheme } from '../../context/ThemeContext';
 import Navbar from '../../components/Navbar/Navbar';
 import Footer from '../../components/Footer/Footer';
+import Loader from '../../components/Loader/Loader';
 import Swal from 'sweetalert2';
 
 const MenuDetailPage = () => {
@@ -100,21 +101,7 @@ const MenuDetailPage = () => {
   };
 
   if (loading) {
-    return (
-      <div className={`min-h-screen bg-background ${theme} flex flex-col`}>
-        <Navbar
-          user={user}
-          cartItems={cartItems}
-          showUserDropdown={showUserDropdown}
-          setShowUserDropdown={setShowUserDropdown}
-          handleLogout={handleLogout}
-          navigate={navigate}
-        />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="w-12 h-12 border-4 border-[#B91C1C]/20 border-t-[#B91C1C] rounded-full animate-spin"></div>
-        </div>
-      </div>
-    );
+    return <Loader fullPage={true} />;
   }
 
   if (!menu) {
@@ -172,11 +159,11 @@ const MenuDetailPage = () => {
           {/* Left: Image Hero */}
           <div className="relative group">
             <div className="absolute -inset-4 bg-[#B91C1C]/5 rounded-[3rem] blur-2xl group-hover:bg-[#B91C1C]/10 transition-all duration-700"></div>
-            <div className="relative bg-white rounded-[3rem] p-8 md:p-12 border border-gray-100 shadow-[0_30px_100px_rgba(0,0,0,0.05)] overflow-hidden">
+            <div className="relative bg-white rounded-[3rem] p-4 md:p-6 border border-gray-100 shadow-[0_30px_100px_rgba(0,0,0,0.05)] overflow-hidden">
               <img
                 src={menu.image || '/placeholder-food.jpg'}
                 alt={menu.name}
-                className="w-full h-auto object-contain transform group-hover:scale-105 transition-transform duration-700 ease-out animate-float"
+                className="w-full h-auto max-h-[500px] object-contain transform group-hover:scale-110 transition-transform duration-700 ease-out animate-float"
               />
 
               {/* Overlay Tags */}

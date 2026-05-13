@@ -28,9 +28,9 @@ const Footer = React.memo(() => {
           <div className="space-y-8">
             <div className="space-y-4">
               <img
-                src="/logo-light.png"
+                src={settings?.branding?.logoGold || "/logo-golden.png"}
                 alt={brandName}
-                className="h-12 w-auto object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.2)]"
+                className="h-12 w-auto object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.2)] cursor-pointer"
                 onClick={() => navigate('/home')}
               />
               <p className="text-white/80 dark:text-text-muted text-[11px] font-bold leading-relaxed tracking-wide max-w-xs">
@@ -58,7 +58,7 @@ const Footer = React.memo(() => {
 
           {/* Quick Navigation */}
           <div className="space-y-8">
-            <h4 className="text-[10px] font-black tracking-[0.3em] text-white/50 dark:text-text-muted/50 uppercase">Navigation</h4>
+            <h4 className="text-[10px] font-black tracking-[0.3em] text-white/60 dark:text-text-muted/50 uppercase">Navigation</h4>
             <ul className="space-y-4">
               {[
                 { name: 'Home', path: '/home' },
@@ -80,7 +80,7 @@ const Footer = React.memo(() => {
 
           {/* Contact Details */}
           <div className="space-y-8">
-            <h4 className="text-[10px] font-black tracking-[0.3em] text-white/50 dark:text-text-muted/50 uppercase">Connect</h4>
+            <h4 className="text-[10px] font-black tracking-[0.3em] text-white/60 dark:text-text-muted/50 uppercase">Connect</h4>
             <div className="space-y-5">
               <div className="flex items-start gap-5 group">
                 <div className="w-10 h-10 rounded-2xl bg-white/10 dark:bg-background-muted flex items-center justify-center shrink-0 group-hover:bg-white group-hover:text-primary dark:group-hover:bg-primary dark:group-hover:text-white transition-all duration-500">
@@ -107,7 +107,7 @@ const Footer = React.memo(() => {
 
           {/* Experience Section */}
           <div className="space-y-8">
-            <h4 className="text-[10px] font-black tracking-[0.3em] text-white/50 dark:text-text-muted/50 uppercase">The Experience</h4>
+            <h4 className="text-[10px] font-black tracking-[0.3em] text-white/60 dark:text-text-muted/50 uppercase">The Experience</h4>
             <div className="bg-white/10 dark:bg-background-muted backdrop-blur-md rounded-[2rem] p-8 border border-white/20 dark:border-border/10 space-y-4 shadow-2xl">
               <p className="text-[11px] font-black text-white dark:text-text-primary leading-relaxed italic opacity-90">
                 "We don't just serve food; we serve memories of home, crafted with the finest ingredients and a pinch of love."
@@ -123,10 +123,10 @@ const Footer = React.memo(() => {
         {/* Bottom Bar */}
         <div className="pb-12 md:pb-0 pt-6 border-t border-white/10 dark:border-border/10 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex flex-col items-center md:items-start gap-2">
-            <p className="text-[10px] font-black text-white/40 dark:text-text-muted/40 tracking-[0.2em] uppercase">
+            <p className="text-[10px] font-black text-white/60 dark:text-text-muted/40 tracking-[0.2em] uppercase">
               © {currentYear} {brandName}
             </p>
-            <p className="text-[8px] font-bold text-white/20 dark:text-text-muted/20 tracking-widest uppercase">
+            <p className="text-[8px] font-bold text-white/40 dark:text-text-muted/20 tracking-widest uppercase">
               Designed with Logic Loop Solution
             </p>
           </div>
@@ -136,7 +136,7 @@ const Footer = React.memo(() => {
               <a
                 key={link}
                 href="#"
-                className="text-[10px] font-black text-white/40 dark:text-text-muted/40 hover:text-white dark:hover:text-primary transition-all tracking-[0.2em] uppercase relative group"
+                className="text-[10px] font-black text-white/60 dark:text-text-muted/40 hover:text-white dark:hover:text-primary transition-all tracking-[0.2em] uppercase relative group"
               >
                 {link}
                 <span className="absolute -bottom-1 left-0 w-0 h-[2px] bg-white dark:bg-primary transition-all group-hover:w-full"></span>

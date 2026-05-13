@@ -16,7 +16,7 @@ const OrdersPage = () => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const dropdownRef = useRef(null);
 
-  const { cartItems } = useCart();
+  const { cartItems, settings } = useCart();
   const { theme } = useTheme();
   const user = useMemo(() => JSON.parse(localStorage.getItem('user') || '{}'), []);
 
@@ -54,7 +54,7 @@ const OrdersPage = () => {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    window.location.replace('/login');
+    navigate('/login', { replace: true });
   };
 
   useEffect(() => {
@@ -126,9 +126,9 @@ const OrdersPage = () => {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: razorpayOrder.amount,
         currency: razorpayOrder.currency,
-        name: 'Guest-O Restaurant',
+        name: settings?.restaurantDetails?.name || 'Guest-O Restaurant',
         description: 'Payment for your delicious meal',
-        image: '/logo.png',
+        image: `${window.location.origin}${settings?.branding?.logoGold || '/logo-golden.png'}`,
         order_id: razorpayOrder.id,
         handler: async function (paymentResponse) {
           // 2. Verify Payment and Update Order
@@ -270,8 +270,8 @@ const OrdersPage = () => {
               <div className="w-44 h-44 bg-background-card rounded-[4rem] flex items-center justify-center text-text-muted/10 shadow-[0_25px_60px_rgba(0,0,0,0.05)] border border-border/40 transition-transform duration-1000 hover:rotate-12 group">
                 <ShoppingBag size={80} strokeWidth={1} className="text-primary opacity-10 group-hover:opacity-20 transition-opacity" />
               </div>
-              <div className="absolute -bottom-4 -right-4 w-20 h-20 bg-primary rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-primary/40 animate-float border-[6px] border-background">
-                <Package size={32} strokeWidth={2.5} />
+              <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-primary rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-primary/40 animate-float border-[6px] border-background">
+                <Package size={56} strokeWidth={2.5} />
               </div>
             </div>
 
@@ -279,7 +279,7 @@ const OrdersPage = () => {
               <h2 className="text-4xl md:text-6xl font-black text-text-primary tracking-tighter leading-tight uppercase">
                 No Orders <span className="text-primary">Found</span>
               </h2>
-              <p className="text-[10px] md:text-xs font-bold text-text-muted tracking-[0.25em] opacity-50 max-w-[400px] mx-auto leading-relaxed uppercase">
+              <p className="text-[10px] md:text-xs font-bold text-text-muted tracking-[0.25em] opacity-70 max-w-[400px] mx-auto leading-relaxed uppercase">
                 Explore the authentic flavors of Thrissur. Your next favorite meal is waiting to be discovered.
               </p>
             </div>
@@ -339,7 +339,7 @@ const OrdersPage = () => {
                           </div>
                         </div>
                         <div className="md:text-right flex flex-col justify-center">
-                          <p className="text-[9px] font-black text-text-muted tracking-widest uppercase opacity-40 mb-1">Total Amount</p>
+                          <p className="text-[9px] font-black text-text-muted tracking-widest uppercase opacity-60 mb-1">Total Amount</p>
                           <p className="text-2xl font-black text-primary tracking-tighter">₹{order.totalAmount}</p>
                         </div>
                       </div>
@@ -349,16 +349,16 @@ const OrdersPage = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                           {/* Items */}
                           <div className="space-y-4">
-                            <p className="text-[9px] font-black text-text-muted tracking-widest uppercase opacity-40">Items Summary</p>
+                            <p className="text-[9px] font-black text-text-muted tracking-widest uppercase opacity-60">Items Summary</p>
                             <div className="space-y-3">
                               {order.items.map((item, idx) => (
                                 <div key={idx} className="flex items-center justify-between group/item">
                                   <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 rounded-xl overflow-hidden bg-background-card border border-border/40 p-1">
-                                      <img src={item.menuItem?.image || '/placeholder-food.jpg'} alt={item.menuItem?.name} className="w-full h-full object-contain" />
+                                      <img src={item.image || item.menuItem?.image || '/placeholder-food.jpg'} alt={item.name || item.menuItem?.name || 'Item'} className="w-full h-full object-contain" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                      <h4 className="text-[11px] font-black text-text-primary uppercase tracking-tight truncate">{item.menuItem?.name || 'Deleted Item'}</h4>
+                                      <h4 className="text-[11px] font-black text-text-primary uppercase tracking-tight truncate">{item.name || item.menuItem?.name || 'Deleted Item'}</h4>
                                       <p className="text-[9px] font-bold text-text-muted tracking-widest">
                                         {item.size && <span className="mr-2 text-primary">{item.size}</span>}
                                         Qty: {item.quantity} × ₹{item.price}
@@ -374,7 +374,7 @@ const OrdersPage = () => {
                           {/* Delivery & Payment Info */}
                           <div className="bg-background/50 rounded-2xl p-4 border border-border/40 space-y-4">
                             <div>
-                              <p className="text-[9px] font-black text-text-muted tracking-widest uppercase opacity-40 mb-3">Delivery Location</p>
+                              <p className="text-[9px] font-black text-text-muted tracking-widest uppercase opacity-60 mb-3">Delivery Location</p>
                               <div className="flex items-start gap-3">
                                 <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
                                   <MapPin size={16} />
@@ -394,11 +394,11 @@ const OrdersPage = () => {
                             {order.orderStatus !== 'cancelled' && (
                               <div className="flex items-center justify-between pt-4 border-t border-border/20">
                                 <div className="flex flex-col">
-                                  <span className="text-[9px] font-black text-text-muted tracking-widest uppercase opacity-40">Payment</span>
+                                  <span className="text-[9px] font-black text-text-muted tracking-widest uppercase opacity-60">Payment</span>
                                   <span className="text-[10px] font-black text-text-primary tracking-widest mt-1 uppercase">{order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment'}</span>
                                 </div>
                                 <div className="text-right">
-                                  <span className="text-[9px] font-black text-text-muted tracking-widest uppercase opacity-40">Status</span>
+                                  <span className="text-[9px] font-black text-text-muted tracking-widest uppercase opacity-60">Status</span>
                                   <span className={`block text-[10px] font-black tracking-widest mt-1 uppercase ${order.paymentStatus === 'paid' ? 'text-green-500' : 'text-orange-500'}`}>
                                     {order.paymentStatus}
                                   </span>

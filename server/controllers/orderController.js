@@ -255,14 +255,21 @@ class OrderController {
         orderNumber,
         orderType: finalOrderType,
         orderSource: finalOrderSource,
-        items: items.map(item => ({
-          menuItem: item.menuItem,
-          size: item.size,
-          quantity: item.quantity,
-          price: item.price,
-          unitPrice: item.price,
-          totalPrice: item.price * item.quantity,
-          kitchenStatus: 'placed'
+        items: await Promise.all(items.map(async item => {
+          const menuDoc = await Menu.findById(item.menuItem);
+          const variant = menuDoc?.variants?.find(v => v.size === item.size);
+          return {
+            menuItem: item.menuItem,
+            name: menuDoc?.name || item.name || 'Unknown Item',
+            image: menuDoc?.image || item.image || '',
+            size: item.size,
+            quantity: item.quantity,
+            price: item.price,
+            unitPrice: item.price,
+            costPrice: variant?.costPrice || 0,
+            totalPrice: item.price * item.quantity,
+            kitchenStatus: 'placed'
+          };
         })),
         customerDetails: {
           name: address.recipientName || address.name || req.user.name,
@@ -285,7 +292,7 @@ class OrderController {
         totalAmount: subtotal + (deliveryFee || req.body.deliveryFee || 0) - (discount || 0) + (tax || 0),
         orderStatus: 'placed',
         kitchenStatus: 'placed',
-        paymentStatus: (paymentMethod === 'wallet' || paymentMethod === 'online') ? 'paid' : 'pending',
+        paymentStatus: (paymentMethod === 'wallet') ? 'paid' : 'pending',
         razorpayOrderId,
         razorpayPaymentId
       });
@@ -429,9 +436,16 @@ class OrderController {
           address: customerDetails?.address,
           location: customerDetails?.location,
         },
-        items: items.map(item => ({
-          ...item,
-          kitchenStatus: 'placed'
+        items: await Promise.all(items.map(async item => {
+          const menuDoc = await Menu.findById(item.menuItem);
+          const variant = menuDoc?.variants?.find(v => v.size === item.size);
+          return {
+            ...item,
+            name: menuDoc?.name || item.name,
+            image: menuDoc?.image || item.image,
+            costPrice: variant?.costPrice || 0,
+            kitchenStatus: 'placed'
+          };
         })),
         subtotal,
         tax,
@@ -591,7 +605,18 @@ class OrderController {
         return res.status(403).json({ success: false, message: 'User delivery orders cannot have their items modified by admin' });
       }
 
-      order.items.push(...items.map(item => ({ ...item, kitchenStatus: 'placed' })));
+      const enrichedItems = await Promise.all(items.map(async item => {
+        const menuDoc = await Menu.findById(item.menuItem);
+        const variant = menuDoc?.variants?.find(v => v.size === item.size);
+        return { 
+          ...item, 
+          name: menuDoc?.name || item.name,
+          image: menuDoc?.image || item.image,
+          costPrice: variant?.costPrice || 0,
+          kitchenStatus: 'placed' 
+        };
+      }));
+      order.items.push(...enrichedItems);
       await order.save();
       await handleStock(items, 'reduce');
 
@@ -691,9 +716,16 @@ class OrderController {
       }
 
       await restoreStock(order.items);
-      order.items = items.map(item => ({
-        ...item,
-        kitchenStatus: item.kitchenStatus || 'placed'
+      order.items = await Promise.all(items.map(async item => {
+        const menuDoc = await Menu.findById(item.menuItem);
+        const variant = menuDoc?.variants?.find(v => v.size === item.size);
+        return {
+          ...item,
+          name: menuDoc?.name || item.name,
+          image: menuDoc?.image || item.image,
+          costPrice: variant?.costPrice || 0,
+          kitchenStatus: item.kitchenStatus || 'placed'
+        };
       }));
 
       if (req.body.customerDetails) {

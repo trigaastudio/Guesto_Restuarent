@@ -4,11 +4,13 @@ import {
   CheckCircle2, XCircle, AlertCircle, Loader2, ArrowUpDown,
   ShoppingCart, User, Phone, CreditCard, ChevronRight,
   MoreVertical, Printer, Package, Utensils, RotateCcw,
-  Copy, MapPin, ExternalLink, Minus, Truck, X
+  Copy, MapPin, ExternalLink, Minus, Truck, X, ChevronLeft
 } from 'lucide-react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
+import Loader from '../../../components/Loader/Loader';
+import Pagination from '../../../components/Pagination/Pagination';
 
 const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:5000/api`;
 const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
@@ -67,10 +69,13 @@ const OrderSection = () => {
   const [posSearchTerm, setPosSearchTerm] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState(localStorage.getItem('orderStatusFilter') || 'all');
   const [paymentFilter, setPaymentFilter] = useState('all');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
   const [activeTab, setActiveTab] = useState(localStorage.getItem('orderActiveTab') || 'takeaway');
   const [historyOrderTypeFilter, setHistoryOrderTypeFilter] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
   const [selectedOrderIds, setSelectedOrderIds] = useState([]);
   const [settings, setSettings] = useState(null);
 
@@ -91,6 +96,16 @@ const OrderSection = () => {
     setActiveTab(tab);
     localStorage.setItem('orderActiveTab', tab);
     setSelectedOrderIds([]); // Reset selection on tab change
+    setCurrentPage(1); // Reset pagination on tab change
+    
+    // Reset filters to ensure separate behavior per tab
+    setSearchTerm('');
+    setOrderStatusFilter('all');
+    setPaymentFilter('all');
+    setPaymentMethodFilter('all');
+    setHistoryOrderTypeFilter('all');
+    setStartDate('');
+    setEndDate('');
   };
   const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
 
@@ -761,52 +776,74 @@ const OrderSection = () => {
     });
   };
 
-  const filteredOrders = getSortedData(orders).filter(o => {
-    const searchLower = (searchTerm || '').toLowerCase();
+  const applyFilters = (data, tabId, filters = {}) => {
+    const {
+      search = searchTerm,
+      status = orderStatusFilter,
+      payment = paymentFilter,
+      method = paymentMethodFilter,
+      histType = historyOrderTypeFilter,
+      sDate = startDate,
+      eDate = endDate
+    } = filters;
 
-    // Support both customerDetails and address structures
-    const customerName = o.customerDetails?.name || o.address?.recipientName || '';
-    const customerPhone = o.customerDetails?.phone || o.address?.mobile || '';
-    const orderStatus = o.orderStatus || '';
+    return data.filter(o => {
+      const searchLower = (search || '').toLowerCase();
+      const customerName = o.customerDetails?.name || o.address?.recipientName || '';
+      const customerPhone = o.customerDetails?.phone || o.address?.mobile || '';
+      const orderStatus = o.orderStatus || '';
 
-    const matchesSearch = (o.orderNumber || '').toLowerCase().includes(searchLower) ||
-      customerPhone.includes(searchTerm) ||
-      customerName.toLowerCase().includes(searchLower);
+      const matchesSearch = (o.orderNumber || '').toLowerCase().includes(searchLower) ||
+        customerPhone.includes(search) ||
+        customerName.toLowerCase().includes(searchLower);
 
-    const matchesStatus = orderStatusFilter === 'all' || orderStatus === orderStatusFilter;
-    const matchesPayment = paymentFilter === 'all' || o.paymentStatus === paymentFilter;
+      const matchesStatus = status === 'all' || orderStatus === status;
+      const matchesPayment = payment === 'all' || o.paymentStatus === payment;
+      const matchesPaymentMethod = method === 'all' || o.paymentMethod === method;
 
-    const isHistoryOrder = (o.orderStatus === 'delivered' && o.paymentStatus === 'paid') || o.orderStatus === 'cancelled';
+      const isHistoryOrder = (o.orderStatus === 'delivered' && o.paymentStatus === 'paid') || o.orderStatus === 'cancelled';
 
-    let matchesType = false;
-    if (activeTab === 'history') {
-      if (!isHistoryOrder) return false;
-      const matchesHistType = historyOrderTypeFilter === 'all' || o.orderType === historyOrderTypeFilter;
-      const orderDate = new Date(o.createdAt);
-      let matchesDate = true;
-      if (startDate) matchesDate = matchesDate && orderDate >= new Date(startDate);
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        matchesDate = matchesDate && orderDate <= end;
-      }
-      matchesType = matchesHistType && matchesDate;
-    } else {
-      // For other tabs, only show active orders (not history)
-      if (isHistoryOrder) {
-        matchesType = false;
-      } else if (activeTab === 'delivery') {
-        matchesType = o.orderType === 'delivery' || o.orderType === 'online';
-      } else if (activeTab === 'takeaway') {
-        matchesType = o.orderType === 'takeaway' || o.orderType === 'take-away';
-      } else if (activeTab === 'dine-in') {
-        matchesType = o.orderType === 'dine-in' || o.orderType === 'dining';
+      let matchesType = false;
+      if (tabId === 'history') {
+        if (!isHistoryOrder) return false;
+        const matchesHistType = histType === 'all' || o.orderType === histType;
+        const orderDate = new Date(o.createdAt);
+        let matchesDate = true;
+        if (sDate) matchesDate = matchesDate && orderDate >= new Date(sDate);
+        if (eDate) {
+          const end = new Date(eDate);
+          end.setHours(23, 59, 59, 999);
+          matchesDate = matchesDate && orderDate <= end;
+        }
+        matchesType = matchesHistType && matchesDate;
       } else {
-        matchesType = o.orderType === activeTab;
+        if (isHistoryOrder) {
+          matchesType = false;
+        } else if (tabId === 'delivery') {
+          matchesType = o.orderType === 'delivery' || o.orderType === 'online';
+        } else if (tabId === 'takeaway') {
+          matchesType = o.orderType === 'takeaway' || o.orderType === 'take-away' || o.orderType === 'counter';
+        } else if (tabId === 'dine-in') {
+          matchesType = o.orderType === 'dine-in' || o.orderType === 'dining';
+        } else {
+          matchesType = o.orderType === tabId;
+        }
       }
-    }
-    return matchesSearch && matchesStatus && matchesPayment && matchesType;
-  });
+      return matchesSearch && matchesStatus && matchesPayment && matchesPaymentMethod && matchesType;
+    });
+  };
+
+  const filteredOrders = getSortedData(applyFilters(orders, activeTab));
+
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const paginatedOrders = filteredOrders.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, orderStatusFilter, paymentFilter, historyOrderTypeFilter, startDate, endDate]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -865,17 +902,20 @@ const OrderSection = () => {
             >
               <tab.icon size={14} />
               <span>{tab.label}</span>
-              <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[8px] ${activeTab === tab.id ? 'bg-white/20' : 'bg-background border border-border/40'
+              <span className={`ml-1.5 px-2 py-0.5 rounded-full text-[9px] font-black ${activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'
                 }`}>
-                {orders.filter(o => {
-                  const isHistory = (o.orderStatus === 'delivered' && o.paymentStatus === 'paid') || o.orderStatus === 'cancelled';
-                  if (tab.id === 'history') return isHistory;
-                  if (isHistory) return false;
-                  if (tab.id === 'delivery') return o.orderType === 'delivery';
-                  if (tab.id === 'takeaway') return o.orderType === 'takeaway';
-                  if (tab.id === 'dine-in') return o.orderType === 'dine-in';
-                  return o.orderType === tab.id;
-                }).length}
+                {activeTab === tab.id 
+                  ? applyFilters(orders, tab.id).length 
+                  : applyFilters(orders, tab.id, { 
+                      search: '', 
+                      status: 'all', 
+                      payment: 'all', 
+                      method: 'all', 
+                      histType: 'all', 
+                      sDate: '', 
+                      eDate: '' 
+                    }).length
+                }
               </span>
             </button>
           ))}
@@ -905,10 +945,17 @@ const OrderSection = () => {
                       onChange={(e) => setHistoryOrderTypeFilter(e.target.value)}
                       className="bg-background-card text-text-primary border border-border-main rounded-lg px-3 py-1.5 text-xs outline-none"
                     >
-                      <option value="all">All Types</option>
-                      <option value="takeaway">Counter</option>
-                      <option value="dine-in">Dine In</option>
                       <option value="delivery">Delivery</option>
+                    </select>
+                    <select
+                      value={paymentMethodFilter}
+                      onChange={(e) => setPaymentMethodFilter(e.target.value)}
+                      className="bg-background-card text-text-primary border border-border-main rounded-lg px-3 py-1.5 text-xs outline-none"
+                    >
+                      <option value="all">Payment Method</option>
+                      <option value="cash">Cash</option>
+                      <option value="razorpay">Razorpay</option>
+                      <option value="online">Online</option>
                     </select>
                     <div className="flex items-center space-x-2">
                       <input
@@ -925,23 +972,48 @@ const OrderSection = () => {
                         className="bg-background-card text-text-primary border border-border-main rounded-lg px-2 py-1.5 text-[10px] outline-none"
                       />
                     </div>
+                    <div className="h-8 w-px bg-border/40 mx-2 hidden md:block"></div>
                     {selectedOrderIds.length > 0 ? (
                       <button
                         onClick={() => handleClearHistory(selectedOrderIds)}
-                        className="flex items-center space-x-1 px-3 py-1.5 rounded-lg border border-status-unavailable bg-status-unavailable text-white shadow-lg shadow-status-unavailable/20 hover:scale-105 transition-all ml-auto"
+                        className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-status-unavailable text-white shadow-lg shadow-status-unavailable/20 hover:bg-status-unavailable/90 active:scale-95 transition-all ml-auto group"
                       >
-                        <Trash2 size={12} />
-                        <span className="text-[10px] font-black uppercase tracking-wider">Clear Selected ({selectedOrderIds.length})</span>
+                        <Trash2 size={14} className="group-hover:rotate-12 transition-transform" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Delete Selected ({selectedOrderIds.length})</span>
                       </button>
                     ) : (
                       <button
                         onClick={() => handleClearHistory()}
-                        className="flex items-center space-x-1 px-3 py-1.5 rounded-lg border border-status-unavailable/20 bg-status-unavailable/10 text-status-unavailable hover:bg-status-unavailable hover:text-white transition-all ml-auto"
+                        className="flex items-center space-x-2 px-4 py-2 rounded-xl border-2 border-status-unavailable/20 text-status-unavailable hover:bg-status-unavailable hover:text-white shadow-sm hover:shadow-status-unavailable/30 active:scale-95 transition-all ml-auto group"
+                        title="Permanently Delete All History Records"
                       >
-                        <Trash2 size={12} />
-                        <span className="text-[10px] font-black uppercase tracking-wider">Clear All</span>
+                        <Trash2 size={14} className="group-hover:shake transition-transform" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Delete All Records</span>
                       </button>
                     )}
+                    <button
+                      onClick={() => {
+                        setSearchTerm('');
+                        setOrderStatusFilter('all');
+                        setPaymentFilter('all');
+                        setPaymentMethodFilter('all');
+                        setHistoryOrderTypeFilter('all');
+                        setStartDate('');
+                        setEndDate('');
+                        localStorage.removeItem('orderSearchTerm');
+                        localStorage.removeItem('orderStatusFilter');
+                      }}
+                      disabled={!searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all' && paymentMethodFilter === 'all' && historyOrderTypeFilter === 'all' && !startDate && !endDate}
+                      className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${
+                        !searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all' && paymentMethodFilter === 'all' && historyOrderTypeFilter === 'all' && !startDate && !endDate
+                          ? 'bg-background-muted/50 text-text-muted/30 border-border-light cursor-not-allowed'
+                          : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white'
+                      }`}
+                      title="Clear All Filters"
+                    >
+                      <RotateCcw size={12} />
+                      <span className="text-[10px] font-black uppercase tracking-wider">Clear Filters</span>
+                    </button>
                   </>
                 ) : (
                   <>
@@ -976,6 +1048,39 @@ const OrderSection = () => {
                       <option value="failed">Failed</option>
                       <option value="refunded">Refunded</option>
                     </select>
+                    <select
+                      value={paymentMethodFilter}
+                      onChange={(e) => setPaymentMethodFilter(e.target.value)}
+                      className="bg-background-card text-text-primary border border-border-main rounded-lg px-3 py-1.5 text-xs outline-none"
+                    >
+                      <option value="all">Payment Method</option>
+                      <option value="cash">Cash</option>
+                      <option value="razorpay">Razorpay</option>
+                      <option value="online">Online</option>
+                    </select>
+                    <button
+                      onClick={() => {
+                        setSearchTerm('');
+                        setOrderStatusFilter('all');
+                        setPaymentFilter('all');
+                        setPaymentMethodFilter('all');
+                        setHistoryOrderTypeFilter('all');
+                        setStartDate('');
+                        setEndDate('');
+                        localStorage.removeItem('orderSearchTerm');
+                        localStorage.removeItem('orderStatusFilter');
+                      }}
+                      disabled={!searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all' && paymentMethodFilter === 'all' && historyOrderTypeFilter === 'all' && !startDate && !endDate}
+                      className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${
+                        !searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all' && paymentMethodFilter === 'all' && historyOrderTypeFilter === 'all' && !startDate && !endDate
+                          ? 'bg-background-muted/50 text-text-muted/30 border-border-light cursor-not-allowed'
+                          : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white'
+                      }`}
+                      title="Clear All Filters"
+                    >
+                      <RotateCcw size={12} />
+                      <span className="text-[10px] font-black uppercase tracking-wider">Clear Filters</span>
+                    </button>
                   </>
                 )}
 
@@ -1073,10 +1178,10 @@ const OrderSection = () => {
               <tbody className="divide-y divide-border-light">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={activeTab === 'history' ? 11 : (activeTab === 'dine-in' ? 10 : 9)} className="px-6 py-12 text-center">
-                      <div className="flex flex-col items-center space-y-2">
-                        <Loader2 className="animate-spin text-primary" size={32} />
-                        <p className="text-text-secondary font-medium">Loading orders...</p>
+                    <td colSpan={activeTab === 'history' ? 11 : (activeTab === 'dine-in' ? 10 : 9)} className="px-6 py-20 text-center">
+                      <div className="flex flex-col items-center justify-center space-y-6">
+                        <Loader size="large" />
+                        <p className="text-text-secondary text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Loading orders...</p>
                       </div>
                     </td>
                   </tr>
@@ -1085,7 +1190,7 @@ const OrderSection = () => {
                     <td colSpan={activeTab === 'history' ? 11 : (activeTab === 'dine-in' ? 10 : 9)} className="px-6 py-12 text-center text-text-muted italic">No orders found</td>
                   </tr>
                 ) : (
-                  filteredOrders.map((order) => (
+                  paginatedOrders.map((order) => (
                     <tr key={order._id} className={`hover:bg-background-muted/30 transition-colors group ${selectedOrderIds.includes(order._id) ? 'bg-primary/5' : ''}`}>
                       {activeTab === 'history' && (
                         <td className="px-3 py-4">
@@ -1156,23 +1261,70 @@ const OrderSection = () => {
                       </td>
                       <td className="px-3 py-4 font-black text-text-primary">₹{order.totalAmount || order.subtotal || 0}</td>
                       <td className="px-3 py-4 text-center">
-                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${order.orderStatus === 'completed' || order.orderStatus === 'delivered' ? 'bg-primary/10 text-primary border-primary/20' :
-                            order.orderStatus === 'processing' || order.orderStatus === 'out-for-delivery' ? 'bg-status-on/10 text-status-available border-status-on/20' :
+                        {activeTab === 'history' ? (
+                          <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${order.orderStatus === 'completed' || order.orderStatus === 'delivered' ? 'bg-primary/10 text-primary border-primary/20' :
+                              order.orderStatus === 'processing' || order.orderStatus === 'out-for-delivery' ? 'bg-status-on/10 text-status-available border-status-on/20' :
+                                order.orderStatus === 'placed' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                  order.orderStatus === 'cancelled' ? 'bg-status-off/10 text-status-unavailable border-status-off/20' :
+                                    'bg-background-muted text-text-muted border-border-light'
+                            }`}>
+                            {order.orderStatus}
+                          </span>
+                        ) : (
+                          <select
+                            value={order.orderStatus}
+                            onChange={(e) => handleUpdateOrderStatus(order._id, e.target.value)}
+                            className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border outline-none cursor-pointer transition-all ${
+                              order.orderStatus === 'completed' || order.orderStatus === 'delivered' ? 'bg-primary/10 text-primary border-primary/20' :
+                              order.orderStatus === 'processing' || order.orderStatus === 'out-for-delivery' ? 'bg-status-on/10 text-status-available border-status-on/20' :
                               order.orderStatus === 'placed' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                                order.orderStatus === 'cancelled' ? 'bg-status-off/10 text-status-unavailable border-status-off/20' :
-                                  'bg-background-muted text-text-muted border-border-light'
-                          }`}>
-                          {order.orderStatus}
-                        </span>
+                              order.orderStatus === 'cancelled' ? 'bg-status-off/10 text-status-unavailable border-status-off/20' :
+                              'bg-background-muted text-text-muted border-border-light'
+                            }`}
+                          >
+                            <option value="placed">Placed</option>
+                            <option value="processing">Processing</option>
+                            {(order.orderType === 'delivery' || order.orderType === 'online') && (
+                              <>
+                                <option value="out-for-delivery" disabled={order.orderStatus === 'processing' && order.kitchenStatus !== 'ready'}>Out for Delivery</option>
+                                <option value="delivered" disabled={order.orderStatus === 'processing' && order.kitchenStatus !== 'ready'}>Delivered</option>
+                              </>
+                            )}
+                            {(order.orderType === 'takeaway' || order.orderType === 'dine-in') && (
+                              <option value="completed" disabled={order.orderStatus === 'processing' && order.kitchenStatus !== 'ready'}>Completed</option>
+                            )}
+                            <option value="cancelled">Cancelled</option>
+                          </select>
+                        )}
                       </td>
                       <td className="px-3 py-4 text-center">
-                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${(order.paymentStatus === 'paid' || order.paymentStatus === 'completed') ? 'bg-status-on/10 text-status-available border-status-on/20' :
-                            order.paymentStatus === 'pending' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                        {activeTab === 'history' ? (
+                          <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${(order.paymentStatus === 'paid' || order.paymentStatus === 'completed') ? 'bg-status-on/10 text-status-available border-status-on/20' :
+                              order.paymentStatus === 'pending' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                order.paymentStatus === 'refunded' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
+                                  'bg-status-off/10 text-status-unavailable border-status-off/20'
+                            }`}>
+                            {order.paymentStatus}
+                          </span>
+                        ) : (
+                          <select
+                            value={order.paymentStatus}
+                            onChange={(e) => handleUpdatePaymentStatus(order._id, e.target.value)}
+                            disabled={order.paymentMethod === 'online'}
+                            className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border outline-none cursor-pointer transition-all ${
+                              order.paymentMethod === 'online' ? 'opacity-70 cursor-not-allowed' : ''
+                            } ${(order.paymentStatus === 'paid' || order.paymentStatus === 'completed') ? 'bg-status-on/10 text-status-available border-status-on/20' :
+                              order.paymentStatus === 'pending' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
                               order.paymentStatus === 'refunded' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
-                                'bg-status-off/10 text-status-unavailable border-status-off/20'
-                          }`}>
-                          {order.paymentStatus}
-                        </span>
+                              'bg-status-off/10 text-status-unavailable border-status-off/20'
+                            }`}
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="paid">Paid</option>
+                            <option value="failed">Failed</option>
+                            <option value="refunded">Refunded</option>
+                          </select>
+                        )}
                       </td>
                       <td className="px-3 py-4 text-center">
                         <span className="px-2 py-0.5 bg-background-muted text-text-muted text-[8px] font-black uppercase rounded-lg border border-border-light">
@@ -1217,6 +1369,12 @@ const OrderSection = () => {
               </tbody>
             </table>
           </div>
+
+          <Pagination 
+            currentPage={currentPage} 
+            totalPages={totalPages} 
+            onPageChange={setCurrentPage} 
+          />
         </div>
       </div>
 
@@ -1449,6 +1607,7 @@ const OrderSection = () => {
                             ...item,
                             menuItem: item.menuItem?._id || item.menuItem,
                             name: item.name || item.menuItem?.name || 'Item',
+                            image: item.image || item.menuItem?.image || '',
                             unitPrice: item.unitPrice || item.price,
                             totalPrice: item.totalPrice || ((item.unitPrice || item.price) * item.quantity)
                           })));
@@ -1474,14 +1633,16 @@ const OrderSection = () => {
                     <div key={item._id} className="flex items-center justify-between p-4 bg-background-muted/20 rounded-2xl border border-border-light hover:border-primary/20 transition-all">
                       <div className="flex items-center space-x-4">
                         <div className="w-12 h-12 bg-background-card rounded-xl flex items-center justify-center border border-border-light overflow-hidden shrink-0">
-                          {item?.image || (item?.menuItem && typeof item?.menuItem === 'object' ? item?.menuItem?.image : '') ? (
+                          {item?.image || item?.menuItem?.image ? (
                             <img src={item?.image || item?.menuItem?.image} alt={item?.name || item?.menuItem?.name} className="w-full h-full object-cover" />
                           ) : (
                             <Package size={20} className="text-primary/40" />
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="font-bold text-text-primary text-sm truncate">{item?.name || (item?.menuItem && typeof item?.menuItem === 'object' ? item?.menuItem?.name : 'Menu Item')}</p>
+                          <p className="font-bold text-text-primary text-sm truncate">
+                            {item?.name && item.name !== 'Unknown Item' ? item.name : (item?.menuItem?.name || item?.name || 'Menu Item')}
+                          </p>
                           <p className="text-[10px] text-text-muted font-bold uppercase">
                             {item?.size} • ₹{item?.unitPrice || item?.price} x {item?.quantity}
                           </p>

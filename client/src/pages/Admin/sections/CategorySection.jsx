@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, CheckCircle, XCircle, Search, Loader2, ArrowUpDown, Filter, Image as ImageIcon, RotateCcw } from 'lucide-react';
-import axios from 'axios';
+import { Plus, Edit2, Trash2, CheckCircle, XCircle, Search, Loader2, ArrowUpDown, Filter, Image as ImageIcon, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
+import api from '../../../api/axiosInstance';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 import ImageCropper from '../../../components/ImageCropper/ImageCropper';
-
-const API_BASE_URL = 'http://localhost:5000/api';
+import Loader from '../../../components/Loader/Loader';
+import Pagination from '../../../components/Pagination/Pagination';
 
 const CategorySection = () => {
   const [categories, setCategories] = useState([]);
@@ -14,6 +14,8 @@ const CategorySection = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -26,15 +28,15 @@ const CategorySection = () => {
     fetchCategories();
   }, []);
 
-  const fetchCategories = async () => {
-    setIsLoading(true);
+  const fetchCategories = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/categories`);
+      const response = await api.get('/api/categories');
       setCategories(response.data);
     } catch (error) {
       console.error('Error fetching categories:', error);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
@@ -75,18 +77,14 @@ const CategorySection = () => {
 
     setIsUploading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/upload/image`, {
-        method: 'POST',
-        body: formData,
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await api.post('/api/upload/image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || errorData.message || 'Upload failed');
-      }
-
-      const data = await response.json();
-      setCurrentCategory({ ...currentCategory, image: data.url });
+      setCurrentCategory({ ...currentCategory, image: response.data.url });
     } catch (error) {
       console.error('Error uploading image:', error);
       let errorMsg = error.message || 'Failed to upload image.';
@@ -114,11 +112,11 @@ const CategorySection = () => {
 
     try {
       if (isEditing) {
-        await axios.put(`${API_BASE_URL}/categories/${currentCategory._id}`, currentCategory);
+        await api.put(`/api/categories/${currentCategory._id}`, currentCategory);
       } else {
-        await axios.post(`${API_BASE_URL}/categories`, currentCategory);
+        await api.post('/api/categories', currentCategory);
       }
-      fetchCategories();
+      fetchCategories(true);
       setIsModalOpen(false);
       showToast('success', `Category ${isEditing ? 'updated' : 'created'} successfully!`);
     } catch (error) {
@@ -136,13 +134,25 @@ const CategorySection = () => {
     
     if (result.isConfirmed) {
       try {
-        await axios.delete(`${API_BASE_URL}/categories/${id}`);
-        fetchCategories();
+        await api.delete(`/api/categories/${id}`);
+        fetchCategories(true);
         showToast('success', 'Category deleted successfully');
       } catch (error) {
         console.error('Error deleting category:', error);
         showToast('error', 'Failed to delete category');
       }
+    }
+  };
+
+  const handleToggleStatus = async (category) => {
+    try {
+      const updatedCategory = { ...category, isActive: !category.isActive };
+      await api.put(`/api/categories/${category._id}`, updatedCategory);
+      fetchCategories(true);
+      showToast('success', `Category marked as ${updatedCategory.isActive ? 'active' : 'inactive'}`);
+    } catch (error) {
+      console.error('Error toggling category status:', error);
+      showToast('error', 'Failed to update category status');
     }
   };
 
@@ -175,6 +185,16 @@ const CategorySection = () => {
       (statusFilter === 'inactive' && !c.isActive);
     return matchesSearch && matchesStatus;
   });
+
+  const totalPages = Math.ceil(filteredCategories.length / itemsPerPage);
+  const paginatedCategories = filteredCategories.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -215,16 +235,19 @@ const CategorySection = () => {
               <option value="active" className="bg-background-card text-text-primary">Active</option>
               <option value="inactive" className="bg-background-card text-text-primary">Inactive</option>
             </select>
-            {(searchTerm || statusFilter !== 'all') && (
-              <button
-                onClick={() => { setSearchTerm(''); setStatusFilter('all'); }}
-                className="flex items-center space-x-1 px-3 py-1.5 bg-background-muted text-text-muted hover:text-primary rounded-lg border border-border-light transition-all"
-                title="Clear Filters"
-              >
-                <RotateCcw size={12} />
-                <span className="text-[10px] font-black uppercase tracking-wider">Clear</span>
-              </button>
-            )}
+            <button
+              onClick={() => { setSearchTerm(''); setStatusFilter('all'); }}
+              disabled={!searchTerm && statusFilter === 'all'}
+              className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${
+                !searchTerm && statusFilter === 'all'
+                  ? 'bg-background-muted/50 text-text-muted/30 border-border-light cursor-not-allowed'
+                  : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white'
+              }`}
+              title="Clear All Filters"
+            >
+              <RotateCcw size={12} />
+              <span className="text-[10px] font-black uppercase tracking-wider">Clear Filters</span>
+            </button>
           </div>
         </div>
 
@@ -254,10 +277,10 @@ const CategorySection = () => {
             <tbody className="divide-y divide-border-light">
               {isLoading ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center">
-                    <div className="flex flex-col items-center space-y-2">
-                      <Loader2 className="animate-spin text-primary" size={32} />
-                      <p className="text-text-secondary font-medium">Loading categories...</p>
+                  <td colSpan="7" className="px-6 py-20 text-center">
+                    <div className="flex flex-col items-center justify-center space-y-6">
+                      <Loader size="large" />
+                      <p className="text-text-secondary text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Loading categories...</p>
                     </div>
                   </td>
                 </tr>
@@ -268,9 +291,9 @@ const CategorySection = () => {
                   </td>
                 </tr>
               ) : (
-                filteredCategories.map((category, index) => (
+                paginatedCategories.map((category, index) => (
                   <tr key={category._id} className="hover:bg-background-muted/30 transition-colors group">
-                    <td className="px-3 py-4 text-center font-medium text-text-muted">{index + 1}</td>
+                    <td className="px-3 py-4 text-center font-medium text-text-muted">{(currentPage - 1) * itemsPerPage + index + 1}</td>
                     <td className="px-3 py-4">
                       <div className="w-12 h-12 rounded-lg bg-background-muted overflow-hidden border border-border-light flex items-center justify-center">
                         {category.image ? (
@@ -301,14 +324,27 @@ const CategorySection = () => {
                     <td className="px-3 py-4 text-center">
                       <div className="flex items-center justify-center space-x-1">
                         <button 
+                          onClick={() => handleToggleStatus(category)}
+                          className={`p-2 rounded-xl transition-all duration-200 ${
+                            category.isActive 
+                              ? 'text-status-unavailable hover:bg-status-off/10' 
+                              : 'text-status-available hover:bg-status-on/10'
+                          }`}
+                          title={category.isActive ? "Deactivate Category" : "Activate Category"}
+                        >
+                          {category.isActive ? <XCircle size={16} /> : <CheckCircle size={16} />}
+                        </button>
+                        <button 
                           onClick={() => handleOpenModal(category)}
                           className="p-2 text-text-secondary hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                          title="Edit Category"
                         >
                           <Edit2 size={16} />
                         </button>
                         <button 
                           onClick={() => handleDelete(category._id)}
                           className="p-2 text-text-secondary hover:text-status-unavailable hover:bg-status-off/10 rounded-lg transition-colors"
+                          title="Delete Category"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -320,6 +356,12 @@ const CategorySection = () => {
             </tbody>
           </table>
         </div>
+
+        <Pagination 
+          currentPage={currentPage} 
+          totalPages={totalPages} 
+          onPageChange={setCurrentPage} 
+        />
       </div>
 
       {/* Simple Modal */}
@@ -343,22 +385,7 @@ const CategorySection = () => {
                   placeholder="e.g. Main Course"
                 />
               </div>
-              <div className="flex items-center space-x-3">
-                <label className="text-sm font-semibold text-text-secondary">Status</label>
-                <button
-                  onClick={() => setCurrentCategory({...currentCategory, isActive: !currentCategory.isActive})}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                    currentCategory.isActive ? 'bg-primary' : 'bg-text-muted'
-                  }`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    currentCategory.isActive ? 'translate-x-6' : 'translate-x-1'
-                  }`} />
-                </button>
-                <span className="text-sm text-text-primary font-medium">
-                  {currentCategory.isActive ? 'Active' : 'Inactive'}
-                </span>
-              </div>
+
 
               <div className="space-y-3 pt-2">
                 <label className="text-sm font-semibold text-text-secondary">Category Image</label>

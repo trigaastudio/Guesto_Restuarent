@@ -51,7 +51,7 @@ const ReturnsRefundsPage = () => {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    window.location.replace('/login');
+    navigate('/login', { replace: true });
   };
 
   const handleAvatarUpload = async (e) => {

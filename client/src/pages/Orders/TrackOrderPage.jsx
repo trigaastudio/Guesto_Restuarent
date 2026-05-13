@@ -7,6 +7,7 @@ import Footer from '../../components/Footer/Footer';
 import { useCart } from '../../context/CartContext';
 import { useTheme } from '../../context/ThemeContext';
 import socket from '../../services/socket';
+import Loader from '../../components/Loader/Loader';
 
 const TrackOrderPage = () => {
   const { orderId } = useParams();
@@ -61,7 +62,7 @@ const TrackOrderPage = () => {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    window.location.replace('/login');
+    navigate('/login', { replace: true });
   };
 
   const fetchOrderDetails = async () => {
@@ -91,11 +92,7 @@ const TrackOrderPage = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
+    return <Loader fullPage={true} />;
   }
 
   if (!order) {
@@ -135,7 +132,7 @@ const TrackOrderPage = () => {
         handleLogout={handleLogout}
         navigate={navigate}
         dropdownRef={dropdownRef}
-        hideCart={true}
+
       />
 
       <div className="relative">
@@ -193,26 +190,26 @@ const TrackOrderPage = () => {
                       <div key={step.id} className="relative flex gap-8 md:gap-12 group">
                         {/* Vertical Line */}
                         {!isLast && (
-                          <div className={`absolute left-7 md:left-9 top-14 md:top-16 bottom-[-48px] md:bottom-[-60px] w-1 rounded-full transition-all duration-1000 ${index < activeStepIndex ? 'bg-primary' : 'bg-border/20'}`}>
+                          <div className={`absolute left-9 md:left-12 top-18 md:top-24 bottom-[-60px] md:bottom-[-80px] w-1 rounded-full transition-all duration-1000 ${index < activeStepIndex ? 'bg-primary' : 'bg-border/20'}`}>
                             {index < activeStepIndex && <div className="absolute inset-0 bg-primary-light w-full animate-progress-vertical origin-top"></div>}
                           </div>
                         )}
 
                         {/* Icon Node */}
-                        <div className={`relative z-10 w-14 h-14 md:w-18 md:h-18 rounded-[1.5rem] md:rounded-[2rem] flex items-center justify-center transition-all duration-700 ${isCompleted ? 'bg-primary text-white shadow-2xl shadow-primary/20 scale-110' : 'bg-background text-text-muted/20 border border-border/40'}`}>
+                        <div className={`relative z-10 w-18 h-18 md:w-24 md:h-24 rounded-[1.8rem] md:rounded-[2.5rem] flex items-center justify-center transition-all duration-700 ${isCompleted ? 'bg-primary text-white shadow-2xl shadow-primary/20 scale-110' : 'bg-background text-text-muted/20 border border-border/40'}`}>
                           {isActive && (
-                            <div className="absolute inset-0 bg-primary rounded-[1.5rem] md:rounded-[2rem] animate-ping opacity-20"></div>
+                            <div className="absolute inset-0 bg-primary rounded-[1.8rem] md:rounded-[2.5rem] animate-ping opacity-20"></div>
                           )}
-                          {React.cloneElement(step.icon, { size: isActive ? 28 : 22, strokeWidth: isCompleted ? 2.5 : 1.5 })}
+                          {React.cloneElement(step.icon, { size: isActive ? 36 : 28, strokeWidth: isCompleted ? 2.5 : 1.5 })}
                         </div>
 
                         {/* Content */}
                         <div className="flex-1 pt-2 md:pt-4">
                           <div className="flex flex-col">
-                            <h3 className={`text-lg md:text-2xl font-black transition-all duration-700 tracking-tight ${isCompleted ? 'text-text-primary' : 'text-text-muted/20'}`}>
+                            <h3 className={`text-lg md:text-2xl font-black transition-all duration-700 tracking-tight ${isCompleted ? 'text-text-primary' : 'text-text-muted/40'}`}>
                               {step.label}
                             </h3>
-                            <p className={`text-[11px] md:text-sm font-bold transition-all duration-700 leading-relaxed ${isCompleted ? 'text-text-muted opacity-60' : 'text-text-muted/10'}`}>
+                            <p className={`text-[11px] md:text-sm font-bold transition-all duration-700 leading-relaxed ${isCompleted ? 'text-text-muted opacity-60' : 'text-text-muted/20'}`}>
                               {step.description}
                             </p>
                           </div>

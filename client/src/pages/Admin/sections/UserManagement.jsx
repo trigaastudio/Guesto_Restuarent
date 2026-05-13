@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Search, User, Mail, Phone, Power, Loader2, ArrowUpDown, XCircle, Ban, CheckCircle, CheckCircle2, MapPin, ExternalLink } from 'lucide-react';
-import axios from 'axios';
+import { Plus, Edit2, Trash2, Search, User, Mail, Phone, Power, Loader2, ArrowUpDown, XCircle, Ban, CheckCircle, CheckCircle2, MapPin, ExternalLink, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+import api from '../../../api/axiosInstance';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
-
-const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:5000/api`;
+import Loader from '../../../components/Loader/Loader';
+import Pagination from '../../../components/Pagination/Pagination';
 
 const UserManagement = () => {
   const [userList, setUserList] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
   const [currentUser, setCurrentUser] = useState({
     name: '',
@@ -30,16 +32,16 @@ const UserManagement = () => {
     fetchUsers();
   }, []);
 
-  const fetchUsers = async () => {
-    setIsLoading(true);
+  const fetchUsers = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/users`);
-      setUserList(response.data.data);
+      const response = await api.get('/api/users');
+      setUserList(response.data.data || response.data);
     } catch (error) {
       console.error('Error fetching users:', error);
-      showToast('error', 'Failed to fetch user list');
+      showToast('error', 'Failed to load users');
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
@@ -82,18 +84,14 @@ const UserManagement = () => {
     }
 
     try {
-      const dataToSave = { ...currentUser };
-      if (!dataToSave.password) delete dataToSave.password;
-
       if (isEditing) {
-        await axios.put(`${API_BASE_URL}/users/${currentUser._id}`, dataToSave);
-        showToast('success', 'User updated successfully');
+        await api.put(`/api/users/${currentUser._id}`, currentUser);
       } else {
-        await axios.post(`${API_BASE_URL}/users`, dataToSave);
-        showToast('success', 'User created successfully');
+        await api.post('/api/users', currentUser);
       }
-      fetchUsers();
+      fetchUsers(true);
       setIsModalOpen(false);
+      showToast('success', `User ${isEditing ? 'updated' : 'created'} successfully!`);
     } catch (error) {
       console.error('Error saving user:', error);
       showAlert({
@@ -108,9 +106,9 @@ const UserManagement = () => {
     const result = await showDeleteConfirmation('Remove User?', 'This action cannot be undone. User data will be permanently deleted.');
     if (result.isConfirmed) {
       try {
-        await axios.delete(`${API_BASE_URL}/users/${id}`);
-        showToast('success', 'User removed successfully');
-        fetchUsers();
+        await api.delete(`/api/users/${id}`);
+        fetchUsers(true);
+        showToast('success', 'User deleted successfully');
       } catch (error) {
         showToast('error', 'Failed to remove user');
       }
@@ -119,9 +117,9 @@ const UserManagement = () => {
 
   const handleToggleStatus = async (id) => {
     try {
-      const response = await axios.patch(`${API_BASE_URL}/users/${id}/toggle-status`);
+      const response = await api.patch(`/api/users/${id}/toggle-status`);
       showToast('success', response.data.message);
-      fetchUsers();
+      fetchUsers(true);
     } catch (error) {
       showToast('error', 'Failed to update user status');
     }
@@ -148,6 +146,16 @@ const UserManagement = () => {
     if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1;
     return 0;
   });
+
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -187,6 +195,19 @@ const UserManagement = () => {
               <option value="active">Active Only</option>
               <option value="blocked">Blocked Only</option>
             </select>
+            <button
+              onClick={() => { setSearchTerm(''); setStatusFilter('all'); }}
+              disabled={!searchTerm && statusFilter === 'all'}
+              className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${
+                !searchTerm && statusFilter === 'all'
+                  ? 'bg-background-muted/50 text-text-muted/30 border-border-light cursor-not-allowed'
+                  : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white'
+              }`}
+              title="Clear All Filters"
+            >
+              <RotateCcw size={12} />
+              <span className="text-[10px] font-black uppercase tracking-wider">Clear Filters</span>
+            </button>
           </div>
         </div>
 
@@ -220,8 +241,11 @@ const UserManagement = () => {
             <tbody className="divide-y divide-border-light">
               {isLoading ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center">
-                    <Loader2 className="animate-spin text-primary mx-auto" size={32} />
+                  <td colSpan="6" className="px-6 py-20 text-center">
+                    <div className="flex flex-col items-center justify-center space-y-6">
+                      <Loader size="large" />
+                      <p className="text-text-secondary text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Loading users...</p>
+                    </div>
                   </td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
@@ -229,7 +253,7 @@ const UserManagement = () => {
                   <td colSpan="6" className="px-6 py-12 text-center text-text-muted italic">No users found</td>
                 </tr>
               ) : (
-                filteredUsers.map((user) => (
+                paginatedUsers.map((user) => (
                   <tr key={user._id} className="hover:bg-background-muted/30 transition-colors group">
                     <td className="px-3 py-4">
                       <div className="flex items-center space-x-3">
@@ -282,6 +306,12 @@ const UserManagement = () => {
             </tbody>
           </table>
         </div>
+
+        <Pagination 
+          currentPage={currentPage} 
+          totalPages={totalPages} 
+          onPageChange={setCurrentPage} 
+        />
       </div>
 
       {/* User Modal */}

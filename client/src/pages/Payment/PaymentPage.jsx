@@ -10,7 +10,7 @@ import Footer from '../../components/Footer/Footer';
 const PaymentPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { cartItems, subtotal, clearCart } = useCart();
+  const { cartItems, subtotal, clearCart, settings } = useCart();
   const [paymentMethod, setPaymentMethod] = useState('online'); // 'online', 'cod', 'wallet'
   const [loading, setLoading] = useState(false);
   const [isOrderSuccess, setIsOrderSuccess] = useState(false);
@@ -21,8 +21,8 @@ const PaymentPage = () => {
   const handleLogout = React.useCallback(() => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    window.location.replace('/login');
-  }, []);
+    navigate('/login', { replace: true });
+  }, [navigate]);
 
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
@@ -85,7 +85,9 @@ const PaymentPage = () => {
         const price = sizeData ? sizeData.price : (item.offerPrice || 0);
 
         return {
-          menuItem: item._id,
+          menuItem: item.menuItemId || item._id, // Use menuItemId if available, fallback to _id
+          name: item.name,
+          image: item.image || '',
           size: item.selectedSize,
           quantity: item.quantity,
           price: price
@@ -119,9 +121,9 @@ const PaymentPage = () => {
           key: import.meta.env.VITE_RAZORPAY_KEY_ID,
           amount: razorpayOrder.amount,
           currency: razorpayOrder.currency,
-          name: 'Guest-O Restaurant',
+          name: settings?.restaurantDetails?.name || 'Guest-O Restaurant',
           description: 'Payment for your delicious meal',
-          image: '/logo.png',
+          image: `${window.location.origin}${settings?.branding?.logoGold || '/logo-golden.png'}`,
           order_id: razorpayOrder.id,
           handler: async function (paymentResponse) {
             // 3. Verify Payment and Update Order
