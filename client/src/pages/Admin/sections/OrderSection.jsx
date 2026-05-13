@@ -186,7 +186,7 @@ const OrderSection = () => {
     // Dynamic QR Logic
     let qrCodeUrl = '';
     const showQR = settings?.printingSettings?.showKOTQRCode && (order.orderType === 'delivery' || order.orderSource === 'online' || order.orderType === 'online');
-    
+
     if (showQR && settings.printingSettings.kotQRCodeImage) {
       qrCodeUrl = settings.printingSettings.kotQRCodeImage;
     }
@@ -370,13 +370,13 @@ const OrderSection = () => {
         if (currentUserData) {
           const newAddresses = [...(currentUserData.addresses || [])];
           const defaultIdx = newAddresses.findIndex(a => a.isDefault);
-          
+
           if (defaultIdx > -1) {
             // Update existing default
-            newAddresses[defaultIdx] = { 
-              ...newAddresses[defaultIdx], 
-              address: deliveryAddress, 
-              location: deliveryLocation 
+            newAddresses[defaultIdx] = {
+              ...newAddresses[defaultIdx],
+              address: deliveryAddress,
+              location: deliveryLocation
             };
           } else if (newAddresses.length > 0) {
             // No default, update first one
@@ -528,12 +528,12 @@ const OrderSection = () => {
 
   const handleCustomerSearch = (field, value) => {
     setCustomer(prev => ({ ...prev, [field]: value }));
-    
+
     if (allUsers.length === 0) fetchUsers();
 
     // Debounce the actual filtering for performance
     if (window.searchTimer) clearTimeout(window.searchTimer);
-    
+
     window.searchTimer = setTimeout(() => {
       if (value.length >= 1) {
         const filtered = allUsers.filter(u => {
@@ -541,7 +541,7 @@ const OrderSection = () => {
           const phoneMatch = u.phone?.includes(value);
           return nameMatch || phoneMatch;
         });
-        
+
         setUserSuggestions(filtered.slice(0, 5));
         setShowSuggestions(true);
       } else {
@@ -556,10 +556,10 @@ const OrderSection = () => {
       name: user.name,
       phone: user.phone || ''
     });
-    
+
     // Find default address or use the first one
     const defaultAddr = user.addresses?.find(a => a.isDefault) || user.addresses?.[0];
-    
+
     if (defaultAddr) {
       setDeliveryAddress(defaultAddr.address || '');
       if (defaultAddr.location) {
@@ -567,7 +567,7 @@ const OrderSection = () => {
       }
     }
     setShowSuggestions(false);
-    setUpdateProfile(false); 
+    setUpdateProfile(false);
   };
 
   const handleOpenModal = (order = null) => {
@@ -736,7 +736,7 @@ const OrderSection = () => {
       // Update distance input and fee
       const distInput = document.getElementById('pos-distance-input');
       if (distInput) distInput.value = roundedDist;
-      
+
       const freeLimit = settings.deliverySettings?.freeDistanceLimit || 5;
       const rate = settings.deliverySettings?.chargePerExtraKm || 10;
       setDeliveryFee(roundedDist <= freeLimit ? '0' : ((roundedDist - freeLimit) * rate).toFixed(0));
@@ -896,8 +896,8 @@ const OrderSection = () => {
               key={tab.id}
               onClick={() => handleTabChange(tab.id)}
               className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id
-                  ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                  : 'text-text-muted hover:bg-background hover:text-text-primary'
+                ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                : 'text-text-muted hover:bg-background-muted hover:text-text-primary'
                 }`}
             >
               <tab.icon size={14} />
@@ -1097,8 +1097,8 @@ const OrderSection = () => {
                   }}
                   disabled={!searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all' && historyOrderTypeFilter === 'all' && !startDate && !endDate}
                   className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${!searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all' && historyOrderTypeFilter === 'all' && !startDate && !endDate
-                      ? 'bg-background-muted/50 text-text-muted/30 border-border-light cursor-not-allowed'
-                      : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white'
+                    ? 'bg-background-muted/50 text-text-muted/30 border-border-light cursor-not-allowed'
+                    : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white'
                     }`}
                   title="Clear All Filters"
                 >
@@ -1211,11 +1211,10 @@ const OrderSection = () => {
                       <td className="px-3 py-4 font-black text-text-primary">{order.orderNumber}</td>
                       {activeTab === 'history' && (
                         <td className="px-3 py-4">
-                          <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase border tracking-widest ${
-                            order.orderType === 'delivery' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
-                            order.orderType === 'takeaway' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                            'bg-primary/10 text-primary border-primary/20'
-                          }`}>
+                          <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase border tracking-widest ${order.orderType === 'delivery' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
+                              order.orderType === 'takeaway' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                                'bg-primary/10 text-primary border-primary/20'
+                            }`}>
                             {order.orderType}
                           </span>
                         </td>
@@ -1433,12 +1432,11 @@ const OrderSection = () => {
                 <div className="space-y-1 pt-4">
                   <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Payment Status</p>
                   {activeTab === 'history' ? (
-                    <span className={`inline-block px-3 py-1 rounded-lg text-[10px] font-black uppercase border ${
-                      (selectedOrder.paymentStatus === 'paid' || selectedOrder.paymentStatus === 'completed') ? 'bg-status-on/10 text-status-available border-status-on/20' :
-                      selectedOrder.paymentStatus === 'pending' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                      selectedOrder.paymentStatus === 'refunded' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
-                      'bg-status-off/10 text-status-unavailable border-status-off/20'
-                    }`}>
+                    <span className={`inline-block px-3 py-1 rounded-lg text-[10px] font-black uppercase border ${(selectedOrder.paymentStatus === 'paid' || selectedOrder.paymentStatus === 'completed') ? 'bg-status-on/10 text-status-available border-status-on/20' :
+                        selectedOrder.paymentStatus === 'pending' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                          selectedOrder.paymentStatus === 'refunded' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
+                            'bg-status-off/10 text-status-unavailable border-status-off/20'
+                      }`}>
                       {selectedOrder.paymentStatus}
                     </span>
                   ) : (
@@ -1486,13 +1484,12 @@ const OrderSection = () => {
                     )}
                   </div>
                   {activeTab === 'history' ? (
-                    <span className={`inline-block px-3 py-1 rounded-lg text-[10px] font-black uppercase border ${
-                      selectedOrder.orderStatus === 'completed' || selectedOrder.orderStatus === 'delivered' ? 'bg-primary/10 text-primary border-primary/20' :
-                      selectedOrder.orderStatus === 'processing' || selectedOrder.orderStatus === 'out-for-delivery' ? 'bg-status-on/10 text-status-available border-status-on/20' :
-                      selectedOrder.orderStatus === 'placed' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                      selectedOrder.orderStatus === 'cancelled' ? 'bg-status-off/10 text-status-unavailable border-status-off/20' :
-                      'bg-background-muted text-text-muted border-border-light'
-                    }`}>
+                    <span className={`inline-block px-3 py-1 rounded-lg text-[10px] font-black uppercase border ${selectedOrder.orderStatus === 'completed' || selectedOrder.orderStatus === 'delivered' ? 'bg-primary/10 text-primary border-primary/20' :
+                        selectedOrder.orderStatus === 'processing' || selectedOrder.orderStatus === 'out-for-delivery' ? 'bg-status-on/10 text-status-available border-status-on/20' :
+                          selectedOrder.orderStatus === 'placed' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                            selectedOrder.orderStatus === 'cancelled' ? 'bg-status-off/10 text-status-unavailable border-status-off/20' :
+                              'bg-background-muted text-text-muted border-border-light'
+                      }`}>
                       {selectedOrder.orderStatus}
                     </span>
                   ) : (
@@ -1777,11 +1774,10 @@ const OrderSection = () => {
                               key={idx}
                               onClick={() => !isOutOfStock && addToCart(item, v)}
                               disabled={isOutOfStock}
-                              className={`px-2 py-1 text-[9px] font-black rounded-lg transition-all ${
-                                isOutOfStock 
-                                ? 'bg-background-muted text-text-muted cursor-not-allowed border border-border-light' 
-                                : 'bg-primary text-white hover:bg-primary-light shadow-sm active:scale-95'
-                              }`}
+                              className={`px-2 py-1 text-[9px] font-black rounded-lg transition-all ${isOutOfStock
+                                  ? 'bg-background-muted text-text-muted cursor-not-allowed border border-border-light'
+                                  : 'bg-primary text-white hover:bg-primary-light shadow-sm active:scale-95'
+                                }`}
                             >
                               {v.size}: ₹{v.price}
                             </button>
@@ -1859,7 +1855,7 @@ const OrderSection = () => {
                           <p className="text-[10px] font-black text-primary uppercase tracking-widest">Customer Suggestions</p>
                           {userSuggestions.length > 0 && <span className="text-[9px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-bold">{userSuggestions.length} Found</span>}
                         </div>
-                        <button 
+                        <button
                           onClick={(e) => {
                             e.stopPropagation();
                             setShowSuggestions(false);
@@ -1869,7 +1865,7 @@ const OrderSection = () => {
                           <X size={14} />
                         </button>
                       </div>
-                      
+
                       <div className="max-h-60 overflow-y-auto no-scrollbar">
                         {userSuggestions.length === 0 ? (
                           <div className="p-6 text-center">
@@ -1944,7 +1940,7 @@ const OrderSection = () => {
                               className="bg-transparent text-[10px] font-black text-primary outline-none w-full placeholder:text-primary/30"
                             />
                           </div>
-                          <button 
+                          <button
                             onClick={() => handleLocationLinkChange(deliveryLocation)}
                             className="p-1 hover:bg-primary/10 rounded-lg text-primary disabled:opacity-30"
                             disabled={isResolvingLink}
@@ -1960,7 +1956,7 @@ const OrderSection = () => {
                             <MapPin size={10} className="text-primary" />
                             <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Delivery Address</p>
                           </div>
-                          
+
                           {selectedUserId && (
                             <button
                               type="button"
@@ -2032,7 +2028,7 @@ const OrderSection = () => {
                       </div>
                     </div>
                   )}
-                  
+
                   <div className="space-y-1 border-b border-border-light pb-2">
                     <div className="flex items-center justify-between text-text-muted text-[10px] font-bold uppercase tracking-widest">
                       <span>Subtotal</span>
@@ -2106,18 +2102,18 @@ const OrderSection = () => {
                     </div>
 
                     <div className={`flex items-center justify-between p-2 rounded-xl border transition-all ${(parseFloat(cashReceived) || 0) < cart.reduce((acc, i) => acc + i.totalPrice, 0)
-                        ? 'bg-status-off/5 border-status-unavailable/20'
-                        : 'bg-primary/5 border-primary/20'
+                      ? 'bg-status-off/5 border-status-unavailable/20'
+                      : 'bg-primary/5 border-primary/20'
                       }`}>
                       <span className={`text-[10px] font-bold uppercase ${(parseFloat(cashReceived) || 0) < cart.reduce((acc, i) => acc + i.totalPrice, 0)
-                          ? 'text-status-unavailable'
-                          : 'text-primary'
+                        ? 'text-status-unavailable'
+                        : 'text-primary'
                         }`}>
                         {(parseFloat(cashReceived) || 0) < cart.reduce((acc, i) => acc + i.totalPrice, 0) ? 'Due' : 'Change'}
                       </span>
                       <span className={`text-base font-black ${(parseFloat(cashReceived) || 0) < cart.reduce((acc, i) => acc + i.totalPrice, 0)
-                          ? 'text-status-unavailable'
-                          : 'text-primary'
+                        ? 'text-status-unavailable'
+                        : 'text-primary'
                         }`}>
                         ₹{((parseFloat(cashReceived) || 0) - cart.reduce((acc, i) => acc + i.totalPrice, 0)).toFixed(2)}
                       </span>

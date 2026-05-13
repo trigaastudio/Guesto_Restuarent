@@ -88,7 +88,7 @@ const CategorySection = () => {
     } catch (error) {
       console.error('Error uploading image:', error);
       let errorMsg = error.message || 'Failed to upload image.';
-      
+
       if (errorMsg.includes('File too large')) {
         showAlert({
           icon: 'error',
@@ -131,7 +131,7 @@ const CategorySection = () => {
 
   const handleDelete = async (id) => {
     const result = await showDeleteConfirmation('Delete Category?', 'Are you sure you want to delete this category?');
-    
+
     if (result.isConfirmed) {
       try {
         await api.delete(`/api/categories/${id}`);
@@ -180,8 +180,8 @@ const CategorySection = () => {
   const filteredCategories = getSortedData(categories).filter(c => {
     const searchLower = (searchTerm || '').toLowerCase();
     const matchesSearch = (c.name || '').toLowerCase().includes(searchLower);
-    const matchesStatus = statusFilter === 'all' || 
-      (statusFilter === 'active' && c.isActive) || 
+    const matchesStatus = statusFilter === 'all' ||
+      (statusFilter === 'active' && c.isActive) ||
       (statusFilter === 'inactive' && !c.isActive);
     return matchesSearch && matchesStatus;
   });
@@ -203,7 +203,7 @@ const CategorySection = () => {
           <h2 className="text-2xl font-bold text-text-primary">Categories</h2>
           <p className="text-text-secondary text-sm">Manage your menu categories</p>
         </div>
-        <button 
+        <button
           onClick={() => handleOpenModal()}
           className="bg-primary text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-lg shadow-primary/20 hover:bg-primary-light transition-all flex items-center space-x-2"
         >
@@ -307,9 +307,8 @@ const CategorySection = () => {
                       <span className="font-bold text-text-primary">{category.name}</span>
                     </td>
                     <td className="px-3 py-4">
-                      <span className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                        category.isActive ? 'bg-status-on/10 text-status-available' : 'bg-status-off/10 text-status-unavailable'
-                      }`}>
+                      <span className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${category.isActive ? 'bg-status-on/10 text-status-available' : 'bg-status-off/10 text-status-unavailable'
+                        }`}>
                         {category.isActive ? <CheckCircle size={12} /> : <XCircle size={12} />}
                         <span>{category.isActive ? 'Active' : 'Inactive'}</span>
                       </span>
@@ -341,7 +340,7 @@ const CategorySection = () => {
                         >
                           <Edit2 size={16} />
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleDelete(category._id)}
                           className="p-2 text-text-secondary hover:text-status-unavailable hover:bg-status-off/10 rounded-lg transition-colors"
                           title="Delete Category"
@@ -380,12 +379,25 @@ const CategorySection = () => {
                 <input
                   type="text"
                   value={currentCategory.name}
-                  onChange={(e) => setCurrentCategory({...currentCategory, name: e.target.value})}
+                  onChange={(e) => setCurrentCategory({ ...currentCategory, name: e.target.value })}
                   className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all"
                   placeholder="e.g. Main Course"
                 />
               </div>
-
+              <div className="flex items-center space-x-3">
+                <label className="text-sm font-semibold text-text-secondary">Status</label>
+                <button
+                  onClick={() => setCurrentCategory({ ...currentCategory, isActive: !currentCategory.isActive })}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${currentCategory.isActive ? 'bg-primary' : 'bg-text-muted'
+                    }`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${currentCategory.isActive ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                </button>
+                <span className="text-sm text-text-primary font-medium">
+                  {currentCategory.isActive ? 'Active' : 'Inactive'}
+                </span>
+              </div>
 
               <div className="space-y-3 pt-2">
                 <label className="text-sm font-semibold text-text-secondary">Category Image</label>
@@ -404,18 +416,18 @@ const CategorySection = () => {
                     `}>
                       <ImageIcon size={14} />
                       <span>{isUploading ? 'Uploading...' : 'Upload'}</span>
-                      <input 
-                        type="file" 
-                        className="hidden" 
-                        accept="image/*" 
-                        onChange={handleImageUpload} 
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleImageUpload}
                         disabled={isUploading}
                       />
                     </label>
                     <input
                       type="text"
                       value={currentCategory.image}
-                      onChange={(e) => setCurrentCategory({...currentCategory, image: e.target.value})}
+                      onChange={(e) => setCurrentCategory({ ...currentCategory, image: e.target.value })}
                       className="w-full px-3 py-1.5 bg-background-muted/50 rounded-lg border border-border-main focus:border-primary outline-none text-[10px]"
                       placeholder="Or paste image URL"
                     />

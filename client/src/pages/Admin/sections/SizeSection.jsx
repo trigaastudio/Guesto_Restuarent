@@ -40,7 +40,7 @@ const SizeSection = () => {
   const filteredSizes = getSortedData(sizes).filter(s => {
     const searchLower = (searchTerm || '').toLowerCase();
     return (s.name || '').toLowerCase().includes(searchLower) ||
-           (s.unit || '').toLowerCase().includes(searchLower);
+      (s.unit || '').toLowerCase().includes(searchLower);
   });
 
   const fetchSizes = async () => {
@@ -90,7 +90,7 @@ const SizeSection = () => {
       'Delete Size?',
       'Are you sure you want to delete this size? This might affect menu items using it.'
     );
-    
+
     if (result.isConfirmed) {
       try {
         await axios.delete(`${API_BASE_URL}/sizes/${id}`);
@@ -110,7 +110,7 @@ const SizeSection = () => {
           <h2 className="text-2xl font-bold text-text-primary">Global Sizes</h2>
           <p className="text-text-secondary text-sm">Define sizes and their multiplier values (e.g., Quarter=1, Half=2, Full=4)</p>
         </div>
-        <button 
+        <button
           onClick={() => handleOpenModal()}
           className="bg-primary text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-lg shadow-primary/20 hover:bg-primary-light transition-all flex items-center space-x-2"
         >
@@ -190,9 +190,8 @@ const SizeSection = () => {
                     <td className="px-6 py-4 text-text-secondary">{size.unit}</td>
                     <td className="px-6 py-4 font-bold text-text-primary">{size.value}</td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                        size.isActive ? 'bg-status-on/10 text-status-available' : 'bg-status-off/10 text-status-unavailable'
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${size.isActive ? 'bg-status-on/10 text-status-available' : 'bg-status-off/10 text-status-unavailable'
+                        }`}>
                         {size.isActive ? 'Active' : 'Blocked'}
                       </span>
                     </td>
@@ -229,7 +228,7 @@ const SizeSection = () => {
                 <input
                   type="text"
                   value={currentSize.name}
-                  onChange={(e) => setCurrentSize({...currentSize, name: e.target.value})}
+                  onChange={(e) => setCurrentSize({ ...currentSize, name: e.target.value })}
                   className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all"
                   placeholder="e.g. Quarter, Half, Full, Packet"
                 />
@@ -239,7 +238,7 @@ const SizeSection = () => {
                 <input
                   type="text"
                   value={currentSize.unit}
-                  onChange={(e) => setCurrentSize({...currentSize, unit: e.target.value})}
+                  onChange={(e) => setCurrentSize({ ...currentSize, unit: e.target.value })}
                   className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all"
                   placeholder="e.g. piece, plate, kg"
                 />
@@ -249,7 +248,7 @@ const SizeSection = () => {
                 <input
                   type="number"
                   value={currentSize.value === 0 ? '' : currentSize.value}
-                  onChange={(e) => setCurrentSize({...currentSize, value: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
+                  onChange={(e) => setCurrentSize({ ...currentSize, value: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
                   className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all"
                   placeholder="e.g. 1, 2, 4, 10"
                 />
@@ -262,14 +261,12 @@ const SizeSection = () => {
                   <p className="text-[10px] text-text-muted">Blocked sizes won't show in menu editor</p>
                 </div>
                 <button
-                  onClick={() => setCurrentSize({...currentSize, isActive: !currentSize.isActive})}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                    currentSize.isActive ? 'bg-primary' : 'bg-text-muted'
-                  }`}
+                  onClick={() => setCurrentSize({ ...currentSize, isActive: !currentSize.isActive })}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${currentSize.isActive ? 'bg-primary' : 'bg-text-muted'
+                    }`}
                 >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    currentSize.isActive ? 'translate-x-6' : 'translate-x-1'
-                  }`} />
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${currentSize.isActive ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
                 </button>
               </div>
             </div>

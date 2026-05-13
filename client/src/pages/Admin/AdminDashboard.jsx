@@ -81,7 +81,7 @@ const AdminDashboard = () => {
         read: false,
         orderData: data.order
       };
-      
+
       setNotifications(() => {
         // Read latest from localStorage to handle multi-tab sync
         const currentLocal = JSON.parse(localStorage.getItem('admin_notifications') || '[]');
@@ -410,7 +410,7 @@ const AdminDashboard = () => {
             </button>
 
             <div className="relative">
-              <button 
+              <button
                 onClick={() => {
                   setShowNotifications(!showNotifications);
                   if (!showNotifications) markNotificationsAsRead();
@@ -448,7 +448,7 @@ const AdminDashboard = () => {
                         </div>
                       ) : (
                         notifications.map((notif) => (
-                          <div 
+                          <div
                             key={notif.id}
                             onClick={() => {
                               if (notif.type === 'order') {
@@ -461,10 +461,9 @@ const AdminDashboard = () => {
                             className="p-4 border-b border-border-light/50 last:border-0 hover:bg-background-muted/30 transition-colors cursor-pointer group relative"
                           >
                             <div className="flex items-start space-x-3 pr-6">
-                              <div className={`p-2 rounded-xl shrink-0 ${
-                                notif.type === 'order' ? 'bg-primary/10 text-primary' : 
-                                notif.type === 'outOfStock' ? 'bg-status-off/10 text-status-unavailable' : 'bg-amber-500/10 text-amber-500'
-                              }`}>
+                              <div className={`p-2 rounded-xl shrink-0 ${notif.type === 'order' ? 'bg-primary/10 text-primary' :
+                                  notif.type === 'outOfStock' ? 'bg-status-off/10 text-status-unavailable' : 'bg-amber-500/10 text-amber-500'
+                                }`}>
                                 {notif.type === 'order' ? <ShoppingCart size={16} /> : <AlertTriangle size={16} />}
                               </div>
                               <div className="flex-1 min-w-0">
@@ -479,7 +478,7 @@ const AdminDashboard = () => {
                                 </p>
                               </div>
                             </div>
-                            <button 
+                            <button
                               onClick={(e) => removeNotification(notif.id, e)}
                               className="absolute top-4 right-4 p-1 text-text-muted hover:text-status-unavailable opacity-0 group-hover:opacity-100 transition-all"
                             >
@@ -521,7 +520,10 @@ const AdminDashboard = () => {
                       <p className="text-text-secondary text-sm font-medium">Welcome back! Here's what's happening today.</p>
                     </div>
                     <div className="flex space-x-2">
-                      <button 
+                      <button className="bg-background-card border border-border-main text-text-primary px-4 py-2 rounded-xl text-sm font-semibold hover:bg-background-muted transition-colors">
+                        Export Table
+                      </button>
+                      <button
                         onClick={handleRefresh}
                         className="bg-primary text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-lg shadow-primary/20 hover:bg-primary-light transition-all"
                       >

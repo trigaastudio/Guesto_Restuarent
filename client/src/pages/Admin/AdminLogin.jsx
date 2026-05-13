@@ -31,10 +31,16 @@ const AdminLogin = () => {
 
   // Prevent accessing login if already logged in as admin
   React.useEffect(() => {
-    const token = localStorage.getItem('admin_token');
-    const user = JSON.parse(localStorage.getItem('admin_user') || '{}');
-    if (token && user.role === 'admin') {
-      navigate('/admin/dashboard', { replace: true });
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+    if (token) {
+      if (user.role === 'admin') {
+        navigate('/admin/dashboard', { replace: true });
+      } else {
+        // If a regular user tries to access admin login, send them to their home
+        navigate('/home', { replace: true });
+      }
     }
   }, [navigate]);
 
@@ -53,7 +59,7 @@ const AdminLogin = () => {
         // Also set general keys for consistency across the app
         localStorage.setItem('token', userData.token);
         localStorage.setItem('user', JSON.stringify(userData));
-        
+
         navigate('/admin/dashboard', { replace: true });
       }
     } catch (err) {
@@ -74,12 +80,12 @@ const AdminLogin = () => {
 
       {/* Logo Section */}
       <div className="mb-12 text-center flex flex-col items-center animate-in fade-in slide-in-from-top-4 duration-700">
-        <img 
-          src={isDarkMode 
-            ? (settings?.branding?.logoGold || "/logo-golden.png") 
-            : (settings?.branding?.logoDark || "/logo-dark.png")} 
-          alt="Restaurant Logo" 
-          className="h-16 w-auto mb-2" 
+        <img
+          src={isDarkMode
+            ? (settings?.branding?.logoGold || "/logo-golden.png")
+            : (settings?.branding?.logoDark || "/logo-dark.png")}
+          alt="Restaurant Logo"
+          className="h-16 w-auto mb-2"
         />
       </div>
 
@@ -156,7 +162,7 @@ const AdminLogin = () => {
           </button>
 
           <div className="pt-4 border-t border-border-light text-center">
-            <button 
+            <button
               type="button"
               onClick={() => navigate('/staff/login')}
               className="text-[10px] font-black text-text-muted hover:text-primary uppercase tracking-widest transition-colors"
