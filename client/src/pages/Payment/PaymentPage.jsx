@@ -11,7 +11,7 @@ const PaymentPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { cartItems, subtotal, clearCart, settings } = useCart();
-  const [paymentMethod, setPaymentMethod] = useState('online'); // 'online', 'cod', 'wallet'
+  const [paymentMethod, setPaymentMethod] = useState('card'); // 'card', 'cod', 'wallet'
   const [loading, setLoading] = useState(false);
   const [isOrderSuccess, setIsOrderSuccess] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -82,7 +82,7 @@ const PaymentPage = () => {
       const orderItems = cartItems.map(item => {
         const variants = item.variants || item.sizes || [];
         const sizeData = variants.find(v => v.size === item.selectedSize);
-        const price = sizeData ? sizeData.price : (item.offerPrice || 0);
+        const price = sizeData ? sizeData.price : (item.offerPrice || item.price || 0);
 
         return {
           menuItem: item.menuItemId || item._id, // Use menuItemId if available, fallback to _id
@@ -90,7 +90,8 @@ const PaymentPage = () => {
           image: item.image || '',
           size: item.selectedSize,
           quantity: item.quantity,
-          price: price
+          price: price,
+          bogoItem: item.bogoItem || null
         };
       });
 
@@ -109,7 +110,7 @@ const PaymentPage = () => {
       const response = await api.post('/api/orders', orderData);
       const createdOrder = response.data.data;
 
-      if (paymentMethod === 'online') {
+      if (paymentMethod === 'card') {
         // 2. Create Razorpay Order
         const { data: { data: razorpayOrder } } = await api.post('/api/payments/create-order', {
           amount: total,
@@ -187,7 +188,7 @@ const PaymentPage = () => {
   const handlePaymentFailure = (orderId) => {
     setLoading(false);
     clearCart();
-    
+
     Swal.fire({
       html: `
         <div class="p-4">
@@ -198,9 +199,9 @@ const PaymentPage = () => {
               <line x1="9" y1="9" x2="15" y2="15"></line>
             </svg>
           </div>
-          <h2 class="text-2xl font-black text-text-primary tracking-tight mb-3 uppercase">Payment Failed</h2>
-          <p class="text-[9px] font-black text-text-muted opacity-60 mb-10 uppercase tracking-widest leading-relaxed max-w-[240px] mx-auto">
-            Don't worry, your order is saved! You can complete the payment from your order history.
+          <h2 class="text-2xl font-black text-text-primary tracking-tight mb-3 lowercase">payment failed</h2>
+          <p class="text-[9px] font-black text-text-muted opacity-60 mb-10 lowercase tracking-widest leading-relaxed max-w-[240px] mx-auto">
+            don't worry, your order is saved! you can complete the payment from your order history.
           </p>
         </div>
       `,
@@ -209,7 +210,7 @@ const PaymentPage = () => {
       confirmButtonColor: '#B91C1C',
       customClass: {
         popup: 'rounded-[3rem] border-none shadow-2xl bg-background-card',
-        confirmButton: 'rounded-2xl px-10 py-4 font-black uppercase tracking-widest text-[9px] shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all'
+        confirmButton: 'rounded-2xl px-10 py-4 font-black lowercase tracking-widest text-[9px] shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all'
       },
       timer: 5000,
       timerProgressBar: true
@@ -234,11 +235,11 @@ const PaymentPage = () => {
           </div>
 
           <div class="space-y-1.5 mb-6 text-center">
-            <h2 class="text-xl font-black text-text-primary tracking-tighter leading-none uppercase">
-              Order <span class="text-primary">Placed!</span>
+            <h2 class="text-xl font-black text-text-primary tracking-tighter leading-none lowercase">
+              order <span class="text-primary">placed!</span>
             </h2>
-            <p class="text-[8px] font-black text-text-muted opacity-50 uppercase tracking-[0.2em]">
-              Your feast is being prepared
+            <p class="text-[8px] font-black text-text-muted opacity-50 lowercase tracking-[0.2em]">
+              your feast is being prepared
             </p>
           </div>
           
@@ -246,14 +247,14 @@ const PaymentPage = () => {
             <div class="absolute -inset-1 bg-gradient-to-r from-primary to-primary-light rounded-[1.5rem] blur opacity-10"></div>
             <div class="relative bg-background p-4 rounded-[1.5rem] border border-border/40 shadow-inner">
               <div class="flex flex-col items-center gap-2">
-                <span class="text-[7px] font-black uppercase tracking-[0.3em] text-text-muted opacity-40">Tracking ID</span>
+                <span class="text-[7px] font-black lowercase tracking-[0.3em] text-text-muted opacity-40">tracking id</span>
                 <div class="flex flex-col items-center gap-1">
                   <span class="text-xl font-black text-text-primary tracking-tight">
                     ${order.orderNumber}
                   </span>
                   <div class="flex items-center gap-1.5 text-[7px] font-black text-primary bg-primary/5 px-2 py-0.5 rounded-full border border-primary/10">
                     <span class="w-1 h-1 bg-primary rounded-full animate-pulse"></span>
-                    READY TO COOK
+                    ready to cook
                   </div>
                 </div>
               </div>
@@ -262,24 +263,23 @@ const PaymentPage = () => {
 
           <div class="flex items-center justify-center gap-2 py-2 px-4 bg-green-500/10 rounded-xl border border-green-500/20 max-w-[160px] mx-auto">
              <div class="w-1 h-1 bg-green-500 rounded-full animate-pulse"></div>
-             <span class="text-[7px] font-black text-green-600 uppercase tracking-widest">ETA: 35-45 Mins</span>
+             <span class="text-[7px] font-black text-green-600 lowercase tracking-widest">eta: 35-45 mins</span>
           </div>
         </div>
       `,
       showConfirmButton: true,
       confirmButtonText: `
         <div class="flex items-center gap-2">
-          <span class="text-[8px] uppercase tracking-[0.2em]">Track Order</span>
+          <span class="text-[8px] lowercase tracking-[0.2em]">track order</span>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </div>
       `,
       confirmButtonColor: '#B91C1C',
       padding: '0',
-      width: '85%',
-      maxWidth: '300px',
+      width: '380px',
       customClass: {
-        popup: 'rounded-[2rem] border-none shadow-3xl overflow-hidden bg-background-card',
-        confirmButton: 'rounded-xl px-6 py-3 font-black shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all mb-6'
+        popup: 'rounded-[2.5rem] border-none shadow-3xl overflow-hidden bg-background-card',
+        confirmButton: 'rounded-xl px-10 py-3.5 font-black shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all mb-8'
       }
     }).then(() => {
       navigate('/my-orders');
@@ -310,49 +310,46 @@ const PaymentPage = () => {
           <div className="flex flex-col lg:flex-row gap-10 items-start">
 
             {/* Left Column: Delivery & Summary */}
-            <div className="flex-1 space-y-8 w-full">
+            <div className="flex-1 space-y-6 w-full">
               {/* Delivery Overview */}
-              <div className="bg-background-card rounded-[3rem] p-8 md:p-10 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.04)] relative overflow-hidden">
+              <div className="bg-background-card rounded-[2.5rem] p-6 md:p-8 border border-border/40 shadow-[0_20px_80px_rgba(0,0,0,0.03)] relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-                
-                <div className="relative z-10 flex items-center gap-4 mb-10">
-                  <span className="w-6 h-1 bg-primary rounded-full"></span>
-                  <div className="space-y-1">
-                    <p className="text-[9px] font-black text-primary tracking-widest uppercase">Destination</p>
-                    <h2 className="text-xl md:text-2xl font-black text-text-primary tracking-tight">Delivery Summary</h2>
-                  </div>
+
+                <div className="relative z-10 flex items-center gap-3 mb-6">
+                  <span className="w-4 h-1 bg-primary rounded-full"></span>
+                  <p className="text-[10px] font-black text-primary tracking-[0.2em] lowercase opacity-80">destination</p>
                 </div>
 
-                <div className="bg-background rounded-[2.5rem] p-6 md:p-8 border border-border/40 flex flex-col md:flex-row gap-8 items-start md:items-center">
-                  <div className="w-16 h-16 rounded-[1.5rem] bg-background-card shadow-sm border border-border/40 flex items-center justify-center text-primary flex-shrink-0">
+                <div className="bg-background rounded-[2rem] p-5 md:p-6 border border-border/40 flex flex-col md:flex-row gap-6 items-start md:items-center">
+                  <div className="w-14 h-14 rounded-[1.25rem] bg-background-card shadow-sm border border-border/40 flex items-center justify-center text-primary flex-shrink-0">
                     <MapPin size={28} strokeWidth={1.5} />
                   </div>
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center gap-3">
-                      <span className="text-[10px] font-black text-primary bg-primary/5 px-2.5 py-1 rounded-md uppercase tracking-widest border border-primary/10">
-                        {deliveryAddress.type || 'Home'}
+                      <span className="text-[10px] font-black text-primary bg-primary/5 px-2.5 py-1 rounded-md lowercase tracking-widest border border-primary/10">
+                        {deliveryAddress.type || 'home'}
                       </span>
                       <span className="text-xs font-bold text-text-primary">{deliveryAddress.mobile}</span>
                     </div>
-                    <h4 className="text-lg font-black text-text-primary tracking-tight">
+                    <h4 className="text-base font-black text-text-primary tracking-tight">
                       {deliveryAddress.recipientName && deliveryAddress.recipientName !== 'Myself' && deliveryAddress.recipientName !== 'Others'
-                        ? deliveryAddress.recipientName
-                        : (user?.name || 'Customer')}
+                        ? deliveryAddress.recipientName?.toLowerCase()
+                        : (user?.name?.toLowerCase() || 'customer')}
                     </h4>
-                    <p className="text-[13px] text-text-muted font-bold opacity-60 leading-relaxed max-w-md">
+                    <p className="text-[12px] text-text-muted font-bold opacity-60 leading-relaxed max-w-md lowercase">
                       {deliveryAddress.address}
                     </p>
                     {deliveryAddress.landmark && (
-                      <p className="text-[10px] font-black text-primary mt-2 italic flex items-center gap-1.5 uppercase tracking-widest">
-                        <Info size={12} /> Landmark: {deliveryAddress.landmark}
+                      <p className="text-[10px] font-black text-primary mt-2 italic flex items-center gap-1.5 lowercase tracking-widest">
+                        <Info size={12} /> landmark: {deliveryAddress.landmark}
                       </p>
                     )}
                   </div>
-                  
-                  <div className="w-full md:w-36 bg-background-card rounded-[2rem] border border-primary/10 shadow-sm p-6 flex flex-col items-center justify-center gap-2 group hover:border-primary/30 transition-all duration-500 flex-shrink-0">
-                    <Clock size={24} className="text-primary animate-pulse" />
-                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Est. Arrival</p>
-                    <h5 className="text-xl font-black text-primary tracking-tighter">45 mins</h5>
+
+                  <div className="w-full md:w-32 bg-background-card rounded-[1.5rem] border border-primary/10 shadow-sm p-4 flex flex-col items-center justify-center gap-1.5 group hover:border-primary/30 transition-all duration-500 flex-shrink-0">
+                    <Clock size={20} className="text-primary animate-pulse" />
+                    <p className="text-[8px] font-black text-text-muted lowercase tracking-widest">est. arrival</p>
+                    <h5 className="text-lg font-black text-primary tracking-tighter">45 mins</h5>
                   </div>
                 </div>
 
@@ -362,43 +359,41 @@ const PaymentPage = () => {
                       <Info size={16} />
                     </div>
                     <div>
-                      <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1 opacity-60">Chef's Note</p>
-                      <p className="text-sm font-bold text-text-primary italic leading-relaxed">"{additionalNote}"</p>
+                      <p className="text-[10px] font-black text-primary lowercase tracking-widest mb-1 opacity-60">chef's note</p>
+                      <p className="text-sm font-bold text-text-primary italic leading-relaxed">"{additionalNote?.toLowerCase()}"</p>
                     </div>
                   </div>
                 )}
               </div>
 
               {/* Order Preview */}
-              <div className="bg-background-card rounded-[3rem] p-8 md:p-10 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.04)]">
-                <div className="flex items-center gap-4 mb-10">
-                  <span className="w-6 h-1 bg-primary rounded-full"></span>
-                  <div className="space-y-1">
-                    <p className="text-[9px] font-black text-primary tracking-widest uppercase">Order Items</p>
-                    <h2 className="text-xl md:text-2xl font-black text-text-primary tracking-tight">Final Check</h2>
-                  </div>
+              <div className="bg-background-card rounded-[2.5rem] p-6 md:p-8 border border-border/40 shadow-[0_20px_80px_rgba(0,0,0,0.03)]">
+                <div className="flex items-center gap-3 mb-6">
+                  <span className="w-4 h-1 bg-primary rounded-full"></span>
+                  <p className="text-[10px] font-black text-primary tracking-[0.2em] lowercase opacity-80">order items</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {cartItems.map((item) => (
-                    <div key={item._id} className="flex items-center gap-5 p-4 rounded-[1.5rem] bg-background border border-border/40 group hover:bg-background-card hover:shadow-lg transition-all duration-500">
-                      <div className="w-16 h-16 rounded-xl bg-background-card p-1 shadow-sm border border-border/40 shrink-0 overflow-hidden">
+                    <div key={item._id} className="flex items-center gap-4 p-3 rounded-[1.25rem] bg-background border border-border/40 group hover:bg-background-card hover:shadow-md transition-all duration-500">
+                      <div className="w-14 h-14 rounded-xl bg-background-card p-1 shadow-sm border border-border/40 shrink-0 overflow-hidden">
                         <img src={item.image || '/placeholder-food.jpg'} alt={item.name} className="w-full h-full object-contain" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h4 className="text-[13px] font-black text-text-primary tracking-tight group-hover:text-primary transition-colors duration-500 truncate">
+                        <h4 className="text-[12px] font-black text-text-primary tracking-tight group-hover:text-primary transition-colors duration-500 truncate lowercase">
                           {item.name}
                         </h4>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] font-black text-text-muted opacity-40 uppercase tracking-widest">Qty: {item.quantity}</span>
-                          {item.selectedSize && <span className="text-[9px] font-black text-primary bg-primary/5 px-1.5 py-0.5 rounded-md uppercase">{item.selectedSize}</span>}
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[9px] font-black text-text-muted opacity-40 lowercase tracking-widest">qty: {item.quantity}</span>
+                          {item.selectedSize && <span className="text-[8px] font-black text-primary bg-primary/5 px-1.5 py-0.5 rounded-md lowercase">{item.selectedSize}</span>}
                         </div>
+
                       </div>
                       <div className="text-sm font-black text-text-primary tracking-tighter pr-2">
                         ₹{(() => {
                           const variants = item.variants || item.sizes || [];
                           const sizeData = variants.find(v => v.size === item.selectedSize);
-                          const price = sizeData ? sizeData.price : (item.offerPrice || 0);
+                          const price = sizeData ? sizeData.price : (item.offerPrice || item.price || 0);
                           return price * item.quantity;
                         })()}
                       </div>
@@ -409,82 +404,82 @@ const PaymentPage = () => {
             </div>
 
             {/* Right Column: Payment Method */}
-            <div className="w-full lg:w-[400px] sticky top-32">
-              <div className="bg-background-card rounded-[3.5rem] shadow-[0_50px_120px_rgba(0,0,0,0.06)] border border-border/40 overflow-hidden relative">
+            <div className="w-full lg:w-[380px] sticky top-32">
+              <div className="bg-background-card rounded-[2.5rem] shadow-[0_40px_100px_rgba(0,0,0,0.05)] border border-border/40 overflow-hidden relative">
                 <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary via-primary-light to-primary"></div>
-                
-                <div className="p-8 md:p-10">
-                  <h2 className="text-xl font-black text-text-primary tracking-tight mb-8 flex items-center gap-3">
-                    <CreditCard size={22} className="text-primary" />
-                    Payment Method
+
+                <div className="p-6 md:p-8">
+                  <h2 className="text-lg font-black text-text-primary tracking-tight mb-6 flex items-center gap-3 lowercase">
+                    <CreditCard size={20} className="text-primary" />
+                    payment method
                   </h2>
 
-                  <div className="space-y-4 mb-10">
+                  <div className="space-y-3 mb-8">
                     {/* Online Payment Option */}
                     <div
-                      onClick={() => setPaymentMethod('online')}
-                      className={`cursor-pointer group p-5 rounded-[2rem] border-2 transition-all duration-500 flex items-center justify-between ${paymentMethod === 'online' ? 'border-primary bg-primary/5 shadow-xl shadow-primary/5' : 'border-border/40 bg-background hover:border-primary/20 hover:bg-background-card'}`}
+                      onClick={() => setPaymentMethod('card')}
+                      className={`cursor-pointer group p-4 rounded-[1.5rem] border-2 transition-all duration-500 flex items-center justify-between ${paymentMethod === 'card' ? 'border-primary bg-primary/5 shadow-lg shadow-primary/5' : 'border-border/40 bg-background hover:border-primary/20 hover:bg-background-card'}`}
                     >
-                      <div className="flex items-center gap-5">
-                        <div className={`w-14 h-14 rounded-[1.25rem] flex items-center justify-center transition-all duration-500 ${paymentMethod === 'online' ? 'bg-primary text-white shadow-lg' : 'bg-background-card text-text-muted/40 group-hover:bg-primary/10 group-hover:text-primary'}`}>
-                          <CreditCard size={26} strokeWidth={1.5} />
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-[1rem] flex items-center justify-center transition-all duration-500 ${paymentMethod === 'card' ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg' : 'bg-background-card text-text-muted/40 group-hover:bg-indigo-500/10 group-hover:text-indigo-500'}`}>
+                          <CreditCard size={22} strokeWidth={2} />
                         </div>
                         <div>
-                          <h4 className="text-base font-black text-text-primary tracking-tight">Online</h4>
-                          <p className="text-[10px] font-bold text-text-muted tracking-widest uppercase opacity-60">UPI, Card, Net</p>
+                          <h4 className="text-sm font-black text-text-primary tracking-tight lowercase">card</h4>
+                          <p className="text-[9px] font-bold text-text-muted tracking-widest lowercase opacity-60">secure payment</p>
                         </div>
                       </div>
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${paymentMethod === 'online' ? 'border-primary' : 'border-border/40'}`}>
-                        <div className={`w-3 h-3 rounded-full bg-primary transition-transform duration-500 ${paymentMethod === 'online' ? 'scale-100' : 'scale-0'}`}></div>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${paymentMethod === 'card' ? 'border-primary' : 'border-border/40'}`}>
+                        <div className={`w-2.5 h-2.5 rounded-full bg-primary transition-transform duration-500 ${paymentMethod === 'card' ? 'scale-100' : 'scale-0'}`}></div>
                       </div>
                     </div>
 
                     {/* Wallet Option */}
                     <div
                       onClick={() => walletBalance >= total ? setPaymentMethod('wallet') : null}
-                      className={`cursor-pointer group p-5 rounded-[2rem] border-2 transition-all duration-500 flex items-center justify-between ${paymentMethod === 'wallet' ? 'border-primary bg-primary/5 shadow-xl shadow-primary/5' : walletBalance < total ? 'opacity-40 cursor-not-allowed border-border/40 bg-background' : 'border-border/40 bg-background hover:border-primary/20 hover:bg-background-card'}`}
+                      className={`cursor-pointer group p-4 rounded-[1.5rem] border-2 transition-all duration-500 flex items-center justify-between ${paymentMethod === 'wallet' ? 'border-primary bg-primary/5 shadow-lg shadow-primary/5' : walletBalance < total ? 'opacity-40 cursor-not-allowed border-border/40 bg-background' : 'border-border/40 bg-background hover:border-primary/20 hover:bg-background-card'}`}
                     >
-                      <div className="flex items-center gap-5">
-                        <div className={`w-14 h-14 rounded-[1.25rem] flex items-center justify-center transition-all duration-500 ${paymentMethod === 'wallet' ? 'bg-primary text-white shadow-lg' : 'bg-background-card text-text-muted/40 group-hover:bg-primary/10 group-hover:text-primary'}`}>
-                          <Wallet size={26} strokeWidth={1.5} />
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-[1rem] flex items-center justify-center transition-all duration-500 ${paymentMethod === 'wallet' ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg' : 'bg-background-card text-text-muted/40 group-hover:bg-emerald-500/10 group-hover:text-emerald-500'}`}>
+                          <Wallet size={22} strokeWidth={2} />
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <h4 className="text-base font-black text-text-primary tracking-tight">Wallet</h4>
-                            <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md border ${walletBalance >= total ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}`}>
+                            <h4 className="text-sm font-black text-text-primary tracking-tight">wallet</h4>
+                            <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-md border ${walletBalance >= total ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}`}>
                               ₹{walletBalance}
                             </span>
                           </div>
-                          <p className="text-[10px] font-bold text-text-muted tracking-widest uppercase opacity-60">Guesto Balance</p>
+                          <p className="text-[9px] font-bold text-text-muted tracking-widest lowercase opacity-60">guesto balance</p>
                         </div>
                       </div>
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${paymentMethod === 'wallet' ? 'border-primary' : 'border-border/40'}`}>
-                        <div className={`w-3 h-3 rounded-full bg-primary transition-transform duration-500 ${paymentMethod === 'wallet' ? 'scale-100' : 'scale-0'}`}></div>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${paymentMethod === 'wallet' ? 'border-primary' : 'border-border/40'}`}>
+                        <div className={`w-2.5 h-2.5 rounded-full bg-primary transition-transform duration-500 ${paymentMethod === 'wallet' ? 'scale-100' : 'scale-0'}`}></div>
                       </div>
                     </div>
 
                     {/* COD Option */}
                     <div
                       onClick={() => setPaymentMethod('cod')}
-                      className={`cursor-pointer group p-5 rounded-[2rem] border-2 transition-all duration-500 flex items-center justify-between ${paymentMethod === 'cod' ? 'border-primary bg-primary/5 shadow-xl shadow-primary/5' : 'border-border/40 bg-background hover:border-primary/20 hover:bg-background-card'}`}
+                      className={`cursor-pointer group p-4 rounded-[1.5rem] border-2 transition-all duration-500 flex items-center justify-between ${paymentMethod === 'cod' ? 'border-primary bg-primary/5 shadow-lg shadow-primary/5' : 'border-border/40 bg-background hover:border-primary/20 hover:bg-background-card'}`}
                     >
-                      <div className="flex items-center gap-5">
-                        <div className={`w-14 h-14 rounded-[1.25rem] flex items-center justify-center transition-all duration-500 ${paymentMethod === 'cod' ? 'bg-primary text-white shadow-lg' : 'bg-background-card text-text-muted/40 group-hover:bg-primary/10 group-hover:text-primary'}`}>
-                          <Banknote size={26} strokeWidth={1.5} />
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-[1rem] flex items-center justify-center transition-all duration-500 ${paymentMethod === 'cod' ? 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg' : 'bg-background-card text-text-muted/40 group-hover:bg-amber-500/10 group-hover:text-amber-500'}`}>
+                          <Banknote size={22} strokeWidth={2} />
                         </div>
                         <div>
-                          <h4 className="text-base font-black text-text-primary tracking-tight">Cash</h4>
-                          <p className="text-[10px] font-bold text-text-muted tracking-widest uppercase opacity-60">Pay on delivery</p>
+                          <h4 className="text-sm font-black text-text-primary tracking-tight lowercase">cash</h4>
+                          <p className="text-[9px] font-bold text-text-muted tracking-widest lowercase opacity-60">pay on delivery</p>
                         </div>
                       </div>
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${paymentMethod === 'cod' ? 'border-primary' : 'border-border/40'}`}>
-                        <div className={`w-3 h-3 rounded-full bg-primary transition-transform duration-500 ${paymentMethod === 'cod' ? 'scale-100' : 'scale-0'}`}></div>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${paymentMethod === 'cod' ? 'border-primary' : 'border-border/40'}`}>
+                        <div className={`w-2.5 h-2.5 rounded-full bg-primary transition-transform duration-500 ${paymentMethod === 'cod' ? 'scale-100' : 'scale-0'}`}></div>
                       </div>
                     </div>
                   </div>
 
                   {/* Summary Breakdown */}
-                  <div className="bg-background rounded-[2rem] p-6 mb-8 space-y-3 relative border border-border/40 shadow-inner">
+                  <div className="bg-background rounded-[1.5rem] p-5 mb-6 space-y-2.5 relative border border-border/40 shadow-inner">
                     <div className="flex justify-between text-sm font-bold text-text-muted">
                       <span>Order Total</span>
                       <span className="text-text-primary">₹{subtotal}</span>
@@ -499,7 +494,7 @@ const PaymentPage = () => {
                     </div>
                     <div className="h-px bg-border/20 my-2"></div>
                     <div className="flex justify-between items-center pt-2">
-                      <span className="text-base font-black text-text-primary tracking-widest uppercase">To Pay</span>
+                      <span className="text-base font-black text-text-primary tracking-widest lowercase">to pay</span>
                       <span className="text-3xl font-black text-primary tracking-tighter">₹{total}</span>
                     </div>
                   </div>
@@ -508,15 +503,15 @@ const PaymentPage = () => {
                   <button
                     onClick={handlePlaceOrder}
                     disabled={loading}
-                    className="w-full bg-primary hover:bg-primary-dark text-white font-black py-5 rounded-2xl transition-all duration-500 shadow-xl shadow-primary/20 active:scale-95 flex items-center justify-center gap-4 group disabled:opacity-50"
+                    className="w-full bg-primary hover:bg-primary-dark text-white font-black py-4 rounded-xl transition-all duration-500 shadow-lg shadow-primary/20 active:scale-95 flex items-center justify-center gap-4 group disabled:opacity-50"
                   >
-                    <span className="text-xs uppercase tracking-widest">{loading ? 'Processing...' : 'Place Your Order'}</span>
-                    {!loading && <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform duration-500" />}
+                    <span className="text-xs lowercase tracking-widest">{loading ? 'processing...' : 'place your order'}</span>
+                    {!loading && <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform duration-500" />}
                   </button>
-                  
+
                   <div className="flex items-center gap-2 justify-center mt-6 opacity-30">
                     <ShieldCheck size={14} className="text-green-500" />
-                    <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">End-to-End Secure Payment</span>
+                    <span className="text-[9px] font-black lowercase tracking-widest text-text-muted">end-to-end secure payment</span>
                   </div>
                 </div>
               </div>

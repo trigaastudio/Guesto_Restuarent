@@ -115,7 +115,7 @@ const handleStock = async (items, type = 'reduce') => {
       const updatedMenu = await Menu.findByIdAndUpdate(
         item.menuItem,
         { $inc: { totalStock: factor * amount } },
-        { new: true }
+        { returnDocument: 'after' }
       );
 
       // Force floor at 0 if it somehow went negative
@@ -150,7 +150,7 @@ const handleStock = async (items, type = 'reduce') => {
           const updatedIncluded = await Menu.findByIdAndUpdate(
             included.menuItem,
             { $inc: { totalStock: factor * includedReduction } },
-            { new: true }
+            { returnDocument: 'after' }
           );
 
           if (updatedIncluded && updatedIncluded.totalStock < 0) {
@@ -205,7 +205,7 @@ class OrderController {
       if (paymentMethod === 'wallet') {
         const user = await User.findById(req.user._id);
         const orderTotal = totalAmount; // totalAmount should already include fee/tax/discount
-        
+
         if (user.walletBalance < orderTotal) {
           return res.status(400).json({ success: false, message: 'Insufficient wallet balance' });
         }
@@ -268,7 +268,8 @@ class OrderController {
             unitPrice: item.price,
             costPrice: variant?.costPrice || 0,
             totalPrice: item.price * item.quantity,
-            kitchenStatus: 'placed'
+            kitchenStatus: 'placed',
+            bogoItem: item.bogoItem || null
           };
         })),
         customerDetails: {
@@ -292,7 +293,7 @@ class OrderController {
         totalAmount: subtotal + (deliveryFee || req.body.deliveryFee || 0) - (discount || 0) + (tax || 0),
         orderStatus: 'placed',
         kitchenStatus: 'placed',
-        paymentStatus: (paymentMethod === 'wallet') ? 'paid' : 'pending',
+        paymentStatus: (paymentMethod === 'wallet') ? 'paid' : 'unpaid',
         razorpayOrderId,
         razorpayPaymentId
       });
@@ -325,11 +326,14 @@ class OrderController {
         data: newOrder
       });
 
-      // Global Notification
-      getIO().emit('newOrder', {
-        order: newOrder,
-        message: `🔔 New ${newOrder.orderType.toUpperCase()} Order Received! (#${newOrder.orderNumber})`
-      });
+      // Global Notification (Only for COD/Wallet. Online orders wait for payment verification)
+      const onlineMethods = ['online', 'card', 'upi', 'razorpay'];
+      if (!onlineMethods.includes(newOrder.paymentMethod)) {
+        getIO().emit('newOrder', {
+          order: newOrder,
+          message: `🔔 New ${newOrder.orderType.toUpperCase()} Order Received! (#${newOrder.orderNumber})`
+        });
+      }
     } catch (error) {
       console.error('Order Error Details:', error);
       res.status(500).json({
@@ -394,8 +398,8 @@ class OrderController {
 
       res.status(200).json({
         success: true,
-        message: order.paymentStatus === 'refunded' 
-          ? 'Order cancelled and amount refunded to your wallet' 
+        message: order.paymentStatus === 'refunded'
+          ? 'Order cancelled and amount refunded to your wallet'
           : 'Order cancelled successfully'
       });
     } catch (error) {
@@ -420,7 +424,7 @@ class OrderController {
 
       const orderNumber = await getNextOrderNumber();
 
-      let paymentStatus = 'pending';
+      let paymentStatus = 'unpaid';
       if (paymentMethod === 'cash' && cashReceived >= totalAmount) {
         paymentStatus = 'paid';
       }
@@ -429,7 +433,7 @@ class OrderController {
         orderNumber,
         orderType: orderType || 'takeaway',
         orderSource: 'admin',
-        orderStatus: 'placed',
+        orderStatus: 'processing',
         customerDetails: {
           name: customerDetails?.name || 'Walk-in',
           phone: customerDetails?.phone,
@@ -444,7 +448,8 @@ class OrderController {
             name: menuDoc?.name || item.name,
             image: menuDoc?.image || item.image,
             costPrice: variant?.costPrice || 0,
-            kitchenStatus: 'placed'
+            kitchenStatus: 'placed',
+            bogoItem: item.bogoItem || null
           };
         })),
         subtotal,
@@ -462,7 +467,7 @@ class OrderController {
       await handleStock(items, 'reduce');
 
       res.status(201).json({ success: true, data: newOrder });
-      
+
       getIO().emit('newOrder', {
         order: newOrder,
         message: `🔔 New ${newOrder.orderType.toUpperCase()} Order Received! (#${newOrder.orderNumber})`
@@ -477,6 +482,14 @@ class OrderController {
     try {
       const { type } = req.query;
       const query = type ? { orderType: type } : {};
+
+      // Filter: Show only successful payments OR COD/Cash orders
+      // This hides failed/unpaid online/card payments as requested
+      query.$or = [
+        { paymentStatus: 'paid' },
+        { paymentMethod: { $in: ['cod', 'cash'] } }
+      ];
+
       const orders = await Order.find(query)
         .populate('items.menuItem', 'name image')
         .populate('table', 'tableNumber')
@@ -497,20 +510,28 @@ class OrderController {
 
       // Operational Rule
       if (
-        originalOrder.orderStatus === 'processing' && 
-        updateData.orderStatus && 
-        updateData.orderStatus !== 'processing' && 
-        updateData.orderStatus !== 'cancelled' && 
+        originalOrder.orderStatus === 'processing' &&
+        updateData.orderStatus &&
+        updateData.orderStatus !== 'processing' &&
+        updateData.orderStatus !== 'cancelled' &&
         originalOrder.kitchenStatus !== 'ready'
       ) {
-        return res.status(403).json({ 
-          success: false, 
-          message: 'Order status cannot be updated until the Kitchen marks all items as "Ready".' 
+        return res.status(403).json({
+          success: false,
+          message: 'Order status cannot be updated until the Kitchen marks all items as "Ready".'
         });
       }
 
       if (updateData.orderStatus === 'cancelled' && originalOrder.orderStatus !== 'cancelled') {
         await restoreStock(originalOrder.items);
+      }
+
+      // Auto-mark as paid for COD/Cash orders when delivered
+      if (updateData.orderStatus === 'delivered') {
+        if (['cod', 'cash'].includes(originalOrder.paymentMethod)) {
+          updateData.paymentStatus = 'paid';
+          updateData.paidAmount = updateData.totalAmount ?? originalOrder.totalAmount;
+        }
       }
 
       if (updateData.cashReceived !== undefined || updateData.totalAmount !== undefined) {
@@ -608,12 +629,12 @@ class OrderController {
       const enrichedItems = await Promise.all(items.map(async item => {
         const menuDoc = await Menu.findById(item.menuItem);
         const variant = menuDoc?.variants?.find(v => v.size === item.size);
-        return { 
-          ...item, 
+        return {
+          ...item,
           name: menuDoc?.name || item.name,
           image: menuDoc?.image || item.image,
           costPrice: variant?.costPrice || 0,
-          kitchenStatus: 'placed' 
+          kitchenStatus: 'placed'
         };
       }));
       order.items.push(...enrichedItems);

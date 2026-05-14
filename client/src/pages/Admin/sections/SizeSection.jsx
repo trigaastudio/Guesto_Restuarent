@@ -3,6 +3,7 @@ import { Plus, Edit2, Trash2, Search, Loader2, ArrowUpDown, XCircle, RotateCcw }
 import axios from 'axios';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 import Loader from '../../../components/Loader/Loader';
+import Pagination from '../../../components/Pagination/Pagination';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
@@ -14,10 +15,19 @@ const SizeSection = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchSizes();
   }, []);
+
+  useEffect(() => {
+    const scrollContainer = document.querySelector('main .overflow-y-auto');
+    if (scrollContainer) {
+      scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [currentPage]);
 
   const handleSort = (key) => {
     let direction = 'asc';
@@ -42,6 +52,16 @@ const SizeSection = () => {
     return (s.name || '').toLowerCase().includes(searchLower) ||
       (s.unit || '').toLowerCase().includes(searchLower);
   });
+
+  const totalPages = Math.ceil(filteredSizes.length / itemsPerPage);
+  const paginatedSizes = filteredSizes.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   const fetchSizes = async () => {
     setIsLoading(true);
@@ -184,9 +204,9 @@ const SizeSection = () => {
                   <td colSpan="5" className="px-6 py-12 text-center text-text-muted italic">No sizes found</td>
                 </tr>
               ) : (
-                filteredSizes.map((size) => (
+                paginatedSizes.map((size, index) => (
                   <tr key={size._id} className="hover:bg-background-muted/30 transition-colors group">
-                    <td className="px-6 py-4 font-semibold text-text-primary">{size.name}</td>
+                    <td className="px-6 py-4 font-semibold text-text-primary">{(currentPage - 1) * itemsPerPage + index + 1}. {size.name}</td>
                     <td className="px-6 py-4 text-text-secondary">{size.unit}</td>
                     <td className="px-6 py-4 font-bold text-text-primary">{size.value}</td>
                     <td className="px-6 py-4">
@@ -211,6 +231,12 @@ const SizeSection = () => {
             </tbody>
           </table>
         </div>
+
+        <Pagination 
+          currentPage={currentPage} 
+          totalPages={totalPages} 
+          onPageChange={setCurrentPage} 
+        />
       </div>
 
       {isModalOpen && (

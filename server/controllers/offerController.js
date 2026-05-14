@@ -58,7 +58,7 @@ export const updateOffer = async (req, res) => {
       offerData.cloudinaryPublicId = req.file.filename;
     }
 
-    const offer = await Offer.findByIdAndUpdate(req.params.id, offerData, { new: true });
+    const offer = await Offer.findByIdAndUpdate(req.params.id, offerData, { returnDocument: 'after' });
     if (!offer) return res.status(404).json({ success: false, message: 'Offer not found' });
     res.status(200).json({ success: true, data: offer });
   } catch (error) {

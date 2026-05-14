@@ -52,6 +52,11 @@ const orderSchema = new mongoose.Schema({
       type: String,
       enum: ["placed", "preparing", "ready", "delayed"],
       default: "placed"
+    },
+    bogoItem: {
+      name: String,
+      size: String,
+      quantity: { type: Number, default: 1 }
     }
   }],
 
@@ -93,8 +98,8 @@ const orderSchema = new mongoose.Schema({
   },
   paymentStatus: {
     type: String,
-    enum: ["pending", "paid", "failed", "refunded"],
-    default: "pending"
+    enum: ["paid", "unpaid", "refunded"],
+    default: "unpaid"
   },
   paymentMethod: {
     type: String,
@@ -123,7 +128,7 @@ orderSchema.pre('validate', async function () {
 
   // 3. Payment Status Auto-Update
   if (this.paymentMethod === 'wallet') {
-    if (this.paymentStatus === 'pending') {
+    if (this.paymentStatus === 'unpaid') {
       this.paymentStatus = 'paid';
     }
   }
@@ -164,7 +169,7 @@ orderSchema.post('save', function (doc) {
     if (doc._id) {
       // General update for all listeners
       getIO().emit('ordersUpdated');
-      
+
       // Specific status update for tracking
       if (doc.orderStatus) {
         emitOrderStatusUpdate(doc._id.toString(), doc.orderStatus);

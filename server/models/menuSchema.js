@@ -10,6 +10,11 @@ const menuSchema = new mongoose.Schema({
     trim: true
   },
 
+  price: {
+    type: Number,
+    default: 0
+  },
+
   category: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Category",
@@ -58,15 +63,50 @@ const menuSchema = new mongoose.Schema({
             type: mongoose.Schema.Types.ObjectId,
             ref: "Menu"
           },
-          name: String, // Optional: store name for easy display if needed
+          name: String,
           quantity: {
             type: Number,
             default: 1
           }
         }
-      ]
+      ],
+      isBOGO: {
+        type: Boolean,
+        default: false
+      },
+      bogoItem: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Menu"
+      },
+      bogoVariant: {
+        type: String,
+        trim: true
+      }
     }
   ],
+
+  isCombo: {
+    type: Boolean,
+    default: false
+  },
+
+  comboItems: [
+    {
+      menuItem: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Menu"
+      },
+      price: {
+        type: Number,
+        default: 0
+      }
+    }
+  ],
+
+  offerPercentage: {
+    type: Number,
+    default: 0
+  },
 
   image: {
     type: String

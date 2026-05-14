@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { showToast } from '../../utils/sweetAlert';
 import api from '../../api/axiosInstance';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
@@ -51,7 +51,8 @@ import Loader from '../../components/Loader/Loader';
 
 const AdminDashboard = () => {
   const { theme, toggleTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState(localStorage.getItem('adminActiveTab') || 'Overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'Overview';
   const [refreshKey, setRefreshKey] = useState(0);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -72,6 +73,15 @@ const AdminDashboard = () => {
     const socket = io(`${window.location.protocol}//${window.location.hostname}:5000`);
 
     socket.on('newOrder', (data) => {
+      // Strictly filter notifications: Only Delivery orders from User source
+      const isDelivery = data.order?.orderType === 'delivery' || data.order?.orderType === 'online';
+      const isFromUser = data.order?.orderSource === 'user' || data.order?.orderSource === 'online';
+
+      if (!isDelivery || !isFromUser) {
+        setRefreshKey(prev => prev + 1);
+        return;
+      }
+
       const newNotif = {
         id: Date.now() + Math.random(),
         type: 'order',
@@ -83,7 +93,6 @@ const AdminDashboard = () => {
       };
 
       setNotifications(() => {
-        // Read latest from localStorage to handle multi-tab sync
         const currentLocal = JSON.parse(localStorage.getItem('admin_notifications') || '[]');
         const updated = [newNotif, ...currentLocal].slice(0, 20);
         localStorage.setItem('admin_notifications', JSON.stringify(updated));
@@ -95,29 +104,8 @@ const AdminDashboard = () => {
       setRefreshKey(prev => prev + 1);
     });
 
-    socket.on('stockAlert', (data) => {
-      const newNotif = {
-        id: Date.now() + Math.random(),
-        type: data.type,
-        title: data.type === 'outOfStock' ? 'Out of Stock' : 'Low Stock',
-        message: data.message,
-        time: new Date(),
-        read: false,
-        itemName: data.name
-      };
-
-      setNotifications(() => {
-        const currentLocal = JSON.parse(localStorage.getItem('admin_notifications') || '[]');
-        const updated = [newNotif, ...currentLocal].slice(0, 20);
-        localStorage.setItem('admin_notifications', JSON.stringify(updated));
-        return updated;
-      });
-
-      const toastType = data.type === 'outOfStock' ? 'error' : 'warning';
-      showToast(toastType, data.message);
-      notificationSound.current.play().catch(e => console.log('Audio play blocked'));
-      setRefreshKey(prev => prev + 1);
-    });
+    // Stock alerts are now excluded as requested
+    socket.off('stockAlert');
 
     return () => socket.disconnect();
   }, []);
@@ -179,9 +167,7 @@ const AdminDashboard = () => {
   };
 
   const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    document.title = `Admin | ${tab}`;
-    localStorage.setItem('adminActiveTab', tab);
+    setSearchParams({ tab });
   };
 
   const handleRefresh = () => {
@@ -205,7 +191,6 @@ const AdminDashboard = () => {
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
-    localStorage.removeItem('adminActiveTab');
     navigate('/admin/login', { replace: true });
   };
 
@@ -217,6 +202,31 @@ const AdminDashboard = () => {
     { label: 'Menu Items', value: stats.metrics.totalMenuItems.toString(), description: 'Catalogue size', icon: BookOpen, color: 'text-pink-500' },
     { label: 'Avg Order Value', value: `₹${stats.metrics.avgOrderValue.toFixed(2)}`, description: 'Average spend', icon: BarChart3, color: 'text-orange-500' },
   ] : [];
+
+  const getFriendlyStatus = (order) => {
+    if (!order) return { label: 'Unknown', color: 'bg-background-muted/10 text-text-muted border-border-light' };
+    
+    // Terminal States
+    if (order.orderStatus === 'cancelled') return { label: 'Cancelled', color: 'bg-status-off/10 text-status-unavailable border-status-off/20' };
+    if (order.orderStatus === 'delivered' || order.orderStatus === 'completed') return { label: 'Delivered', color: 'bg-primary/10 text-primary border-primary/20' };
+    
+    // Active States
+    if (order.orderStatus === 'placed') return { label: 'New Order', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' };
+    if (order.orderStatus === 'out-for-delivery') return { label: 'Out for Delivery', color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' };
+
+    if (order.orderStatus === 'processing') {
+      const items = order.items || [];
+      const allReady = items.length > 0 && items.every(i => i.kitchenStatus === 'ready');
+      const anyPreparing = items.some(i => i.kitchenStatus === 'preparing');
+
+      if (allReady) return { label: 'Ready', color: 'bg-status-on/10 text-status-available border-status-on/20' };
+      if (anyPreparing) return { label: 'Preparing', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' };
+      
+      return { label: 'Order Accepted', color: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20' };
+    }
+
+    return { label: order.orderStatus, color: 'bg-background-muted/10 text-text-muted border-border-light' };
+  };
 
   return (
     <div className={`flex h-screen bg-background text-text-primary overflow-hidden transition-colors duration-300`}>
@@ -533,44 +543,28 @@ const AdminDashboard = () => {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Total Orders Card */}
                     <div
-                      onClick={() => navigateWithFilter('Orders', 'takeaway', 'placed')}
+                      onClick={() => navigateWithFilter('Orders', 'history')}
                       className="bg-background-card p-8 rounded-[2.5rem] border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)] transition-all relative overflow-hidden group cursor-pointer active:scale-[0.98]"
                     >
                       <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center space-x-3">
-                          <div className="p-3 bg-orange-500/10 text-orange-500 rounded-2xl group-hover:scale-110 transition-transform">
+                          <div className="p-3 bg-purple-500/10 text-purple-500 rounded-2xl group-hover:scale-110 transition-transform">
                             <ShoppingCart size={20} />
                           </div>
-                          <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Placed Orders</span>
+                          <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Total Orders</span>
                         </div>
                         <ChevronRight size={16} className="text-text-muted group-hover:translate-x-1 transition-transform" />
                       </div>
                       <div className="flex items-end space-x-4">
-                        <span className="text-5xl font-black text-text-primary tracking-tighter">{stats.orderStats.placed}</span>
+                        <span className="text-5xl font-black text-text-primary tracking-tighter">{stats.metrics.totalOrders}</span>
+                        <div className="text-[9px] font-black text-text-muted uppercase mb-1.5 opacity-60">All Time</div>
                       </div>
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-125" />
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-125" />
                     </div>
 
-                    <div
-                      onClick={() => navigateWithFilter('Orders', 'takeaway', 'processing')}
-                      className="bg-background-card p-8 rounded-[2.5rem] border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)] transition-all relative overflow-hidden group cursor-pointer active:scale-[0.98]"
-                    >
-                      <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center space-x-3">
-                          <div className="p-3 bg-blue-500/10 text-blue-500 rounded-2xl group-hover:scale-110 transition-transform">
-                            <Clock size={20} />
-                          </div>
-                          <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">In Progress</span>
-                        </div>
-                        <ChevronRight size={16} className="text-text-muted group-hover:translate-x-1 transition-transform" />
-                      </div>
-                      <div className="flex items-end space-x-4">
-                        <span className="text-5xl font-black text-text-primary tracking-tighter">{stats.orderStats.processing}</span>
-                      </div>
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-125" />
-                    </div>
-
+                    {/* Dining Status Card */}
                     <div
                       onClick={() => navigateWithFilter('Orders', 'dine-in')}
                       className="bg-background-card p-8 rounded-[2.5rem] border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)] transition-all relative overflow-hidden group cursor-pointer active:scale-[0.98]"
@@ -578,7 +572,7 @@ const AdminDashboard = () => {
                       <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center space-x-3">
                           <div className="p-3 bg-primary/10 text-primary rounded-2xl group-hover:scale-110 transition-transform">
-                            <LayoutDashboard size={20} />
+                            <UtensilsCrossed size={20} />
                           </div>
                           <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Dining Status</span>
                         </div>
@@ -596,22 +590,29 @@ const AdminDashboard = () => {
                       </div>
                       <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-125" />
                     </div>
+
+                    {/* Today Revenue Card */}
+                    <div
+                      onClick={() => handleTabChange('Sales')}
+                      className="bg-background-card p-8 rounded-[2.5rem] border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)] transition-all relative overflow-hidden group cursor-pointer active:scale-[0.98]"
+                    >
+                      <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center space-x-3">
+                          <div className="p-3 bg-blue-500/10 text-blue-500 rounded-2xl group-hover:scale-110 transition-transform">
+                            <TrendingUp size={20} />
+                          </div>
+                          <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Today Revenue</span>
+                        </div>
+                        <ChevronRight size={16} className="text-text-muted group-hover:translate-x-1 transition-transform" />
+                      </div>
+                      <div className="flex items-end space-x-4">
+                        <span className="text-4xl font-black text-text-primary tracking-tighter">₹{stats.metrics.todayRevenue.toLocaleString()}</span>
+                        <div className="text-[9px] font-black text-blue-500 uppercase mb-1.5">Daily Sales</div>
+                      </div>
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-125" />
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {metrics.slice(0, 3).map((metric, idx) => (
-                      <div key={idx} className="bg-background-card p-8 rounded-[2.5rem] border border-border/40 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className={`p-3 rounded-2xl ${metric.color.replace('text-', 'bg-')}/10 ${metric.color}`}>
-                            <metric.icon size={22} />
-                          </div>
-                          <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">{metric.label}</span>
-                        </div>
-                        <div className="text-4xl font-black text-text-primary tracking-tighter">{metric.value}</div>
-                        <div className="text-[10px] text-text-muted font-bold mt-2 uppercase tracking-widest">{metric.description}</div>
-                      </div>
-                    ))}
-                  </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 bg-background-card rounded-[2.5rem] border border-border-light shadow-sm overflow-hidden flex flex-col">
@@ -736,9 +737,14 @@ const AdminDashboard = () => {
                                   <p className="text-[11px] text-text-muted font-medium">₹ {order.totalAmount} • {order.orderNumber} • <Clock size={10} className="inline mb-0.5" /> {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                                 </div>
                               </div>
-                              <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${order.orderStatus === 'completed' ? 'bg-status-on/10 text-status-available' : order.orderStatus === 'placed' ? 'bg-orange-500/10 text-orange-500' : order.orderStatus === 'cancelled' ? 'bg-status-off/10 text-status-unavailable' : 'bg-blue-500/10 text-blue-500'}`}>
-                                {order.orderStatus}
-                              </span>
+                              {(() => {
+                                const status = getFriendlyStatus(order);
+                                return (
+                                  <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${status.color}`}>
+                                    {status.label}
+                                  </span>
+                                );
+                              })()}
                             </div>
                           ))
                         )}

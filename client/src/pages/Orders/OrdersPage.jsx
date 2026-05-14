@@ -254,202 +254,202 @@ const OrdersPage = () => {
         </div>
 
         <main className={`max-w-7xl mx-auto px-6 pt-24 md:pt-32 ${hasOrders ? '' : 'min-h-[70vh] flex items-center justify-center'} relative z-10 pb-24`}>
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 w-full">
-            <Loader size="large" />
-            <p className="mt-6 text-[10px] font-black uppercase tracking-[0.3em] text-primary animate-pulse">
-              Fetching your orders...
-            </p>
-          </div>
-        ) : orders.length === 0 ? (
-            <div className="flex flex-col items-center justify-center w-full py-10 px-10 text-center space-y-10 relative overflow-hidden animate-in fade-in zoom-in duration-1000">
-            {/* Background Cinematic Effects */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[120px] pointer-events-none animate-pulse"></div>
-
-            <div className="relative">
-              <div className="w-44 h-44 bg-background-card rounded-[4rem] flex items-center justify-center text-text-muted/10 shadow-[0_25px_60px_rgba(0,0,0,0.05)] border border-border/40 transition-transform duration-1000 hover:rotate-12 group">
-                <ShoppingBag size={80} strokeWidth={1} className="text-primary opacity-10 group-hover:opacity-20 transition-opacity" />
-              </div>
-              <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-primary rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-primary/40 animate-float border-[6px] border-background">
-                <Package size={56} strokeWidth={2.5} />
-              </div>
-            </div>
-
-            <div className="space-y-4 relative z-10">
-              <h2 className="text-4xl md:text-6xl font-black text-text-primary tracking-tighter leading-tight uppercase">
-                No Orders <span className="text-primary">Found</span>
-              </h2>
-              <p className="text-[10px] md:text-xs font-bold text-text-muted tracking-[0.25em] opacity-70 max-w-[400px] mx-auto leading-relaxed uppercase">
-                Explore the authentic flavors of Thrissur. Your next favorite meal is waiting to be discovered.
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20 w-full">
+              <Loader size="large" />
+              <p className="mt-6 text-[10px] font-black uppercase tracking-[0.3em] text-primary animate-pulse">
+                Fetching your orders...
               </p>
             </div>
+          ) : orders.length === 0 ? (
+            <div className="flex flex-col items-center justify-center w-full py-10 px-10 text-center space-y-10 relative overflow-hidden animate-in fade-in zoom-in duration-1000">
+              {/* Background Cinematic Effects */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[120px] pointer-events-none animate-pulse"></div>
 
-            <button
-              onClick={() => navigate('/home')}
-              className="group relative bg-primary hover:bg-primary-dark text-white px-10 py-4 rounded-2xl font-black text-[10px] tracking-widest transition-all active:scale-95 shadow-xl shadow-primary/20 flex items-center gap-2.5 hover:-translate-y-1 uppercase"
-            >
-              Start Exploring Menu
-              <ArrowLeft className="rotate-180 group-hover:translate-x-2 transition-transform" size={20} strokeWidth={3} />
-            </button>
-          </div>
-        ) : (
-          <div className="max-w-6xl mx-auto w-full space-y-6 relative z-10">
-            {/* Orders List */}
-            <div className="space-y-8 relative z-10">
-              <div className="bg-background-card rounded-[2.5rem] p-6 md:p-8 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.03)] min-h-[400px] flex flex-col relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-
-                <div className="relative z-10 flex items-center gap-3 mb-10">
-                  <span className="w-6 h-1 bg-primary rounded-full"></span>
-                  <div className="space-y-1">
-                    <p className="text-[9px] font-black text-primary tracking-widest uppercase">Order History</p>
-                    <h3 className="text-xl md:text-2xl font-black text-text-primary tracking-tight">Recent Activity</h3>
-                  </div>
+              <div className="relative">
+                <div className="w-44 h-44 bg-background-card rounded-[4rem] flex items-center justify-center text-text-muted/10 shadow-[0_25px_60px_rgba(0,0,0,0.05)] border border-border/40 transition-transform duration-1000 hover:rotate-12 group">
+                  <ShoppingBag size={80} strokeWidth={1} className="text-primary opacity-10 group-hover:opacity-20 transition-opacity" />
                 </div>
+                <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-primary rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-primary/40 animate-float border-[6px] border-background">
+                  <Package size={56} strokeWidth={2.5} />
+                </div>
+              </div>
 
-                <div className="space-y-6 relative z-10">
-                  {orders.map((order) => (
-                    <div key={order._id} className="bg-background hover:bg-background-card rounded-[2.5rem] border border-border/40 hover:border-primary/20 shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden group relative">
-                      {order.orderStatus === 'cancelled' && (
-                        <div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center overflow-hidden p-10">
-                          <img
-                            src="/cancelled.png.png"
-                            alt="Cancelled"
-                            className="w-full max-w-[250px] object-contain opacity-[0.3] dark:opacity-[0.1] -rotate-12"
-                          />
-                        </div>
-                      )}
-                      {/* Order Header */}
-                      <div className="p-4 md:p-6 flex flex-col md:flex-row justify-between gap-4 border-b border-border/20 bg-background-card">
-                        <div className="flex gap-4">
-                          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:scale-110 ${order.orderStatus === 'cancelled' ? 'bg-red-500/10 text-red-500' : 'bg-background shadow-sm text-primary'}`}>
-                            {order.orderStatus === 'cancelled' ? <XCircle size={24} /> : <Package size={24} />}
-                          </div>
-                          <div>
-                            <div className="flex flex-wrap items-center gap-3 mb-1">
-                              <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-widest border uppercase ${getStatusColor(order.orderStatus)}`}>
-                                {getStatusIcon(order.orderStatus)}
-                                {getStatusLabel(order.orderStatus)}
-                              </span>
-                              <p className="text-[10px] font-bold text-text-muted tracking-wide">Placed on {new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-                            </div>
-                            <h3 className="font-mono font-black text-text-primary text-base md:text-lg tracking-[0.1em] bg-background/50 px-3 py-1 rounded-xl border border-border/40 w-fit flex items-center justify-center mt-2">
-                              {order.orderNumber || order._id.slice(-8).toUpperCase()}
-                            </h3>
-                          </div>
-                        </div>
-                        <div className="md:text-right flex flex-col justify-center">
-                          <p className="text-[9px] font-black text-text-muted tracking-widest uppercase opacity-60 mb-1">Total Amount</p>
-                          <p className="text-2xl font-black text-primary tracking-tighter">₹{order.totalAmount}</p>
-                        </div>
-                      </div>
+              <div className="space-y-4 relative z-10">
+                <h2 className="text-4xl md:text-6xl font-black text-text-primary tracking-tighter leading-tight uppercase">
+                  No Orders <span className="text-primary">Found</span>
+                </h2>
+                <p className="text-[10px] md:text-xs font-bold text-text-muted tracking-[0.25em] opacity-70 max-w-[400px] mx-auto leading-relaxed uppercase">
+                  Explore the authentic flavors of Thrissur. Your next favorite meal is waiting to be discovered.
+                </p>
+              </div>
 
-                      {/* Order Content */}
-                      <div className="p-4 md:p-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                          {/* Items */}
-                          <div className="space-y-4">
-                            <p className="text-[9px] font-black text-text-muted tracking-widest uppercase opacity-60">Items Summary</p>
-                            <div className="space-y-3">
-                              {order.items.map((item, idx) => (
-                                <div key={idx} className="flex items-center justify-between group/item">
-                                  <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-background-card border border-border/40 p-1">
-                                      <img src={item.image || item.menuItem?.image || '/placeholder-food.jpg'} alt={item.name || item.menuItem?.name || 'Item'} className="w-full h-full object-contain" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <h4 className="text-[11px] font-black text-text-primary uppercase tracking-tight truncate">{item.name || item.menuItem?.name || 'Deleted Item'}</h4>
-                                      <p className="text-[9px] font-bold text-text-muted tracking-widest">
-                                        {item.size && <span className="mr-2 text-primary">{item.size}</span>}
-                                        Qty: {item.quantity} × ₹{item.price}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <span className="text-[11px] font-black text-text-primary tracking-tight">₹{item.price * item.quantity}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
+              <button
+                onClick={() => navigate('/home')}
+                className="group relative bg-primary hover:bg-primary-dark text-white px-10 py-4 rounded-2xl font-black text-[10px] tracking-widest transition-all active:scale-95 shadow-xl shadow-primary/20 flex items-center gap-2.5 hover:-translate-y-1 uppercase"
+              >
+                Start Exploring Menu
+                <ArrowLeft className="rotate-180 group-hover:translate-x-2 transition-transform" size={20} strokeWidth={3} />
+              </button>
+            </div>
+          ) : (
+            <div className="max-w-6xl mx-auto w-full space-y-6 relative z-10">
+              {/* Orders List */}
+              <div className="space-y-8 relative z-10">
+                <div className="bg-background-card rounded-[2.5rem] p-6 md:p-8 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.03)] min-h-[400px] flex flex-col relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
 
-                          {/* Delivery & Payment Info */}
-                          <div className="bg-background/50 rounded-2xl p-4 border border-border/40 space-y-4">
-                            <div>
-                              <p className="text-[9px] font-black text-text-muted tracking-widest uppercase opacity-60 mb-3">Delivery Location</p>
-                              <div className="flex items-start gap-3">
-                                <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                                  <MapPin size={16} />
-                                </div>
-                                <div className="min-w-0">
-                                  <h4 className="text-[11px] font-black text-text-primary mb-1 truncate uppercase">{order.customerDetails?.name || user.name}</h4>
-                                  <p className="text-[10px] font-bold text-text-muted opacity-70 leading-relaxed line-clamp-2">{order.customerDetails?.address}</p>
-                                  {order.customerDetails?.location && (
-                                    <p className="text-[9px] font-black text-primary mt-1 truncate">
-                                      📍 {order.customerDetails.location.includes('http') ? 'Map Location Saved' : order.customerDetails.location}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-
-                            {order.orderStatus !== 'cancelled' && (
-                              <div className="flex items-center justify-between pt-4 border-t border-border/20">
-                                <div className="flex flex-col">
-                                  <span className="text-[9px] font-black text-text-muted tracking-widest uppercase opacity-60">Payment</span>
-                                  <span className="text-[10px] font-black text-text-primary tracking-widest mt-1 uppercase">{order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment'}</span>
-                                </div>
-                                <div className="text-right">
-                                  <span className="text-[9px] font-black text-text-muted tracking-widest uppercase opacity-60">Status</span>
-                                  <span className={`block text-[10px] font-black tracking-widest mt-1 uppercase ${order.paymentStatus === 'paid' ? 'text-green-500' : 'text-orange-500'}`}>
-                                    {order.paymentStatus}
-                                  </span>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Footer Actions */}
-                      {order.orderStatus !== 'cancelled' && (
-                        <div className="px-4 md:px-6 py-4 bg-background-card border-t border-border/20 flex flex-wrap justify-end gap-2">
-                          {order.paymentMethod === 'online' && order.paymentStatus === 'pending' && (
-                            <button
-                              onClick={() => handleRepayment(order)}
-                              className="w-full sm:w-auto px-8 py-2.5 rounded-xl bg-orange-500 text-white text-[10px] font-black tracking-widest uppercase hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20 active:scale-95 flex items-center gap-2"
-                            >
-                              <CreditCard size={14} />
-                              Pay Now
-                            </button>
-                          )}
-                          {order.orderStatus === 'placed' && (
-                            <button
-                              onClick={() => handleCancelOrder(order._id)}
-                              className="w-full sm:w-auto px-6 py-2.5 rounded-xl border border-red-500/20 text-[10px] font-black text-red-500 tracking-widest uppercase hover:bg-red-500/10 transition-all active:scale-95 shadow-sm"
-                            >
-                              Cancel Order
-                            </button>
-                          )}
-                          <button
-                            onClick={() => navigate(`/track-order/${order._id}`)}
-                            className="w-full sm:w-auto px-6 py-2.5 rounded-xl border border-primary/20 text-primary text-[10px] font-black tracking-widest uppercase hover:bg-primary hover:text-white transition-all active:scale-95 shadow-sm"
-                          >
-                            Track Status
-                          </button>
-                          <button
-                            onClick={() => navigate('/home')}
-                            className="w-full sm:w-auto px-8 py-2.5 rounded-xl bg-primary text-white text-[10px] font-black tracking-widest uppercase hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 active:scale-95"
-                          >
-                            Reorder
-                          </button>
-                        </div>
-                      )}
+                  <div className="relative z-10 flex items-center gap-3 mb-10">
+                    <span className="w-6 h-1 bg-primary rounded-full"></span>
+                    <div className="space-y-1">
+                      <p className="text-[9px] font-black text-primary tracking-widest lowercase">order history</p>
+                      <h3 className="text-xl md:text-2xl font-black text-text-primary tracking-tight">recent activity</h3>
                     </div>
-                  ))}
+                  </div>
+
+                  <div className="space-y-6 relative z-10">
+                    {orders.map((order) => (
+                      <div key={order._id} className="bg-background hover:bg-background-card rounded-[2.5rem] border border-border/40 hover:border-primary/20 shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden group relative">
+                        {order.orderStatus === 'cancelled' && (
+                          <div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center overflow-hidden p-10">
+                            <img
+                              src="/cancelled.png.png"
+                              alt="Cancelled"
+                              className="w-full max-w-[250px] object-contain opacity-[0.3] dark:opacity-[0.1] -rotate-12"
+                            />
+                          </div>
+                        )}
+                        {/* Order Header */}
+                        <div className="p-4 md:p-6 flex flex-col md:flex-row justify-between gap-4 border-b border-border/20 bg-background-card">
+                          <div className="flex gap-4">
+                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:scale-110 ${order.orderStatus === 'cancelled' ? 'bg-red-500/10 text-red-500' : 'bg-background shadow-sm text-primary'}`}>
+                              {order.orderStatus === 'cancelled' ? <XCircle size={24} /> : <Package size={24} />}
+                            </div>
+                            <div>
+                              <div className="flex flex-wrap items-center gap-3 mb-1">
+                                <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-widest border lowercase ${getStatusColor(order.orderStatus)}`}>
+                                  {getStatusIcon(order.orderStatus)}
+                                  {getStatusLabel(order.orderStatus)?.toLowerCase()}
+                                </span>
+                                <p className="text-[10px] font-bold text-text-muted tracking-wide">Placed on {new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                              </div>
+                              <h3 className="font-mono font-black text-text-primary text-base md:text-lg tracking-[0.1em] bg-background/50 px-3 py-1 rounded-xl border border-border/40 w-fit flex items-center justify-center mt-2">
+                                {order.orderNumber || order._id.slice(-8).toUpperCase()}
+                              </h3>
+                            </div>
+                          </div>
+                          <div className="md:text-right flex flex-col justify-center">
+                            <p className="text-[9px] font-black text-text-muted tracking-widest lowercase opacity-60 mb-1">total amount</p>
+                            <p className="text-2xl font-black text-primary tracking-tighter">₹{order.totalAmount}</p>
+                          </div>
+                        </div>
+
+                        {/* Order Content */}
+                        <div className="p-4 md:p-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                            {/* Items */}
+                            <div className="space-y-4">
+                              <p className="text-[9px] font-black text-text-muted tracking-widest lowercase opacity-60">items summary</p>
+                              <div className="space-y-3">
+                                {order.items.map((item, idx) => (
+                                  <div key={idx} className="flex items-center justify-between group/item">
+                                    <div className="flex items-center gap-4">
+                                      <div className="w-10 h-10 rounded-xl overflow-hidden bg-background-card border border-border/40 p-1">
+                                        <img src={item.image || item.menuItem?.image || '/placeholder-food.jpg'} alt={item.name || item.menuItem?.name || 'Item'} className="w-full h-full object-contain" />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <h4 className="text-[11px] font-black text-text-primary tracking-tight truncate lowercase">{item.name || item.menuItem?.name || 'deleted item'}</h4>
+                                        <p className="text-[9px] font-bold text-text-muted tracking-widest lowercase">
+                                          {item.size && <span className="mr-2 text-primary">{item.size}</span>}
+                                          qty: {item.quantity} × ₹{item.price || item.menuItem?.price || 0}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <span className="text-[11px] font-black text-text-primary tracking-tight">₹{(item.price || item.menuItem?.price || 0) * item.quantity}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Delivery & Payment Info */}
+                            <div className="bg-background/50 rounded-2xl p-4 border border-border/40 space-y-4">
+                              <div>
+                                <p className="text-[9px] font-black text-text-muted tracking-widest lowercase opacity-60 mb-3">delivery location</p>
+                                <div className="flex items-start gap-3">
+                                  <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                                    <MapPin size={16} />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <h4 className="text-[11px] font-black text-text-primary mb-1 truncate lowercase">{order.customerDetails?.name || user.name}</h4>
+                                    <p className="text-[10px] font-bold text-text-muted opacity-70 leading-relaxed line-clamp-2 lowercase">{order.customerDetails?.address}</p>
+                                    {order.customerDetails?.location && (
+                                      <p className="text-[9px] font-black text-primary mt-1 truncate">
+                                        📍 {order.customerDetails.location.includes('http') ? 'map location saved' : order.customerDetails.location?.toLowerCase()}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {order.orderStatus !== 'cancelled' && (
+                                <div className="flex items-center justify-between pt-4 border-t border-border/20">
+                                  <div className="flex flex-col">
+                                    <span className="text-[9px] font-black text-text-muted tracking-widest lowercase opacity-60">payment</span>
+                                    <span className="text-[10px] font-black text-text-primary tracking-widest mt-1 lowercase">{order.paymentMethod === 'cod' ? 'cash on delivery' : 'online payment'}</span>
+                                  </div>
+                                  <div className="text-right">
+                                    <span className="text-[9px] font-black text-text-muted tracking-widest lowercase opacity-60">status</span>
+                                    <span className={`block text-[10px] font-black tracking-widest mt-1 lowercase ${order.paymentStatus === 'paid' ? 'text-green-500' : 'text-orange-500'}`}>
+                                      {order.paymentStatus}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Footer Actions */}
+                        {order.orderStatus !== 'cancelled' && (
+                          <div className="px-4 md:px-6 py-4 bg-background-card border-t border-border/20 flex flex-wrap justify-end gap-2">
+                            {order.paymentMethod === 'online' && order.paymentStatus === 'unpaid' && (
+                              <button
+                                onClick={() => handleRepayment(order)}
+                                className="w-full sm:w-auto px-8 py-2.5 rounded-xl bg-orange-500 text-white text-[10px] font-black tracking-widest lowercase hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20 active:scale-95 flex items-center gap-2"
+                              >
+                                <CreditCard size={14} />
+                                pay now
+                              </button>
+                            )}
+                            {order.orderStatus === 'placed' && (
+                              <button
+                                onClick={() => handleCancelOrder(order._id)}
+                                className="w-full sm:w-auto px-6 py-2.5 rounded-xl border border-red-500/20 text-[10px] font-black text-red-500 tracking-widest lowercase hover:bg-red-500/10 transition-all active:scale-95 shadow-sm"
+                              >
+                                cancel order
+                              </button>
+                            )}
+                            <button
+                              onClick={() => navigate(`/track-order/${order._id}`)}
+                              className="w-full sm:w-auto px-6 py-2.5 rounded-xl border border-primary/20 text-primary text-[10px] font-black tracking-widest lowercase hover:bg-primary hover:text-white transition-all active:scale-95 shadow-sm"
+                            >
+                              track status
+                            </button>
+                            <button
+                              onClick={() => navigate('/home')}
+                              className="w-full sm:w-auto px-8 py-2.5 rounded-xl bg-primary text-white text-[10px] font-black tracking-widest lowercase hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 active:scale-95"
+                            >
+                              reorder
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
         </main>
       </div>
       {!loading && hasOrders && <Footer />}

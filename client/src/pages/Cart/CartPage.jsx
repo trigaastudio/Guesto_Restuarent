@@ -7,18 +7,19 @@ import Loader from '../../components/Loader/Loader';
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../api/axiosInstance';
 import Swal from 'sweetalert2';
-import { 
-  Trash2, 
-  Plus, 
-  Minus, 
-  ShoppingCart, 
-  ShoppingBag, 
-  ArrowLeft, 
-  ChevronRight, 
-  MapPin, 
-  PlusCircle, 
-  Home, 
-  Briefcase, 
+import AddressModal from '../../components/AddressModal/AddressModal';
+import {
+  Trash2,
+  Plus,
+  Minus,
+  ShoppingCart,
+  ShoppingBag,
+  ArrowLeft,
+  ChevronRight,
+  MapPin,
+  PlusCircle,
+  Home,
+  Briefcase,
   Check,
   X,
   Clock,
@@ -26,79 +27,6 @@ import {
   Info
 } from 'lucide-react';
 
-const AddressModal = ({ isOpen, onClose, onSave, user }) => {
-  const [formData, setFormData] = useState({
-    type: 'home',
-    address: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    isDefault: false
-  });
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave(formData);
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in" onClick={onClose}></div>
-      <div className="bg-background-card w-full max-w-md rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden border border-border/10">
-        <div className="p-8">
-          <div className="flex justify-between items-center mb-8">
-            <h3 className="text-xl font-black text-text-primary uppercase tracking-tight">Add New Address</h3>
-            <button onClick={onClose} className="p-2 hover:bg-background-muted rounded-full transition-colors"><X size={20} /></button>
-          </div>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="flex gap-2 p-1 bg-background-muted rounded-2xl">
-              {['home', 'office', 'other'].map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => setFormData({ ...formData, type })}
-                  className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                    formData.type === type ? 'bg-primary text-white shadow-lg' : 'text-text-muted hover:bg-background'
-                  }`}
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
-            <textarea
-              required
-              placeholder="Full Address"
-              className="w-full bg-background-muted border-2 border-transparent focus:border-primary/20 rounded-2xl p-4 text-sm font-bold text-text-primary outline-none transition-all min-h-[100px]"
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <input
-                required
-                placeholder="City"
-                className="bg-background-muted border-2 border-transparent focus:border-primary/20 rounded-2xl p-4 text-sm font-bold text-text-primary outline-none transition-all"
-                value={formData.city}
-                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-              />
-              <input
-                required
-                placeholder="ZIP Code"
-                className="bg-background-muted border-2 border-transparent focus:border-primary/20 rounded-2xl p-4 text-sm font-bold text-text-primary outline-none transition-all"
-                value={formData.zipCode}
-                onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
-              />
-            </div>
-            <button type="submit" className="w-full bg-primary text-white font-black py-5 rounded-2xl shadow-xl hover:bg-primary-dark transition-all uppercase tracking-widest text-[10px]">
-              Save Address
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const AddressListModal = ({ isOpen, onClose, addresses, onSelect, onAddAddress }) => {
   if (!isOpen) return null;
@@ -112,8 +40,8 @@ const AddressListModal = ({ isOpen, onClose, addresses, onSelect, onAddAddress }
         </div>
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {addresses.map((addr) => (
-            <div 
-              key={addr._id} 
+            <div
+              key={addr._id}
               onClick={() => { onSelect(addr); onClose(); }}
               className="p-5 bg-background rounded-3xl border-2 border-border/40 hover:border-primary cursor-pointer transition-all flex items-start gap-4 group"
             >
@@ -174,11 +102,11 @@ const CartPage = () => {
     }
 
     const pricingType = settings.deliverySettings?.pricingType || 'distance';
-    
+
     if (pricingType === 'zone') {
       const zones = settings.deliverySettings?.zones || [];
-      const match = zones.find(z => 
-        address.address?.toLowerCase().includes(z.name.toLowerCase()) || 
+      const match = zones.find(z =>
+        address.address?.toLowerCase().includes(z.name.toLowerCase()) ||
         address.city?.toLowerCase().includes(z.name.toLowerCase()) ||
         address.landmark?.toLowerCase().includes(z.name.toLowerCase())
       );
@@ -256,6 +184,7 @@ const CartPage = () => {
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     if (user) fetchAddresses();
   }, []);
 
@@ -300,7 +229,7 @@ const CartPage = () => {
   };
 
   if (cartLoading && cartItems.length === 0) return <Loader fullPage={true} />;
-  
+
   if (cartItems.length === 0) {
     return (
       <div className={`min-h-screen bg-background ${theme}`}>
@@ -338,11 +267,11 @@ const CartPage = () => {
         <main className="max-w-7xl mx-auto px-6 pt-24 md:pt-32 relative z-10 pb-24">
           <div className="flex flex-col lg:flex-row gap-10 items-start">
             <div className="flex-1 space-y-8 w-full">
-              <div className="bg-background-card rounded-[3rem] p-8 md:p-10 border border-border/40 shadow-sm relative overflow-hidden">
+              <div className="bg-background-card rounded-[2.5rem] p-6 md:p-8 border border-border/40 shadow-sm relative overflow-hidden">
                 <div className="flex items-center justify-between mb-10">
-                  <h2 className="text-xl md:text-2xl font-black text-text-primary uppercase tracking-tight">Choose Destination</h2>
+                  <h2 className="text-xl md:text-2xl font-black text-text-primary tracking-tight lowercase">choose destination</h2>
                   {savedAddresses.length > 0 && (
-                    <button onClick={() => setIsAddressListOpen(true)} className="text-[9px] font-black text-primary uppercase bg-primary/5 px-4 py-2 rounded-full border border-primary/10">Change Address</button>
+                    <button onClick={() => setIsAddressListOpen(true)} className="text-[9px] font-black text-primary bg-primary/5 px-4 py-2 rounded-full border border-primary/10 lowercase">change address</button>
                   )}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -359,11 +288,11 @@ const CartPage = () => {
                       </div>
                     </div>
                   ))}
-                  <div onClick={() => setIsAddressModalOpen(true)} className="p-5 border-2 border-dashed border-border/60 rounded-[2rem] hover:border-primary cursor-pointer flex flex-col items-center justify-center gap-3 transition-all"><Plus size={20} strokeWidth={3} className="text-text-muted/40" /><span className="text-[10px] font-black text-text-muted uppercase">New Address</span></div>
+                  <div onClick={() => setIsAddressModalOpen(true)} className="p-5 border-2 border-dashed border-border/60 rounded-[2rem] hover:border-primary cursor-pointer flex flex-col items-center justify-center gap-3 transition-all"><Plus size={20} strokeWidth={3} className="text-text-muted/40" /><span className="text-[10px] font-black text-text-muted lowercase">new address</span></div>
                 </div>
               </div>
-              <div className="bg-background-card rounded-[3rem] p-8 md:p-10 border border-border/40 shadow-sm">
-                <h2 className="text-xl md:text-2xl font-black text-text-primary tracking-tight mb-10 uppercase">Your Feast Items</h2>
+              <div className="bg-background-card rounded-[2.5rem] p-6 md:p-8 border border-border/40 shadow-sm">
+                <h2 className="text-lg md:text-xl font-black text-text-primary tracking-tight mb-6 lowercase">your feast items</h2>
                 <div className="space-y-6">
                   {cartItems.map((item) => {
                     const activeOffer = offers?.find(o => {
@@ -371,7 +300,7 @@ const CartPage = () => {
                       const day = new Date().toLocaleDateString('en-US', { weekday: 'long' });
                       if (o.isWeekendOnly && !['Saturday', 'Sunday'].includes(day)) return false;
                       if (o.specificDays?.length > 0 && !o.specificDays.includes(day)) return false;
-                      
+
                       const itemId = (item.menuItemId || item._id || '').toString();
                       const isItemMatch = o.applicableItems?.some(bundleItem => (bundleItem.menuItem?._id || bundleItem.menuItem || '').toString() === itemId);
                       const isCategoryMatch = o.applicableCategories?.some(id => (id._id || id || '').toString() === (item.category?._id || item.category || '').toString());
@@ -379,7 +308,7 @@ const CartPage = () => {
                     });
                     const bogoSize = parseInt(activeOffer?.offerValue) || 2;
                     const isTriggered = activeOffer && (() => {
-                      if (activeOffer.offerType === 'bogo') return item.quantity >= bogoSize;
+                      if (activeOffer.offerType === 'bogo') return item.quantity >= 1;
                       if (activeOffer.offerType === 'combo') {
                         const validBundleItems = activeOffer.applicableItems?.filter(bi => bi.menuItem) || [];
                         if (validBundleItems.length === 0) return false;
@@ -397,58 +326,83 @@ const CartPage = () => {
                     })();
 
                     return (
-                      <div key={`${item._id}-${item.selectedSize}`} className="group bg-background rounded-[2.5rem] p-4 md:p-6 border border-border/40 hover:border-primary/20 transition-all">
-                        <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8">
-                          <div className="w-24 h-24 md:w-32 md:h-32 bg-background-card rounded-3xl p-3 border border-border/40 shrink-0">
+                      <div key={`${item._id}-${item.selectedSize}`} className="group bg-background rounded-3xl p-2 md:p-3 border border-border/40 hover:border-primary/20 transition-all">
+                        <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6">
+                          <div className="w-16 h-16 md:w-20 md:h-20 bg-background-card rounded-2xl p-2 border border-border/40 shrink-0">
                             <img src={item.image || '/placeholder-food.jpg'} alt={item.name} className="w-full h-full object-contain" />
                           </div>
-                          <div className="flex-1 min-w-0 text-center md:text-left space-y-2">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                          <div className="flex-1 min-w-0 text-center md:text-left space-y-1">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-1">
                               <div>
                                 <div className="flex items-center justify-center md:justify-start gap-3">
-                                  <h3 className="text-lg md:text-xl font-black text-text-primary uppercase truncate">{item.name}</h3>
+                                  <h3 className="text-base md:text-lg font-black text-text-primary truncate lowercase">{item.name}</h3>
                                   {item.selectedSize && (
-                                    <span className="px-2 py-0.5 bg-background-muted text-[10px] font-black text-text-muted rounded-lg border border-border/10 uppercase tracking-widest shrink-0">
+                                    <span className="px-2 py-0.5 bg-background-muted text-[10px] font-black text-text-muted rounded-lg border border-border/10 tracking-widest shrink-0 lowercase">
                                       {item.selectedSize}
                                     </span>
                                   )}
                                 </div>
-                                {activeOffer && (
-                                  <div className="flex items-center gap-1.5 mt-0.5 justify-center md:justify-start">
-                                    <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${isTriggered ? 'bg-green-500' : 'bg-primary'}`}></div>
-                                    <span className={`text-[9px] font-black uppercase tracking-widest ${isTriggered ? 'text-green-500' : 'text-primary'}`}>
-                                      {isTriggered 
-                                        ? (activeOffer.offerType === 'bogo' 
-                                            ? `Buy ${bogoSize - 1} Get 1 FREE — Applied!` 
-                                            : activeOffer.offerType === 'combo' 
-                                              ? `${activeOffer.offerValue}% Bundle Discount Applied` 
-                                              : `${activeOffer.offerValue}% OFF Applied`)
-                                        : activeOffer.offerType === 'bogo'
-                                          ? `Add ${bogoSize - item.quantity} more for 1 FREE`
-                                          : activeOffer.offerType === 'combo'
-                                            ? `Part of "${activeOffer.title}" Bundle`
-                                            : `Add ${(activeOffer.minQuantity || 1) - item.quantity} more to unlock deal`}
-                                    </span>
+                                {item.isCombo && item.comboItems?.length > 0 && (
+                                  <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5 justify-center md:justify-start opacity-60">
+                                    {item.comboItems.map((ci, idx) => (
+                                      <span key={idx} className="text-[9px] font-bold text-text-muted tracking-tight lowercase">
+                                        • {ci.menuItem?.name?.toLowerCase() || ci.name?.toLowerCase() || 'item'}
+                                      </span>
+                                    ))}
                                   </div>
                                 )}
+
+
                               </div>
-                              <span className="text-xl font-black text-primary tracking-tighter">
-                                ₹{(() => {
+                              <div className="flex flex-col items-center md:items-end">
+                                {(() => {
                                   const variants = item.variants || item.sizes || [];
                                   const sizeData = variants.find(v => v.size === item.selectedSize);
-                                  const basePrice = sizeData ? sizeData.price : (item.offerPrice || 0);
-                                  if (isTriggered && activeOffer.offerType === 'discount') { return Math.round(basePrice * (1 - activeOffer.offerValue / 100)); }
-                                  return basePrice;
+
+                                  let basePrice = 0;
+                                  let finalPrice = 0;
+
+                                  if (item.isCombo) {
+                                    // For combo menu items, basePrice is the sum of individual items, finalPrice is the combo's own price
+                                    basePrice = item.comboItems?.reduce((sum, ci) => sum + (ci.price || 0), 0) || item.price || 0;
+                                    finalPrice = item.price || 0;
+                                  } else {
+                                    basePrice = sizeData ? sizeData.price : (item.offerPrice || item.price || 0);
+                                    finalPrice = (isTriggered && activeOffer.offerType === 'discount')
+                                      ? Math.round(basePrice * (1 - activeOffer.offerValue / 100))
+                                      : basePrice;
+                                  }
+
+                                  const hasOffer = basePrice > finalPrice;
+
+                                  return (
+                                    <>
+                                      {hasOffer && (
+                                        <span className="text-[10px] font-bold text-text-muted line-through opacity-60">
+                                          ₹{Math.round(basePrice)}
+                                        </span>
+                                      )}
+                                      <span className="text-xl font-black text-primary tracking-tighter">
+                                        ₹{Math.round(finalPrice)}
+                                      </span>
+                                    </>
+                                  );
                                 })()}
-                              </span>
+                              </div>
                             </div>
                             <div className="flex items-center justify-center md:justify-start gap-6 pt-2">
-                              <div className="flex items-center bg-background-card rounded-2xl border border-border/40 p-1">
-                                <button onClick={() => updateQuantity(item._id, item.quantity - 1)} className="w-10 h-10 flex items-center justify-center text-text-muted hover:text-primary transition-all active:scale-90"><Minus size={18} /></button>
-                                <span className="w-10 text-center font-black text-text-primary text-sm">{item.quantity}</span>
-                                <button onClick={() => updateQuantity(item._id, item.quantity + 1)} className="w-10 h-10 flex items-center justify-center text-text-muted hover:text-primary transition-all active:scale-90"><Plus size={18} /></button>
+                              <div className="flex items-center bg-background-card rounded-xl border border-border/40 p-0.5">
+                                <button 
+                                  onClick={() => updateQuantity(item._id, item.quantity - 1)} 
+                                  disabled={item.quantity <= 1}
+                                  className="w-8 h-8 flex items-center justify-center text-text-muted hover:text-primary disabled:opacity-20 disabled:cursor-not-allowed transition-all active:scale-90"
+                                >
+                                  <Minus size={14} />
+                                </button>
+                                <span className="w-8 text-center font-black text-text-primary text-xs">{item.quantity}</span>
+                                <button onClick={() => updateQuantity(item._id, item.quantity + 1)} className="w-8 h-8 flex items-center justify-center text-text-muted hover:text-primary transition-all active:scale-90"><Plus size={14} /></button>
                               </div>
-                              <button onClick={() => removeFromCart(item._id)} className="text-text-muted/40 hover:text-red-500 transition-colors p-2"><Trash2 size={20} /></button>
+                              <button onClick={() => removeFromCart(item._id)} className="text-text-muted/40 hover:text-red-500 transition-colors p-1.5"><Trash2 size={18} /></button>
                             </div>
                           </div>
                         </div>
@@ -466,8 +420,40 @@ const CartPage = () => {
               <div className="bg-background-card rounded-[3.5rem] shadow-xl border border-border/40 p-8 md:p-10 space-y-8">
                 <h2 className="text-xl font-black text-text-primary uppercase tracking-tight flex items-center gap-3"><ShoppingCart size={22} className="text-primary" /> Bill Summary</h2>
                 <div className="space-y-5">
-                  <div className="flex justify-between items-center"><span className="text-[11px] font-black text-text-muted uppercase">Item Total</span><span className="text-sm font-black text-text-primary">₹{subtotal}</span></div>
-                  <div className="flex justify-between items-center">
+                  {(() => {
+                    const originalTotal = cartItems.reduce((sum, item) => {
+                      let basePrice = 0;
+                      if (item.isCombo) {
+                        basePrice = item.comboItems?.reduce((s, ci) => s + (ci.price || 0), 0) || item.price || 0;
+                      } else {
+                        const variants = item.variants || item.sizes || [];
+                        basePrice = variants.find(v => v.size === item.selectedSize)?.price || item.offerPrice || item.price || 0;
+                      }
+                      return sum + (basePrice * item.quantity);
+                    }, 0);
+                    const totalSavings = Math.round(originalTotal - subtotal);
+
+                    return (
+                      <>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[11px] font-black text-text-muted uppercase">Actual Price</span>
+                          <span className="text-sm font-black text-text-primary">₹{Math.round(originalTotal)}</span>
+                        </div>
+
+                        <div className="flex justify-between items-center text-green-500">
+                          <span className="text-[11px] font-black uppercase tracking-widest opacity-80">Total Savings</span>
+                          <span className="text-sm font-black">-₹{totalSavings > 0 ? totalSavings : 0}</span>
+                        </div>
+
+                        <div className="flex justify-between items-center bg-primary/5 -mx-4 px-4 py-2 rounded-xl">
+                          <span className="text-[11px] font-black text-primary uppercase">Final Price (Items)</span>
+                          <span className="text-sm font-black text-primary">₹{subtotal}</span>
+                        </div>
+                      </>
+                    );
+                  })()}
+
+                  <div className="flex justify-between items-center pt-2">
                     <div className="flex flex-col">
                       <span className="text-[11px] font-black text-text-muted uppercase">Delivery Fee</span>
                       {calculatedDistance && (
@@ -480,21 +466,17 @@ const CartPage = () => {
                       {isCalculatingFee ? <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></div> : (deliveryFee === 0 ? 'FREE' : `₹${deliveryFee}`)}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center text-green-500">
-                    <span className="text-[11px] font-black uppercase tracking-widest opacity-80">Total Savings</span>
-                    <span className="text-sm font-black">-₹{(() => {
-                      const originalTotal = cartItems.reduce((sum, item) => {
-                        const variants = item.variants || item.sizes || [];
-                        const price = variants.find(v => v.size === item.selectedSize)?.price || item.offerPrice || item.price || 0;
-                        return sum + (price * item.quantity);
-                      }, 0);
-                      const savings = Math.round(originalTotal - subtotal);
-                      return savings <= 0 ? '0' : savings;
-                    })()}</span>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] font-black text-text-muted uppercase">Platform Fee</span>
+                    <span className="text-sm font-black text-text-primary">₹{platformFee}</span>
                   </div>
-                  <div className="flex justify-between items-center"><span className="text-[11px] font-black text-text-muted uppercase">Platform Fee</span><span className="text-sm font-black text-text-primary">₹{platformFee}</span></div>
+
                   <div className="h-px bg-border/20 my-2"></div>
-                  <div className="flex justify-between items-center"><span className="text-lg font-black text-text-primary uppercase">Grand Total</span><span className="text-3xl font-black text-primary tracking-tighter">₹{total}</span></div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-black text-text-primary uppercase">Grand Total</span>
+                    <span className="text-3xl font-black text-primary tracking-tighter">₹{total}</span>
+                  </div>
                 </div>
                 <button onClick={handleCheckout} disabled={loading} className="w-full bg-primary text-white font-black py-5 rounded-2xl transition-all shadow-xl hover:bg-primary-dark disabled:opacity-50 uppercase tracking-widest flex items-center justify-center gap-4">Proceed to Checkout <ChevronRight size={20} /></button>
               </div>

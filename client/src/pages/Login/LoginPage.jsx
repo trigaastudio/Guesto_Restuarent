@@ -52,14 +52,7 @@ const LoginPage = () => {
           window.dispatchEvent(new Event('storage'));
           window.dispatchEvent(new Event('cart-refresh'));
 
-          // Role-based redirection
-          if (userData.role === 'admin') {
-            localStorage.setItem('admin_token', userData.token);
-            localStorage.setItem('admin_user', JSON.stringify(userData));
-            navigate('/admin/dashboard', { replace: true });
-          } else {
-            navigate('/home', { replace: true });
-          }
+          navigate('/home', { replace: true });
         }
       } catch (err) {
         setApiError(err.response?.data?.message || err.message || 'Google Login failed.');
@@ -100,14 +93,7 @@ const LoginPage = () => {
         window.dispatchEvent(new Event('storage'));
         window.dispatchEvent(new Event('cart-refresh'));
 
-        // Role-based redirection
-        if (userData.role === 'admin') {
-          localStorage.setItem('admin_token', userData.token);
-          localStorage.setItem('admin_user', JSON.stringify(userData));
-          navigate('/admin/dashboard', { replace: true });
-        } else {
-          navigate('/home', { replace: true });
-        }
+        navigate('/home', { replace: true });
       }
     } catch (err) {
       setApiError(err.response?.data?.message || 'Login failed. Please try again.');

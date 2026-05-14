@@ -44,7 +44,7 @@ class UserService {
     } else {
       delete updateData.password;
     }
-    return await User.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+    return await User.findByIdAndUpdate(id, updateData, { returnDocument: 'after', runValidators: true });
   }
 
   async deleteUser(id) {

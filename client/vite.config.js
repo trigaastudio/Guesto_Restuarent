@@ -13,4 +13,7 @@ export default defineConfig({
       'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
     },
   },
+  optimizeDeps: {
+    include: ['xlsx', 'jspdf', 'jspdf-autotable'],
+  },
 })

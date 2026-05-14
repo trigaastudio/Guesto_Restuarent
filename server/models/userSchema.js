@@ -51,7 +51,7 @@ const userSchema = new mongoose.Schema({
     location: { type: String, trim: true },
     type: {
       type: String,
-      enum: ["home", "office"],
+      enum: ["home", "office", "other"],
       default: "home"
     },
     isDefault: {

@@ -31,16 +31,11 @@ const AdminLogin = () => {
 
   // Prevent accessing login if already logged in as admin
   React.useEffect(() => {
-    const token = localStorage.getItem('token');
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const adminToken = localStorage.getItem('admin_token');
+    const adminUser = JSON.parse(localStorage.getItem('admin_user') || '{}');
 
-    if (token) {
-      if (user.role === 'admin') {
-        navigate('/admin/dashboard', { replace: true });
-      } else {
-        // If a regular user tries to access admin login, send them to their home
-        navigate('/home', { replace: true });
-      }
+    if (adminToken && (adminUser.role === 'admin' || adminUser.role === 'staff')) {
+      navigate('/admin/dashboard', { replace: true });
     }
   }, [navigate]);
 
@@ -56,9 +51,6 @@ const AdminLogin = () => {
         const userData = response.data.data;
         localStorage.setItem('admin_token', userData.token);
         localStorage.setItem('admin_user', JSON.stringify(userData));
-        // Also set general keys for consistency across the app
-        localStorage.setItem('token', userData.token);
-        localStorage.setItem('user', JSON.stringify(userData));
 
         navigate('/admin/dashboard', { replace: true });
       }

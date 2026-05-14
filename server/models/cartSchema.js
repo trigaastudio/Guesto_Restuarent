@@ -15,6 +15,11 @@ const cartItemSchema = new mongoose.Schema({
     required: true,
     min: 1,
     default: 1
+  },
+  bogoItem: {
+    name: String,
+    size: String,
+    quantity: { type: Number, default: 1 }
   }
 });
 

@@ -22,6 +22,10 @@ const storage = new CloudinaryStorage({
   params: {
     folder: 'guesto',
     format: 'png',
+    public_id: (req, file) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+      return `img_${uniqueSuffix}`;
+    },
     transformation: [
       { quality: 'auto' }
     ],

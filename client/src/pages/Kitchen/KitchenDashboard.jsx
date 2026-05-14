@@ -95,6 +95,7 @@ const KitchenDashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [lastFetchCount, setLastFetchCount] = useState(0);
+  const [activeStatusFilter, setActiveStatusFilter] = useState('new');
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const staff = JSON.parse(localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || '{}');
@@ -199,7 +200,7 @@ const KitchenDashboard = () => {
     let qrCodeUrl = '';
     const restaurantName = currentSettings?.restaurantDetails?.name || 'GUESTO RESTAURENT';
     const showQR = currentSettings?.printingSettings?.showKOTQRCode && (order.orderType === 'delivery' || order.orderSource === 'online' || order.orderType === 'online');
-    
+
     if (showQR && currentSettings.printingSettings.kotQRCodeImage) {
       qrCodeUrl = currentSettings.printingSettings.kotQRCodeImage;
     }
@@ -280,6 +281,26 @@ const KitchenDashboard = () => {
     }
   };
 
+  const handleStartPreparation = async (order) => {
+    try {
+      // 1. Print KOT
+      handlePrintKOT(order);
+
+      // 2. Update all items to preparing
+      const updatePromises = order.items.map(item =>
+        api.patch(`/api/orders/${order._id}/items/${item._id}/status`, { kitchenStatus: 'preparing' })
+      );
+
+      await Promise.all(updatePromises);
+
+      showToast('success', `Order ${order.orderNumber} started!`);
+      fetchOrders(true);
+    } catch (error) {
+      console.error('Failed to start preparation:', error);
+      showToast('error', 'Failed to update statuses');
+    }
+  };
+
   const handleRemoveOrder = async (orderId, orderNumber) => {
     const result = await showAlert({
       icon: 'warning',
@@ -311,10 +332,22 @@ const KitchenDashboard = () => {
   };
 
   const filteredOrders = orders.filter(o => {
-    if (activeTab === 'delivery') return o.orderType === 'delivery' || o.orderType === 'online';
-    if (activeTab === 'takeaway') return o.orderType === 'takeaway' || o.orderType === 'take-away';
-    if (activeTab === 'dine-in') return o.orderType === 'dine-in' || o.orderType === 'dining';
-    return o.orderType === activeTab;
+    // First Filter by Order Type (Tab)
+    let typeMatch = false;
+    if (activeTab === 'delivery') typeMatch = o.orderType === 'delivery' || o.orderType === 'online';
+    else if (activeTab === 'takeaway') typeMatch = o.orderType === 'takeaway' || o.orderType === 'take-away';
+    else if (activeTab === 'dine-in') typeMatch = o.orderType === 'dine-in' || o.orderType === 'dining';
+    else typeMatch = o.orderType === activeTab;
+
+    if (!typeMatch) return false;
+
+    // Second Filter by Kitchen Status
+    if (activeStatusFilter === 'all') return true;
+    if (activeStatusFilter === 'new') return o.items?.some(i => (i.kitchenStatus || 'placed') === 'placed');
+    if (activeStatusFilter === 'preparing') return o.items?.some(i => i.kitchenStatus === 'preparing');
+    if (activeStatusFilter === 'ready') return o.items?.some(i => i.kitchenStatus === 'ready');
+
+    return true;
   });
 
   const pendingCount = orders.filter(o =>
@@ -381,10 +414,16 @@ const KitchenDashboard = () => {
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto no-scrollbar">
             {TABS.map((tab) => {
               const count = orders.filter(o => {
-                if (tab.type === 'delivery') return o.orderType === 'delivery' || o.orderType === 'online';
-                if (tab.type === 'takeaway') return o.orderType === 'takeaway' || o.orderType === 'take-away';
-                if (tab.type === 'dine-in') return o.orderType === 'dine-in' || o.orderType === 'dining';
-                return o.orderType === tab.type;
+                let typeMatch = false;
+                if (tab.type === 'delivery') typeMatch = o.orderType === 'delivery' || o.orderType === 'online';
+                else if (tab.type === 'takeaway') typeMatch = o.orderType === 'takeaway' || o.orderType === 'take-away';
+                else if (tab.type === 'dine-in') typeMatch = o.orderType === 'dine-in' || o.orderType === 'dining';
+                else typeMatch = o.orderType === tab.type;
+
+                if (!typeMatch) return false;
+
+                // Only count if it has "new" items (placed status)
+                return o.items?.some(i => (i.kitchenStatus || 'placed') === 'placed');
               }).length;
               return (
                 <button
@@ -531,7 +570,43 @@ const KitchenDashboard = () => {
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 lg:p-8">
+        <div className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-8">
+          {/* Status Filter Bar */}
+          <div className="flex items-center space-x-3 bg-background-card p-1.5 rounded-[1.5rem] border border-border-light w-fit shadow-sm">
+            {[
+              { id: 'new', label: 'New Orders', icon: Bell },
+              { id: 'preparing', label: 'Preparing', icon: ChefHat },
+            ].map(filter => (
+              <button
+                key={filter.id}
+                onClick={() => setActiveStatusFilter(filter.id)}
+                className={`flex items-center space-x-2 px-5 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all
+                  ${activeStatusFilter === filter.id
+                    ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-105'
+                    : 'text-text-muted hover:bg-background-muted hover:text-text-primary'
+                  }
+                `}
+              >
+                <filter.icon size={14} className={activeStatusFilter === filter.id ? 'animate-pulse' : ''} />
+                <span>{filter.label}</span>
+                {filter.id !== 'all' && (
+                  <span className={`ml-2 px-2 py-0.5 rounded-full text-[9px] ${activeStatusFilter === filter.id ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'}`}>
+                    {orders.filter(o => {
+                      let typeMatch = false;
+                      if (activeTab === 'delivery') typeMatch = o.orderType === 'delivery' || o.orderType === 'online';
+                      else if (activeTab === 'takeaway') typeMatch = o.orderType === 'takeaway' || o.orderType === 'take-away';
+                      else if (activeTab === 'dine-in') typeMatch = o.orderType === 'dine-in' || o.orderType === 'dining';
+                      else typeMatch = o.orderType === activeTab;
+
+                      if (!typeMatch) return false;
+                      return o.items?.some(i => filter.id === 'new' ? (i.kitchenStatus || 'placed') === 'placed' : i.kitchenStatus === 'preparing');
+                    }).length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-[60vh] space-y-6">
               <Loader size="large" />
@@ -550,7 +625,7 @@ const KitchenDashboard = () => {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 items-start animate-in fade-in slide-in-from-bottom-4 duration-500">
               {filteredOrders.map((order) => {
                 const allReady = order.items?.every(i => i.kitchenStatus === 'ready');
                 return (
@@ -561,105 +636,112 @@ const KitchenDashboard = () => {
                     `}
                   >
                     {/* Order Header */}
-                    <div className={`p-5 border-b border-border-light flex items-center justify-between rounded-t-[2.5rem] ${allReady ? 'bg-status-on/5' : 'bg-background-muted/30'}`}>
-                      <div>
-                        <h3 className="text-base font-black text-text-primary">{order.orderNumber}</h3>
-                        <div className="flex items-center space-x-1.5 mt-1">
-                          <Clock size={11} className="text-text-muted" />
-                          <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">
-                            {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                          <span className={`text-[10px] font-black uppercase tracking-widest flex items-center space-x-1 border-l pl-2 ml-2 ${getAgeColor(getOrderAge(order.createdAt))}`}>
-                            <Clock size={10} />
-                            <span>{getOrderAge(order.createdAt)}m ago</span>
-                          </span>
+                    <div className={`p-4 border-b border-border-light flex items-center justify-between rounded-t-[2.5rem] ${allReady ? 'bg-status-on/5' : 'bg-background-muted/20'}`}>
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-background-card rounded-xl flex items-center justify-center border border-border-light shadow-sm">
+                          <Package size={18} className={allReady ? 'text-status-available' : 'text-primary'} />
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="text-sm font-black text-text-primary tracking-tight truncate">{order.orderNumber}</h3>
+                          <div className="flex items-center space-x-2 mt-0.5">
+                            <span className="text-[9px] text-text-muted font-bold uppercase tracking-widest">
+                              {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            <div className={`flex items-center space-x-1 border-l border-border-light pl-2 ${getAgeColor(getOrderAge(order.createdAt))}`}>
+                              <span className="text-[9px] font-black uppercase tracking-widest">{getOrderAge(order.createdAt)}m</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handlePrintKOT(order)}
-                          className="p-2 bg-background-muted/50 text-text-secondary hover:text-primary hover:bg-primary/10 rounded-xl transition-all border border-border-light"
-                          title="Print KOT"
-                        >
-                          <Printer size={16} />
-                        </button>
-                        {allReady && (
-                          <span className="flex items-center space-x-1 px-3 py-1 bg-status-on/10 text-status-available rounded-full border border-status-on/20 text-[9px] font-black uppercase tracking-widest">
-                            <CheckCircle2 size={11} />
-                            <span>All Ready</span>
-                          </span>
+                      <div className="flex items-center space-x-1.5 shrink-0">
+                        {activeStatusFilter !== 'new' && (
+                          <button
+                            onClick={() => handlePrintKOT(order)}
+                            className="p-2 bg-background-card text-text-secondary hover:text-primary hover:bg-primary/10 rounded-lg transition-all border border-border-light shadow-sm"
+                            title="Print KOT"
+                          >
+                            <Printer size={14} />
+                          </button>
                         )}
-                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border
+                        <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border shadow-sm
                           ${order.orderType === 'takeaway' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
                             order.orderType === 'dine-in' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
                               'bg-orange-500/10 text-orange-500 border-orange-500/20'}
                         `}>
-                          {order.orderType}
+                          {order.orderType === 'takeaway' ? 'CTR' : order.orderType === 'dine-in' ? 'DNE' : 'DLV'}
                         </span>
                       </div>
                     </div>
 
-                    {/* Customer info if exists */}
-                    {(order.customerDetails?.name || order.address?.recipientName || order.tableNumber) && (
-                      <div className="px-5 pt-3 pb-0 flex items-center space-x-3 text-xs text-text-secondary font-bold">
-                        {(order.customerDetails?.name || order.address?.recipientName) && (
-                          <span>👤 {(order.orderSource === 'online' || order.orderSource === 'user') 
-                            ? (order.address?.recipientName || order.customerDetails?.name) 
-                            : (order.customerDetails?.name || order.address?.recipientName)}
-                          </span>
-                        )}
-                        {order.tableNumber && <span>🪑 Table {order.tableNumber}</span>}
-                      </div>
-                    )}
+
 
                     {/* Items */}
-                    <div className="flex-1 p-5 space-y-3">
+                    <div className="flex-1 p-4 space-y-3">
                       {order.items?.map((item) => {
                         const status = item.kitchenStatus || 'placed';
                         return (
-                          <div key={item._id} className="flex items-center justify-between p-3 bg-background-muted/20 rounded-2xl border border-border-light gap-3">
-                            <div className="flex items-center space-x-3 min-w-0">
-                              <div className="w-14 h-14 bg-background-card rounded-xl flex items-center justify-center border border-border-light shrink-0 overflow-hidden">
-                                {item.image || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.image : '') ? (
-                                  <img src={item.image || item.menuItem.image} alt={item.name || item.menuItem.name} className="w-full h-full object-cover" />
-                                ) : (
-                                  <Package size={20} className="text-primary/40" />
-                                )}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-bold text-text-primary text-xs leading-tight truncate">
-                                  {item.name || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Menu Item')}
-                                </p>
-                                <p className="text-[10px] text-text-muted font-bold uppercase tracking-tighter">
-                                  {item.size} • Qty: {item.quantity}
-                                </p>
+                          <div key={item._id} className={`grid ${activeStatusFilter === 'new' ? 'grid-cols-[40px_1fr]' : 'grid-cols-[48px_1fr_auto]'} items-center p-3 bg-background-muted/10 rounded-2xl border border-border-light hover:border-primary/20 transition-all gap-3 group/item`}>
+                            {/* Column 1: Image */}
+                            <div className="w-10 h-10 bg-background-card rounded-xl flex items-center justify-center border border-border-light shrink-0 overflow-hidden shadow-sm">
+                              {item.image || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.image : '') ? (
+                                <img src={item.image || item.menuItem.image} alt={item.name || item.menuItem.name} className="w-full h-full object-cover group-hover/item:scale-110 transition-transform duration-500" />
+                              ) : (
+                                <Package size={18} className="text-primary/20" />
+                              )}
+                            </div>
+
+                            {/* Column 2: Details */}
+                            <div className="min-w-0">
+                              <p className="font-black text-text-primary text-[11px] leading-tight truncate uppercase tracking-tight">
+                                {item.name || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Menu Item')}
+                              </p>
+                              <div className="flex items-center space-x-1.5 mt-1">
+                                <span className="text-[8px] bg-background-card px-1.5 py-0.5 rounded-md border border-border-light text-text-muted font-black uppercase tracking-widest truncate max-w-[50px]">{item.size}</span>
+                                <span className="text-[9px] text-primary font-black uppercase tracking-widest shrink-0">x {item.quantity}</span>
                               </div>
                             </div>
 
-                            <StatusDropdown
-                              value={status}
-                              onChange={(newStatus) => handleUpdateItemStatus(
-                                order._id, 
-                                item._id, 
-                                newStatus, 
-                                item.name || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Menu Item'), 
-                                status
-                              )}
-                            />
+                            {/* Column 3: Status (Hidden in 'new' view) */}
+                            {activeStatusFilter !== 'new' && (
+                              <div className="flex justify-end">
+                                <StatusDropdown
+                                  value={status}
+                                  onChange={(newStatus) => handleUpdateItemStatus(
+                                    order._id,
+                                    item._id,
+                                    newStatus,
+                                    item.name || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Menu Item'),
+                                    status
+                                  )}
+                                />
+                              </div>
+                            )}
                           </div>
                         );
                       })}
                     </div>
 
                     {/* Footer: Remove button when all ready */}
-                    <div className={`px-5 pb-5 ${allReady ? 'block' : 'hidden'}`}>
-                      <button
-                        onClick={() => handleRemoveOrder(order._id, order.orderNumber)}
-                        className="w-full flex items-center justify-center space-x-2 py-3 bg-status-off/10 hover:bg-status-off/20 text-status-unavailable border border-status-off/20 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all hover:scale-[1.01] active:scale-95"
-                      >
-                        <Trash2 size={14} />
-                        <span>Remove Order from Kitchen</span>
-                      </button>
+                    <div className="px-4 pb-4 space-y-2">
+                      {activeStatusFilter === 'new' && (
+                        <button
+                          onClick={() => handleStartPreparation(order)}
+                          className="w-full flex items-center justify-center space-x-3 py-3 bg-primary text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all group"
+                        >
+                          <Printer size={16} className="group-hover:rotate-12 transition-transform" />
+                          <span>PRINT KOT</span>
+                        </button>
+                      )}
+
+                      {allReady && (
+                        <button
+                          onClick={() => handleRemoveOrder(order._id, order.orderNumber)}
+                          className="w-full flex items-center justify-center space-x-2 py-3 bg-status-off/10 hover:bg-status-off/20 text-status-unavailable border border-status-off/20 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all hover:scale-[1.01] active:scale-95"
+                        >
+                          <Trash2 size={14} />
+                          <span>Remove Order from Kitchen</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 );

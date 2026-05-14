@@ -247,13 +247,21 @@ class AuthService {
       throw new Error('Invalid email or password');
     }
 
-    if (requiredRole && user.role !== requiredRole) {
-      const errorMessage = requiredRole === 'admin' 
-        ? 'Access denied. Only admin accounts can log in here.' 
-        : 'Access denied. Admin accounts cannot log in from the user portal.';
-      const error = new Error(errorMessage);
-      error.statusCode = 403;
-      throw error;
+    if (requiredRole) {
+      const isAdminType = user.role === 'admin' || user.role === 'staff';
+      const isUserType = user.role === 'user';
+
+      if (requiredRole === 'admin' && !isAdminType) {
+        const error = new Error('Access denied. Only admin or staff accounts can log in here.');
+        error.statusCode = 403;
+        throw error;
+      }
+
+      if (requiredRole === 'user' && !isUserType) {
+        const error = new Error('Access denied. Admin accounts cannot log in from the user portal.');
+        error.statusCode = 403;
+        throw error;
+      }
     }
 
     if (!user.isActive) {

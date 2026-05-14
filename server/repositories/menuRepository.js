@@ -11,7 +11,16 @@ class MenuRepository {
       .populate({
         path: 'variants.includedItems.menuItem',
         select: 'name'
-      });
+      })
+      .populate({
+        path: 'variants.bogoItem',
+        select: 'name image'
+      })
+      .populate({
+        path: 'comboItems.menuItem',
+        select: 'name variants'
+      })
+      .sort({ createdAt: -1 });
     if (skip > 0) query = query.skip(skip);
     if (limit > 0) query = query.limit(limit);
     return await query;
@@ -24,6 +33,14 @@ class MenuRepository {
         path: 'variants.includedItems.menuItem',
         select: 'name'
       })
+      .populate({
+        path: 'variants.bogoItem',
+        select: 'name image'
+      })
+      .populate({
+        path: 'comboItems.menuItem',
+        select: 'name variants'
+      })
       .sort({ createdAt: -1 });
   }
 
@@ -33,6 +50,14 @@ class MenuRepository {
       .populate({
         path: 'variants.includedItems.menuItem',
         select: 'name'
+      })
+      .populate({
+        path: 'variants.bogoItem',
+        select: 'name image'
+      })
+      .populate({
+        path: 'comboItems.menuItem',
+        select: 'name variants'
       });
   }
 
@@ -42,6 +67,14 @@ class MenuRepository {
       .populate({
         path: 'variants.includedItems.menuItem',
         select: 'name'
+      })
+      .populate({
+        path: 'variants.bogoItem',
+        select: 'name image'
+      })
+      .populate({
+        path: 'comboItems.menuItem',
+        select: 'name variants'
       });
   }
 

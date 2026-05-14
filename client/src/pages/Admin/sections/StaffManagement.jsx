@@ -16,7 +16,7 @@ const StaffManagement = () => {
   const [roleFilter, setRoleFilter] = useState('all');
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const itemsPerPage = 10;
 
   const [currentStaff, setCurrentStaff] = useState({
     name: '',
@@ -31,6 +31,13 @@ const StaffManagement = () => {
   useEffect(() => {
     fetchStaff();
   }, []);
+
+  useEffect(() => {
+    const scrollContainer = document.querySelector('main .overflow-y-auto');
+    if (scrollContainer) {
+      scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [currentPage]);
 
   const fetchStaff = async (silent = false) => {
     if (!silent) setIsLoading(true);

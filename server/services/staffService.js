@@ -46,7 +46,7 @@ class StaffService {
     } else {
       delete updateData.password; // Don't update password if empty
     }
-    return await Staff.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+    return await Staff.findByIdAndUpdate(id, updateData, { returnDocument: 'after', runValidators: true });
   }
 
   async deleteStaff(id) {
