@@ -3,8 +3,10 @@ import { LayoutGrid, UtensilsCrossed, Plus } from 'lucide-react';
 import Loader from '../Loader/Loader';
 import { useCart } from '../../context/CartContext';
 
-const MenuSection = React.memo(({ loading, filteredMenus, addToCart, navigate, sortBy, setSortBy, dietaryFilter, setDietaryFilter, setSearchQuery, observerTarget, hasMore, loadingMore, onAddClick }) => {
+const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navigate, sortBy, setSortBy, dietaryFilter, setDietaryFilter, setSearchQuery, observerTarget, hasMore, loadingMore, onAddClick, selectedCategory, bogoOnly, comboOnly, searchQuery, onClearAll }) => {
   const { offers } = useCart();
+
+  const isAnyFilterActive = sortBy !== 'default' || dietaryFilter !== 'all' || bogoOnly || comboOnly || selectedCategory !== 'all' || !!searchQuery;
 
   return (
     <section id="menu" className="bg-background pt-2 md:pt-8 pb-6 w-full">
@@ -12,7 +14,7 @@ const MenuSection = React.memo(({ loading, filteredMenus, addToCart, navigate, s
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 md:mb-12 gap-6">
           <div className="space-y-3">
             <h2 className="text-2xl md:text-4xl font-black text-text-primary tracking-tighter flex items-center gap-3 md:gap-4">
-              Popular <span className="text-primary">menu</span>
+              {title || 'Popular'} <span className="text-primary">menu</span>
             </h2>
             <p className="text-[10px] md:text-base text-text-muted font-bold opacity-80 tracking-widest uppercase md:normal-case">Discover the most loved dishes</p>
           </div>
@@ -53,9 +55,9 @@ const MenuSection = React.memo(({ loading, filteredMenus, addToCart, navigate, s
               </button>
             </div>
 
-            {(sortBy !== 'default' || dietaryFilter !== 'all' || (typeof setSearchQuery === 'function')) && (
+            {isAnyFilterActive && (
               <button
-                onClick={() => { setSortBy('default'); setDietaryFilter('all'); if (typeof setSearchQuery === 'function') setSearchQuery(''); }}
+                onClick={onClearAll}
                 className="text-[10px] md:text-xs font-black tracking-widest text-primary hover:underline underline-offset-4 px-2"
               >
                 Clear all
@@ -78,7 +80,7 @@ const MenuSection = React.memo(({ loading, filteredMenus, addToCart, navigate, s
               <p className="text-sm text-text-muted font-bold tracking-widest opacity-80">We couldn't find any items matching your current filters.</p>
             </div>
             <button
-              onClick={() => { setDietaryFilter('all'); setSortBy('default'); if (typeof setSearchQuery === 'function') setSearchQuery(''); }}
+              onClick={onClearAll}
               className="px-8 py-3 bg-primary text-white font-black text-[10px] tracking-widest rounded-full hover:bg-primary-dark transition-all active:scale-95 shadow-lg shadow-primary/20"
             >
               Clear all filters
@@ -88,12 +90,12 @@ const MenuSection = React.memo(({ loading, filteredMenus, addToCart, navigate, s
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6 animate-fade-in">
             {filteredMenus.map((menu, index) => {
               const variants = menu.variants || menu.sizes || [];
-              const originalPrice = variants.length > 0 
-                ? Math.min(...variants.map(v => v.price)) 
-                : (menu.offerPrice || 0);
+              const originalPrice = menu.isCombo 
+                ? menu.comboItems?.reduce((sum, item) => sum + (item.price || 0), 0) 
+                : (variants.length > 0 ? Math.min(...variants.map(v => v.price)) : (menu.offerPrice || 0));
 
               // Find active discount offer for this item
-              const activeDiscount = offers?.find(o => {
+              const activeDiscount = !menu.isCombo && offers?.find(o => {
                 if (!o.isActive || o.offerType !== 'discount') return false;
                 
                 // Check Schedule
@@ -110,19 +112,27 @@ const MenuSection = React.memo(({ loading, filteredMenus, addToCart, navigate, s
 
               const isTriggered = activeDiscount && (activeDiscount.minQuantity || 1) <= 1;
               const discountPercent = isTriggered ? activeDiscount.offerValue : 0;
-              const discountedPrice = discountPercent > 0 
-                ? originalPrice * (1 - discountPercent / 100) 
-                : originalPrice;
+              const discountedPrice = menu.isCombo 
+                ? (menu.price || originalPrice)
+                : (discountPercent > 0 ? originalPrice * (1 - discountPercent / 100) : originalPrice);
+
+              const hasSavings = originalPrice > discountedPrice;
+
+              const isOutOfStock = menu.totalStock <= 0;
 
               return (
                 <div
                   key={`${menu._id}-${index}`}
-                  className="bg-background-card rounded-[1.2rem] md:rounded-[1.5rem] overflow-hidden p-3.5 md:p-5 transition-all duration-500 group flex flex-col h-full hover:bg-primary active:bg-primary shadow-[0_4px_15px_rgba(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(185,28,28,0.15)] active:shadow-[0_20px_50px_rgba(185,28,28,0.15)] border border-border/10 will-change-transform"
+                  className={`bg-background-card rounded-[1.2rem] md:rounded-[1.5rem] overflow-hidden p-3.5 md:p-5 transition-all duration-500 group flex flex-col h-full shadow-[0_4px_15px_rgba(0,0,0,0.02)] border border-border/10 will-change-transform ${
+                    isOutOfStock 
+                    ? 'grayscale opacity-60 pointer-events-none' 
+                    : 'hover:bg-primary active:bg-primary hover:shadow-[0_20px_50px_rgba(185,28,28,0.15)] active:shadow-[0_20px_50px_rgba(185,28,28,0.15)]'
+                  }`}
                   style={{ 
                     animationDelay: `${(index % 10) * 0.05}s`,
                     willChange: 'transform, box-shadow'
                   }}
-                  onClick={() => onAddClick(menu)}
+                  onClick={() => !isOutOfStock && onAddClick(menu)}
                 >
                   <div className="relative h-32 md:h-36 mb-3 md:mb-4 overflow-hidden rounded-xl bg-white/5">
                     <img
@@ -131,11 +141,25 @@ const MenuSection = React.memo(({ loading, filteredMenus, addToCart, navigate, s
                       loading="lazy"
                       className="w-full h-full object-contain group-hover:scale-110 group-active:scale-110 transition-transform duration-700 ease-out"
                     />
-                    {activeDiscount && (
-                      <div className="absolute top-2 left-2 bg-primary text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-lg animate-bounce-slow">
+                    
+                    {isOutOfStock && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px] z-20">
+                        <span className="bg-white text-black text-[9px] font-black px-3 py-1.5 rounded-lg uppercase tracking-widest shadow-xl border border-black/10">
+                          Out of Stock
+                        </span>
+                      </div>
+                    )}
+
+                    {activeDiscount && !isOutOfStock && (
+                      <div className="absolute top-2 left-2 bg-primary text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-lg animate-bounce-slow z-10">
                         {activeDiscount.minQuantity > 1 
                           ? `BUY ${activeDiscount.minQuantity} GET ${activeDiscount.offerValue}% OFF` 
                           : `${activeDiscount.offerValue}% OFF`}
+                      </div>
+                    )}
+                    {variants.some(v => v.isBOGO) && !isOutOfStock && (
+                      <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-lg z-10 uppercase tracking-tighter">
+                        BOGO
                       </div>
                     )}
                   </div>
@@ -151,9 +175,9 @@ const MenuSection = React.memo(({ loading, filteredMenus, addToCart, navigate, s
 
                     <div className="flex justify-between items-center mt-auto pt-4 border-t border-text-primary/5 group-hover:border-white/10 group-active:border-white/10">
                       <div className="flex flex-col">
-                        {discountPercent > 0 && (
+                        {hasSavings && (
                           <span className="text-[10px] text-text-muted line-through opacity-60 group-hover:text-white/60">
-                            ₹{originalPrice}
+                            ₹{Math.round(originalPrice)}
                           </span>
                         )}
                         <span className="font-black text-base text-text-primary group-hover:text-white group-active:text-white transition-colors">
@@ -161,11 +185,16 @@ const MenuSection = React.memo(({ loading, filteredMenus, addToCart, navigate, s
                         </span>
                       </div>
                       <button
-                        onClick={(e) => { e.stopPropagation(); onAddClick(menu); }}
-                        className="bg-primary-light/10 group-hover:bg-primary-light group-active:bg-primary-light text-primary-light group-hover:text-white group-active:text-white p-2 rounded-lg transition-all active:scale-90 shadow-sm"
-                        title="Add to Cart"
+                        onClick={(e) => { e.stopPropagation(); !isOutOfStock && onAddClick(menu); }}
+                        disabled={isOutOfStock}
+                        className={`p-2 rounded-lg transition-all active:scale-90 shadow-sm ${
+                          isOutOfStock
+                          ? 'bg-background-muted text-text-muted cursor-not-allowed opacity-30'
+                          : 'bg-primary-light/10 group-hover:bg-primary-light group-active:bg-primary-light text-primary-light group-hover:text-white group-active:text-white'
+                        }`}
+                        title={isOutOfStock ? "Unavailable" : "Add to Cart"}
                       >
-                        <Plus size={16} strokeWidth={3} />
+                        {isOutOfStock ? <UtensilsCrossed size={16} /> : <Plus size={16} strokeWidth={3} />}
                       </button>
                     </div>
                   </div>

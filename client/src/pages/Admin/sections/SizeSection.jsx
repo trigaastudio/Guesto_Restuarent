@@ -3,6 +3,7 @@ import { Plus, Edit2, Trash2, Search, Loader2, ArrowUpDown, XCircle, RotateCcw }
 import axios from 'axios';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 import Loader from '../../../components/Loader/Loader';
+import Pagination from '../../../components/Pagination/Pagination';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
@@ -14,10 +15,19 @@ const SizeSection = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchSizes();
   }, []);
+
+  useEffect(() => {
+    const scrollContainer = document.querySelector('main .overflow-y-auto');
+    if (scrollContainer) {
+      scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [currentPage]);
 
   const handleSort = (key) => {
     let direction = 'asc';
@@ -40,8 +50,18 @@ const SizeSection = () => {
   const filteredSizes = getSortedData(sizes).filter(s => {
     const searchLower = (searchTerm || '').toLowerCase();
     return (s.name || '').toLowerCase().includes(searchLower) ||
-           (s.unit || '').toLowerCase().includes(searchLower);
+      (s.unit || '').toLowerCase().includes(searchLower);
   });
+
+  const totalPages = Math.ceil(filteredSizes.length / itemsPerPage);
+  const paginatedSizes = filteredSizes.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   const fetchSizes = async () => {
     setIsLoading(true);
@@ -90,7 +110,7 @@ const SizeSection = () => {
       'Delete Size?',
       'Are you sure you want to delete this size? This might affect menu items using it.'
     );
-    
+
     if (result.isConfirmed) {
       try {
         await axios.delete(`${API_BASE_URL}/sizes/${id}`);
@@ -110,7 +130,7 @@ const SizeSection = () => {
           <h2 className="text-2xl font-bold text-text-primary">Global Sizes</h2>
           <p className="text-text-secondary text-sm">Define sizes and their multiplier values (e.g., Quarter=1, Half=2, Full=4)</p>
         </div>
-        <button 
+        <button
           onClick={() => handleOpenModal()}
           className="bg-primary text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-lg shadow-primary/20 hover:bg-primary-light transition-all flex items-center space-x-2"
         >
@@ -184,15 +204,14 @@ const SizeSection = () => {
                   <td colSpan="5" className="px-6 py-12 text-center text-text-muted italic">No sizes found</td>
                 </tr>
               ) : (
-                filteredSizes.map((size) => (
+                paginatedSizes.map((size, index) => (
                   <tr key={size._id} className="hover:bg-background-muted/30 transition-colors group">
-                    <td className="px-6 py-4 font-semibold text-text-primary">{size.name}</td>
+                    <td className="px-6 py-4 font-semibold text-text-primary">{(currentPage - 1) * itemsPerPage + index + 1}. {size.name}</td>
                     <td className="px-6 py-4 text-text-secondary">{size.unit}</td>
                     <td className="px-6 py-4 font-bold text-text-primary">{size.value}</td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                        size.isActive ? 'bg-status-on/10 text-status-available' : 'bg-status-off/10 text-status-unavailable'
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${size.isActive ? 'bg-status-on/10 text-status-available' : 'bg-status-off/10 text-status-unavailable'
+                        }`}>
                         {size.isActive ? 'Active' : 'Blocked'}
                       </span>
                     </td>
@@ -212,6 +231,12 @@ const SizeSection = () => {
             </tbody>
           </table>
         </div>
+
+        <Pagination 
+          currentPage={currentPage} 
+          totalPages={totalPages} 
+          onPageChange={setCurrentPage} 
+        />
       </div>
 
       {isModalOpen && (
@@ -229,7 +254,7 @@ const SizeSection = () => {
                 <input
                   type="text"
                   value={currentSize.name}
-                  onChange={(e) => setCurrentSize({...currentSize, name: e.target.value})}
+                  onChange={(e) => setCurrentSize({ ...currentSize, name: e.target.value })}
                   className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all"
                   placeholder="e.g. Quarter, Half, Full, Packet"
                 />
@@ -239,7 +264,7 @@ const SizeSection = () => {
                 <input
                   type="text"
                   value={currentSize.unit}
-                  onChange={(e) => setCurrentSize({...currentSize, unit: e.target.value})}
+                  onChange={(e) => setCurrentSize({ ...currentSize, unit: e.target.value })}
                   className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all"
                   placeholder="e.g. piece, plate, kg"
                 />
@@ -249,7 +274,7 @@ const SizeSection = () => {
                 <input
                   type="number"
                   value={currentSize.value === 0 ? '' : currentSize.value}
-                  onChange={(e) => setCurrentSize({...currentSize, value: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
+                  onChange={(e) => setCurrentSize({ ...currentSize, value: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
                   className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all"
                   placeholder="e.g. 1, 2, 4, 10"
                 />
@@ -262,14 +287,12 @@ const SizeSection = () => {
                   <p className="text-[10px] text-text-muted">Blocked sizes won't show in menu editor</p>
                 </div>
                 <button
-                  onClick={() => setCurrentSize({...currentSize, isActive: !currentSize.isActive})}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                    currentSize.isActive ? 'bg-primary' : 'bg-text-muted'
-                  }`}
+                  onClick={() => setCurrentSize({ ...currentSize, isActive: !currentSize.isActive })}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${currentSize.isActive ? 'bg-primary' : 'bg-text-muted'
+                    }`}
                 >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    currentSize.isActive ? 'translate-x-6' : 'translate-x-1'
-                  }`} />
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${currentSize.isActive ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
                 </button>
               </div>
             </div>

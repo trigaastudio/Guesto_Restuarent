@@ -1,4 +1,5 @@
 import Cart from '../models/cartSchema.js';
+import Menu from '../models/menuSchema.js';
 
 class CartController {
   constructor() {
@@ -27,6 +28,7 @@ class CartController {
           menuItemId: menuData._id, // Keep menu ID separate
           quantity: item.quantity,
           selectedSize: item.size,
+          bogoItem: item.bogoItem,
           _id: item._id // This is the unique ID for this cart entry
         };
       });
@@ -39,11 +41,21 @@ class CartController {
       const userId = req.user._id;
 
       let cart = await Cart.findOne({ user: userId });
+      
+      // Fetch menu item to check for BOGO
+      const menuItem = await Menu.findById(menuItemId);
+      const variant = menuItem?.variants?.find(v => v.size === finalSize);
+      
+      const bogoInfo = (variant?.isBOGO && variant?.bogoItem) ? {
+        name: (await Menu.findById(variant.bogoItem))?.name || 'Free Item',
+        size: variant.bogoVariant || '',
+        quantity: quantity || 1
+      } : null;
 
       if (!cart) {
         cart = await Cart.create({
           user: userId,
-          items: [{ menuItem: menuItemId, quantity: quantity || 1, size: finalSize }]
+          items: [{ menuItem: menuItemId, quantity: quantity || 1, size: finalSize, bogoItem: bogoInfo }]
         });
       } else {
         const itemIndex = cart.items.findIndex(item => 
@@ -52,18 +64,30 @@ class CartController {
 
         if (itemIndex > -1) {
           cart.items[itemIndex].quantity += (quantity || 1);
+          if (bogoInfo) {
+             cart.items[itemIndex].bogoItem = {
+               ...bogoInfo,
+               quantity: cart.items[itemIndex].quantity
+             };
+          }
         } else {
-          cart.items.push({ menuItem: menuItemId, quantity: quantity || 1, size: finalSize });
+          cart.items.push({ menuItem: menuItemId, quantity: quantity || 1, size: finalSize, bogoItem: bogoInfo });
         }
         await cart.save();
       }
 
       await cart.populate({
         path: 'items.menuItem',
-        populate: {
-          path: 'variants.includedItems.menuItem',
-          model: 'Menu'
-        }
+        populate: [
+          {
+            path: 'variants.includedItems.menuItem',
+            model: 'Menu'
+          },
+          {
+            path: 'comboItems.menuItem',
+            model: 'Menu'
+          }
+        ]
       });
 
       res.status(200).json({
@@ -80,10 +104,16 @@ class CartController {
       const userId = req.user._id;
       const cart = await Cart.findOne({ user: userId }).populate({
         path: 'items.menuItem',
-        populate: {
-          path: 'variants.includedItems.menuItem',
-          model: 'Menu'
-        }
+        populate: [
+          {
+            path: 'variants.includedItems.menuItem',
+            model: 'Menu'
+          },
+          {
+            path: 'comboItems.menuItem',
+            model: 'Menu'
+          }
+        ]
       });
 
       res.status(200).json({
@@ -110,14 +140,23 @@ class CartController {
           cart.items.pull(itemId);
         } else {
           item.quantity = quantity;
+          if (item.bogoItem) {
+            item.bogoItem.quantity = quantity;
+          }
         }
         await cart.save();
         await cart.populate({
           path: 'items.menuItem',
-          populate: {
-            path: 'variants.includedItems.menuItem',
-            model: 'Menu'
-          }
+          populate: [
+            {
+              path: 'variants.includedItems.menuItem',
+              model: 'Menu'
+            },
+            {
+              path: 'comboItems.menuItem',
+              model: 'Menu'
+            }
+          ]
         });
       }
 
@@ -143,10 +182,16 @@ class CartController {
 
       const updatedCart = await Cart.findOne({ user: userId }).populate({
         path: 'items.menuItem',
-        populate: {
-          path: 'variants.includedItems.menuItem',
-          model: 'Menu'
-        }
+        populate: [
+          {
+            path: 'variants.includedItems.menuItem',
+            model: 'Menu'
+          },
+          {
+            path: 'comboItems.menuItem',
+            model: 'Menu'
+          }
+        ]
       });
 
       res.status(200).json({

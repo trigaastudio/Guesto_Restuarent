@@ -24,6 +24,14 @@ export const getMenus = async (req, res) => {
       filter.category = category;
     }
 
+    if (req.query.bogo === 'true') {
+      filter['variants.isBOGO'] = true;
+    }
+
+    if (req.query.combo === 'true') {
+      filter.isCombo = true;
+    }
+
     if (page && limit) {
       const skip = (parseInt(page) - 1) * parseInt(limit);
       const menus = await menuRepository.getAll(filter, skip, parseInt(limit));

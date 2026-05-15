@@ -52,14 +52,7 @@ const LoginPage = () => {
           window.dispatchEvent(new Event('storage'));
           window.dispatchEvent(new Event('cart-refresh'));
 
-          // Role-based redirection
-          if (userData.role === 'admin') {
-            localStorage.setItem('admin_token', userData.token);
-            localStorage.setItem('admin_user', JSON.stringify(userData));
-            navigate('/admin/dashboard', { replace: true });
-          } else {
-            navigate('/home', { replace: true });
-          }
+          navigate('/home', { replace: true });
         }
       } catch (err) {
         setApiError(err.response?.data?.message || err.message || 'Google Login failed.');
@@ -70,18 +63,47 @@ const LoginPage = () => {
     onError: () => setApiError('Google Login failed. Please try again.')
   });
 
+  const validateField = (name, value) => {
+    let error = '';
+    if (name === 'email') {
+      if (!value.trim()) error = 'REQUIRED';
+      else if (!/\S+@\S+\.\S+/.test(value)) error = 'Invalid email format';
+    } else if (name === 'password') {
+      if (!value) error = 'REQUIRED';
+    }
+    return error;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFields((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
+    
+    // Live CLEARING of errors
+    if (errors[name]) {
+      const fieldError = validateField(name, value);
+      if (!fieldError) {
+        setErrors((prev) => ({ ...prev, [name]: '' }));
+      }
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    const fieldError = validateField(name, value);
+    if (fieldError) {
+      setErrors((prev) => ({ ...prev, [name]: fieldError }));
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setApiError('');
     const newErrors = {};
-    if (!fields.email.trim()) newErrors.email = 'Email is required';
-    if (!fields.password) newErrors.password = 'Password is required';
+    
+    if (!fields.email.trim()) newErrors.email = 'REQUIRED';
+    else if (!/\S+@\S+\.\S+/.test(fields.email)) newErrors.email = 'Invalid email format';
+    
+    if (!fields.password) newErrors.password = 'REQUIRED';
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -100,14 +122,7 @@ const LoginPage = () => {
         window.dispatchEvent(new Event('storage'));
         window.dispatchEvent(new Event('cart-refresh'));
 
-        // Role-based redirection
-        if (userData.role === 'admin') {
-          localStorage.setItem('admin_token', userData.token);
-          localStorage.setItem('admin_user', JSON.stringify(userData));
-          navigate('/admin/dashboard', { replace: true });
-        } else {
-          navigate('/home', { replace: true });
-        }
+        navigate('/home', { replace: true });
       }
     } catch (err) {
       setApiError(err.response?.data?.message || 'Login failed. Please try again.');
@@ -171,10 +186,13 @@ const LoginPage = () => {
                       placeholder="name@example.com"
                       value={fields.email}
                       onChange={handleChange}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-sm font-medium placeholder:text-white/30 focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white autofill:bg-transparent"
+                      onBlur={handleBlur}
+                      className={`w-full bg-white/5 border rounded-2xl py-3.5 pl-12 pr-4 text-sm font-medium placeholder:text-white/30 focus:outline-none transition-all text-white autofill:bg-transparent ${
+                        errors.email ? 'border-red-500/50 bg-red-500/5 focus:border-red-500' : 'border-white/10 focus:border-[#DA9133]/50 focus:bg-white/10'
+                      }`}
                     />
                   </div>
-                  {errors.email && <p className="text-[10px] text-white font-bold ml-1">{errors.email}</p>}
+                  {errors.email && errors.email !== 'REQUIRED' && <p className="text-[10px] text-white font-bold ml-1">{errors.email}</p>}
                 </div>
 
                 <div className="space-y-1">
@@ -187,7 +205,10 @@ const LoginPage = () => {
                       placeholder="••••••••"
                       value={fields.password}
                       onChange={handleChange}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-12 text-sm font-medium placeholder:text-white/30 focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white autofill:bg-transparent"
+                      onBlur={handleBlur}
+                      className={`w-full bg-white/5 border rounded-2xl py-3.5 pl-12 pr-12 text-sm font-medium placeholder:text-white/30 focus:outline-none transition-all text-white autofill:bg-transparent ${
+                        errors.password ? 'border-red-500/50 bg-red-500/5 focus:border-red-500' : 'border-white/10 focus:border-[#DA9133]/50 focus:bg-white/10'
+                      }`}
                     />
                     <button
                       type="button"
@@ -197,7 +218,7 @@ const LoginPage = () => {
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
-                  {errors.password && <p className="text-[10px] text-white font-bold ml-1">{errors.password}</p>}
+                  {errors.password && errors.password !== 'REQUIRED' && <p className="text-[10px] text-white font-bold ml-1">{errors.password}</p>}
                 </div>
 
                 <div className="flex justify-end">

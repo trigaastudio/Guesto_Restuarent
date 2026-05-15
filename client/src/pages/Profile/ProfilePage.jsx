@@ -244,10 +244,10 @@ const ProfilePage = () => {
                 <div className="space-y-2">
                   <div className="flex items-center gap-3">
                     <span className="w-6 h-1 bg-primary rounded-full"></span>
-                    <p className="text-[9px] font-black text-primary tracking-widest uppercase">Location management</p>
+                    <p className="text-[11px] font-black text-primary tracking-widest uppercase">Location management</p>
                   </div>
                   <h3 className="text-xl md:text-2xl font-black text-text-primary tracking-tight">Address Directory</h3>
-                  <p className="text-[10px] font-black text-text-muted tracking-widest opacity-80">Manage your frequent delivery locations</p>
+                  <p className="text-xs font-black text-text-muted tracking-widest opacity-80">Manage your frequent delivery locations</p>
                 </div>
 
                 <button
@@ -261,7 +261,7 @@ const ProfilePage = () => {
               {loading ? (
                 <div className="flex flex-col items-center justify-center py-20 w-full">
                   <Loader size="medium" />
-                  <p className="mt-6 text-[10px] font-black uppercase tracking-[0.3em] text-primary animate-pulse">
+                  <p className="mt-6 text-xs font-black uppercase tracking-[0.3em] text-primary animate-pulse">
                     Loading your directory...
                   </p>
                 </div>
@@ -271,7 +271,7 @@ const ProfilePage = () => {
                     <MapPin size={32} strokeWidth={1.5} />
                   </div>
                   <h4 className="text-lg font-black text-text-primary mb-2 tracking-tight">No Saved Addresses</h4>
-                  <p className="text-[10px] font-bold text-text-muted tracking-widest opacity-80 max-w-xs mx-auto mb-10 leading-relaxed">Your delivery directory is currently empty</p>
+                  <p className="text-xs font-bold text-text-muted tracking-widest opacity-80 max-w-xs mx-auto mb-10 leading-relaxed">Your delivery directory is currently empty</p>
                   <button
                     onClick={() => setIsAddressModalOpen(true)}
                     className="bg-primary/10 text-primary hover:bg-primary hover:text-white px-10 py-4 rounded-2xl font-black text-xs tracking-widest transition-all duration-500"
@@ -287,33 +287,33 @@ const ProfilePage = () => {
                       className="group/card bg-background hover:bg-background-card p-3 rounded-2xl border border-border/40 hover:border-primary/30 hover:shadow-[0_15px_45px_rgba(0,0,0,0.04)] transition-all duration-500 relative flex flex-col h-full animate-in fade-in slide-in-from-bottom-5 duration-700"
                       style={{ animationDelay: `${idx * 100}ms` }}
                     >
-                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex justify-between items-start mb-3">
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm transition-transform group-hover/card:scale-110 duration-500 ${address.type === 'home' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' : 'bg-orange-500/10 text-orange-500 border border-orange-500/20'}`}>
                           {address.type === 'home' ? <Home size={14} strokeWidth={2.5} /> : <Briefcase size={14} strokeWidth={2.5} />}
                         </div>
                         {address.isDefault && (
-                          <span className="text-[7px] font-black tracking-widest text-green-600 bg-green-500/10 px-2 py-1 rounded-lg border border-green-500/20 shadow-sm">Primary</span>
+                          <span className="text-[10px] font-black tracking-widest text-green-600 bg-green-500/10 px-2.5 py-1 rounded-lg border border-green-500/20 shadow-sm">Primary</span>
                         )}
                       </div>
 
                       <div className="flex-1 space-y-0.5 mb-2">
                         <div className="flex items-center gap-1.5 mb-0.5">
-                          <h4 className="text-[6px] font-black text-primary tracking-widest uppercase">{address.type}</h4>
+                          <h4 className="text-[10px] font-black text-primary tracking-widest uppercase">{address.type}</h4>
                           <span className="w-1 h-1 rounded-full bg-border/40"></span>
-                          <span className="text-[6px] font-black text-text-muted tracking-widest">{address.phone || user.phone}</span>
+                          <span className="text-[10px] font-black text-text-muted tracking-widest">{address.phone || user.phone}</span>
                         </div>
                         <h5 className="text-xs font-black text-text-primary tracking-tight group-hover/card:text-primary transition-colors duration-500">{address.name || user.name}</h5>
-                        <p className="text-[9px] font-bold text-text-muted opacity-90 leading-relaxed line-clamp-1">{address.address}</p>
+                        <p className="text-xs font-bold text-text-muted opacity-90 leading-relaxed line-clamp-1">{address.address}</p>
                       </div>
 
                       <div className="pt-3 border-t border-border/40 flex items-center gap-1.5">
                         {!address.isDefault && (
                           <button
                             onClick={() => handleSetDefaultAddress(address._id)}
-                            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-600 text-[6px] font-black tracking-widest transition-all group/btn"
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-600 text-[10px] font-black tracking-widest transition-all group/btn"
                             title="Set as Primary"
                           >
-                            <ShieldCheck size={10} className="group-hover/btn:scale-110 transition-transform" />
+                            <ShieldCheck size={12} className="group-hover/btn:scale-110 transition-transform" />
                             Primary
                           </button>
                         )}
@@ -322,18 +322,18 @@ const ProfilePage = () => {
                             setEditingAddress(address);
                             setIsAddressModalOpen(true);
                           }}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 text-[6px] font-black tracking-widest transition-all group/btn"
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 text-[10px] font-black tracking-widest transition-all group/btn"
                           title="Edit Address"
                         >
-                          <PenLine size={10} className="group-hover/btn:scale-110 transition-transform" />
+                          <PenLine size={12} className="group-hover/btn:scale-110 transition-transform" />
                           Edit
                         </button>
                         <button
                           onClick={() => handleDeleteAddress(address._id)}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-600 text-[6px] font-black tracking-widest transition-all group/btn"
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-600 text-[10px] font-black tracking-widest transition-all group/btn"
                           title="Delete Address"
                         >
-                          <Trash size={10} className="group-hover/btn:scale-110 transition-transform" />
+                          <Trash size={12} className="group-hover/btn:scale-110 transition-transform" />
                           Delete
                         </button>
                       </div>

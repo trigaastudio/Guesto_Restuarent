@@ -11,7 +11,7 @@ const PaymentPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { cartItems, subtotal, clearCart, settings } = useCart();
-  const [paymentMethod, setPaymentMethod] = useState('online'); // 'online', 'cod', 'wallet'
+  const [paymentMethod, setPaymentMethod] = useState('card'); // 'card', 'cod', 'wallet'
   const [loading, setLoading] = useState(false);
   const [isOrderSuccess, setIsOrderSuccess] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -82,7 +82,7 @@ const PaymentPage = () => {
       const orderItems = cartItems.map(item => {
         const variants = item.variants || item.sizes || [];
         const sizeData = variants.find(v => v.size === item.selectedSize);
-        const price = sizeData ? sizeData.price : (item.offerPrice || 0);
+        const price = sizeData ? sizeData.price : (item.offerPrice || item.price || 0);
 
         return {
           menuItem: item.menuItemId || item._id, // Use menuItemId if available, fallback to _id
@@ -90,7 +90,8 @@ const PaymentPage = () => {
           image: item.image || '',
           size: item.selectedSize,
           quantity: item.quantity,
-          price: price
+          price: price,
+          bogoItem: item.bogoItem || null
         };
       });
 
@@ -109,7 +110,7 @@ const PaymentPage = () => {
       const response = await api.post('/api/orders', orderData);
       const createdOrder = response.data.data;
 
-      if (paymentMethod === 'online') {
+      if (paymentMethod === 'card') {
         // 2. Create Razorpay Order
         const { data: { data: razorpayOrder } } = await api.post('/api/payments/create-order', {
           amount: total,
@@ -187,7 +188,7 @@ const PaymentPage = () => {
   const handlePaymentFailure = (orderId) => {
     setLoading(false);
     clearCart();
-    
+
     Swal.fire({
       html: `
         <div class="p-4">
@@ -198,9 +199,9 @@ const PaymentPage = () => {
               <line x1="9" y1="9" x2="15" y2="15"></line>
             </svg>
           </div>
-          <h2 class="text-2xl font-black text-text-primary tracking-tight mb-3 uppercase">Payment Failed</h2>
-          <p class="text-[9px] font-black text-text-muted opacity-60 mb-10 uppercase tracking-widest leading-relaxed max-w-[240px] mx-auto">
-            Don't worry, your order is saved! You can complete the payment from your order history.
+          <h2 class="text-2xl font-black text-text-primary tracking-tight mb-3 lowercase">payment failed</h2>
+          <p class="text-[9px] font-black text-text-muted opacity-60 mb-10 lowercase tracking-widest leading-relaxed max-w-[240px] mx-auto">
+            don't worry, your order is saved! you can complete the payment from your order history.
           </p>
         </div>
       `,
@@ -209,7 +210,7 @@ const PaymentPage = () => {
       confirmButtonColor: '#B91C1C',
       customClass: {
         popup: 'rounded-[3rem] border-none shadow-2xl bg-background-card',
-        confirmButton: 'rounded-2xl px-10 py-4 font-black uppercase tracking-widest text-[9px] shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all'
+        confirmButton: 'rounded-2xl px-10 py-4 font-black lowercase tracking-widest text-[9px] shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all'
       },
       timer: 5000,
       timerProgressBar: true
@@ -221,68 +222,84 @@ const PaymentPage = () => {
   const showSuccessPopup = (order) => {
     Swal.fire({
       html: `
-        <div class="py-4 px-2">
-          <!-- Animated Success Celebration -->
-          <div class="relative w-16 h-16 mx-auto mb-6">
-            <div class="absolute inset-0 bg-primary/10 rounded-full animate-ping duration-[3000ms]"></div>
-            <div class="absolute inset-2 bg-primary/5 rounded-full animate-pulse"></div>
-            <div class="relative w-full h-full bg-background-card rounded-full border-4 border-primary flex items-center justify-center shadow-xl shadow-primary/20 z-10">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="text-primary animate-in zoom-in duration-500 delay-300">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
+        <div class="overflow-hidden">
+          <!-- Premium Header with Celebration -->
+          <div class="bg-primary/5 py-12 relative overflow-hidden">
+            <div class="absolute inset-0 opacity-20">
+              <div class="absolute top-0 left-1/4 w-2 h-2 bg-primary rounded-full animate-ping"></div>
+              <div class="absolute top-1/2 right-1/4 w-3 h-3 bg-primary rounded-full animate-pulse"></div>
+              <div class="absolute bottom-1/4 left-1/2 w-2 h-2 bg-primary rounded-full animate-bounce"></div>
             </div>
-          </div>
-
-          <div class="space-y-1.5 mb-6 text-center">
-            <h2 class="text-xl font-black text-text-primary tracking-tighter leading-none uppercase">
-              Order <span class="text-primary">Placed!</span>
-            </h2>
-            <p class="text-[8px] font-black text-text-muted opacity-50 uppercase tracking-[0.2em]">
-              Your feast is being prepared
-            </p>
-          </div>
-          
-          <div class="relative mb-6">
-            <div class="absolute -inset-1 bg-gradient-to-r from-primary to-primary-light rounded-[1.5rem] blur opacity-10"></div>
-            <div class="relative bg-background p-4 rounded-[1.5rem] border border-border/40 shadow-inner">
-              <div class="flex flex-col items-center gap-2">
-                <span class="text-[7px] font-black uppercase tracking-[0.3em] text-text-muted opacity-40">Tracking ID</span>
-                <div class="flex flex-col items-center gap-1">
-                  <span class="text-xl font-black text-text-primary tracking-tight">
-                    ${order.orderNumber}
-                  </span>
-                  <div class="flex items-center gap-1.5 text-[7px] font-black text-primary bg-primary/5 px-2 py-0.5 rounded-full border border-primary/10">
-                    <span class="w-1 h-1 bg-primary rounded-full animate-pulse"></span>
-                    READY TO COOK
-                  </div>
-                </div>
+            
+            <div class="relative z-10">
+              <div class="w-24 h-24 bg-white rounded-full mx-auto flex items-center justify-center shadow-2xl border-8 border-primary/10 relative">
+                <div class="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin duration-1000"></div>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="text-primary animate-in zoom-in duration-500 delay-200">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+              <div class="mt-6 space-y-1">
+                <h2 class="text-3xl font-black text-text-primary tracking-tighter uppercase">Order <span class="text-primary">Success!</span></h2>
+                <p class="text-[10px] font-black text-text-muted uppercase tracking-[0.3em] opacity-60">We've received your feast</p>
               </div>
             </div>
           </div>
 
-          <div class="flex items-center justify-center gap-2 py-2 px-4 bg-green-500/10 rounded-xl border border-green-500/20 max-w-[160px] mx-auto">
-             <div class="w-1 h-1 bg-green-500 rounded-full animate-pulse"></div>
-             <span class="text-[7px] font-black text-green-600 uppercase tracking-widest">ETA: 35-45 Mins</span>
+          <!-- Order Details Card -->
+          <div class="p-8 space-y-8">
+            <div class="flex items-center justify-center gap-8">
+              <div class="text-center">
+                <p class="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1 opacity-50">Order ID</p>
+                <p class="text-xl font-black text-text-primary tracking-tight">${order.orderNumber}</p>
+              </div>
+              <div class="w-px h-10 bg-border/40"></div>
+              <div class="text-center">
+                <p class="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1 opacity-50">Delivery ETA</p>
+                <p class="text-xl font-black text-primary tracking-tight">35-45 mins</p>
+              </div>
+            </div>
+
+            <div class="bg-background-muted/50 rounded-3xl p-6 border border-border/40 relative group overflow-hidden">
+              <div class="absolute inset-0 bg-primary/5 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
+              <div class="relative z-10 flex items-center gap-5">
+                <div class="w-12 h-12 bg-white rounded-2xl shadow-lg flex items-center justify-center text-primary">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </div>
+                <div class="text-left">
+                  <h4 class="text-xs font-black text-text-primary uppercase tracking-wider mb-0.5">Secure Preparation</h4>
+                  <p class="text-[10px] font-bold text-text-muted opacity-60">Your kitchen is maintaining top hygiene standards.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <button id="track-order-btn" class="bg-primary hover:bg-primary-dark text-white font-black py-4 rounded-2xl transition-all duration-300 shadow-xl shadow-primary/20 active:scale-95 text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 group">
+                Track Order
+                <svg class="group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+              <button id="home-btn" class="bg-background-card hover:bg-background border border-border/60 text-text-primary font-black py-4 rounded-2xl transition-all duration-300 active:scale-95 text-[10px] uppercase tracking-widest">
+                Go Shopping
+              </button>
+            </div>
           </div>
         </div>
       `,
-      showConfirmButton: true,
-      confirmButtonText: `
-        <div class="flex items-center gap-2">
-          <span class="text-[8px] uppercase tracking-[0.2em]">Track Order</span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </div>
-      `,
-      confirmButtonColor: '#B91C1C',
+      showConfirmButton: false,
       padding: '0',
-      width: '85%',
-      maxWidth: '300px',
+      width: '520px',
       customClass: {
-        popup: 'rounded-[2rem] border-none shadow-3xl overflow-hidden bg-background-card',
-        confirmButton: 'rounded-xl px-6 py-3 font-black shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all mb-6'
+        popup: 'rounded-[3.5rem] border-none shadow-[0_60px_120px_rgba(0,0,0,0.18)] overflow-hidden bg-background-card',
+      },
+      didOpen: () => {
+        document.getElementById('track-order-btn').addEventListener('click', () => {
+          Swal.close();
+          navigate('/my-orders');
+        });
+        document.getElementById('home-btn').addEventListener('click', () => {
+          Swal.close();
+          navigate('/');
+        });
       }
-    }).then(() => {
-      navigate('/my-orders');
     });
   };
 
@@ -310,60 +327,65 @@ const PaymentPage = () => {
           <div className="flex flex-col lg:flex-row gap-10 items-start">
 
             {/* Left Column: Delivery & Summary */}
-            <div className="flex-1 space-y-8 w-full">
+            <div className="flex-1 space-y-6 w-full">
               {/* Delivery Overview */}
-              <div className="bg-background-card rounded-[3rem] p-8 md:p-10 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.04)] relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-                
-                <div className="relative z-10 flex items-center gap-4 mb-10">
-                  <span className="w-6 h-1 bg-primary rounded-full"></span>
-                  <div className="space-y-1">
-                    <p className="text-[9px] font-black text-primary tracking-widest uppercase">Destination</p>
-                    <h2 className="text-xl md:text-2xl font-black text-text-primary tracking-tight">Delivery Summary</h2>
-                  </div>
+              <div className="bg-background-card rounded-[3rem] p-8 md:p-10 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.04)] relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-80 h-80 bg-primary/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 group-hover:bg-primary/10 transition-colors duration-1000"></div>
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2"></div>
+
+                <div className="relative z-10 flex items-center gap-4 mb-8">
+                  <div className="h-1 w-12 bg-primary rounded-full"></div>
+                  <p className="text-[11px] font-black text-primary tracking-[0.3em] uppercase opacity-90">delivery destination</p>
                 </div>
 
-                <div className="bg-background rounded-[2.5rem] p-6 md:p-8 border border-border/40 flex flex-col md:flex-row gap-8 items-start md:items-center">
-                  <div className="w-16 h-16 rounded-[1.5rem] bg-background-card shadow-sm border border-border/40 flex items-center justify-center text-primary flex-shrink-0">
-                    <MapPin size={28} strokeWidth={1.5} />
+                <div className="relative bg-background/50 backdrop-blur-xl rounded-[2.5rem] p-6 md:p-8 border border-white/10 shadow-xl flex flex-col md:flex-row gap-8 items-start md:items-center">
+                  <div className="w-16 h-16 rounded-3xl bg-primary shadow-[0_15px_35px_rgba(185,28,28,0.2)] flex items-center justify-center text-white flex-shrink-0 animate-bounce-slow">
+                    <MapPin size={32} strokeWidth={2} />
                   </div>
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-3">
-                      <span className="text-[10px] font-black text-primary bg-primary/5 px-2.5 py-1 rounded-md uppercase tracking-widest border border-primary/10">
-                        {deliveryAddress.type || 'Home'}
+
+                  <div className="flex-1 space-y-3">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="text-[10px] font-black text-white bg-primary px-4 py-1.5 rounded-full uppercase tracking-widest shadow-lg shadow-primary/20">
+                        {deliveryAddress.type || 'home'}
                       </span>
-                      <span className="text-xs font-bold text-text-primary">{deliveryAddress.mobile}</span>
+                      <div className="h-1.5 w-1.5 rounded-full bg-border/40"></div>
+                      <span className="text-sm font-black text-text-primary tracking-tight">{deliveryAddress.mobile}</span>
                     </div>
-                    <h4 className="text-lg font-black text-text-primary tracking-tight">
+
+                    <h4 className="text-2xl font-black text-text-primary tracking-tighter capitalize leading-none">
                       {deliveryAddress.recipientName && deliveryAddress.recipientName !== 'Myself' && deliveryAddress.recipientName !== 'Others'
                         ? deliveryAddress.recipientName
-                        : (user?.name || 'Customer')}
+                        : (user?.name || 'customer')}
                     </h4>
-                    <p className="text-[13px] text-text-muted font-bold opacity-60 leading-relaxed max-w-md">
+
+                    <p className="text-sm text-text-muted font-bold opacity-70 leading-relaxed max-w-lg">
                       {deliveryAddress.address}
                     </p>
+
                     {deliveryAddress.landmark && (
-                      <p className="text-[10px] font-black text-primary mt-2 italic flex items-center gap-1.5 uppercase tracking-widest">
-                        <Info size={12} /> Landmark: {deliveryAddress.landmark}
-                      </p>
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-background-muted/50 rounded-xl border border-border/40">
+                        <Info size={14} className="text-primary" />
+                        <span className="text-[10px] font-black text-text-primary uppercase tracking-wider opacity-80">landmark: {deliveryAddress.landmark}</span>
+                      </div>
                     )}
                   </div>
-                  
-                  <div className="w-full md:w-36 bg-background-card rounded-[2rem] border border-primary/10 shadow-sm p-6 flex flex-col items-center justify-center gap-2 group hover:border-primary/30 transition-all duration-500 flex-shrink-0">
-                    <Clock size={24} className="text-primary animate-pulse" />
-                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Est. Arrival</p>
-                    <h5 className="text-xl font-black text-primary tracking-tighter">45 mins</h5>
+
+                  <div className="w-full md:w-36 bg-background rounded-3xl border border-primary/20 shadow-lg p-5 flex flex-col items-center justify-center gap-2 group/arrival hover:border-primary transition-all duration-500 flex-shrink-0 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-primary/5 translate-y-full group-hover/arrival:translate-y-0 transition-transform duration-500"></div>
+                    <Clock size={24} className="text-primary relative z-10" />
+                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest relative z-10">arrival</p>
+                    <h5 className="text-xl font-black text-text-primary tracking-tighter relative z-10">45 mins</h5>
                   </div>
                 </div>
 
                 {additionalNote && (
-                  <div className="mt-8 p-6 bg-primary/5 rounded-[2rem] border border-dashed border-primary/20 flex items-start gap-4">
-                    <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center text-white shrink-0 mt-1">
-                      <Info size={16} />
+                  <div className="mt-8 p-6 bg-primary/5 rounded-[2.5rem] border-2 border-dashed border-primary/10 flex items-start gap-5 group/note">
+                    <div className="w-10 h-10 rounded-2xl bg-white shadow-md flex items-center justify-center text-primary shrink-0 transition-transform group-hover/note:rotate-12">
+                      <UtensilsCrossed size={18} />
                     </div>
                     <div>
-                      <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1 opacity-60">Chef's Note</p>
-                      <p className="text-sm font-bold text-text-primary italic leading-relaxed">"{additionalNote}"</p>
+                      <p className="text-[11px] font-black text-primary uppercase tracking-[0.2em] mb-1 opacity-70">special instructions</p>
+                      <p className="text-base font-bold text-text-primary italic leading-relaxed">"{additionalNote}"</p>
                     </div>
                   </div>
                 )}
@@ -371,34 +393,35 @@ const PaymentPage = () => {
 
               {/* Order Preview */}
               <div className="bg-background-card rounded-[3rem] p-8 md:p-10 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.04)]">
-                <div className="flex items-center gap-4 mb-10">
-                  <span className="w-6 h-1 bg-primary rounded-full"></span>
-                  <div className="space-y-1">
-                    <p className="text-[9px] font-black text-primary tracking-widest uppercase">Order Items</p>
-                    <h2 className="text-xl md:text-2xl font-black text-text-primary tracking-tight">Final Check</h2>
-                  </div>
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="h-1 w-12 bg-primary rounded-full"></div>
+                  <p className="text-[11px] font-black text-primary tracking-[0.3em] uppercase opacity-90">your selection</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {cartItems.map((item) => (
-                    <div key={item._id} className="flex items-center gap-5 p-4 rounded-[1.5rem] bg-background border border-border/40 group hover:bg-background-card hover:shadow-lg transition-all duration-500">
-                      <div className="w-16 h-16 rounded-xl bg-background-card p-1 shadow-sm border border-border/40 shrink-0 overflow-hidden">
+                    <div key={item._id} className="flex items-center gap-5 p-4 rounded-[2rem] bg-background border border-border/40 group hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all duration-500">
+                      <div className="w-16 h-16 rounded-2xl bg-white p-1 shadow-sm border border-border/40 shrink-0 overflow-hidden group-hover:rotate-3 transition-transform duration-500">
                         <img src={item.image || '/placeholder-food.jpg'} alt={item.name} className="w-full h-full object-contain" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h4 className="text-[13px] font-black text-text-primary tracking-tight group-hover:text-primary transition-colors duration-500 truncate">
+                        <h4 className="text-sm font-black text-text-primary tracking-tight group-hover:text-primary transition-colors duration-500 truncate capitalize">
                           {item.name}
                         </h4>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] font-black text-text-muted opacity-40 uppercase tracking-widest">Qty: {item.quantity}</span>
-                          {item.selectedSize && <span className="text-[9px] font-black text-primary bg-primary/5 px-1.5 py-0.5 rounded-md uppercase">{item.selectedSize}</span>}
+                          <span className="text-[10px] font-black text-text-muted uppercase tracking-wider opacity-60">qty: {item.quantity}</span>
+                          {item.selectedSize && (
+                            <span className="text-[9px] font-black text-primary bg-primary/5 px-2 py-0.5 rounded-lg uppercase border border-primary/10">
+                              {item.selectedSize}
+                            </span>
+                          )}
                         </div>
                       </div>
-                      <div className="text-sm font-black text-text-primary tracking-tighter pr-2">
+                      <div className="text-lg font-black text-text-primary tracking-tighter pr-2">
                         ₹{(() => {
                           const variants = item.variants || item.sizes || [];
                           const sizeData = variants.find(v => v.size === item.selectedSize);
-                          const price = sizeData ? sizeData.price : (item.offerPrice || 0);
+                          const price = sizeData ? sizeData.price : (item.offerPrice || item.price || 0);
                           return price * item.quantity;
                         })()}
                       </div>
@@ -409,98 +432,112 @@ const PaymentPage = () => {
             </div>
 
             {/* Right Column: Payment Method */}
-            <div className="w-full lg:w-[400px] sticky top-32">
-              <div className="bg-background-card rounded-[3.5rem] shadow-[0_50px_120px_rgba(0,0,0,0.06)] border border-border/40 overflow-hidden relative">
-                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary via-primary-light to-primary"></div>
-                
-                <div className="p-8 md:p-10">
-                  <h2 className="text-xl font-black text-text-primary tracking-tight mb-8 flex items-center gap-3">
-                    <CreditCard size={22} className="text-primary" />
-                    Payment Method
-                  </h2>
+            <div className="w-full lg:w-[420px] sticky top-32">
+              <div className="bg-background-card rounded-[3.5rem] shadow-[0_50px_100px_rgba(0,0,0,0.06)] border border-border/40 overflow-hidden relative group">
+                <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-r from-primary via-primary-light to-primary"></div>
 
-                  <div className="space-y-4 mb-10">
+                <div className="p-6 md:p-8 relative z-10">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-black text-text-primary tracking-tighter uppercase flex items-center gap-3">
+                      <div className="p-2 bg-primary/10 text-primary rounded-xl">
+                        <CreditCard size={20} strokeWidth={2.5} />
+                      </div>
+                      Payment
+                    </h2>
+                    <div className="flex items-center gap-2 px-2.5 py-0.5 bg-green-500/10 rounded-full border border-green-500/20">
+                      <ShieldCheck size={10} className="text-green-500" />
+                      <span className="text-[7px] font-black text-green-600 uppercase tracking-widest">secured</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 mb-6">
                     {/* Online Payment Option */}
                     <div
-                      onClick={() => setPaymentMethod('online')}
-                      className={`cursor-pointer group p-5 rounded-[2rem] border-2 transition-all duration-500 flex items-center justify-between ${paymentMethod === 'online' ? 'border-primary bg-primary/5 shadow-xl shadow-primary/5' : 'border-border/40 bg-background hover:border-primary/20 hover:bg-background-card'}`}
+                      onClick={() => setPaymentMethod('card')}
+                      className={`cursor-pointer group/pay p-4 rounded-[1.5rem] border-2 transition-all duration-500 flex items-center justify-between ${paymentMethod === 'card' ? 'border-primary bg-primary/[0.03] shadow-lg shadow-primary/5 -translate-y-0.5' : 'border-border/20 bg-background hover:border-primary/30 hover:bg-background-card hover:-translate-y-0.5'}`}
                     >
-                      <div className="flex items-center gap-5">
-                        <div className={`w-14 h-14 rounded-[1.25rem] flex items-center justify-center transition-all duration-500 ${paymentMethod === 'online' ? 'bg-primary text-white shadow-lg' : 'bg-background-card text-text-muted/40 group-hover:bg-primary/10 group-hover:text-primary'}`}>
-                          <CreditCard size={26} strokeWidth={1.5} />
+                      <div className="flex items-center gap-4">
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-500 ${paymentMethod === 'card' ? 'bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white shadow-lg shadow-indigo-500/20 scale-105' : 'bg-background-card text-text-muted/40 group-hover/pay:text-indigo-500'}`}>
+                          <CreditCard size={20} strokeWidth={2.5} />
                         </div>
                         <div>
-                          <h4 className="text-base font-black text-text-primary tracking-tight">Online</h4>
-                          <p className="text-[10px] font-bold text-text-muted tracking-widest uppercase opacity-60">UPI, Card, Net</p>
+                          <h4 className="text-sm font-black text-text-primary tracking-tight">Card / UPI</h4>
+                          <p className="text-[9px] font-bold text-text-muted tracking-widest uppercase opacity-50">secure checkout</p>
                         </div>
                       </div>
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${paymentMethod === 'online' ? 'border-primary' : 'border-border/40'}`}>
-                        <div className={`w-3 h-3 rounded-full bg-primary transition-transform duration-500 ${paymentMethod === 'online' ? 'scale-100' : 'scale-0'}`}></div>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${paymentMethod === 'card' ? 'border-primary bg-primary/10' : 'border-border/40 group-hover/pay:border-primary/40'}`}>
+                        <div className={`w-2 h-2 rounded-full bg-primary transition-all duration-500 ${paymentMethod === 'card' ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}></div>
                       </div>
                     </div>
 
                     {/* Wallet Option */}
                     <div
                       onClick={() => walletBalance >= total ? setPaymentMethod('wallet') : null}
-                      className={`cursor-pointer group p-5 rounded-[2rem] border-2 transition-all duration-500 flex items-center justify-between ${paymentMethod === 'wallet' ? 'border-primary bg-primary/5 shadow-xl shadow-primary/5' : walletBalance < total ? 'opacity-40 cursor-not-allowed border-border/40 bg-background' : 'border-border/40 bg-background hover:border-primary/20 hover:bg-background-card'}`}
+                      className={`cursor-pointer group/pay p-4 rounded-[1.5rem] border-2 transition-all duration-500 flex items-center justify-between ${paymentMethod === 'wallet' ? 'border-primary bg-primary/[0.03] shadow-lg shadow-primary/5 -translate-y-0.5' : walletBalance < total ? 'opacity-40 cursor-not-allowed border-border/40 bg-background grayscale' : 'border-border/20 bg-background hover:border-primary/30 hover:bg-background-card hover:-translate-y-0.5'}`}
                     >
-                      <div className="flex items-center gap-5">
-                        <div className={`w-14 h-14 rounded-[1.25rem] flex items-center justify-center transition-all duration-500 ${paymentMethod === 'wallet' ? 'bg-primary text-white shadow-lg' : 'bg-background-card text-text-muted/40 group-hover:bg-primary/10 group-hover:text-primary'}`}>
-                          <Wallet size={26} strokeWidth={1.5} />
+                      <div className="flex items-center gap-4">
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-500 ${paymentMethod === 'wallet' ? 'bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-500 text-white shadow-lg shadow-emerald-500/20 scale-105' : 'bg-background-card text-text-muted/40 group-hover/pay:text-emerald-500'}`}>
+                          <Wallet size={20} strokeWidth={2.5} />
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <h4 className="text-base font-black text-text-primary tracking-tight">Wallet</h4>
-                            <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md border ${walletBalance >= total ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}`}>
+                            <h4 className="text-sm font-black text-text-primary tracking-tight">Wallet</h4>
+                            <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-lg border shadow-sm ${walletBalance >= total ? 'bg-emerald-500 text-white border-emerald-500/20' : 'bg-red-500 text-white border-red-500/20'}`}>
                               ₹{walletBalance}
                             </span>
                           </div>
-                          <p className="text-[10px] font-bold text-text-muted tracking-widest uppercase opacity-60">Guesto Balance</p>
+                          <p className="text-[9px] font-bold text-text-muted tracking-widest uppercase opacity-50">guesto credit</p>
                         </div>
                       </div>
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${paymentMethod === 'wallet' ? 'border-primary' : 'border-border/40'}`}>
-                        <div className={`w-3 h-3 rounded-full bg-primary transition-transform duration-500 ${paymentMethod === 'wallet' ? 'scale-100' : 'scale-0'}`}></div>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${paymentMethod === 'wallet' ? 'border-primary bg-primary/10' : 'border-border/40 group-hover/pay:border-primary/40'}`}>
+                        <div className={`w-2 h-2 rounded-full bg-primary transition-all duration-500 ${paymentMethod === 'wallet' ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}></div>
                       </div>
                     </div>
 
                     {/* COD Option */}
                     <div
                       onClick={() => setPaymentMethod('cod')}
-                      className={`cursor-pointer group p-5 rounded-[2rem] border-2 transition-all duration-500 flex items-center justify-between ${paymentMethod === 'cod' ? 'border-primary bg-primary/5 shadow-xl shadow-primary/5' : 'border-border/40 bg-background hover:border-primary/20 hover:bg-background-card'}`}
+                      className={`cursor-pointer group/pay p-4 rounded-[1.5rem] border-2 transition-all duration-500 flex items-center justify-between ${paymentMethod === 'cod' ? 'border-primary bg-primary/[0.03] shadow-lg shadow-primary/5 -translate-y-0.5' : 'border-border/20 bg-background hover:border-primary/30 hover:bg-background-card hover:-translate-y-0.5'}`}
                     >
-                      <div className="flex items-center gap-5">
-                        <div className={`w-14 h-14 rounded-[1.25rem] flex items-center justify-center transition-all duration-500 ${paymentMethod === 'cod' ? 'bg-primary text-white shadow-lg' : 'bg-background-card text-text-muted/40 group-hover:bg-primary/10 group-hover:text-primary'}`}>
-                          <Banknote size={26} strokeWidth={1.5} />
+                      <div className="flex items-center gap-4">
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-500 ${paymentMethod === 'cod' ? 'bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 text-white shadow-lg shadow-amber-500/20 scale-105' : 'bg-background-card text-text-muted/40 group-hover/pay:text-amber-500'}`}>
+                          <Banknote size={20} strokeWidth={2.5} />
                         </div>
                         <div>
-                          <h4 className="text-base font-black text-text-primary tracking-tight">Cash</h4>
-                          <p className="text-[10px] font-bold text-text-muted tracking-widest uppercase opacity-60">Pay on delivery</p>
+                          <h4 className="text-sm font-black text-text-primary tracking-tight">Cash</h4>
+                          <p className="text-[9px] font-bold text-text-muted tracking-widest uppercase opacity-50">pay on delivery</p>
                         </div>
                       </div>
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${paymentMethod === 'cod' ? 'border-primary' : 'border-border/40'}`}>
-                        <div className={`w-3 h-3 rounded-full bg-primary transition-transform duration-500 ${paymentMethod === 'cod' ? 'scale-100' : 'scale-0'}`}></div>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${paymentMethod === 'cod' ? 'border-primary bg-primary/10' : 'border-border/40 group-hover/pay:border-primary/40'}`}>
+                        <div className={`w-2 h-2 rounded-full bg-primary transition-all duration-500 ${paymentMethod === 'cod' ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}></div>
                       </div>
                     </div>
                   </div>
 
                   {/* Summary Breakdown */}
-                  <div className="bg-background rounded-[2rem] p-6 mb-8 space-y-3 relative border border-border/40 shadow-inner">
-                    <div className="flex justify-between text-sm font-bold text-text-muted">
-                      <span>Order Total</span>
+                  <div className="bg-background rounded-[2rem] p-6 mb-8 space-y-3 relative border border-border/40 shadow-inner overflow-hidden group/summary">
+                    <div className="absolute inset-0 bg-primary/5 -translate-x-full group-hover/summary:translate-x-0 transition-transform duration-700"></div>
+                    <div className="relative z-10 flex justify-between text-[10px] font-black text-text-muted uppercase tracking-widest">
+                      <span>Subtotal</span>
                       <span className="text-text-primary">₹{subtotal}</span>
                     </div>
-                    <div className="flex justify-between text-sm font-bold text-text-muted">
-                      <span>Delivery Fee</span>
+                    <div className="relative z-10 flex justify-between text-[10px] font-black text-text-muted uppercase tracking-widest">
+                      <span>Delivery</span>
                       <span className="text-text-primary">₹{deliveryFee}</span>
                     </div>
-                    <div className="flex justify-between text-sm font-bold text-text-muted">
-                      <span>Platform Fee</span>
+                    <div className="relative z-10 flex justify-between text-[10px] font-black text-text-muted uppercase tracking-widest">
+                      <span>Platform</span>
                       <span className="text-text-primary">₹{platformFee}</span>
                     </div>
-                    <div className="h-px bg-border/20 my-2"></div>
-                    <div className="flex justify-between items-center pt-2">
-                      <span className="text-base font-black text-text-primary tracking-widest uppercase">To Pay</span>
-                      <span className="text-3xl font-black text-primary tracking-tighter">₹{total}</span>
+                    <div className="relative z-10 h-px bg-gradient-to-r from-transparent via-border to-transparent my-3"></div>
+                    <div className="relative z-10 flex justify-between items-end pt-1">
+                      <div className="flex flex-col">
+                        <span className="text-[9px] font-black text-primary uppercase tracking-[0.2em] mb-1">grand total</span>
+                        <span className="text-3xl font-black text-text-primary tracking-tighter">₹{total}</span>
+                      </div>
+                      <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary animate-pulse">
+                        <ShieldCheck size={20} />
+                      </div>
                     </div>
                   </div>
 
@@ -508,16 +545,16 @@ const PaymentPage = () => {
                   <button
                     onClick={handlePlaceOrder}
                     disabled={loading}
-                    className="w-full bg-primary hover:bg-primary-dark text-white font-black py-5 rounded-2xl transition-all duration-500 shadow-xl shadow-primary/20 active:scale-95 flex items-center justify-center gap-4 group disabled:opacity-50"
+                    className="w-full bg-primary hover:bg-primary-dark text-white font-black py-5 rounded-[1.75rem] transition-all duration-700 shadow-[0_15px_40px_rgba(185,28,28,0.2)] active:scale-95 flex items-center justify-center gap-4 group/btn disabled:opacity-50 relative overflow-hidden"
                   >
-                    <span className="text-xs uppercase tracking-widest">{loading ? 'Processing...' : 'Place Your Order'}</span>
-                    {!loading && <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform duration-500" />}
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000"></div>
+                    <span className="text-[10px] uppercase tracking-[0.3em] relative z-10">{loading ? 'Processing...' : 'Place Your Order'}</span>
+                    {!loading && <ChevronRight size={18} strokeWidth={3} className="group-hover/btn:translate-x-2 transition-transform duration-500 relative z-10" />}
                   </button>
-                  
-                  <div className="flex items-center gap-2 justify-center mt-6 opacity-30">
-                    <ShieldCheck size={14} className="text-green-500" />
-                    <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">End-to-End Secure Payment</span>
-                  </div>
+
+                  <p className="text-center mt-6 text-[8px] font-black uppercase tracking-[0.3em] text-text-muted opacity-30">
+                    secure encrypted transaction
+                  </p>
                 </div>
               </div>
             </div>

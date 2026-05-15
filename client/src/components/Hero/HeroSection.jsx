@@ -30,7 +30,7 @@ const HeroSection = React.memo(({ searchQuery, setSearchQuery, heroImages, trend
   }, [heroImages.length]);
 
   return (
-    <div className="relative pt-10 sm:pt-12 md:pt-14 lg:pt-16 pb-12 sm:pb-16 md:pb-20 lg:pb-24 overflow-hidden">
+    <div className="relative pt-10 sm:pt-12 md:pt-14 lg:pt-16 pb-16 sm:pb-20 md:pb-24 lg:pb-12 overflow-hidden">
       {/* Decorative Background Elements */}
       <div className="absolute top-0 right-0 w-[400px] sm:w-[600px] md:w-[800px] h-[400px] sm:h-[600px] md:h-[800px] bg-white/10 rounded-full -translate-y-1/2 translate-x-1/4 blur-[60px] sm:blur-[70px] md:blur-[80px] pointer-events-none"></div>
       <div className="absolute bottom-0 left-0 w-[300px] sm:w-[400px] md:w-[500px] h-[300px] sm:h-[400px] md:h-[500px] bg-black/10 rounded-full translate-y-1/2 -translate-x-1/4 blur-[40px] sm:blur-[50px] md:blur-[60px] pointer-events-none"></div>

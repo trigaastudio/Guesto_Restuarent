@@ -70,10 +70,10 @@ const SettingsSection = () => {
 
   const getLoggedInUser = () => {
     const adminUser = JSON.parse(localStorage.getItem('admin_user'));
-    
+
     // For Admin Dashboard, always use the dedicated admin_user key
     if (adminUser) return { ...adminUser, isSuperAdmin: adminUser.role === 'admin' };
-    
+
     return null;
   };
 
@@ -171,8 +171,8 @@ const SettingsSection = () => {
 
     setIsRequestingOTP(true);
     try {
-      const logoUrl = isDarkMode ? 
-        (settings?.branding?.logoGold ? (settings.branding.logoGold.startsWith('http') ? settings.branding.logoGold : `${window.location.origin}${settings.branding.logoGold}`) : `${window.location.origin}/logo-golden.png`) : 
+      const logoUrl = isDarkMode ?
+        (settings?.branding?.logoGold ? (settings.branding.logoGold.startsWith('http') ? settings.branding.logoGold : `${window.location.origin}${settings.branding.logoGold}`) : `${window.location.origin}/logo-golden.png`) :
         (settings?.branding?.logoDark ? (settings.branding.logoDark.startsWith('http') ? settings.branding.logoDark : `${window.location.origin}${settings.branding.logoDark}`) : `${window.location.origin}/logo-dark.png`);
 
       const response = await api.post('/api/staff/request-credential-change', {
@@ -261,8 +261,8 @@ const SettingsSection = () => {
             key={tab.id}
             onClick={() => setActiveSubTab(tab.id)}
             className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === tab.id
-                ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                : 'text-text-secondary hover:bg-background-muted hover:text-text-primary'
+              ? 'bg-primary text-white shadow-lg shadow-primary/20'
+              : 'text-text-secondary hover:bg-background-muted hover:text-text-primary'
               }`}
           >
             <tab.icon size={14} />
@@ -1123,7 +1123,7 @@ const SettingsSection = () => {
                     </div>
                   ) : (
                     <div className="bg-background-card/80 backdrop-blur-xl p-10 rounded-[3rem] border border-border-light space-y-8 animate-in zoom-in-95 duration-300 text-center relative shadow-2xl">
-                       <button 
+                      <button
                         onClick={() => setOtpStep(false)}
                         className="absolute top-6 left-6 p-2 hover:bg-primary/10 rounded-xl text-primary transition-all flex items-center space-x-2 text-[10px] font-black uppercase tracking-widest"
                       >
@@ -1131,51 +1131,51 @@ const SettingsSection = () => {
                         <span>Back</span>
                       </button>
 
-                       <div className="space-y-6">
-                          <div className="flex flex-col items-center">
-                             <img 
-                               src={isDarkMode ? (settings?.branding?.logoGold || "/logo-golden.png") : (settings?.branding?.logoDark || "/logo-dark.png")} 
-                               alt="GuestO Logo" 
-                               className="h-12 w-auto mb-6 opacity-90" 
-                             />
-                             <div className="w-16 h-16 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mb-4">
-                               <Shield size={32} />
-                             </div>
-                          </div>
-                          <div>
-                            <h4 className="text-xl font-black text-text-primary uppercase tracking-tight">Security Verification</h4>
-                            <p className="text-[11px] text-text-muted font-bold uppercase tracking-widest leading-relaxed mt-2 px-6">
-                              Please enter the 6-digit code sent to <span className="text-primary">{loggedInUser.email}</span>
-                            </p>
-                          </div>
-                       </div>
-
-                       <div className="flex justify-center">
-                          <input
-                            type="text"
-                            maxLength="6"
-                            autoComplete="one-time-code"
-                            value={securityData.otp}
-                            onChange={(e) => setSecurityData({ ...securityData, otp: e.target.value })}
-                            className="w-full max-w-[220px] text-center text-4xl font-black tracking-[0.4em] bg-background-muted/30 py-5 rounded-3xl border-2 border-primary/20 focus:border-primary focus:bg-white focus:text-primary outline-none transition-all shadow-xl text-primary"
-                            placeholder="000000"
-                            autoFocus
+                      <div className="space-y-6">
+                        <div className="flex flex-col items-center">
+                          <img
+                            src={isDarkMode ? (settings?.branding?.logoGold || "/logo-golden.png") : (settings?.branding?.logoDark || "/logo-dark.png")}
+                            alt="GuestO Logo"
+                            className="h-12 w-auto mb-6 opacity-90"
                           />
-                       </div>
-
-                       <div className="pt-4">
-                          <button
-                            onClick={handleVerifyAndUpdate}
-                            disabled={isVerifying}
-                            className="w-full bg-primary text-white py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-primary-light transition-all flex items-center justify-center space-x-3 shadow-lg shadow-primary/20"
-                          >
-                            {isVerifying ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
-                            <span>Verify & Complete</span>
-                          </button>
-                          <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.15em] mt-6 opacity-60">
-                             Didn't receive the code? <button className="text-primary hover:underline">Resend OTP</button>
+                          <div className="w-16 h-16 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mb-4">
+                            <Shield size={32} />
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="text-xl font-black text-text-primary uppercase tracking-tight">Security Verification</h4>
+                          <p className="text-[11px] text-text-muted font-bold uppercase tracking-widest leading-relaxed mt-2 px-6">
+                            Please enter the 6-digit code sent to <span className="text-primary">{loggedInUser.email}</span>
                           </p>
-                       </div>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-center">
+                        <input
+                          type="text"
+                          maxLength="6"
+                          autoComplete="one-time-code"
+                          value={securityData.otp}
+                          onChange={(e) => setSecurityData({ ...securityData, otp: e.target.value })}
+                          className="w-full max-w-[220px] text-center text-4xl font-black tracking-[0.4em] bg-background-muted/30 py-5 rounded-3xl border-2 border-primary/20 focus:border-primary focus:bg-white focus:text-primary outline-none transition-all shadow-xl text-primary"
+                          placeholder="000000"
+                          autoFocus
+                        />
+                      </div>
+
+                      <div className="pt-4">
+                        <button
+                          onClick={handleVerifyAndUpdate}
+                          disabled={isVerifying}
+                          className="w-full bg-primary text-white py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-primary-light transition-all flex items-center justify-center space-x-3 shadow-lg shadow-primary/20"
+                        >
+                          {isVerifying ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
+                          <span>Verify & Complete</span>
+                        </button>
+                        <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.15em] mt-6 opacity-60">
+                          Didn't receive the code? <button className="text-primary hover:underline">Resend OTP</button>
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>

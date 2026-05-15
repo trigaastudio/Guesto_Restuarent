@@ -9,7 +9,9 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
     address: '',
     landmark: '',
     location: '',
-    type: 'home'
+    type: 'home',
+    city: '',
+    zipCode: ''
   });
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [errors, setErrors] = useState({});
@@ -25,7 +27,9 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
         address: '',
         landmark: '',
         location: '',
-        type: 'home'
+        type: 'home',
+        city: '',
+        zipCode: ''
       });
       setRecipientType('myself');
       setErrors({});
@@ -40,6 +44,8 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
         landmark: editData.landmark || '',
         location: editData.location || '',
         type: editData.type || 'home',
+        city: editData.city || '',
+        zipCode: editData.zipCode || '',
         _id: editData._id
       });
       setRecipientType(editData.name === user?.name ? 'myself' : 'others');
@@ -214,26 +220,45 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
             />
           </div>
 
-          {/* Landmark */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">
-              Landmark {recipientType === 'others' ? '(Required)' : '(Optional)'}
-            </label>
-            <input
-              type="text"
-              value={formData.landmark}
-              onChange={(e) => {
-                setFormData({ ...formData, landmark: e.target.value });
-                if (errors.landmark) setErrors(prev => ({ ...prev, landmark: null }));
-              }}
-              className={`w-full px-5 py-3.5 bg-background-muted border ${errors.landmark ? 'border-primary' : 'border-border/40'} rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary`}
-              placeholder="E.g. Near City Hospital, Beside Park"
-            />
-          </div>
-
-          {/* Location - Only for Myself */}
-          {recipientType === 'myself' && (
             <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">Landmark {recipientType === 'others' ? '(Required)' : '(Optional)'}</label>
+              <input
+                type="text"
+                value={formData.landmark}
+                onChange={(e) => {
+                  setFormData({ ...formData, landmark: e.target.value });
+                  if (errors.landmark) setErrors(prev => ({ ...prev, landmark: null }));
+                }}
+                className={`w-full px-5 py-3.5 bg-background-muted border ${errors.landmark ? 'border-primary' : 'border-border/40'} rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary`}
+                placeholder="E.g. Near City Hospital, Beside Park"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">City</label>
+                <input
+                  type="text"
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  className="w-full px-5 py-3.5 bg-background-muted border border-border/40 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary"
+                  placeholder="Enter city"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">ZIP Code</label>
+                <input
+                  type="text"
+                  value={formData.zipCode}
+                  onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
+                  className="w-full px-5 py-3.5 bg-background-muted border border-border/40 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary"
+                  placeholder="Enter zip code"
+                />
+              </div>
+            </div>
+
+          {/* Location Section */}
+          <div className="space-y-1.5">
             <div className="flex justify-between items-center ml-1">
               <label className="text-[10px] font-black text-text-muted uppercase tracking-widest">Precise Location (GPS)</label>
               <button
@@ -301,7 +326,6 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
               </button>
             )}
           </div>
-          )}
 
           {/* Address Type */}
           <div className="space-y-3">

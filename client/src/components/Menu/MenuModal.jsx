@@ -32,18 +32,18 @@ const MenuModal = ({ isOpen, onClose, menu, onAction }) => {
 
   const variants = menu.variants || menu.sizes || [];
   const selectedVariant = variants.find(v => v.size === selectedSize);
-  const currentPrice = selectedVariant ? selectedVariant.price : menu.offerPrice;
+  const currentPrice = menu.isCombo ? menu.price : (selectedVariant ? selectedVariant.price : (menu.offerPrice || 0));
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose}></div>
       <div className="bg-background-card w-full max-w-[400px] rounded-[2rem] shadow-2xl relative z-10 overflow-hidden animate-in fade-in zoom-in duration-300 border border-border/10">
         {/* Modal Header/Image */}
-        <div className="relative h-60 md:h-72 bg-background-muted/50 flex items-center justify-center p-4">
+        <div className="relative h-48 md:h-52 bg-background-muted/50 flex items-center justify-center p-3">
           <img
             src={menu.image || '/placeholder-food.jpg'}
             alt={menu.name}
-            className="w-full h-full object-contain drop-shadow-2xl animate-float"
+            className="w-full h-full object-contain drop-shadow-2xl"
           />
           <button
             onClick={onClose}
@@ -53,7 +53,7 @@ const MenuModal = ({ isOpen, onClose, menu, onAction }) => {
           </button>
         </div>
 
-        <div className="p-5 md:p-6 space-y-4">
+        <div className="p-4 md:p-5 space-y-3 max-h-[60vh] overflow-y-auto no-scrollbar">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${menu.foodType === 'veg' ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></span>
@@ -65,7 +65,48 @@ const MenuModal = ({ isOpen, onClose, menu, onAction }) => {
             </p>
           </div>
 
-          {variants.length > 0 && (
+          {/* Combo Items List */}
+          {menu.isCombo && menu.comboItems?.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-3 bg-primary rounded-full"></div>
+                <h4 className="text-[9px] font-black tracking-wider text-text-primary uppercase">Items in this combo</h4>
+              </div>
+              <div className="space-y-2">
+                {menu.comboItems.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between bg-background-muted/40 p-2.5 rounded-xl border border-border/5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary/40"></div>
+                      <span className="text-[11px] font-bold text-text-primary">{item.menuItem?.name || 'Item'}</span>
+                    </div>
+                    <span className="text-[10px] font-black text-text-muted opacity-50">₹{item.price}</span>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Savings Message */}
+              {(() => {
+                const originalTotal = menu.comboItems.reduce((sum, item) => sum + (item.price || 0), 0);
+                const savings = originalTotal - (menu.price || 0);
+                if (savings > 0) {
+                  return (
+                    <div className="flex flex-col items-center justify-center gap-1 bg-primary/5 py-3 rounded-[1.2rem] border border-primary/10 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-text-muted line-through opacity-50">₹{originalTotal.toFixed(0)}</span>
+                        <span className="text-[10px] font-black text-primary lowercase tracking-wider">bundle offer!</span>
+                      </div>
+                      <span className="text-[11px] font-black text-primary lowercase">
+                        ✨ you save ₹{savings.toFixed(0)} with this combo ✨
+                      </span>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+          )}
+
+          {variants.length > 0 && !menu.isCombo && (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <div className="w-1 h-3 bg-primary rounded-full"></div>
@@ -76,14 +117,19 @@ const MenuModal = ({ isOpen, onClose, menu, onAction }) => {
                   <button
                     key={v.size}
                     onClick={() => setSelectedSize(v.size)}
-                    className={`relative p-2.5 rounded-xl flex flex-col items-start transition-all duration-300 border-2 overflow-hidden group ${selectedSize === v.size ? 'bg-background border-primary shadow-xl' : 'bg-background-muted border-transparent hover:bg-background hover:border-border/60'}`}
+                    className={`relative p-2 rounded-xl flex flex-col items-start transition-all duration-300 border-2 overflow-hidden group ${selectedSize === v.size ? 'bg-background border-primary shadow-lg' : 'bg-background-muted border-transparent hover:bg-background hover:border-border/60'}`}
                   >
                     {selectedSize === v.size && (
                       <div className="absolute top-0 right-0 p-1.5 bg-primary text-white rounded-bl-xl">
                         <Check size={8} strokeWidth={4} />
                       </div>
                     )}
-                    <span className={`text-[9px] font-black tracking-wider mb-0.5 ${selectedSize === v.size ? 'text-primary' : 'text-text-muted opacity-40'}`}>{v.size}</span>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className={`text-[9px] font-black tracking-wider ${selectedSize === v.size ? 'text-primary' : 'text-text-muted opacity-40'}`}>{v.size}</span>
+                      {v.isBOGO && (
+                        <span className="px-1 py-0.5 bg-emerald-500 text-white text-[6px] font-black rounded uppercase animate-pulse">BOGO</span>
+                      )}
+                    </div>
                     <span className="text-base font-black text-text-primary tracking-tighter">₹{v.price}</span>
                   </button>
                 ))}
@@ -91,18 +137,51 @@ const MenuModal = ({ isOpen, onClose, menu, onAction }) => {
             </div>
           )}
 
-          <div className="pt-4 flex items-center justify-between border-t border-border/10">
-            <div className="flex flex-col">
-              <span className="text-[8px] font-black tracking-widest text-text-muted opacity-40 mb-1 uppercase">To pay</span>
-              <span className="text-2xl font-black text-text-primary tracking-tighter leading-none">₹{currentPrice}</span>
+          {selectedVariant?.isBOGO && selectedVariant?.bogoItem && (
+            <div className="bg-status-on/5 border border-status-on/10 rounded-2xl p-4 animate-in slide-in-from-top-2 duration-300">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-black text-status-available uppercase tracking-wider">buy 1 get 1 free!</span>
+                <div className="px-2 py-0.5 bg-status-available text-white text-[8px] font-black rounded-full uppercase">active</div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-white shadow-sm border border-border/5 flex items-center justify-center overflow-hidden">
+                  <img 
+                    src={selectedVariant.bogoItem.image || '/placeholder-food.jpg'} 
+                    alt={selectedVariant.bogoItem.name} 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-[11px] font-black text-text-primary leading-tight lowercase">
+                    free {selectedVariant.bogoItem.name} {selectedVariant.bogoVariant && `- ${selectedVariant.bogoVariant.toLowerCase()}`}
+                  </h4>
+                  <p className="text-[9px] font-bold text-text-muted opacity-60 lowercase">
+                    added automatically to your order
+                  </p>
+                </div>
+              </div>
             </div>
-            <button
-              onClick={() => { onAction(menu, 1, selectedSize); onClose(); }}
-              className="bg-primary-light hover:bg-primary-light/90 text-white px-4 py-2 rounded-xl font-black text-[9px] tracking-wider transition-all shadow-xl shadow-primary-light/20 active:scale-95 flex items-center gap-2 uppercase"
-            >
-              Add to cart <Plus size={14} strokeWidth={3} />
-            </button>
+          )}
+
+        </div>
+
+        <div className="p-4 md:p-5 pt-0 flex items-center justify-between border-t border-border/10 bg-background-card/50 backdrop-blur-sm relative z-20">
+          <div className="flex flex-col">
+            <span className="text-[8px] font-black tracking-widest text-text-muted opacity-40 mb-1 uppercase">To pay</span>
+            <span className="text-2xl font-black text-text-primary tracking-tighter leading-none">₹{currentPrice}</span>
           </div>
+          <button
+            onClick={() => { if (menu.totalStock > 0) { onAction(menu, 1, selectedSize); onClose(); } }}
+            disabled={menu.totalStock <= 0}
+            className={`${
+              menu.totalStock <= 0 
+              ? 'bg-background-muted text-text-muted cursor-not-allowed grayscale' 
+              : 'bg-primary-light hover:bg-primary-light/90 text-white shadow-primary-light/20'
+            } px-6 py-2.5 rounded-xl font-black text-[9px] tracking-wider transition-all shadow-xl active:scale-95 flex items-center gap-2 uppercase`}
+          >
+            {menu.totalStock <= 0 ? 'Out of Stock' : 'Add to cart'}
+            {menu.totalStock > 0 && <Plus size={14} strokeWidth={3} />}
+          </button>
         </div>
       </div>
     </div>

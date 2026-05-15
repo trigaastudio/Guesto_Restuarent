@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = 'http://localhost:5000';
+const BASE_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
 
 
 
@@ -35,7 +35,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       const path = window.location.pathname;
-      const isLoginRequest = error.config.url.includes('/api/auth/login');
+      const isLoginRequest = error.config?.url?.includes('/api/auth/login');
       
       // Don't redirect if we're already on a login page or it's a login attempt
       if (isLoginRequest || path === '/login' || path === '/admin/login' || path === '/staff/login') {

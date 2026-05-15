@@ -14,7 +14,7 @@ const UserManagement = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const itemsPerPage = 10;
 
   const [currentUser, setCurrentUser] = useState({
     name: '',
@@ -31,6 +31,13 @@ const UserManagement = () => {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  useEffect(() => {
+    const scrollContainer = document.querySelector('main .overflow-y-auto');
+    if (scrollContainer) {
+      scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [currentPage]);
 
   const fetchUsers = async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -134,12 +141,12 @@ const UserManagement = () => {
   };
 
   const filteredUsers = userList.filter(u => {
-    const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (u.phone && u.phone.includes(searchTerm));
-    const matchesStatus = statusFilter === 'all' || 
-                         (statusFilter === 'active' && u.isActive) || 
-                         (statusFilter === 'blocked' && !u.isActive);
+    const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (u.phone && u.phone.includes(searchTerm));
+    const matchesStatus = statusFilter === 'all' ||
+      (statusFilter === 'active' && u.isActive) ||
+      (statusFilter === 'blocked' && !u.isActive);
     return matchesSearch && matchesStatus;
   }).sort((a, b) => {
     if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -230,7 +237,7 @@ const UserManagement = () => {
                 <th className="px-3 py-4">Phone</th>
                 <th className="px-3 py-4 text-center">Status</th>
                 <th className="px-3 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('createdAt')}>
-                   <div className="flex items-center space-x-1 justify-center">
+                  <div className="flex items-center space-x-1 justify-center">
                     <span>Joined</span>
                     <ArrowUpDown size={12} className={sortConfig.key === 'createdAt' ? 'text-primary' : 'text-text-muted'} />
                   </div>
@@ -274,9 +281,8 @@ const UserManagement = () => {
                       </div>
                     </td>
                     <td className="px-3 py-4 text-center">
-                      <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
-                        user.isActive ? 'bg-status-on/10 text-status-available border-status-on/20' : 'bg-status-off/10 text-status-unavailable border-status-off/20'
-                      }`}>
+                      <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${user.isActive ? 'bg-status-on/10 text-status-available border-status-on/20' : 'bg-status-off/10 text-status-unavailable border-status-off/20'
+                        }`}>
                         {user.isActive ? 'Active' : 'Blocked'}
                       </span>
                     </td>
@@ -285,8 +291,8 @@ const UserManagement = () => {
                     </td>
                     <td className="px-3 py-4 text-center">
                       <div className="flex items-center justify-center space-x-1">
-                        <button 
-                          onClick={() => handleToggleStatus(user._id)} 
+                        <button
+                          onClick={() => handleToggleStatus(user._id)}
                           className={`p-2 rounded-lg transition-all ${user.isActive ? 'hover:bg-status-off/10 text-text-secondary hover:text-status-unavailable' : 'hover:bg-status-on/10 text-text-secondary hover:text-status-available'}`}
                           title={user.isActive ? "Block User" : "Unblock User"}
                         >
@@ -324,7 +330,7 @@ const UserManagement = () => {
                 <XCircle size={24} />
               </button>
             </div>
-            
+
             <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto no-scrollbar">
               <div className="space-y-1.5">
                 <label className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Full Name</label>
@@ -333,7 +339,7 @@ const UserManagement = () => {
                   <input
                     type="text"
                     value={currentUser.name}
-                    onChange={(e) => setCurrentUser({...currentUser, name: e.target.value})}
+                    onChange={(e) => setCurrentUser({ ...currentUser, name: e.target.value })}
                     className="w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold"
                     placeholder="Enter full name"
                   />
@@ -348,7 +354,7 @@ const UserManagement = () => {
                     <input
                       type="email"
                       value={currentUser.email}
-                      onChange={(e) => setCurrentUser({...currentUser, email: e.target.value})}
+                      onChange={(e) => setCurrentUser({ ...currentUser, email: e.target.value })}
                       className="w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold"
                       placeholder="email@example.com"
                     />
@@ -361,7 +367,7 @@ const UserManagement = () => {
                     <input
                       type="text"
                       value={currentUser.phone}
-                      onChange={(e) => setCurrentUser({...currentUser, phone: e.target.value})}
+                      onChange={(e) => setCurrentUser({ ...currentUser, phone: e.target.value })}
                       className="w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold"
                       placeholder="10-digit number"
                     />
@@ -374,7 +380,7 @@ const UserManagement = () => {
                 <input
                   type="password"
                   value={currentUser.password}
-                  onChange={(e) => setCurrentUser({...currentUser, password: e.target.value})}
+                  onChange={(e) => setCurrentUser({ ...currentUser, password: e.target.value })}
                   className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold"
                   placeholder={isEditing ? "Leave blank to keep same" : "Min 6 chars"}
                 />
@@ -382,14 +388,12 @@ const UserManagement = () => {
 
               <div className="flex items-center space-x-3 pt-2">
                 <button
-                  onClick={() => setCurrentUser({...currentUser, isActive: !currentUser.isActive})}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                    currentUser.isActive ? 'bg-primary' : 'bg-text-muted'
-                  }`}
+                  onClick={() => setCurrentUser({ ...currentUser, isActive: !currentUser.isActive })}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${currentUser.isActive ? 'bg-primary' : 'bg-text-muted'
+                    }`}
                 >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    currentUser.isActive ? 'translate-x-6' : 'translate-x-1'
-                  }`} />
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${currentUser.isActive ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
                 </button>
                 <span className="text-xs font-bold text-text-primary uppercase tracking-widest">
                   {currentUser.isActive ? 'Account Active' : 'Account Blocked'}
@@ -398,7 +402,7 @@ const UserManagement = () => {
 
               <div className="pt-4 border-t border-border-light space-y-4">
                 <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Delivery Profile</h4>
-                
+
                 <div className="space-y-4 pt-4 border-t border-border-light">
                   <div className="flex items-center justify-between">
                     <label className="text-[10px] text-text-muted font-black uppercase tracking-widest">Delivery Addresses</label>
@@ -418,13 +422,12 @@ const UserManagement = () => {
 
                   <div className="space-y-4">
                     {(currentUser.addresses || []).map((addr, idx) => (
-                      <div 
-                        key={idx} 
-                        className={`group relative p-5 rounded-[1.5rem] border-2 transition-all duration-300 ${
-                          addr.isDefault 
-                            ? 'bg-primary/[0.03] border-primary/30 shadow-[0_8px_30px_rgb(var(--color-primary-rgb),0.05)]' 
+                      <div
+                        key={idx}
+                        className={`group relative p-5 rounded-[1.5rem] border-2 transition-all duration-300 ${addr.isDefault
+                            ? 'bg-primary/[0.03] border-primary/30 shadow-[0_8px_30px_rgb(var(--color-primary-rgb),0.05)]'
                             : 'bg-background-muted/20 border-border-light hover:border-primary/20 shadow-sm'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center space-x-3">
@@ -452,7 +455,7 @@ const UserManagement = () => {
                               </div>
                             )}
                           </div>
-                          
+
                           <div className="flex items-center space-x-2">
                             {!addr.isDefault && (
                               <button
@@ -501,7 +504,7 @@ const UserManagement = () => {
                               <MapPin size={14} />
                             </div>
                           </div>
-                          
+
                           <div className="relative group/field">
                             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-primary pointer-events-none opacity-50 group-focus-within/field:opacity-100 transition-opacity">
                               <ExternalLink size={14} />

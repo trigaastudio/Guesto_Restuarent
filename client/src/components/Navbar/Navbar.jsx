@@ -19,7 +19,7 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     const handleStorageChange = () => {
-      const updatedUser = JSON.parse(localStorage.getItem('user') || 'null');
+      const updatedUser = JSON.parse(localStorage.getItem('user') || localStorage.getItem('admin_user') || 'null');
       if (updatedUser) setLocalUser(updatedUser);
     };
 

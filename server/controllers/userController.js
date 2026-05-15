@@ -182,7 +182,7 @@ class UserController {
       const user = await User.findByIdAndUpdate(
         userId,
         { avatar: avatarPath },
-        { new: true }
+        { returnDocument: 'after' }
       ).select('-password');
       res.status(200).json({
         success: true,

@@ -13,12 +13,12 @@ const MenuSection = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [searchTerm, setSearchTerm] = useState(localStorage.getItem('menuSearchTerm') || '');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const itemsPerPage = 10;
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [stockFilter, setStockFilter] = useState('all');
-  const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
-  
+  const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
+
   const [currentMenu, setCurrentMenu] = useState({
     name: '',
     category: '',
@@ -30,6 +30,9 @@ const MenuSection = () => {
     foodType: 'veg',
     totalStock: 0,
     isBlocked: false,
+    isCombo: false,
+    comboItems: [],
+    offerPercentage: 0,
     includedItems: [] // Global addons if needed, but we'll focus on variants
   });
 
@@ -46,6 +49,13 @@ const MenuSection = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    const scrollContainer = document.querySelector('main .overflow-y-auto');
+    if (scrollContainer) {
+      scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [currentPage]);
 
   const fetchData = async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -68,11 +78,21 @@ const MenuSection = () => {
       setCurrentMenu({
         ...menu,
         category: menu.category?._id || menu.category,
+        isBlocked: menu.isBlocked || false,
+        isCombo: menu.isCombo || false,
+        comboItems: menu.comboItems?.map(ci => ({
+          menuItem: ci.menuItem?._id || ci.menuItem,
+          price: ci.price || 0
+        })) || [],
+        offerPercentage: menu.offerPercentage || 0,
         variants: menu.variants?.map(v => ({
           size: v.size,
           price: v.price,
           costPrice: v.costPrice || 0,
           stockValue: v.stockValue || 1,
+          isBOGO: v.isBOGO || false,
+          bogoItem: v.bogoItem?._id || v.bogoItem || '',
+          bogoVariant: v.bogoVariant || '',
           includedItems: v.includedItems?.map(inc => ({
             menuItem: inc.menuItem?._id || inc.menuItem,
             quantity: inc.quantity
@@ -91,7 +111,10 @@ const MenuSection = () => {
         image: '',
         foodType: 'veg',
         totalStock: 0,
-        isBlocked: false
+        isBlocked: false,
+        isCombo: false,
+        comboItems: [],
+        offerPercentage: 0
       });
       setIsEditing(false);
     }
@@ -125,16 +148,40 @@ const MenuSection = () => {
       return;
     }
 
-    if (currentMenu.variants.length === 0) {
+    const isComboCategory = categories.find(c => c._id === currentMenu.category)?.name.toLowerCase() === 'combo';
+
+    if (!isComboCategory && currentMenu.variants.length === 0) {
       showToast('warning', 'At least one size variant is required');
       return;
     }
 
+    if (isComboCategory && currentMenu.comboItems.length === 0) {
+      showToast('warning', 'At least one item is required for a combo');
+      return;
+    }
+
+    const comboTotalPrice = isComboCategory 
+      ? currentMenu.comboItems.reduce((sum, item) => sum + (item.price || 0), 0) * (1 - (currentMenu.offerPercentage || 0) / 100)
+      : 0;
+
+    const cleanedVariants = currentMenu.variants.map(v => ({
+      ...v,
+      bogoItem: v.bogoItem === '' ? null : v.bogoItem,
+      includedItems: (v.includedItems || []).filter(inc => inc.menuItem !== '')
+    }));
+
+    const payload = {
+      ...currentMenu,
+      isCombo: isComboCategory,
+      price: isComboCategory ? comboTotalPrice : (currentMenu.variants[0]?.price || 0),
+      variants: isComboCategory ? [] : cleanedVariants
+    };
+
     try {
       if (isEditing) {
-        await api.put(`/api/menus/${currentMenu._id}`, currentMenu);
+        await api.put(`/api/menus/${currentMenu._id}`, payload);
       } else {
-        await api.post('/api/menus', currentMenu);
+        await api.post('/api/menus', payload);
       }
       fetchData(true);
       setIsModalOpen(false);
@@ -151,7 +198,7 @@ const MenuSection = () => {
 
   const handleDelete = async (id) => {
     const result = await showDeleteConfirmation('Delete Menu Item?', 'Are you sure you want to delete this menu item?');
-    
+
     if (result.isConfirmed) {
       try {
         await api.delete(`/api/menus/${id}`);
@@ -179,7 +226,7 @@ const MenuSection = () => {
   const handleAddSize = () => {
     setCurrentMenu({
       ...currentMenu,
-      variants: [...currentMenu.variants, { size: '', price: 0, costPrice: 0, stockValue: 1, includedItems: [] }]
+      variants: [...currentMenu.variants, { size: '', price: 0, costPrice: 0, stockValue: 1, isBOGO: false, bogoItem: '', bogoVariant: '', includedItems: [] }]
     });
   };
 
@@ -224,7 +271,7 @@ const MenuSection = () => {
     } catch (error) {
       console.error('Error uploading image:', error);
       let errorMsg = error.message || 'Failed to upload image.';
-      
+
       if (errorMsg.includes('File too large')) {
         showAlert({
           icon: 'error',
@@ -260,8 +307,8 @@ const MenuSection = () => {
         valA = a.category?.name || '';
         valB = b.category?.name || '';
       } else if (sortConfig.key === 'price') {
-        valA = a.variants?.[0]?.price || 0;
-        valB = b.variants?.[0]?.price || 0;
+        valA = a.price || 0;
+        valB = b.price || 0;
       }
 
       if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -275,14 +322,14 @@ const MenuSection = () => {
   const filteredMenus = getSortedData(menus).filter(m => {
     const searchLower = (searchTerm || '').toLowerCase();
     const matchesSearch = (m.name || '').toLowerCase().includes(searchLower) ||
-                         (m.category?.name || '').toLowerCase().includes(searchLower);
+      (m.category?.name || '').toLowerCase().includes(searchLower);
     const matchesCategory = categoryFilter === 'all' || m.category?._id === categoryFilter;
     const matchesType = typeFilter === 'all' || m.foodType === typeFilter;
-    const matchesStock = stockFilter === 'all' || 
-                        (stockFilter === 'available' ? m.totalStock > 0 : 
-                         stockFilter === 'low-stock' ? (m.totalStock > 0 && m.totalStock <= 10) :
-                         m.totalStock === 0);
-    
+    const matchesStock = stockFilter === 'all' ||
+      (stockFilter === 'available' ? m.totalStock > 0 :
+        stockFilter === 'low-stock' ? (m.totalStock > 0 && m.totalStock <= 10) :
+          m.totalStock === 0);
+
     return matchesSearch && matchesCategory && matchesType && matchesStock;
   });
 
@@ -332,7 +379,7 @@ const MenuSection = () => {
           <h2 className="text-2xl font-bold text-text-primary">Menu Items</h2>
           <p className="text-text-secondary text-sm">Manage your restaurant menu</p>
         </div>
-        <button 
+        <button
           onClick={() => handleOpenModal()}
           className="bg-primary text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-lg shadow-primary/20 hover:bg-primary-light transition-all flex items-center space-x-2"
         >
@@ -391,19 +438,18 @@ const MenuSection = () => {
                 <option value="out-of-stock" className="bg-background-card text-text-primary">Out of Stock</option>
               </select>
               <button
-                onClick={() => { 
-                  setSearchTerm(''); 
+                onClick={() => {
+                  setSearchTerm('');
                   localStorage.removeItem('menuSearchTerm');
-                  setCategoryFilter('all'); 
-                  setTypeFilter('all'); 
-                  setStockFilter('all'); 
+                  setCategoryFilter('all');
+                  setTypeFilter('all');
+                  setStockFilter('all');
                 }}
                 disabled={!searchTerm && categoryFilter === 'all' && typeFilter === 'all' && stockFilter === 'all'}
-                className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${
-                  !searchTerm && categoryFilter === 'all' && typeFilter === 'all' && stockFilter === 'all'
+                className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${!searchTerm && categoryFilter === 'all' && typeFilter === 'all' && stockFilter === 'all'
                     ? 'bg-background-muted/50 text-text-muted/30 border-border-light cursor-not-allowed'
                     : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white'
-                }`}
+                  }`}
                 title="Clear All Filters"
               >
                 <RotateCcw size={12} />
@@ -486,18 +532,25 @@ const MenuSection = () => {
                     </td>
                     <td className="px-3 py-4 text-center">
                       <div className="flex justify-center">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border ${
-                          menu.foodType === 'veg' 
-                            ? 'bg-status-on/5 text-status-available border-status-on/20' 
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border ${menu.foodType === 'veg'
+                            ? 'bg-status-on/5 text-status-available border-status-on/20'
                             : 'bg-status-off/5 text-status-unavailable border-status-off/20'
-                        }`}>
+                          }`}>
                           {menu.foodType}
                         </span>
                       </div>
                     </td>
                     <td className="px-3 py-4">
                       <div className="flex flex-col space-y-2">
-                        {menu.variants?.length > 0 ? (
+                        {menu.isCombo ? (
+                          <div className="flex flex-col">
+                            <span className="text-sm font-black text-primary">₹{menu.price?.toFixed(2)}</span>
+                            <span className="text-[9px] text-text-muted font-bold uppercase">Combo Price</span>
+                            {menu.offerPercentage > 0 && (
+                              <span className="text-[9px] text-status-available font-bold italic">({menu.offerPercentage}% Off)</span>
+                            )}
+                          </div>
+                        ) : menu.variants?.length > 0 ? (
                           <div className="relative">
                             <select
                               value={selectedSizes[menu._id] || ''}
@@ -514,13 +567,30 @@ const MenuSection = () => {
                         ) : (
                           <span className="text-[10px] text-text-muted italic">No variants</span>
                         )}
-                        
-                        {menu.hasOffer && (
+
+                        {menu.hasOffer && !menu.isCombo && (
                           <div className="flex items-center space-x-1.5 px-2 py-0.5 bg-status-on/5 border border-status-on/10 rounded-md w-fit">
                             <span className="text-[9px] text-status-available font-bold uppercase">Offer:</span>
                             <span className="text-[11px] text-status-available font-black">₹{menu.offerPrice}</span>
                           </div>
                         )}
+
+                        {(() => {
+                          const selectedSizeId = selectedSizes[menu._id];
+                          const variant = menu.variants?.find(v => v.size === selectedSizeId);
+                          if (variant?.isBOGO && variant?.bogoItem) {
+                            return (
+                              <div className="flex flex-col space-y-0.5 mt-1 bg-status-on/5 border border-status-on/20 rounded-lg p-1.5 animate-in fade-in slide-in-from-top-1 duration-300">
+                                <span className="text-[8px] font-black text-status-available uppercase tracking-widest">BOGO active</span>
+                                <div className="flex items-center space-x-1 text-[10px] font-bold text-text-primary">
+                                  <span className="text-status-available">free:</span>
+                                  <span className="truncate max-w-[120px]">{variant.bogoItem.name} {variant.bogoVariant && `(${variant.bogoVariant})`}</span>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                     </td>
                     <td className="px-3 py-4 text-center">
@@ -548,11 +618,10 @@ const MenuSection = () => {
                     </td>
                     <td className="px-3 py-4 text-center">
                       <div className="flex justify-center">
-                        <span className={`flex items-center space-x-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${
-                          !menu.isBlocked 
-                            ? 'bg-status-on/10 text-status-available border-status-on/30' 
+                        <span className={`flex items-center space-x-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${!menu.isBlocked
+                            ? 'bg-status-on/10 text-status-available border-status-on/30'
                             : 'bg-status-off/10 text-status-unavailable border-status-off/30'
-                        }`}>
+                          }`}>
                           <div className={`w-1.5 h-1.5 rounded-full ${!menu.isBlocked ? 'bg-status-available animate-pulse' : 'bg-status-unavailable'}`} />
                           <span>{!menu.isBlocked ? 'Live' : 'Hidden'}</span>
                         </span>
@@ -578,7 +647,7 @@ const MenuSection = () => {
                         >
                           <Edit2 size={16} />
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleDelete(menu._id)}
                           className="p-2 text-text-secondary hover:text-status-unavailable hover:bg-status-off/10 rounded-xl transition-all duration-200"
                           title="Delete Item"
@@ -611,7 +680,7 @@ const MenuSection = () => {
                 <XCircle size={24} />
               </button>
             </div>
-            
+
             <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh] no-scrollbar">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-1.5">
@@ -619,7 +688,7 @@ const MenuSection = () => {
                   <input
                     type="text"
                     value={currentMenu.name}
-                    onChange={(e) => setCurrentMenu({...currentMenu, name: e.target.value})}
+                    onChange={(e) => setCurrentMenu({ ...currentMenu, name: e.target.value })}
                     className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all"
                     placeholder="e.g. Chicken Biryani"
                   />
@@ -628,7 +697,7 @@ const MenuSection = () => {
                   <label className="text-sm font-semibold text-text-secondary">Category</label>
                   <select
                     value={currentMenu.category}
-                    onChange={(e) => setCurrentMenu({...currentMenu, category: e.target.value})}
+                    onChange={(e) => setCurrentMenu({ ...currentMenu, category: e.target.value })}
                     className="w-full px-4 py-2 bg-background-muted/50 text-text-primary rounded-xl border border-border-main focus:border-primary outline-none transition-all cursor-pointer"
                   >
                     <option value="" className="bg-background-card text-text-primary">Select Category</option>
@@ -643,7 +712,7 @@ const MenuSection = () => {
                 <label className="text-sm font-semibold text-text-secondary">Description</label>
                 <textarea
                   value={currentMenu.description}
-                  onChange={(e) => setCurrentMenu({...currentMenu, description: e.target.value})}
+                  onChange={(e) => setCurrentMenu({ ...currentMenu, description: e.target.value })}
                   className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all h-20 resize-none"
                   placeholder="Describe the dish..."
                 />
@@ -654,23 +723,23 @@ const MenuSection = () => {
                   <label className="text-sm font-semibold text-text-secondary">Food Type</label>
                   <div className="flex space-x-4">
                     <label className="flex items-center space-x-2 cursor-pointer">
-                      <input 
-                        type="radio" 
-                        name="foodType" 
-                        value="veg" 
-                        checked={currentMenu.foodType === 'veg'} 
-                        onChange={(e) => setCurrentMenu({...currentMenu, foodType: e.target.value})}
+                      <input
+                        type="radio"
+                        name="foodType"
+                        value="veg"
+                        checked={currentMenu.foodType === 'veg'}
+                        onChange={(e) => setCurrentMenu({ ...currentMenu, foodType: e.target.value })}
                         className="text-primary focus:ring-primary"
                       />
                       <span className="text-sm text-text-primary">Veg</span>
                     </label>
                     <label className="flex items-center space-x-2 cursor-pointer">
-                      <input 
-                        type="radio" 
-                        name="foodType" 
-                        value="non-veg" 
-                        checked={currentMenu.foodType === 'non-veg'} 
-                        onChange={(e) => setCurrentMenu({...currentMenu, foodType: e.target.value})}
+                      <input
+                        type="radio"
+                        name="foodType"
+                        value="non-veg"
+                        checked={currentMenu.foodType === 'non-veg'}
+                        onChange={(e) => setCurrentMenu({ ...currentMenu, foodType: e.target.value })}
                         className="text-primary focus:ring-primary"
                       />
                       <span className="text-sm text-text-primary">Non-Veg</span>
@@ -686,143 +755,377 @@ const MenuSection = () => {
                 <input
                   type="number"
                   value={currentMenu.totalStock === 0 ? '' : currentMenu.totalStock}
-                  onChange={(e) => setCurrentMenu({...currentMenu, totalStock: e.target.value === '' ? 0 : parseInt(e.target.value)})}
+                  onChange={(e) => setCurrentMenu({ ...currentMenu, totalStock: e.target.value === '' ? 0 : parseInt(e.target.value) })}
                   className="w-full px-4 py-2 bg-background-card rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm"
                   placeholder="Total base units (e.g. total pieces)"
                 />
                 <p className="text-[10px] text-text-muted italic">* Stock is tracked in base units (e.g. pieces)</p>
-              </div>              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-semibold text-text-secondary">Size Variants & Pricing</label>
-                  <button 
-                    type="button"
-                    onClick={handleAddSize}
-                    className="text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 px-3 py-1.5 rounded-xl border border-primary/20 transition-all flex items-center space-x-1.5"
-                  >
-                    <Plus size={14} />
-                    <span>Add Variant</span>
-                  </button>
-                </div>
-                <div className="space-y-4">
-                  {currentMenu.variants.map((variant, idx) => (
-                    <div key={idx} className="group/variant bg-background-muted/30 p-4 rounded-2xl border border-border-light space-y-4 animate-in slide-in-from-top-2 duration-300">
-                      <div className="flex items-center justify-between border-b border-border-light pb-2">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Variant #{idx + 1}</span>
-                        <button 
-                          type="button"
-                          onClick={() => handleRemoveSize(idx)}
-                          className="p-1.5 text-text-muted hover:text-status-unavailable hover:bg-status-off/10 rounded-lg transition-all"
-                          title="Remove Variant"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider ml-1">Size Name</label>
-                          <input
-                            type="text"
-                            value={variant.size}
-                            onChange={(e) => handleSizeChange(idx, 'size', e.target.value)}
-                            className="w-full px-4 py-3 bg-background-card border border-border-main focus:border-primary/50 rounded-xl text-xs font-bold transition-all outline-none"
-                            placeholder="e.g. Full"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider ml-1">Sell Price (₹)</label>
-                          <input
-                            type="number"
-                            value={variant.price || ''}
-                            onChange={(e) => handleSizeChange(idx, 'price', e.target.value)}
-                            className="w-full px-4 py-3 bg-background-card border border-border-main focus:border-primary/50 rounded-xl text-xs font-bold transition-all outline-none"
-                            placeholder="0"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider ml-1">Cost Price (₹)</label>
-                          <input
-                            type="number"
-                            value={variant.costPrice || ''}
-                            onChange={(e) => handleSizeChange(idx, 'costPrice', e.target.value)}
-                            className="w-full px-4 py-3 bg-background-card border border-border-main focus:border-primary/50 rounded-xl text-xs font-bold transition-all outline-none"
-                            placeholder="0"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider ml-1 flex items-center justify-between">
-                            <span>Stock Val</span>
-                          </label>
-                          <input
-                            type="number"
-                            step="0.1"
-                            value={variant.stockValue}
-                            onChange={(e) => handleSizeChange(idx, 'stockValue', e.target.value)}
-                            className="w-full px-4 py-3 bg-background-card border border-border-main focus:border-primary/50 rounded-xl text-xs font-bold transition-all outline-none"
-                            placeholder="1"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Included Items Section */}
-                      <div className="pt-2 border-t border-border-light/50">
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">Included Items (Inventory Deduction)</span>
-                          <button 
-                            type="button"
-                            onClick={() => handleAddIncludedItem(idx)}
-                            className="text-[9px] font-bold text-primary hover:bg-primary/5 px-2 py-1 rounded-lg border border-primary/20 transition-all flex items-center space-x-1"
-                          >
-                            <Plus size={10} />
-                            <span>Add Item</span>
-                          </button>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          {variant.includedItems?.map((included, incIdx) => (
-                            <div key={incIdx} className="flex items-center space-x-2 bg-background-card/50 p-2 rounded-xl border border-border-main/50 animate-in slide-in-from-left-2 duration-200">
-                              <select
-                                value={included.menuItem}
-                                onChange={(e) => handleIncludedItemChange(idx, incIdx, 'menuItem', e.target.value)}
-                                className="flex-1 bg-transparent border-0 text-[11px] font-bold text-text-primary outline-none focus:ring-0 cursor-pointer"
-                              >
-                                <option value="">Select Item</option>
-                                {menus.filter(m => m._id !== currentMenu._id).map(m => (
-                                  <option key={m._id} value={m._id}>{m.name}</option>
-                                ))}
-                              </select>
-                              <div className="flex items-center space-x-2 border-l border-border-main pl-2">
-                                <span className="text-[10px] font-black text-text-muted">QTY:</span>
-                                <input
-                                  type="number"
-                                  min="1"
-                                  value={included.quantity}
-                                  onChange={(e) => handleIncludedItemChange(idx, incIdx, 'quantity', e.target.value)}
-                                  className="w-10 bg-transparent border-0 text-[11px] font-black text-primary text-center outline-none focus:ring-0 p-0"
-                                />
-                              </div>
-                              <button 
-                                type="button"
-                                onClick={() => handleRemoveIncludedItem(idx, incIdx)}
-                                className="p-1 text-text-muted hover:text-status-unavailable transition-colors"
-                              >
-                                <Trash2 size={12} />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {currentMenu.variants.length === 0 && (
-                    <p className="text-xs text-text-muted italic text-center py-4 bg-background-muted/30 rounded-xl border border-dashed border-border-light">
-                      No variants added. Click "Add Variant" to set sizes and prices.
-                    </p>
-                  )}
-                </div>
               </div>
 
+              {categories.find(c => c._id === currentMenu.category)?.name.toLowerCase() !== 'combo' ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-semibold text-text-secondary">Size Variants & Pricing</label>
+                    <button 
+                      type="button"
+                      onClick={handleAddSize}
+                      className="text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 px-3 py-1.5 rounded-xl border border-primary/20 transition-all flex items-center space-x-1.5"
+                    >
+                      <Plus size={14} />
+                      <span>Add Variant</span>
+                    </button>
+                  </div>
+                  <div className="space-y-4">
+                    {currentMenu.variants.map((variant, idx) => (
+                      <div key={idx} className="group/variant bg-background-muted/30 p-4 rounded-2xl border border-border-light space-y-4 animate-in slide-in-from-top-2 duration-300">
+                        <div className="flex items-center justify-between border-b border-border-light pb-2">
+                          <div className="flex items-center space-x-4">
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Variant #{idx + 1}</span>
+                            <div className="flex items-center space-x-2 px-3 py-1 bg-primary/5 rounded-full border border-primary/10">
+                              <span className="text-[9px] font-black uppercase text-primary tracking-tighter">Buy 1 Get 1</span>
+                              <button
+                                type="button"
+                                onClick={() => handleSizeChange(idx, 'isBOGO', !variant.isBOGO)}
+                                className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors focus:outline-none ${variant.isBOGO ? 'bg-primary' : 'bg-text-muted'}`}
+                              >
+                                <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform ${variant.isBOGO ? 'translate-x-4' : 'translate-x-1'}`} />
+                              </button>
+                            </div>
+                          </div>
+                          <button 
+                            type="button"
+                            onClick={() => handleRemoveSize(idx)}
+                            className="p-1.5 text-text-muted hover:text-status-unavailable hover:bg-status-off/10 rounded-lg transition-all"
+                            title="Remove Variant"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
 
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider ml-1">Size Name</label>
+                            <input
+                              type="text"
+                              value={variant.size}
+                              onChange={(e) => handleSizeChange(idx, 'size', e.target.value)}
+                              className="w-full px-4 py-3 bg-background-card border border-border-main focus:border-primary/50 rounded-xl text-xs font-bold transition-all outline-none"
+                              placeholder="e.g. Full"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider ml-1">Sell Price (₹)</label>
+                            <input
+                              type="number"
+                              value={variant.price || ''}
+                              onChange={(e) => handleSizeChange(idx, 'price', e.target.value)}
+                              className="w-full px-4 py-3 bg-background-card border border-border-main focus:border-primary/50 rounded-xl text-xs font-bold transition-all outline-none"
+                              placeholder="0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider ml-1">Cost Price (₹)</label>
+                            <input
+                              type="number"
+                              value={variant.costPrice || ''}
+                              onChange={(e) => handleSizeChange(idx, 'costPrice', e.target.value)}
+                              className="w-full px-4 py-3 bg-background-card border border-border-main focus:border-primary/50 rounded-xl text-xs font-bold transition-all outline-none"
+                              placeholder="0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider ml-1 flex items-center justify-between">
+                              <span>Stock Val</span>
+                            </label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={variant.stockValue}
+                              onChange={(e) => handleSizeChange(idx, 'stockValue', e.target.value)}
+                              className="w-full px-4 py-3 bg-background-card border border-border-main focus:border-primary/50 rounded-xl text-xs font-bold transition-all outline-none"
+                              placeholder="1"
+                            />
+                          </div>
+                        </div>
+
+                        {variant.isBOGO && (
+                          <div className="p-3 bg-primary/5 rounded-xl border border-primary/10 animate-in slide-in-from-top-2 duration-300">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-[10px] font-black uppercase tracking-widest text-primary">Select Free Item & Variant</span>
+                              {variant.bogoItem && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleSizeChange(idx, 'bogoItem', '');
+                                    handleSizeChange(idx, 'bogoVariant', '');
+                                  }}
+                                  className="text-[9px] font-bold text-status-unavailable hover:underline"
+                                >
+                                  Clear Selection
+                                </button>
+                              )}
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <div className="flex-1 relative">
+                                <select
+                                  value={variant.bogoItem ? `${variant.bogoItem}|${variant.bogoVariant}` : ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val) {
+                                      const [menuId, variantSize] = val.split('|');
+                                      handleSizeChange(idx, 'bogoItem', menuId);
+                                      handleSizeChange(idx, 'bogoVariant', variantSize);
+                                    } else {
+                                      handleSizeChange(idx, 'bogoItem', '');
+                                      handleSizeChange(idx, 'bogoVariant', '');
+                                    }
+                                  }}
+                                  className="w-full px-3 py-2 bg-background-card border border-border-main rounded-lg text-[11px] font-bold text-text-primary outline-none appearance-none cursor-pointer pr-8"
+                                >
+                                  <option value="">Select an item and variant...</option>
+                                  {menus.map(m => (
+                                    <React.Fragment key={m._id}>
+                                      {m.variants?.length > 0 ? (
+                                        m.variants.map((v, vIdx) => (
+                                          <option key={`${m._id}-${vIdx}`} value={`${m._id}|${v.size}`}>
+                                            {m.name} - {v.size}
+                                          </option>
+                                        ))
+                                      ) : (
+                                        <option value={`${m._id}|`}>
+                                          {m.name}
+                                        </option>
+                                      )}
+                                    </React.Fragment>
+                                  ))}
+                                </select>
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted">
+                                  <ArrowUpDown size={12} />
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleSizeChange(idx, 'bogoItem', '');
+                                  handleSizeChange(idx, 'bogoVariant', '');
+                                }}
+                                className="p-2 text-text-muted hover:text-status-unavailable hover:bg-status-off/10 rounded-lg transition-all border border-border-main bg-background-card"
+                                title="Clear Selection"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Included Items Section */}
+                        <div className="pt-2 border-t border-border-light/50">
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">Included Add-ons (FOC - Effects Stock)</span>
+                            <button 
+                              type="button"
+                              onClick={() => handleAddIncludedItem(idx)}
+                              className="text-[9px] font-bold text-primary hover:bg-primary/5 px-2 py-1 rounded-lg border border-primary/20 transition-all flex items-center space-x-1"
+                            >
+                              <Plus size={10} />
+                              <span>Add Item</span>
+                            </button>
+                          </div>
+
+                          <div className="space-y-2">
+                            {variant.includedItems?.map((included, incIdx) => (
+                              <div key={incIdx} className="flex items-center space-x-2 bg-background-card/50 p-2 rounded-xl border border-border-main/50 animate-in slide-in-from-left-2 duration-200">
+                                <select
+                                  value={included.menuItem}
+                                  onChange={(e) => handleIncludedItemChange(idx, incIdx, 'menuItem', e.target.value)}
+                                  className="flex-1 bg-transparent border-0 text-[11px] font-bold text-text-primary outline-none focus:ring-0 cursor-pointer"
+                                >
+                                  <option value="">Select Item</option>
+                                  {menus.filter(m => m._id !== currentMenu._id).map(m => (
+                                    <option key={m._id} value={m._id}>{m.name}</option>
+                                  ))}
+                                </select>
+                                <div className="flex items-center space-x-2 border-l border-border-main pl-2">
+                                  <span className="text-[10px] font-black text-text-muted">QTY:</span>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={included.quantity}
+                                    onChange={(e) => handleIncludedItemChange(idx, incIdx, 'quantity', e.target.value)}
+                                    className="w-10 bg-transparent border-0 text-[11px] font-black text-primary text-center outline-none focus:ring-0 p-0"
+                                  />
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveIncludedItem(idx, incIdx)}
+                                  className="p-1 text-text-muted hover:text-status-unavailable transition-colors"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {currentMenu.variants.length === 0 && (
+                      <p className="text-xs text-text-muted italic text-center py-4 bg-background-muted/30 rounded-xl border border-dashed border-border-light">
+                        No variants added. Click "Add Variant" to set sizes and prices.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                /* Combo Items Section */
+                <div className="space-y-4 animate-in slide-in-from-top-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-semibold text-text-secondary">Combo Items Selection</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCurrentMenu({
+                          ...currentMenu,
+                          comboItems: [...currentMenu.comboItems, { menuItem: '', price: 0 }]
+                        });
+                      }}
+                      className="text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 px-3 py-1.5 rounded-xl border border-primary/20 transition-all flex items-center space-x-1.5"
+                    >
+                      <Plus size={14} />
+                      <span>Add Item to Combo</span>
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {currentMenu.comboItems.map((item, idx) => (
+                      <div key={idx} className="flex items-center space-x-3 bg-background-muted/30 p-3 rounded-xl border border-border-light">
+                        <select
+                          value={item.menuItem}
+                          onChange={(e) => {
+                            const selectedId = e.target.value;
+                            const selectedMenu = menus.find(m => m._id === selectedId);
+                            const newComboItems = [...currentMenu.comboItems];
+                            newComboItems[idx] = {
+                              ...newComboItems[idx],
+                              menuItem: selectedId,
+                              price: selectedMenu?.variants?.[0]?.price || 0 // Default to first variant price
+                            };
+                            setCurrentMenu({ ...currentMenu, comboItems: newComboItems });
+                          }}
+                          className="flex-1 bg-background-card border border-border-main rounded-lg px-3 py-2 text-sm text-text-primary outline-none"
+                        >
+                          <option value="">Select Item</option>
+                          {menus.filter(m => m._id !== currentMenu._id).map(m => (
+                            <option key={m._id} value={m._id}>{m.name}</option>
+                          ))}
+                        </select>
+                        <div className="w-24 relative">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-text-muted">₹</span>
+                          <input
+                            type="number"
+                            value={item.price}
+                            onChange={(e) => {
+                              const newComboItems = [...currentMenu.comboItems];
+                              newComboItems[idx].price = parseFloat(e.target.value) || 0;
+                              setCurrentMenu({ ...currentMenu, comboItems: newComboItems });
+                            }}
+                            className="w-full pl-5 pr-2 py-2 bg-background-card border border-border-main rounded-lg text-sm text-text-primary outline-none"
+                            placeholder="Price"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newComboItems = [...currentMenu.comboItems];
+                            newComboItems.splice(idx, 1);
+                            setCurrentMenu({ ...currentMenu, comboItems: newComboItems });
+                          }}
+                          className="p-2 text-text-muted hover:text-status-unavailable transition-colors"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {currentMenu.comboItems.length > 0 && (
+                    <div className="bg-primary/5 p-4 rounded-xl border border-primary/10 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-text-secondary">Total Original Price</span>
+                        <span className="text-sm font-bold text-text-primary">₹{currentMenu.comboItems.reduce((sum, item) => sum + (item.price || 0), 0).toFixed(2)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-semibold text-text-secondary">Offer Percentage (%)</label>
+                        <div className="w-24 relative">
+                          <input
+                            type="number"
+                            value={currentMenu.offerPercentage}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || 0;
+                              setCurrentMenu({ ...currentMenu, offerPercentage: val });
+                            }}
+                            className="w-full px-3 py-1.5 bg-background-card border border-border-main rounded-lg text-sm text-text-primary outline-none text-right pr-6"
+                            max="100"
+                            min="0"
+                          />
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-text-muted">%</span>
+                        </div>
+                      </div>
+                      <div className="pt-2 border-t border-primary/20 flex items-center justify-between">
+                        <span className="text-base font-bold text-primary">Actual Combo Price</span>
+                        <span className="text-lg font-black text-primary">
+                          ₹{(
+                            currentMenu.comboItems.reduce((sum, item) => sum + (item.price || 0), 0) * 
+                            (1 - (currentMenu.offerPercentage || 0) / 100)
+                          ).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <label className="text-sm font-semibold text-text-secondary">Has Offer?</label>
+                    <button
+                      onClick={() => setCurrentMenu({ ...currentMenu, hasOffer: !currentMenu.hasOffer })}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${currentMenu.hasOffer ? 'bg-primary' : 'bg-text-muted'
+                        }`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${currentMenu.hasOffer ? 'translate-x-6' : 'translate-x-1'
+                        }`} />
+                    </button>
+                  </div>
+                  {currentMenu.hasOffer && (
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm">₹</span>
+                      <input
+                        type="number"
+                        placeholder="Offer Price"
+                        value={currentMenu.offerPrice === 0 ? '' : currentMenu.offerPrice}
+                        onChange={(e) => setCurrentMenu({ ...currentMenu, offerPrice: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
+                        className="w-full pl-7 pr-3 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all"
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <label className="text-sm font-semibold text-text-secondary">Block Item?</label>
+                    <button
+                      onClick={() => setCurrentMenu({ ...currentMenu, isBlocked: !currentMenu.isBlocked })}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${currentMenu.isBlocked ? 'bg-status-off' : 'bg-text-muted'
+                        }`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${currentMenu.isBlocked ? 'translate-x-6' : 'translate-x-1'
+                        }`} />
+                    </button>
+                    <span className="text-xs text-text-muted">Temporarily hide from menu</span>
+                  </div>
+                </div>
+              </div>
 
               <div className="space-y-3">
                 <label className="text-sm font-semibold text-text-secondary">Item Image</label>
@@ -842,11 +1145,11 @@ const MenuSection = () => {
                       `}>
                         <ImageIcon size={18} />
                         <span>{isUploading ? 'Uploading...' : 'Upload Image'}</span>
-                        <input 
-                          type="file" 
-                          className="hidden" 
-                          accept="image/*" 
-                          onChange={handleImageUpload} 
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept="image/*"
+                          onChange={handleImageUpload}
                           disabled={isUploading}
                         />
                       </label>
@@ -858,7 +1161,7 @@ const MenuSection = () => {
                     <input
                       type="text"
                       value={currentMenu.image}
-                      onChange={(e) => setCurrentMenu({...currentMenu, image: e.target.value})}
+                      onChange={(e) => setCurrentMenu({ ...currentMenu, image: e.target.value })}
                       className="w-full px-4 py-1.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm"
                       placeholder="https://example.com/image.jpg"
                     />

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../api/axiosInstance';
-import { showToast } from '../utils/sweetAlert';
+import { showToast, showCartToast } from '../utils/sweetAlert';
+import socket from '../services/socket';
 
 const CartContext = createContext();
 
@@ -14,6 +15,49 @@ export const CartProvider = ({ children }) => {
     fetchCart();
     fetchSettings();
     fetchOffers();
+
+    // Socket Setup
+    if (!socket.connected) socket.connect();
+
+    socket.on('stockUpdate', ({ itemId, totalStock, isBlocked }) => {
+      const receivedId = (itemId?._id || itemId || '').toString();
+      setCartItems(prev => prev.map(item => {
+        // Find the actual Menu Item ID in our flattened cart item structure
+        const itemMenuId = (
+          item.menuItemId || 
+          (item.menuItem && (item.menuItem._id || item.menuItem)) || 
+          item._id || 
+          ''
+        ).toString();
+
+        if (itemMenuId === receivedId) {
+          return { 
+            ...item, 
+            totalStock: totalStock !== undefined ? totalStock : item.totalStock,
+            isBlocked: isBlocked !== undefined ? isBlocked : item.isBlocked
+          };
+        }
+        return item;
+      }));
+    });
+
+    socket.on('offerUpdate', () => {
+      fetchOffers();
+    });
+    
+    socket.on('settingsUpdate', (newSettings) => {
+      if (newSettings) {
+        setSettings(newSettings);
+      } else {
+        fetchSettings();
+      }
+    });
+
+    return () => {
+      socket.off('stockUpdate');
+      socket.off('offerUpdate');
+      socket.off('settingsUpdate');
+    };
   }, []);
 
   const fetchCart = async () => {
@@ -60,7 +104,7 @@ export const CartProvider = ({ children }) => {
       });
       if (response.data.success) {
         setCartItems(response.data.data.items);
-        showToast('success', 'Added to Feast');
+        showCartToast(menuItem);
       }
     } catch (error) {
       showToast('error', error.response?.data?.message || 'Failed to add item');
@@ -88,7 +132,6 @@ export const CartProvider = ({ children }) => {
       const response = await api.delete(`/api/cart/${id}`);
       if (response.data.success) {
         setCartItems(response.data.data.items);
-        showToast('success', 'Removed from Feast');
       }
     } catch (error) {
       showToast('error', 'Failed to remove item');
@@ -265,7 +308,6 @@ export const CartProvider = ({ children }) => {
         const bogoSize = parseInt(o.offerValue) || 2;
         return (
           o.offerType === 'bogo' &&
-          item.remainingQty >= bogoSize && // Must have at least bundleSize items to get a free one
           (o.applicableItems?.some(bi => (bi.menuItem?._id || bi.menuItem || '').toString().toLowerCase() === itemId) ||
             o.applicableCategories?.some(catId => (catId._id || catId || '').toString().toLowerCase() === itemCatId))
         );
@@ -273,7 +315,7 @@ export const CartProvider = ({ children }) => {
 
       if (bogoOffer) {
         const bundleSize = parseInt(bogoOffer.offerValue) || 2;
-        // BOGO application log removed
+        const paidCount = Math.floor(item.remainingQty / bundleSize) * (bundleSize - 1) + (item.remainingQty % bundleSize);
         totalSubtotal += paidCount * (item.originalPrice || 0);
         item.remainingQty = 0;
         return;

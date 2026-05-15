@@ -36,7 +36,7 @@ const SideNavbar = ({ user, handleLogout, navigate, onAvatarClick, fileInputRef,
             
             <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex flex-col items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-all duration-500">
               <Camera className="text-white mb-1" size={20} />
-              <span className="text-[8px] font-black text-white uppercase tracking-widest">Update</span>
+              <span className="text-[10px] font-black text-white uppercase tracking-widest">Update</span>
             </div>
           </div>
 
@@ -58,7 +58,7 @@ const SideNavbar = ({ user, handleLogout, navigate, onAvatarClick, fileInputRef,
           <h2 className="text-xl md:text-2xl font-black text-text-primary tracking-tight mb-1">{user.name}</h2>
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-background-muted rounded-full border border-border/40">
             <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-            <p className="text-[8px] font-black text-text-muted tracking-widest uppercase">
+            <p className="text-[10px] font-black text-text-muted tracking-widest uppercase">
               Member since {user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Recently'}
             </p>
           </div>
@@ -71,8 +71,8 @@ const SideNavbar = ({ user, handleLogout, navigate, onAvatarClick, fileInputRef,
               <Mail size={14} />
             </div>
             <div className="min-w-0">
-              <p className="text-[7px] font-black text-text-muted tracking-widest uppercase opacity-40">Email</p>
-              <p className="text-[10px] font-bold text-text-primary truncate">{user.email}</p>
+              <p className="text-[10px] font-black text-text-muted tracking-widest uppercase opacity-40">Email</p>
+              <p className="text-xs font-bold text-text-primary truncate">{user.email}</p>
             </div>
           </div>
           <div className="flex items-center gap-3 px-2">
@@ -80,8 +80,8 @@ const SideNavbar = ({ user, handleLogout, navigate, onAvatarClick, fileInputRef,
               <Phone size={14} />
             </div>
             <div className="min-w-0">
-              <p className="text-[7px] font-black text-text-muted tracking-widest uppercase opacity-40">Phone</p>
-              <p className="text-[10px] font-bold text-text-primary">{user.phone || user.mobile || 'Not linked'}</p>
+              <p className="text-[10px] font-black text-text-muted tracking-widest uppercase opacity-40">Phone</p>
+              <p className="text-xs font-bold text-text-primary">{user.phone || user.mobile || 'Not linked'}</p>
             </div>
           </div>
         </div>
@@ -91,7 +91,7 @@ const SideNavbar = ({ user, handleLogout, navigate, onAvatarClick, fileInputRef,
           {!user.googleId && (
             <button
               onClick={onChangePassword}
-              className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-background-muted hover:bg-background text-text-primary rounded-2xl transition-all duration-500 font-black text-[10px] tracking-widest uppercase border border-border/40 group/pass"
+              className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-background-muted hover:bg-background text-text-primary rounded-2xl transition-all duration-500 font-black text-xs tracking-widest uppercase border border-border/40 group/pass"
             >
               <Lock size={16} className="group-hover/pass:rotate-12 transition-transform" />
               Change password

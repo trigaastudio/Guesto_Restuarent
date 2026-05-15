@@ -10,17 +10,13 @@ const BottomNavbar = () => {
   const [showProfileOptions, setShowProfileOptions] = React.useState(false);
   const [activeSection, setActiveSection] = React.useState('hero'); // 'hero' or 'menu'
 
-  const [isVisible, setIsVisible] = React.useState(false);
+  const [isVisible, setIsVisible] = React.useState(true); // Always visible by default
 
   React.useEffect(() => {
     let ticking = false;
     const handleScroll = () => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
-          // Auto-hide at top to prevent covering hero images
-          const scrolled = window.scrollY > 100;
-          if (isVisible !== scrolled) setIsVisible(scrolled);
-
           if (['/home', '/'].includes(location.pathname)) {
             const menuSection = document.getElementById('menu');
             if (menuSection) {
@@ -39,7 +35,7 @@ const BottomNavbar = () => {
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [location.pathname, isVisible, activeSection]);
+  }, [location.pathname, activeSection]);
 
   const navItems = [
     { name: 'Home', icon: Home, path: '/home', isHome: true },
@@ -127,19 +123,10 @@ const BottomNavbar = () => {
       </div>
 
       {/* Main Floating Bottom Nav */}
-      <div className={`lg:hidden fixed bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 z-[1000] w-[92%] md:w-auto md:min-w-[500px] transition-all duration-500 ${isVisible ? 'translate-y-0 opacity-100 visible' : 'translate-y-24 opacity-0 invisible pointer-events-none'}`}>
-        <div className="relative bg-[#1A1A1A]/95 backdrop-blur-sm border border-white/10 shadow-[0_25px_80px_rgba(0,0,0,0.4)] rounded-[2.5rem] md:rounded-[3rem] px-4 md:px-8 py-3 md:py-4 flex items-center justify-between transition-all duration-500 gap-2 md:gap-8">
+      <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[1000] w-[92%] sm:w-[85%] md:w-[70%] max-w-[500px] transition-all duration-500 translate-y-0 opacity-100 visible">
+        <div className="bg-[#1A1A1A]/95 backdrop-blur-md border border-white/10 shadow-[0_25px_80px_rgba(0,0,0,0.5)] rounded-[2rem] px-2 py-2 flex items-center justify-around transition-all duration-500">
           
-          {/* Active Indicator Backdrop */}
-          <div 
-            className="absolute h-12 w-12 md:h-14 md:w-14 bg-white rounded-full transition-all duration-500 ease-out shadow-[0_10px_30px_rgba(0,0,0,0.2)]"
-            style={{ 
-              left: `calc(${(navItems.findIndex(i => isActive(i.path, i) && !showProfileOptions) * (100 / navItems.length)) + (100 / (navItems.length * 2))}% - ${window.innerWidth >= 768 ? '28px' : '24px'})`,
-              opacity: navItems.findIndex(i => isActive(i.path, i) && !showProfileOptions) === -1 ? 0 : 1
-            }}
-          ></div>
-
-          {navItems.map((item, idx) => {
+          {navItems.map((item) => {
             const ActiveIcon = item.isProfile && showProfileOptions ? X : item.icon;
             const active = isActive(item.path, item) && !showProfileOptions;
 
@@ -147,25 +134,29 @@ const BottomNavbar = () => {
               <button
                 key={item.name}
                 onClick={() => handleItemClick(item)}
-                className="relative flex-1 md:flex-none flex flex-col items-center justify-center h-14 md:w-16 z-20 cursor-pointer outline-none group"
+                className="relative flex-1 flex flex-col items-center justify-center py-2 z-20 cursor-pointer outline-none group"
               >
-                <div className={`relative transition-all duration-500 flex flex-col items-center ${active ? '-translate-y-1' : 'group-hover:-translate-y-1'}`}>
-                  <div className={`p-2 rounded-full transition-all duration-500 ${active ? 'text-primary' : 'text-white/40 group-hover:text-white'}`}>
-                    <ActiveIcon size={22} className="md:size-6" strokeWidth={active ? 3 : 2} />
+                <div className={`relative transition-all duration-300 flex flex-col items-center ${active ? 'scale-110' : 'opacity-60 group-hover:opacity-100'}`}>
+                  <div className={`p-1.5 rounded-xl transition-all duration-500 ${active ? 'bg-primary/10 text-primary' : 'text-white'}`}>
+                    <ActiveIcon size={20} strokeWidth={active ? 3 : 2} />
                   </div>
                   
                   {/* Badge for Cart */}
                   {item.showBadge && cartItems.length > 0 && (
-                    <span className={`absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center rounded-full text-[9px] font-black border-2 transition-colors duration-500 ${active ? 'bg-white text-primary border-primary' : 'bg-primary text-white border-[#1A1A1A]'}`}>
+                    <span className="absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center rounded-full bg-primary text-white text-[8px] font-black border-2 border-[#1A1A1A]">
                       {cartItems.length}
                     </span>
                   )}
+
+                  <span className={`mt-1 text-[8px] font-black uppercase tracking-wider transition-all duration-300 ${active ? 'text-primary' : 'text-white'}`}>
+                    {item.name}
+                  </span>
                 </div>
 
-                {/* Label (Optional or small) */}
-                <span className={`absolute -bottom-1 md:-bottom-2 text-[7px] md:text-[8px] font-black uppercase tracking-[0.2em] transition-all duration-500 ${active ? 'opacity-100 translate-y-0 text-primary' : 'opacity-0 translate-y-2 text-white/40'}`}>
-                  {item.name}
-                </span>
+                {/* Active Indicator Dot */}
+                {active && (
+                  <div className="absolute -bottom-1 w-1 h-1 bg-primary rounded-full shadow-[0_0_10px_#B91C1C]"></div>
+                )}
               </button>
             );
           })}

@@ -39,6 +39,8 @@ const LandingPage = () => {
     if (token) {
       navigate('/home', { replace: true });
     }
+    // If it's an admin, we don't redirect them away from landing page
+    // but they can still see the dashboard link in Navbar
   }, [navigate]);
 
   useEffect(() => {
@@ -145,7 +147,7 @@ const LandingPage = () => {
 
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const dropdownRef = useRef(null);
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  const user = JSON.parse(localStorage.getItem('user') || localStorage.getItem('admin_user') || 'null');
   const { cartItems } = useCart();
 
   useEffect(() => {
@@ -159,9 +161,16 @@ const LandingPage = () => {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/login', { replace: true });
+    const isAdmin = !!localStorage.getItem('admin_token');
+    if (localStorage.getItem('user')) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      navigate('/login', { replace: true });
+    } else {
+      localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_user');
+      navigate('/admin/login', { replace: true });
+    }
   };
 
   if (loading && menus.length === 0 && categories.length === 0) {
