@@ -172,7 +172,7 @@ orderSchema.post('save', function (doc) {
 
       // Specific status update for tracking
       if (doc.orderStatus) {
-        emitOrderStatusUpdate(doc._id.toString(), doc.orderStatus);
+        emitOrderStatusUpdate(doc._id.toString(), doc.orderStatus, doc.kitchenStatus);
       }
     }
   } catch (err) {

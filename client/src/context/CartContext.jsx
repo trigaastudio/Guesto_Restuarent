@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../api/axiosInstance';
 import { showToast, showCartToast } from '../utils/sweetAlert';
+import socket from '../services/socket';
 
 const CartContext = createContext();
 
@@ -14,6 +15,49 @@ export const CartProvider = ({ children }) => {
     fetchCart();
     fetchSettings();
     fetchOffers();
+
+    // Socket Setup
+    if (!socket.connected) socket.connect();
+
+    socket.on('stockUpdate', ({ itemId, totalStock, isBlocked }) => {
+      const receivedId = (itemId?._id || itemId || '').toString();
+      setCartItems(prev => prev.map(item => {
+        // Find the actual Menu Item ID in our flattened cart item structure
+        const itemMenuId = (
+          item.menuItemId || 
+          (item.menuItem && (item.menuItem._id || item.menuItem)) || 
+          item._id || 
+          ''
+        ).toString();
+
+        if (itemMenuId === receivedId) {
+          return { 
+            ...item, 
+            totalStock: totalStock !== undefined ? totalStock : item.totalStock,
+            isBlocked: isBlocked !== undefined ? isBlocked : item.isBlocked
+          };
+        }
+        return item;
+      }));
+    });
+
+    socket.on('offerUpdate', () => {
+      fetchOffers();
+    });
+    
+    socket.on('settingsUpdate', (newSettings) => {
+      if (newSettings) {
+        setSettings(newSettings);
+      } else {
+        fetchSettings();
+      }
+    });
+
+    return () => {
+      socket.off('stockUpdate');
+      socket.off('offerUpdate');
+      socket.off('settingsUpdate');
+    };
   }, []);
 
   const fetchCart = async () => {

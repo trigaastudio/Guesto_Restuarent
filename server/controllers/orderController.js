@@ -4,7 +4,7 @@ import User from '../models/userSchema.js';
 import Counter from '../models/counterSchema.js';
 import Menu from '../models/menuSchema.js';
 import Settings from '../models/settingsSchema.js';
-import { getIO } from '../socket.js';
+import { getIO, emitStockUpdate } from '../socket.js';
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; // km
@@ -124,6 +124,10 @@ const handleStock = async (items, type = 'reduce') => {
         updatedMenu.totalStock = 0;
       }
 
+      if (updatedMenu) {
+        emitStockUpdate(updatedMenu._id, updatedMenu.totalStock);
+      }
+
       // Real-time Stock Alerts (Only on reduction)
       if (type === 'reduce' && updatedMenu) {
         if (updatedMenu.totalStock <= 0) {
@@ -156,6 +160,10 @@ const handleStock = async (items, type = 'reduce') => {
           if (updatedIncluded && updatedIncluded.totalStock < 0) {
             await Menu.findByIdAndUpdate(included.menuItem, { totalStock: 0 });
             updatedIncluded.totalStock = 0;
+          }
+
+          if (updatedIncluded) {
+            emitStockUpdate(updatedIncluded._id, updatedIncluded.totalStock);
           }
 
           // Stock Alerts for included items
@@ -370,10 +378,17 @@ class OrderController {
         return res.status(404).json({ success: false, message: 'Order not found' });
       }
 
-      if (order.orderStatus !== 'placed') {
+      if (order.orderStatus !== 'placed' && order.orderStatus !== 'processing') {
         return res.status(400).json({
           success: false,
-          message: `Only newly placed orders can be cancelled. Current status: ${order.orderStatus}`
+          message: `This order is too far along to be cancelled. Status: ${order.orderStatus}`
+        });
+      }
+
+      if (order.kitchenStatus !== 'placed') {
+        return res.status(400).json({
+          success: false,
+          message: `The kitchen has already started preparing your meal. It can no longer be cancelled.`
         });
       }
 
@@ -483,11 +498,12 @@ class OrderController {
       const { type } = req.query;
       const query = type ? { orderType: type } : {};
 
-      // Filter: Show only successful payments OR COD/Cash orders
-      // This hides failed/unpaid online/card payments as requested
+      // Filter: Show successful payments, COD/Cash orders, OR ANY Dine-In order
+      // This allows active tables to be visible while still hiding failed/unpaid online/delivery orders
       query.$or = [
         { paymentStatus: 'paid' },
-        { paymentMethod: { $in: ['cod', 'cash'] } }
+        { paymentMethod: { $in: ['cod', 'cash'] } },
+        { orderType: 'dine-in' }
       ];
 
       const orders = await Order.find(query)

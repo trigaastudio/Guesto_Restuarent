@@ -20,6 +20,7 @@ import Navbar from '../../components/Navbar/Navbar';
 import Footer from '../../components/Footer/Footer';
 import Loader from '../../components/Loader/Loader';
 import Swal from 'sweetalert2';
+import socket from '../../services/socket';
 
 const MenuDetailPage = () => {
   const { id } = useParams();
@@ -37,6 +38,24 @@ const MenuDetailPage = () => {
   useEffect(() => {
     fetchMenuDetails();
     window.scrollTo(0, 0);
+
+    // Socket Setup
+    if (!socket.connected) socket.connect();
+
+    socket.on('stockUpdate', ({ itemId, totalStock, isBlocked }) => {
+      const receivedId = (itemId?._id || itemId || '').toString();
+      if (id === receivedId) {
+        setMenu(prev => prev ? { 
+          ...prev, 
+          totalStock: totalStock !== undefined ? totalStock : prev.totalStock,
+          isBlocked: isBlocked !== undefined ? isBlocked : prev.isBlocked
+        } : prev);
+      }
+    });
+
+    return () => {
+      socket.off('stockUpdate');
+    };
   }, [id]);
 
   const fetchMenuDetails = async () => {
@@ -174,6 +193,11 @@ const MenuDetailPage = () => {
                 <span className="px-4 py-1.5 rounded-full bg-[#DA9133] text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-[#DA9133]/20">
                   🔥 Best Seller
                 </span>
+                {(menu.totalStock <= 0 || menu.isBlocked) && (
+                  <span className="px-4 py-1.5 rounded-full bg-red-600 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-600/20 animate-pulse">
+                    🚫 {menu.isBlocked ? 'Unavailable' : 'Out of Stock'}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -258,16 +282,16 @@ const MenuDetailPage = () => {
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <button
                 onClick={handleAddToCart}
-                disabled={menu.stockStatus === 'out-of-stock'}
-                className={`flex-1 flex items-center justify-center gap-3 px-10 py-5 rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] transition-all active:scale-95 shadow-2xl ${menu.stockStatus === 'out-of-stock' ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-[#B91C1C] text-white hover:bg-[#B10000] shadow-[#B91C1C]/30 hover:-translate-y-1'}`}
+                disabled={menu.totalStock <= 0 || menu.isBlocked}
+                className={`flex-1 flex items-center justify-center gap-3 px-10 py-5 rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] transition-all active:scale-95 shadow-2xl ${menu.totalStock <= 0 || menu.isBlocked ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-[#B91C1C] text-white hover:bg-[#B10000] shadow-[#B91C1C]/30 hover:-translate-y-1'}`}
               >
                 <ShoppingCart size={20} />
-                {menu.stockStatus === 'out-of-stock' ? 'Out of Stock' : 'Add to Cart'}
+                {menu.isBlocked ? 'Unavailable' : (menu.totalStock <= 0 ? 'Out of Stock' : 'Add to Cart')}
               </button>
               <button
                 onClick={() => { handleAddToCart(); navigate('/cart'); }}
-                disabled={menu.stockStatus === 'out-of-stock'}
-                className="flex-1 px-10 py-5 rounded-[2rem] border-2 border-[#DA9133] text-[#DA9133] font-black text-sm uppercase tracking-[0.2em] transition-all hover:bg-[#DA9133] hover:text-white active:scale-95 hover:-translate-y-1"
+                disabled={menu.totalStock <= 0 || menu.isBlocked}
+                className={`flex-1 px-10 py-5 rounded-[2rem] border-2 font-black text-sm uppercase tracking-[0.2em] transition-all active:scale-95 hover:-translate-y-1 ${menu.totalStock <= 0 || menu.isBlocked ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-[#DA9133] text-[#DA9133] hover:bg-[#DA9133] hover:text-white'}`}
               >
                 Buy Now
               </button>

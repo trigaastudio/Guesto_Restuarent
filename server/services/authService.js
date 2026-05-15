@@ -178,7 +178,7 @@ class AuthService {
 
       console.log('✅ Google User Info retrieved:', payload.email);
 
-      const { email, name, picture } = payload;
+      const { email, name, picture, sub } = payload;
       let user = await userRepository.findByEmail(email);
 
       if (!user) {
@@ -186,7 +186,7 @@ class AuthService {
         user = await userRepository.create({
           name,
           email,
-          password: Math.random().toString(36).slice(-10),
+          googleId: sub,
           role: 'user',
           isActive: true
         });
@@ -217,7 +217,13 @@ class AuthService {
   }
 
   async register(userData) {
-    const { email, phone } = userData;
+    const { email, phone, password } = userData;
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&^#()_+\-=\[\]{};':"\\|,.<>\/?]).{8,64}$/;
+    
+    if (!password || !passwordRegex.test(password)) {
+      throw new Error('Password must be 8-64 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character.');
+    }
 
     console.log(`🔍 Checking registration for Email: "${email}" and Phone: "${phone}"`);
 
@@ -240,11 +246,11 @@ class AuthService {
   async login(email, password, requiredRole = 'user') {
     const user = await userRepository.findByEmailWithPassword(email);
     if (!user) {
-      throw new Error('Invalid email or password');
+      throw new Error('Invalid credentials');
     }
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      throw new Error('Invalid email or password');
+      throw new Error('Invalid credentials');
     }
 
     if (requiredRole) {
@@ -274,6 +280,12 @@ class AuthService {
   }
 
   async resetPassword(email, newPassword) {
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&^#()_+\-=\[\]{};':"\\|,.<>\/?]).{8,64}$/;
+
+    if (!newPassword || !passwordRegex.test(newPassword)) {
+      throw new Error('Password must be 8-64 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character.');
+    }
+
     const user = await userRepository.findByEmailWithPassword(email.toLowerCase().trim());
     if (!user) {
       throw new Error('User not found');

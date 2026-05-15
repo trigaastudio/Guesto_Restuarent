@@ -171,10 +171,16 @@ const MenuModal = ({ isOpen, onClose, menu, onAction }) => {
             <span className="text-2xl font-black text-text-primary tracking-tighter leading-none">₹{currentPrice}</span>
           </div>
           <button
-            onClick={() => { onAction(menu, 1, selectedSize); onClose(); }}
-            className="bg-primary-light hover:bg-primary-light/90 text-white px-6 py-2.5 rounded-xl font-black text-[9px] tracking-wider transition-all shadow-xl shadow-primary-light/20 active:scale-95 flex items-center gap-2 uppercase"
+            onClick={() => { if (menu.totalStock > 0) { onAction(menu, 1, selectedSize); onClose(); } }}
+            disabled={menu.totalStock <= 0}
+            className={`${
+              menu.totalStock <= 0 
+              ? 'bg-background-muted text-text-muted cursor-not-allowed grayscale' 
+              : 'bg-primary-light hover:bg-primary-light/90 text-white shadow-primary-light/20'
+            } px-6 py-2.5 rounded-xl font-black text-[9px] tracking-wider transition-all shadow-xl active:scale-95 flex items-center gap-2 uppercase`}
           >
-            Add to cart <Plus size={14} strokeWidth={3} />
+            {menu.totalStock <= 0 ? 'Out of Stock' : 'Add to cart'}
+            {menu.totalStock > 0 && <Plus size={14} strokeWidth={3} />}
           </button>
         </div>
       </div>

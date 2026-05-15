@@ -1,5 +1,6 @@
 import Offer from '../models/offerSchema.js';
 import { cloudinary } from '../config/cloudinaryConfig.js';
+import { emitOfferUpdate } from '../socket.js';
 
 export const createOffer = async (req, res) => {
   try {
@@ -15,6 +16,7 @@ export const createOffer = async (req, res) => {
       offerData.cloudinaryPublicId = req.file.filename;
     }
     const offer = await Offer.create(offerData);
+    emitOfferUpdate();
     res.status(201).json({ success: true, data: offer });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -60,6 +62,7 @@ export const updateOffer = async (req, res) => {
 
     const offer = await Offer.findByIdAndUpdate(req.params.id, offerData, { returnDocument: 'after' });
     if (!offer) return res.status(404).json({ success: false, message: 'Offer not found' });
+    emitOfferUpdate();
     res.status(200).json({ success: true, data: offer });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -77,6 +80,7 @@ export const deleteOffer = async (req, res) => {
     }
 
     await Offer.findByIdAndDelete(req.params.id);
+    emitOfferUpdate();
     res.status(200).json({ success: true, message: 'Offer deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

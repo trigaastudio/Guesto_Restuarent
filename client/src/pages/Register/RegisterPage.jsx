@@ -19,7 +19,6 @@ const RegisterPage = () => {
     phone: '',
     password: '',
     confirmPassword: '',
-    agreed: false,
   });
 
   const [errors, setErrors] = useState({});
@@ -35,23 +34,86 @@ const RegisterPage = () => {
     if (token) navigate('/home', { replace: true });
   }, [navigate]);
 
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&^#()_+\-=\[\]{};':"\\|,.<>\/?]).{8,64}$/;
+
+  const validateField = (name, value) => {
+    let error = '';
+    switch (name) {
+      case 'name':
+        if (!value.trim()) error = 'REQUIRED';
+        break;
+      case 'email':
+        if (!value.trim()) error = 'REQUIRED';
+        else if (!/\S+@\S+\.\S+/.test(value)) error = 'Invalid email format';
+        break;
+      case 'phone':
+        if (!value.trim()) error = 'REQUIRED';
+        break;
+      case 'password':
+        if (!value) error = 'REQUIRED';
+        else if (!passwordRegex.test(value)) error = 'Must be 8-64 chars with A-Z, a-z, 0-9 & symbol';
+        break;
+      case 'confirmPassword':
+        if (!value) error = 'REQUIRED';
+        else if (value !== fields.password) error = 'Passwords do not match';
+        break;
+      default:
+        break;
+    }
+    return error;
+  };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFields((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
+    const val = type === 'checkbox' ? checked : value;
+
+    setFields((prev) => {
+      const newFields = { ...prev, [name]: val };
+
+      // If we're updating password, we also need to re-validate confirmPassword live if there's already an error
+      if (name === 'password' && errors.confirmPassword) {
+        const confirmErr = newFields.confirmPassword !== val ? 'Passwords do not match' : '';
+        setErrors(errs => ({ ...errs, confirmPassword: confirmErr }));
+      }
+
+      return newFields;
+    });
+
+    // Live CLEARING of errors: If the field already has an error, check if it's now fixed
+    if (errors[name]) {
+      const fieldError = validateField(name, val);
+      if (!fieldError) {
+        setErrors((prev) => ({ ...prev, [name]: '' }));
+      }
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    const fieldError = validateField(name, value);
+    if (fieldError) {
+      setErrors((prev) => ({ ...prev, [name]: fieldError }));
+    }
   };
 
   const validate = () => {
     const newErrors = {};
-    if (!fields.name.trim()) newErrors.name = 'Full name is required';
-    if (!fields.email.trim()) newErrors.email = 'Email address is required';
-    else if (!/\S+@\S+\.\S+/.test(fields.email)) newErrors.email = 'Invalid email format';
-    if (!fields.phone.trim()) newErrors.phone = 'Phone number is required';
-    if (!fields.password) newErrors.password = 'Password is required';
-    else if (fields.password.length < 6) newErrors.password = 'Min 6 characters';
-    if (fields.password !== fields.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
-    if (!fields.agreed) newErrors.agreed = 'Required';
+    Object.keys(fields).forEach(key => {
+      const err = validateField(key, fields[key]);
+      if (err) newErrors[key] = err;
+    });
     return newErrors;
+  };
+
+  const isFormValid = () => {
+    return (
+      fields.name.trim() !== '' &&
+      fields.email.trim() !== '' &&
+      /\S+@\S+\.\S+/.test(fields.email) &&
+      fields.phone.trim() !== '' &&
+      passwordRegex.test(fields.password) &&
+      fields.password === fields.confirmPassword
+    );
   };
 
   const handleSubmit = async (e) => {
@@ -196,11 +258,12 @@ const RegisterPage = () => {
                       <User className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-[#DA9133] transition-all duration-300" size={16} />
                       <input
                         type="text" name="name" placeholder="John Doe"
-                        value={fields.name} onChange={handleChange}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-11 pr-4 text-xs font-medium focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white placeholder:text-white/30 autofill:bg-transparent"
+                        value={fields.name} onChange={handleChange} onBlur={handleBlur}
+                        className={`w-full bg-white/5 border rounded-xl py-3 pl-11 pr-4 text-xs font-medium focus:outline-none transition-all text-white placeholder:text-white/30 autofill:bg-transparent ${errors.name ? 'border-red-500/50 bg-red-500/5 focus:border-red-500' : 'border-white/10 focus:border-[#DA9133]/50 focus:bg-white/10'
+                          }`}
                       />
                     </div>
-                    {errors.name && <p className="text-[10px] text-white font-bold ml-1">{errors.name}</p>}
+                    {errors.name && errors.name !== 'REQUIRED' && <p className="text-[10px] text-white font-bold ml-1">{errors.name}</p>}
                   </div>
 
                   <div className="space-y-1">
@@ -209,36 +272,39 @@ const RegisterPage = () => {
                       <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-[#DA9133] transition-all duration-300" size={16} />
                       <input
                         type="tel" name="phone" placeholder="+123 456 7890"
-                        value={fields.phone} onChange={handleChange}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-11 pr-4 text-xs font-medium focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white placeholder:text-white/30 autofill:bg-transparent"
+                        value={fields.phone} onChange={handleChange} onBlur={handleBlur}
+                        className={`w-full bg-white/5 border rounded-xl py-3 pl-11 pr-4 text-xs font-medium focus:outline-none transition-all text-white placeholder:text-white/30 autofill:bg-transparent ${errors.phone ? 'border-red-500/50 bg-red-500/5 focus:border-red-500' : 'border-white/10 focus:border-[#DA9133]/50 focus:bg-white/10'
+                          }`}
                       />
                     </div>
-                    {errors.phone && <p className="text-[10px] text-white font-bold ml-1">{errors.phone}</p>}
+                    {errors.phone && errors.phone !== 'REQUIRED' && <p className="text-[10px] text-white font-bold ml-1">{errors.phone}</p>}
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[9px] font-black text-white/50 uppercase tracking-widest ml-1">Email Address</label>
+                  <label className="text-[9px] font-black text-white/50 uppercase tracking-widest ml-1">Email Address <span className="text-[#DA9133]">*</span></label>
                   <div className="relative group">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-[#DA9133] transition-all duration-300" size={16} />
                     <input
                       type="email" name="email" placeholder="alex@example.com"
-                      value={fields.email} onChange={handleChange}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-11 pr-4 text-xs font-medium focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white placeholder:text-white/30 autofill:bg-transparent"
+                      value={fields.email} onChange={handleChange} onBlur={handleBlur}
+                      className={`w-full bg-white/5 border rounded-xl py-3 pl-11 pr-4 text-xs font-medium focus:outline-none transition-all text-white placeholder:text-white/30 autofill:bg-transparent ${errors.email ? 'border-red-500/50 bg-red-500/5 focus:border-red-500' : 'border-white/10 focus:border-[#DA9133]/50 focus:bg-white/10'
+                        }`}
                     />
                   </div>
-                  {errors.email && <p className="text-[10px] text-white font-bold ml-1">{errors.email}</p>}
+                  {errors.email && errors.email !== 'REQUIRED' && <p className="text-[10px] text-white font-bold ml-1">{errors.email}</p>}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[9px] font-black text-white/50 uppercase tracking-widest ml-1">Password</label>
+                    <label className="text-[9px] font-black text-white/50 uppercase tracking-widest ml-1">Password <span className="text-[#DA9133]">*</span></label>
                     <div className="relative group">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-[#DA9133] transition-all duration-300" size={16} />
                       <input
                         type={showPassword ? "text" : "password"} name="password" placeholder="••••••••"
-                        value={fields.password} onChange={handleChange}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-11 pr-10 text-xs font-medium focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white placeholder:text-white/30 autofill:bg-transparent"
+                        value={fields.password} onChange={handleChange} onBlur={handleBlur}
+                        className={`w-full bg-white/5 border rounded-xl py-3 pl-11 pr-10 text-xs font-medium focus:outline-none transition-all text-white placeholder:text-white/30 autofill:bg-transparent ${errors.password ? 'border-red-500/50 bg-red-500/5 focus:border-red-500' : 'border-white/10 focus:border-[#DA9133]/50 focus:bg-white/10'
+                          }`}
                       />
                       <button
                         type="button"
@@ -248,17 +314,18 @@ const RegisterPage = () => {
                         {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
-                    {errors.password && <p className="text-[10px] text-white font-bold ml-1">{errors.password}</p>}
+                    {errors.password && errors.password !== 'REQUIRED' && <p className="text-[10px] text-white font-bold ml-1">{errors.password}</p>}
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[9px] font-black text-white/50 uppercase tracking-widest ml-1">Confirm Password</label>
+                    <label className="text-[9px] font-black text-white/50 uppercase tracking-widest ml-1">Confirm Password <span className="text-[#DA9133]">*</span></label>
                     <div className="relative group">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-[#DA9133] transition-all duration-300" size={16} />
                       <input
                         type={showConfirmPassword ? "text" : "password"} name="confirmPassword" placeholder="••••••••"
-                        value={fields.confirmPassword} onChange={handleChange}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-11 pr-10 text-xs font-medium focus:outline-none focus:border-[#DA9133]/50 focus:bg-white/10 transition-all text-white placeholder:text-white/30 autofill:bg-transparent"
+                        value={fields.confirmPassword} onChange={handleChange} onBlur={handleBlur}
+                        className={`w-full bg-white/5 border rounded-xl py-3 pl-11 pr-10 text-xs font-medium focus:outline-none transition-all text-white placeholder:text-white/30 autofill:bg-transparent ${errors.confirmPassword ? 'border-red-500/50 bg-red-500/5 focus:border-red-500' : 'border-white/10 focus:border-[#DA9133]/50 focus:bg-white/10'
+                          }`}
                       />
                       <button
                         type="button"
@@ -268,37 +335,37 @@ const RegisterPage = () => {
                         {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
-                    {errors.confirmPassword && <p className="text-[10px] text-white font-bold ml-1">{errors.confirmPassword}</p>}
+                    {errors.confirmPassword && errors.confirmPassword !== 'REQUIRED' && <p className="text-[10px] text-white font-bold ml-1">{errors.confirmPassword}</p>}
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3 py-1">
-                  <div className="relative flex items-center">
-                    <input
-                      type="checkbox" name="agreed"
-                      checked={fields.agreed} onChange={handleChange}
-                      className="w-5 h-5 bg-white/5 border border-white/20 rounded cursor-pointer checked:bg-[#DA9133] transition-all appearance-none"
-                    />
-                    {fields.agreed && <CheckCircle2 size={12} className="absolute left-1 text-white pointer-events-none" />}
-                  </div>
-                  <p className="text-[10px] md:text-xs text-white/50 font-medium">
-                    I agree to the <Link to="/terms" className="text-[#DA9133] hover:underline">Terms of Service</Link> and <Link to="/privacy" className="text-[#DA9133] hover:underline">Privacy Policy</Link>.
+                  <p className="text-center text-[10px] md:text-xs text-white/50 font-medium py-2">
+                    By continuing, you agree to our <Link to="/terms" className="text-[#DA9133] hover:underline">Terms of Service</Link> and <Link to="/privacy" className="text-[#DA9133] hover:underline">Privacy Policy</Link>.
                   </p>
-                  {errors.agreed && <p className="text-[10px] text-white font-bold">{errors.agreed}</p>}
-                </div>
 
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="w-full bg-[#DA9133] hover:bg-[#C27D29] text-white py-3 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-xl shadow-black/20 disabled:opacity-50 disabled:cursor-not-allowed group flex items-center justify-center gap-2"
+                  disabled={!isFormValid() || loading}
+                  className={`w-full py-3 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-xl shadow-black/20 group flex items-center justify-center gap-2 ${isFormValid()
+                      ? "bg-[#DA9133] hover:bg-[#C27D29] text-white animate-bounce-in"
+                      : "bg-white/10 text-white/30 cursor-not-allowed border border-white/10"
+                    }`}
                 >
                   {loading ? 'Creating Account...' : (
                     <>
                       Create Account
-                      <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                      <ArrowRight size={18} className={`${isFormValid() ? "group-hover:translate-x-1" : ""} transition-transform`} />
                     </>
                   )}
                 </button>
+
+                {!isFormValid() && (
+                  <div className="pt-2 text-center">
+                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest animate-pulse">
+                      Please complete all fields correctly to continue
+                    </p>
+                  </div>
+                )}
               </form>
 
               <p className="text-center text-xs font-medium text-white/50">
@@ -351,6 +418,14 @@ const RegisterPage = () => {
             -webkit-box-shadow: 0 0 0 30px #8B0000 inset !important;
             -webkit-text-fill-color: white !important;
             transition: background-color 5000s ease-in-out 0s;
+        }
+        @keyframes bounce-in {
+          0% { opacity: 0; transform: scale(0.9); }
+          50% { opacity: 1; transform: scale(1.05); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+        .animate-bounce-in {
+          animation: bounce-in 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55) forwards;
         }
       `}} />
 

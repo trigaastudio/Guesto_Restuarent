@@ -1,4 +1,5 @@
 import Settings from '../models/settingsSchema.js';
+import { emitSettingsUpdate } from '../socket.js';
 
 export const getSettings = async (req, res) => {
   try {
@@ -28,6 +29,7 @@ export const updateSettings = async (req, res) => {
     });
 
     await settings.save();
+    emitSettingsUpdate(settings);
     
     res.status(200).json({
       success: true,

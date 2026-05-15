@@ -23,10 +23,26 @@ const userSchema = new mongoose.Schema({
     match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, "Please provide a valid email"]
   },
 
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
   password: {
     type: String,
-    required: [true, "Password is required"],
-    minlength: 6,
+    required: [
+      function() { return !this.googleId; },
+      "Password is required"
+    ],
+    validate: {
+      validator: function(v) {
+        // If googleId exists and password is empty, it's valid
+        if (this.googleId && !v) return true;
+        // Otherwise, it must match the regex
+        return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&^#()_+\-=\[\]{};':"\\|,.<>\/?]).{8,64}$/.test(v);
+      },
+      message: "Password must contain uppercase, lowercase, number, and special character"
+    },
     select: false 
   },
 

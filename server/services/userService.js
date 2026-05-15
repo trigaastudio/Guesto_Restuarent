@@ -1,5 +1,5 @@
 import User from '../models/userSchema.js';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 class UserService {
   async getAllUsers() {
@@ -24,6 +24,12 @@ class UserService {
       if (existingEmail) throw new Error(`User with email ${userData.email} already exists`);
     }
 
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&^#()_+\-=\[\]{};':"\\|,.<>\/?]).{8,64}$/;
+
+    if (!userData.password || !passwordRegex.test(userData.password)) {
+      throw new Error('Password must be 8-64 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character.');
+    }
+
     return await User.create(userData);
   }
 
@@ -39,6 +45,12 @@ class UserService {
     }
 
     if (updateData.password && updateData.password.trim() !== '') {
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&^#()_+\-=\[\]{};':"\\|,.<>\/?]).{8,64}$/;
+      
+      if (!passwordRegex.test(updateData.password)) {
+        throw new Error('Password must be 8-64 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character.');
+      }
+
       const salt = await bcrypt.genSalt(10);
       updateData.password = await bcrypt.hash(updateData.password, salt);
     } else {

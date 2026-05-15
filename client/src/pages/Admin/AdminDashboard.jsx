@@ -205,11 +205,11 @@ const AdminDashboard = () => {
 
   const getFriendlyStatus = (order) => {
     if (!order) return { label: 'Unknown', color: 'bg-background-muted/10 text-text-muted border-border-light' };
-    
+
     // Terminal States
     if (order.orderStatus === 'cancelled') return { label: 'Cancelled', color: 'bg-status-off/10 text-status-unavailable border-status-off/20' };
     if (order.orderStatus === 'delivered' || order.orderStatus === 'completed') return { label: 'Delivered', color: 'bg-primary/10 text-primary border-primary/20' };
-    
+
     // Active States
     if (order.orderStatus === 'placed') return { label: 'New Order', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' };
     if (order.orderStatus === 'out-for-delivery') return { label: 'Out for Delivery', color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' };
@@ -221,7 +221,7 @@ const AdminDashboard = () => {
 
       if (allReady) return { label: 'Ready', color: 'bg-status-on/10 text-status-available border-status-on/20' };
       if (anyPreparing) return { label: 'Preparing', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' };
-      
+
       return { label: 'Order Accepted', color: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20' };
     }
 
@@ -255,7 +255,7 @@ const AdminDashboard = () => {
 
         <div className="flex-1 flex flex-col overflow-x-hidden no-scrollbar relative">
           <div className="p-6 border-b border-border/40 flex items-center justify-center relative">
-            <button 
+            <button
               onClick={() => handleTabChange('Overview')}
               className="transition-transform active:scale-95 outline-none"
             >
@@ -356,7 +356,7 @@ const AdminDashboard = () => {
                 View Website
               </span>
             </button>
-            
+
             <button
               onClick={handleLogout}
               className={`w-full flex items-center rounded-2xl text-status-unavailable hover:bg-status-off/5 transition-all p-3 group ${(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'}`}
@@ -472,7 +472,7 @@ const AdminDashboard = () => {
                           >
                             <div className="flex items-start space-x-3 pr-6">
                               <div className={`p-2 rounded-xl shrink-0 ${notif.type === 'order' ? 'bg-primary/10 text-primary' :
-                                  notif.type === 'outOfStock' ? 'bg-status-off/10 text-status-unavailable' : 'bg-amber-500/10 text-amber-500'
+                                notif.type === 'outOfStock' ? 'bg-status-off/10 text-status-unavailable' : 'bg-amber-500/10 text-amber-500'
                                 }`}>
                                 {notif.type === 'order' ? <ShoppingCart size={16} /> : <AlertTriangle size={16} />}
                               </div>
@@ -908,9 +908,9 @@ const AdminDashboard = () => {
           {activeTab === 'Staff' && <StaffManagement key={`staff-${refreshKey}`} />}
           {activeTab === 'Users' && <UserManagement key={`users-${refreshKey}`} />}
 
-          { activeTab === 'Settings' && <SettingsSection key={`settings-${refreshKey}`} />}
-          { activeTab === 'Offers' && <OfferSection key={`offers-${refreshKey}`} />}
-          { activeTab === 'Sales' && <SalesSection key={`sales-${refreshKey}`} />}
+          {activeTab === 'Settings' && <SettingsSection key={`settings-${refreshKey}`} />}
+          {activeTab === 'Offers' && <OfferSection key={`offers-${refreshKey}`} />}
+          {activeTab === 'Sales' && <SalesSection key={`sales-${refreshKey}`} />}
         </div>
       </main>
     </div>

@@ -1,4 +1,5 @@
 import menuRepository from "../repositories/menuRepository.js";
+import { emitStockUpdate } from "../socket.js";
 
 class MenuService {
   async createMenu(data) {
@@ -10,7 +11,11 @@ class MenuService {
   }
 
   async updateMenu(id, data) {
-    return await menuRepository.update(id, data);
+    const updated = await menuRepository.update(id, data);
+    if (updated) {
+      emitStockUpdate(updated._id, updated.totalStock, updated.isBlocked);
+    }
+    return updated;
   }
 
   async deleteMenu(id) {

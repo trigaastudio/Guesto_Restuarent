@@ -38,14 +38,38 @@ export const getIO = () => {
   return io;
 };
 
-export const emitOrderStatusUpdate = (orderId, status) => {
+export const emitOrderStatusUpdate = (orderId, status, kitchenStatus) => {
   if (io) {
-    io.to(orderId).emit('orderStatusUpdated', { orderId, status });
+    io.to(orderId).emit('orderStatusUpdated', { orderId, status, kitchenStatus });
   }
 };
 
 export const emitAccountStatusUpdate = (userId, isActive) => {
   if (io) {
     io.to(userId).emit('accountStatusChanged', { userId, isActive });
+  }
+};
+
+export const emitStockUpdate = (itemId, totalStock, isBlocked) => {
+  if (io) {
+    io.emit('stockUpdate', { itemId, totalStock, isBlocked });
+  }
+};
+
+export const emitCategoryUpdate = () => {
+  if (io) {
+    io.emit('categoryUpdate');
+  }
+};
+
+export const emitOfferUpdate = () => {
+  if (io) {
+    io.emit('offerUpdate');
+  }
+};
+
+export const emitSettingsUpdate = (settings) => {
+  if (io) {
+    io.emit('settingsUpdate', settings);
   }
 };

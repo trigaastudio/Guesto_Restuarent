@@ -13,6 +13,7 @@ import MenuModal from '../../components/Menu/MenuModal';
 import StoreStatusBanner from '../../components/StoreStatus/StoreStatusBanner';
 import Loader from '../../components/Loader/Loader';
 import OffersCarousel from '../../components/Offers/OffersCarousel';
+import socket from '../../services/socket';
 
 const heroImages = ['/heroSection/hero1.png', '/heroSection/hero2.png', '/heroSection/hero3.png', '/heroSection/hero4.png', '/heroSection/hero5.png'];
 
@@ -67,8 +68,50 @@ const HomePage = () => {
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
+
+    // Socket Setup
+    if (!socket.connected) socket.connect();
+
+    socket.on('stockUpdate', ({ itemId, totalStock, isBlocked }) => {
+      const receivedId = (itemId?._id || itemId || '').toString();
+      setMenus(prev => prev.map(menu => {
+        if (menu._id.toString() === receivedId) {
+          return { 
+            ...menu, 
+            totalStock: totalStock !== undefined ? totalStock : menu.totalStock,
+            isBlocked: isBlocked !== undefined ? isBlocked : menu.isBlocked 
+          };
+        }
+        return menu;
+      }));
+
+      setSelectedMenuForModal(prev => {
+        if (prev && prev._id.toString() === receivedId) {
+          return { 
+            ...prev, 
+            totalStock: totalStock !== undefined ? totalStock : prev.totalStock,
+            isBlocked: isBlocked !== undefined ? isBlocked : prev.isBlocked
+          };
+        }
+        return prev;
+      });
+    });
+
+    socket.on('categoryUpdate', () => {
+      fetchCategories();
+      fetchMenus(selectedCategory, page, bogoOnly, comboOnly);
+    });
+
+    socket.on('offerUpdate', () => {
+      // Offers are mostly handled via CartContext, but we might want to refresh menus if price changes
+      fetchMenus(selectedCategory, page, bogoOnly, comboOnly);
+    });
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      socket.off('stockUpdate');
+      socket.off('categoryUpdate');
+      socket.off('offerUpdate');
     };
   }, []);
 
@@ -216,7 +259,7 @@ const HomePage = () => {
         (dietaryFilter === 'non-veg' && menu.foodType === 'non-veg');
       const matchesBogo = !bogoOnly || (menu.variants && menu.variants.some(v => v.isBOGO));
       const matchesCombo = !comboOnly || menu.isCombo;
-      return matchesSearch && matchesDietary && matchesBogo && matchesCombo;
+      return matchesSearch && matchesDietary && matchesBogo && matchesCombo && !menu.isBlocked;
     });
 
     if (sortBy === 'price-low') {

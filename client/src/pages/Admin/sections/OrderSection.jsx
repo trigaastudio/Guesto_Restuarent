@@ -972,6 +972,9 @@ const OrderSection = () => {
         matchesType = matchesHistType && matchesDate;
       } else if (tabId === 'all') {
         matchesType = !isHistoryOrder;
+      } else if (tabId === 'dine-in') {
+        // Special case: Show all waiter dine-in orders regardless of status
+        matchesType = (o.orderType === 'dine-in' || o.orderType === 'dining') && o.orderSource === 'waiter';
       } else {
         if (isHistoryOrder) {
           matchesType = false;
@@ -979,8 +982,6 @@ const OrderSection = () => {
           matchesType = o.orderType === 'delivery' || o.orderType === 'online';
         } else if (tabId === 'takeaway') {
           matchesType = o.orderType === 'takeaway' || o.orderType === 'take-away' || o.orderType === 'counter';
-        } else if (tabId === 'dine-in') {
-          matchesType = o.orderType === 'dine-in' || o.orderType === 'dining';
         } else {
           matchesType = o.orderType === tabId;
         }

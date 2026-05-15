@@ -10,17 +10,13 @@ const BottomNavbar = () => {
   const [showProfileOptions, setShowProfileOptions] = React.useState(false);
   const [activeSection, setActiveSection] = React.useState('hero'); // 'hero' or 'menu'
 
-  const [isVisible, setIsVisible] = React.useState(false);
+  const [isVisible, setIsVisible] = React.useState(true); // Always visible by default
 
   React.useEffect(() => {
     let ticking = false;
     const handleScroll = () => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
-          // Auto-hide at top to prevent covering hero images
-          const scrolled = window.scrollY > 100;
-          if (isVisible !== scrolled) setIsVisible(scrolled);
-
           if (['/home', '/'].includes(location.pathname)) {
             const menuSection = document.getElementById('menu');
             if (menuSection) {
@@ -39,7 +35,7 @@ const BottomNavbar = () => {
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [location.pathname, isVisible, activeSection]);
+  }, [location.pathname, activeSection]);
 
   const navItems = [
     { name: 'Home', icon: Home, path: '/home', isHome: true },
@@ -127,7 +123,7 @@ const BottomNavbar = () => {
       </div>
 
       {/* Main Floating Bottom Nav */}
-      <div className={`lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[1000] w-[92%] max-w-[400px] transition-all duration-500 ${isVisible ? 'translate-y-0 opacity-100 visible' : 'translate-y-24 opacity-0 invisible pointer-events-none'}`}>
+      <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[1000] w-[92%] sm:w-[85%] md:w-[70%] max-w-[500px] transition-all duration-500 translate-y-0 opacity-100 visible">
         <div className="bg-[#1A1A1A]/95 backdrop-blur-md border border-white/10 shadow-[0_25px_80px_rgba(0,0,0,0.5)] rounded-[2rem] px-2 py-2 flex items-center justify-around transition-all duration-500">
           
           {navItems.map((item) => {
