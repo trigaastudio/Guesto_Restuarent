@@ -18,6 +18,7 @@ import staffRoutes from './routes/staffRoutes.js';
 import utilRoutes from './routes/utilRoutes.js';
 import offerRoutes from './routes/offerRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
+import tableRoutes from './routes/tableRoutes.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import http from 'http';
@@ -92,7 +93,7 @@ app.use('/api/staff', staffRoutes);
 app.use('/api/utils', utilRoutes);
 app.use('/api/offers', offerRoutes);
 app.use('/api/reports', reportRoutes);
-
+app.use('/api/tables', tableRoutes);
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'Server is running' });

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check, Plus } from 'lucide-react';
 
-const MenuModal = ({ isOpen, onClose, menu, onAction }) => {
+const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
   const [selectedSize, setSelectedSize] = useState(null);
 
   useEffect(() => {
@@ -167,21 +167,27 @@ const MenuModal = ({ isOpen, onClose, menu, onAction }) => {
 
         <div className="p-4 md:p-5 pt-0 flex items-center justify-between border-t border-border/10 bg-background-card/50 backdrop-blur-sm relative z-20">
           <div className="flex flex-col">
-            <span className="text-[8px] font-black tracking-widest text-text-muted opacity-40 mb-1 uppercase">To pay</span>
+            <span className="text-[8px] font-black tracking-widest text-text-muted opacity-40 mb-1 uppercase">Price</span>
             <span className="text-2xl font-black text-text-primary tracking-tighter leading-none">₹{currentPrice}</span>
           </div>
-          <button
-            onClick={() => { if (menu.totalStock > 0) { onAction(menu, 1, selectedSize); onClose(); } }}
-            disabled={menu.totalStock <= 0}
-            className={`${
-              menu.totalStock <= 0 
-              ? 'bg-background-muted text-text-muted cursor-not-allowed grayscale' 
-              : 'bg-primary-light hover:bg-primary-light/90 text-white shadow-primary-light/20'
-            } px-6 py-2.5 rounded-xl font-black text-[9px] tracking-wider transition-all shadow-xl active:scale-95 flex items-center gap-2 uppercase`}
-          >
-            {menu.totalStock <= 0 ? 'Out of Stock' : 'Add to cart'}
-            {menu.totalStock > 0 && <Plus size={14} strokeWidth={3} />}
-          </button>
+          {!viewOnly ? (
+            <button
+              onClick={() => { if (menu.totalStock > 0) { onAction(menu, 1, selectedSize); onClose(); } }}
+              disabled={menu.totalStock <= 0}
+              className={`${
+                menu.totalStock <= 0 
+                ? 'bg-background-muted text-text-muted cursor-not-allowed grayscale' 
+                : 'bg-primary-light hover:bg-primary-light/90 text-white shadow-primary-light/20'
+              } px-6 py-2.5 rounded-xl font-black text-[9px] tracking-wider transition-all shadow-xl active:scale-95 flex items-center gap-2 uppercase`}
+            >
+              {menu.totalStock <= 0 ? 'Out of Stock' : 'Add to cart'}
+              {menu.totalStock > 0 && <Plus size={14} strokeWidth={3} />}
+            </button>
+          ) : (
+            <div className="px-6 py-2.5 bg-primary/10 text-primary rounded-xl font-black text-[9px] tracking-wider uppercase">
+              View Only Mode
+            </div>
+          )}
         </div>
       </div>
     </div>

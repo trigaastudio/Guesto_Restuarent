@@ -3,8 +3,10 @@ import { LayoutGrid, UtensilsCrossed, Plus } from 'lucide-react';
 import Loader from '../Loader/Loader';
 import { useCart } from '../../context/CartContext';
 
-const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navigate, sortBy, setSortBy, dietaryFilter, setDietaryFilter, setSearchQuery, observerTarget, hasMore, loadingMore, onAddClick, selectedCategory, bogoOnly, comboOnly, searchQuery, onClearAll }) => {
-  const { offers } = useCart();
+const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navigate, sortBy, setSortBy, dietaryFilter, setDietaryFilter, setSearchQuery, observerTarget, hasMore, loadingMore, onAddClick, selectedCategory, bogoOnly, comboOnly, searchQuery, onClearAll, viewOnly }) => {
+  const { offers, checkStoreStatus } = useCart();
+  const storeStatus = checkStoreStatus ? checkStoreStatus() : { isOpen: true };
+  const isClosed = !storeStatus.isOpen;
 
   const isAnyFilterActive = sortBy !== 'default' || dietaryFilter !== 'all' || bogoOnly || comboOnly || selectedCategory !== 'all' || !!searchQuery;
 
@@ -118,7 +120,7 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
 
               const hasSavings = originalPrice > discountedPrice;
 
-              const isOutOfStock = menu.totalStock <= 0;
+              const isOutOfStock = menu.totalStock <= 0 || isClosed;
 
               return (
                 <div
@@ -139,13 +141,13 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
                       src={menu.image || '/placeholder-food.jpg'}
                       alt={menu.name}
                       loading="lazy"
-                      className="w-full h-full object-contain group-hover:scale-110 group-active:scale-110 transition-transform duration-700 ease-out"
+                      className={`w-full h-full object-contain group-hover:scale-110 group-active:scale-110 transition-transform duration-700 ease-out ${isClosed ? 'grayscale brightness-0' : ''}`}
                     />
                     
                     {isOutOfStock && (
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px] z-20">
                         <span className="bg-white text-black text-[9px] font-black px-3 py-1.5 rounded-lg uppercase tracking-widest shadow-xl border border-black/10">
-                          Out of Stock
+                          {isClosed ? 'Closed' : 'Out of Stock'}
                         </span>
                       </div>
                     )}
@@ -184,18 +186,25 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
                           ₹{Math.round(discountedPrice)}
                         </span>
                       </div>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); !isOutOfStock && onAddClick(menu); }}
-                        disabled={isOutOfStock}
-                        className={`p-2 rounded-lg transition-all active:scale-90 shadow-sm ${
-                          isOutOfStock
-                          ? 'bg-background-muted text-text-muted cursor-not-allowed opacity-30'
-                          : 'bg-primary-light/10 group-hover:bg-primary-light group-active:bg-primary-light text-primary-light group-hover:text-white group-active:text-white'
-                        }`}
-                        title={isOutOfStock ? "Unavailable" : "Add to Cart"}
-                      >
-                        {isOutOfStock ? <UtensilsCrossed size={16} /> : <Plus size={16} strokeWidth={3} />}
-                      </button>
+                      {!viewOnly && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); !isOutOfStock && onAddClick(menu); }}
+                          disabled={isOutOfStock}
+                          className={`p-2 rounded-lg transition-all active:scale-90 shadow-sm ${
+                            isOutOfStock
+                            ? 'bg-background-muted text-text-muted cursor-not-allowed opacity-30'
+                            : 'bg-primary-light/10 group-hover:bg-primary-light group-active:bg-primary-light text-primary-light group-hover:text-white group-active:text-white'
+                          }`}
+                          title={isOutOfStock ? "Unavailable" : "Add to Cart"}
+                        >
+                          {isOutOfStock ? <UtensilsCrossed size={16} /> : <Plus size={16} strokeWidth={3} />}
+                        </button>
+                      )}
+                      {viewOnly && (
+                        <div className="p-2 rounded-lg bg-white/10 text-white opacity-0 group-hover:opacity-100 transition-all">
+                           <LayoutGrid size={16} />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

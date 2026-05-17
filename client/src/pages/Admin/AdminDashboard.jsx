@@ -41,6 +41,7 @@ import {
 import { useTheme } from '../../context/ThemeContext';
 import CategorySection from './sections/CategorySection';
 import MenuSection from './sections/MenuSection';
+import TableSection from './sections/TableSection';
 import OrderSection from './sections/OrderSection';
 import StaffManagement from './sections/StaffManagement';
 import UserManagement from './sections/UserManagement';

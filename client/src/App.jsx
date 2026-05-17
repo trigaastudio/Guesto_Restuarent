@@ -19,7 +19,9 @@ const TrackOrderPage = lazy(() => import('./pages/Orders/TrackOrderPage'));
 const MenuDetailPage = lazy(() => import('./pages/Menu/MenuDetailPage'));
 const StaffLogin = lazy(() => import('./pages/Staff/StaffLogin'));
 const KitchenDashboard = lazy(() => import('./pages/Kitchen/KitchenDashboard'));
+const WaiterDashboard = lazy(() => import('./pages/Waiter/WaiterDashboard'));
 const AboutPage = lazy(() => import('./pages/About/AboutPage'));
+const DigitalMenu = lazy(() => import('./pages/Menu/DigitalMenu'));
 
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 import { ThemeProvider } from './context/ThemeContext';
@@ -53,6 +55,7 @@ function App() {
                 {/* Staff Routes */}
                 <Route path="/staff/login" element={<StaffLogin />} />
                 <Route path="/kitchen/dashboard" element={<KitchenDashboard />} />
+                <Route path="/waiter/dashboard" element={<WaiterDashboard />} />
 
                 {/* General Routes */}
                 <Route path="/" element={<LandingPage />} />
@@ -101,6 +104,7 @@ function App() {
                   </ProtectedRoute>
                 } />
                 <Route path="/about" element={<AboutPage />} />
+                <Route path="/digital-menu" element={<DigitalMenu />} />
               </Routes>
             </Suspense>
             <BottomNavbar />

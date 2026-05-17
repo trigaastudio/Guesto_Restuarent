@@ -18,8 +18,8 @@ const tableSchema = new mongoose.Schema({
 
   status: {
     type: String,
-    enum: ["empty", "partial", "full"],
-    default: "empty"
+    enum: ["available", "occupied", "billing"],
+    default: "available"
   },
 
   

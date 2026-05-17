@@ -82,6 +82,9 @@ const CartPage = () => {
   const [loading, setLoading] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const dropdownRef = useRef(null);
+  
+  const dineInTableId = localStorage.getItem('dineInTableId');
+  const dineInTableNumber = localStorage.getItem('dineInTableNumber');
 
   const [deliveryFee, setDeliveryFee] = useState(0);
   const [calculatedDistance, setCalculatedDistance] = useState(null);
@@ -192,12 +195,17 @@ const CartPage = () => {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    if (user) fetchAddresses();
+    if (user && !dineInTableId) fetchAddresses();
   }, []);
 
   useEffect(() => {
-    updateDeliveryFee(deliveryAddress);
-  }, [deliveryAddress, settings]);
+    if (dineInTableId) {
+      setDeliveryFee(0);
+      setCalculatedDistance(null);
+    } else {
+      updateDeliveryFee(deliveryAddress);
+    }
+  }, [deliveryAddress, settings, dineInTableId]);
 
   const fetchAddresses = async () => {
     try {
@@ -266,8 +274,8 @@ const CartPage = () => {
       });
       return;
     }
-    if (!deliveryAddress) { Swal.fire({ title: 'Missing Address', text: 'Please select a delivery address.', icon: 'warning', confirmButtonColor: '#B91C1C' }); return; }
-    navigate('/payment', { state: { deliveryAddress, additionalNote, deliveryFee, platformFee } });
+    if (!dineInTableId && !deliveryAddress) { Swal.fire({ title: 'Missing Address', text: 'Please select a delivery address.', icon: 'warning', confirmButtonColor: '#B91C1C' }); return; }
+    navigate('/payment', { state: { deliveryAddress, additionalNote, deliveryFee, platformFee, dineInTableId, dineInTableNumber } });
   };
 
   if (cartLoading && cartItems.length === 0) return <Loader fullPage={true} />;
@@ -309,18 +317,41 @@ const CartPage = () => {
         <main className="max-w-7xl mx-auto px-6 pt-24 md:pt-32 relative z-10 pb-24">
           <div className="flex flex-col lg:flex-row gap-8 items-start relative">
             <div className="flex-1 space-y-4 w-full lg:h-[calc(100vh-200px)] lg:overflow-y-auto no-scrollbar pr-2">
-              {/* Simplified Delivery Bar */}
-              <div className="bg-background-card rounded-2xl p-4 md:p-6 border border-border/20 shadow-sm flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-text-muted">Deliver to:</span>
-                  <span className="text-sm font-black text-text-primary">
-                    {deliveryAddress ? deliveryAddress.address : 'Select a delivery address'}
-                  </span>
+              {dineInTableId ? (
+                <div className="bg-primary/10 rounded-2xl p-4 md:p-6 border border-primary/20 shadow-sm flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/20 text-primary rounded-xl">
+                      <Utensils size={20} />
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-text-muted block">Dine-in Order</span>
+                      <span className="text-lg font-black text-primary">Table {dineInTableNumber}</span>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      localStorage.removeItem('dineInTableId');
+                      localStorage.removeItem('dineInTableNumber');
+                      window.location.reload();
+                    }} 
+                    className="text-xs font-bold text-status-unavailable border border-status-unavailable/30 px-4 py-2 rounded-lg hover:bg-status-off/10 transition-colors"
+                  >
+                    Cancel Dine-in
+                  </button>
                 </div>
-                <button onClick={() => setIsAddressListOpen(true)} className="text-xs font-bold text-primary border border-border/60 px-4 py-2 rounded-lg hover:bg-background-muted transition-colors">
-                  Change
-                </button>
-              </div>
+              ) : (
+                <div className="bg-background-card rounded-2xl p-4 md:p-6 border border-border/20 shadow-sm flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-text-muted">Deliver to:</span>
+                    <span className="text-sm font-black text-text-primary">
+                      {deliveryAddress ? deliveryAddress.address : 'Select a delivery address'}
+                    </span>
+                  </div>
+                  <button onClick={() => setIsAddressListOpen(true)} className="text-xs font-bold text-primary border border-border/60 px-4 py-2 rounded-lg hover:bg-background-muted transition-colors">
+                    Change
+                  </button>
+                </div>
+              )}
 
               {/* Linear Cart Items */}
               <div className="bg-background-card rounded-2xl border border-border/20 shadow-sm overflow-hidden">

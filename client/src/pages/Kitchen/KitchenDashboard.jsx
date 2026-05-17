@@ -199,7 +199,8 @@ const KitchenDashboard = () => {
     // Dynamic QR Logic
     let qrCodeUrl = '';
     const restaurantName = currentSettings?.restaurantDetails?.name || 'GUESTO RESTAURENT';
-    const showQR = currentSettings?.printingSettings?.showKOTQRCode && (order.orderType === 'delivery' || order.orderSource === 'online' || order.orderType === 'online');
+    const monochromeLogo = currentSettings?.branding?.logoMonochrome || null;
+    const showQR = currentSettings?.printingSettings?.showKOTQRCode && order.orderType !== 'delivery' && (order.orderSource === 'online' || order.orderType === 'online');
 
     if (showQR && currentSettings.printingSettings.kotQRCodeImage) {
       qrCodeUrl = currentSettings.printingSettings.kotQRCodeImage;
@@ -230,10 +231,13 @@ const KitchenDashboard = () => {
             .qr-label { font-size: 10px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
           </style>
         </head>
-        <body onload="window.print(); window.close();">
+        <body onload="setTimeout(function() { window.print(); window.close(); }, 500);">
           <div class="header">
+            ${monochromeLogo
+              ? `<img src="${monochromeLogo}" style="width: 45mm; height: auto; margin: 0 auto 5px auto; display: block;" />`
+              : `<div class="restaurant-name">${restaurantName}</div>`
+            }
             <div class="kot-title">KOT</div>
-            <div class="restaurant-name">${restaurantName}</div>
           </div>
           <div class="divider"></div>
           <div class="info-grid">
@@ -283,17 +287,19 @@ const KitchenDashboard = () => {
 
   const handleStartPreparation = async (order) => {
     try {
-      // 1. Print KOT
-      handlePrintKOT(order);
-
-      // 2. Update all items to preparing
-      const updatePromises = order.items.map(item =>
+      // Update only 'placed' items to 'preparing' (not already-preparing/ready items)
+      const placedItems = order.items.filter(i => (i.kitchenStatus || 'placed') === 'placed');
+      if (placedItems.length === 0) {
+        showToast('info', 'No new items to start preparing');
+        return;
+      }
+      const updatePromises = placedItems.map(item =>
         api.patch(`/api/orders/${order._id}/items/${item._id}/status`, { kitchenStatus: 'preparing' })
       );
 
       await Promise.all(updatePromises);
 
-      showToast('success', `Order ${order.orderNumber} started!`);
+      showToast('success', `${placedItems.length} new item(s) on ${order.orderNumber} sent to preparing!`);
       fetchOrders(true);
     } catch (error) {
       console.error('Failed to start preparation:', error);
@@ -320,7 +326,7 @@ const KitchenDashboard = () => {
       showToast('success', `Order ${orderNumber} removed from kitchen`);
       fetchOrders(true);
     } catch (error) {
-      showToast('error', 'Failed to remove order');
+      showToast('error', error.response?.data?.message || 'Failed to remove order');
     }
   };
 
@@ -342,10 +348,12 @@ const KitchenDashboard = () => {
     if (!typeMatch) return false;
 
     // Second Filter by Kitchen Status
+    // Always show orders with delayed items regardless of active filter
+    if (o.items?.some(i => i.kitchenStatus === 'delayed')) return true;
     if (activeStatusFilter === 'all') return true;
     if (activeStatusFilter === 'new') return o.items?.some(i => (i.kitchenStatus || 'placed') === 'placed');
     if (activeStatusFilter === 'preparing') return o.items?.some(i => i.kitchenStatus === 'preparing');
-    if (activeStatusFilter === 'ready') return o.items?.some(i => i.kitchenStatus === 'ready');
+    if (activeStatusFilter === 'delayed') return o.items?.some(i => i.kitchenStatus === 'delayed');
 
     return true;
   });
@@ -572,39 +580,45 @@ const KitchenDashboard = () => {
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-8">
           {/* Status Filter Bar */}
-          <div className="flex items-center space-x-3 bg-background-card p-1.5 rounded-[1.5rem] border border-border-light w-fit shadow-sm">
+          <div className="flex items-center space-x-3 bg-background-card p-1.5 rounded-[1.5rem] border border-border-light w-fit shadow-sm flex-wrap gap-y-1">
             {[
-              { id: 'new', label: 'New Orders', icon: Bell },
-              { id: 'preparing', label: 'Preparing', icon: ChefHat },
-            ].map(filter => (
-              <button
-                key={filter.id}
-                onClick={() => setActiveStatusFilter(filter.id)}
-                className={`flex items-center space-x-2 px-5 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all
-                  ${activeStatusFilter === filter.id
-                    ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-105'
-                    : 'text-text-muted hover:bg-background-muted hover:text-text-primary'
-                  }
-                `}
-              >
-                <filter.icon size={14} className={activeStatusFilter === filter.id ? 'animate-pulse' : ''} />
-                <span>{filter.label}</span>
-                {filter.id !== 'all' && (
-                  <span className={`ml-2 px-2 py-0.5 rounded-full text-[9px] ${activeStatusFilter === filter.id ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'}`}>
-                    {orders.filter(o => {
-                      let typeMatch = false;
-                      if (activeTab === 'delivery') typeMatch = o.orderType === 'delivery' || o.orderType === 'online';
-                      else if (activeTab === 'takeaway') typeMatch = o.orderType === 'takeaway' || o.orderType === 'take-away';
-                      else if (activeTab === 'dine-in') typeMatch = o.orderType === 'dine-in' || o.orderType === 'dining';
-                      else typeMatch = o.orderType === activeTab;
-
-                      if (!typeMatch) return false;
-                      return o.items?.some(i => filter.id === 'new' ? (i.kitchenStatus || 'placed') === 'placed' : i.kitchenStatus === 'preparing');
-                    }).length}
+              { id: 'new', label: 'New Orders', icon: Bell, filterKey: 'placed' },
+              { id: 'preparing', label: 'Preparing', icon: ChefHat, filterKey: 'preparing' },
+              { id: 'delayed', label: 'Delayed', icon: AlertTriangle, filterKey: 'delayed' },
+            ].map(filter => {
+              const tabOrders = orders.filter(o => {
+                let typeMatch = false;
+                if (activeTab === 'delivery') typeMatch = o.orderType === 'delivery' || o.orderType === 'online';
+                else if (activeTab === 'takeaway') typeMatch = o.orderType === 'takeaway' || o.orderType === 'take-away';
+                else if (activeTab === 'dine-in') typeMatch = o.orderType === 'dine-in' || o.orderType === 'dining';
+                else typeMatch = o.orderType === activeTab;
+                if (!typeMatch) return false;
+                return o.items?.some(i => filter.filterKey === 'placed' ? (i.kitchenStatus || 'placed') === 'placed' : i.kitchenStatus === filter.filterKey);
+              });
+              const count = tabOrders.length;
+              const isDelayed = filter.id === 'delayed';
+              return (
+                <button
+                  key={filter.id}
+                  onClick={() => setActiveStatusFilter(filter.id)}
+                  className={`flex items-center space-x-2 px-5 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all
+                    ${activeStatusFilter === filter.id
+                      ? isDelayed ? 'bg-red-500 text-white shadow-lg shadow-red-500/20 scale-105' : 'bg-primary text-white shadow-lg shadow-primary/20 scale-105'
+                      : isDelayed && count > 0 ? 'text-red-500 hover:bg-red-500/10 border border-red-500/20 animate-pulse' : 'text-text-muted hover:bg-background-muted hover:text-text-primary'
+                    }
+                  `}
+                >
+                  <filter.icon size={14} className={activeStatusFilter === filter.id ? 'animate-pulse' : ''} />
+                  <span>{filter.label}</span>
+                  <span className={`ml-2 px-2 py-0.5 rounded-full text-[9px] ${
+                    activeStatusFilter === filter.id ? 'bg-white/20 text-white' :
+                    isDelayed && count > 0 ? 'bg-red-500/10 text-red-500' : 'bg-primary/10 text-primary'
+                  }`}>
+                    {count}
                   </span>
-                )}
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
 
           {isLoading ? (
@@ -642,7 +656,12 @@ const KitchenDashboard = () => {
                           <Package size={18} className={allReady ? 'text-status-available' : 'text-primary'} />
                         </div>
                         <div className="min-w-0">
-                          <h3 className="text-sm font-black text-text-primary tracking-tight truncate">{order.orderNumber}</h3>
+                          <h3 className="text-sm font-black text-text-primary tracking-tight truncate">
+                            {order.orderNumber}
+                            {order.orderType === 'dine-in' && order.table && (
+                              <span className="ml-2 text-primary">| Table {order.table.tableNumber}</span>
+                            )}
+                          </h3>
                           <div className="flex items-center space-x-2 mt-0.5">
                             <span className="text-[9px] text-text-muted font-bold uppercase tracking-widest">
                               {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -654,15 +673,14 @@ const KitchenDashboard = () => {
                         </div>
                       </div>
                       <div className="flex items-center space-x-1.5 shrink-0">
-                        {activeStatusFilter !== 'new' && (
-                          <button
-                            onClick={() => handlePrintKOT(order)}
-                            className="p-2 bg-background-card text-text-secondary hover:text-primary hover:bg-primary/10 rounded-lg transition-all border border-border-light shadow-sm"
-                            title="Print KOT"
-                          >
-                            <Printer size={14} />
-                          </button>
-                        )}
+                        {/* Print KOT - always visible */}
+                        <button
+                          onClick={() => handlePrintKOT(order)}
+                          className="p-2 bg-background-card text-text-secondary hover:text-primary hover:bg-primary/10 rounded-lg transition-all border border-border-light shadow-sm"
+                          title="Print KOT"
+                        >
+                          <Printer size={14} />
+                        </button>
                         <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border shadow-sm
                           ${order.orderType === 'takeaway' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
                             order.orderType === 'dine-in' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
@@ -677,7 +695,11 @@ const KitchenDashboard = () => {
 
                     {/* Items */}
                     <div className="flex-1 p-4 space-y-3">
-                      {order.items?.map((item) => {
+                      {/* In 'new' tab: only show 'placed' items to avoid re-showing already-preparing items */}
+                      {(activeStatusFilter === 'new'
+                        ? order.items?.filter(i => (i.kitchenStatus || 'placed') === 'placed')
+                        : order.items
+                      )?.map((item) => {
                         const status = item.kitchenStatus || 'placed';
                         return (
                           <div key={item._id} className={`grid ${activeStatusFilter === 'new' ? 'grid-cols-[40px_1fr]' : 'grid-cols-[48px_1fr_auto]'} items-center p-3 bg-background-muted/10 rounded-2xl border border-border-light hover:border-primary/20 transition-all gap-3 group/item`}>
@@ -721,15 +743,16 @@ const KitchenDashboard = () => {
                       })}
                     </div>
 
-                    {/* Footer: Remove button when all ready */}
+                    {/* Footer Actions */}
                     <div className="px-4 pb-4 space-y-2">
-                      {activeStatusFilter === 'new' && (
+                      {/* Send to Preparing button - only in 'new' tab when there are placed items */}
+                      {activeStatusFilter === 'new' && order.items?.some(i => (i.kitchenStatus || 'placed') === 'placed') && (
                         <button
                           onClick={() => handleStartPreparation(order)}
                           className="w-full flex items-center justify-center space-x-3 py-3 bg-primary text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all group"
                         >
-                          <Printer size={16} className="group-hover:rotate-12 transition-transform" />
-                          <span>PRINT KOT</span>
+                          <ChefHat size={16} className="group-hover:rotate-12 transition-transform" />
+                          <span>Send to Preparing</span>
                         </button>
                       )}
 

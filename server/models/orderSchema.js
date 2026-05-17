@@ -84,11 +84,12 @@ const orderSchema = new mongoose.Schema({
   totalAmount: { type: Number, default: 0 },
   cashReceived: { type: Number, default: 0 },
   balance: { type: Number, default: 0 },
+  paidAmount: { type: Number, default: 0 },
 
   // Status Management
   orderStatus: {
     type: String,
-    enum: ["placed", "processing", "out-for-delivery", "delivered", "cancelled"],
+    enum: ["placed", "processing", "billed", "out-for-delivery", "delivered", "cancelled"],
     default: "placed"
   },
   kitchenStatus: {
@@ -103,7 +104,8 @@ const orderSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ["cash", "upi", "card", "online", "cod", "wallet"]
+    enum: ["cash", "upi/card", "online", "cod", "wallet", "Not Specified"],
+    default: "Not Specified"
   },
   razorpayOrderId: { type: String },
   razorpayPaymentId: { type: String },

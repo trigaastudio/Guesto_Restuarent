@@ -10,8 +10,10 @@ import {
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
+import Swal from 'sweetalert2';
 import Loader from '../../../components/Loader/Loader';
 import Pagination from '../../../components/Pagination/Pagination';
+import TableSection from './TableSection';
 
 const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:5000/api`;
 const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
@@ -35,14 +37,15 @@ const OrderSection = () => {
 
     // Construct location URL if it's an object or already a string
     let locationUrl = '';
-    if (location) {
-      if (typeof location === 'object' && location.lat) {
-        locationUrl = `\n📍 *Location:* https://www.google.com/maps?q=${location.lat},${location.lng}`;
-      } else if (typeof location === 'string') {
-        // If it's already a URL or contains one, just use it or extract it
-        const urlMatch = location.match(/https?:\/\/[^\s]+/);
-        locationUrl = urlMatch ? `\n📍 *Location:* ${urlMatch[0]}` : `\n📍 *Location:* ${location}`;
-      }
+    const locToUse = location || address; 
+    
+    if (typeof location === 'object' && location?.lat) {
+      locationUrl = `\n📍 *Location:* https://www.google.com/maps?q=${location.lat},${location.lng}`;
+    } else if (typeof locToUse === 'string' && locToUse && locToUse !== 'N/A') {
+      const urlMatch = locToUse.match(/https?:\/\/[^\s]+/);
+      locationUrl = urlMatch 
+        ? `\n📍 *Location:* ${urlMatch[0]}` 
+        : `\n📍 *Location:* https://www.google.com/maps?q=${encodeURIComponent(locToUse)}`;
     }
 
     const text = `*ORDER: ${order.orderNumber}*\n` +
@@ -71,7 +74,7 @@ const OrderSection = () => {
   const [orderStatusFilter, setOrderStatusFilter] = useState(localStorage.getItem('orderStatusFilter') || 'all');
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
-  const [activeTab, setActiveTab] = useState(localStorage.getItem('orderActiveTab') || 'all');
+  const [activeTab, setActiveTab] = useState(localStorage.getItem('orderActiveTab') === 'all' ? 'takeaway' : (localStorage.getItem('orderActiveTab') || 'takeaway'));
   const [historyOrderTypeFilter, setHistoryOrderTypeFilter] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -220,7 +223,7 @@ const OrderSection = () => {
             .qr-label { font-size: 10px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
           </style>
         </head>
-        <body onload="window.print(); window.close();">
+        <body onload="setTimeout(function() { window.print(); window.close(); }, 500);">
           <div class="header">
             ${monochromeLogo
         ? `<img src="${monochromeLogo}" style="width: 45mm; height: auto; margin: 0 auto 2px auto; display: block;" />`
@@ -271,20 +274,25 @@ const OrderSection = () => {
             ${order.paymentMethod === 'cash' ? `
               <div style="display: flex; justify-content: space-between;">
                 <span>CASH RECEIVED :</span>
-                <span>${(order.cashReceived || 0).toFixed(2)}</span>
+                <span>${(order.cashReceived || order.totalAmount || order.subtotal || 0).toFixed(2)}</span>
               </div>
               <div style="display: flex; justify-content: space-between; margin-top: 3px;">
                 <span>CHANGE :</span>
                 <span>${(order.balance || 0).toFixed(2)}</span>
               </div>
+            ` : (order.orderType === 'dine-in' && order.orderStatus !== 'delivered') ? `
+              <div style="display: flex; justify-content: space-between;">
+                <span>STATUS :</span>
+                <span style="text-transform: uppercase; font-weight: bold;">BILLED</span>
+              </div>
             ` : `
               <div style="display: flex; justify-content: space-between;">
                 <span>PAYMENT METHOD :</span>
-                <span style="text-transform: uppercase;">${order.paymentMethod}</span>
+                <span style="text-transform: uppercase;">${order.paymentMethod || 'Not Specified'}</span>
               </div>
               <div style="display: flex; justify-content: space-between; margin-top: 3px;">
                 <span>STATUS :</span>
-                <span style="text-transform: uppercase;">${order.paymentStatus}</span>
+                <span style="text-transform: uppercase;">${order.paymentStatus || 'pending'}</span>
               </div>
             `}
           </div>
@@ -425,22 +433,37 @@ const OrderSection = () => {
       const dFee = posOrderType === 'delivery' ? (parseFloat(deliveryFee) || 0) : 0;
       const totalAmount = subtotal + dFee;
 
+      if (paymentMethod === 'cash') {
+        const received = parseFloat(cashReceived) || 0;
+        if (received < totalAmount) {
+          showToast('warning', `Cash received (₹${received}) is less than the total amount (₹${totalAmount})`);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      const received = paymentMethod === 'cash' ? (parseFloat(cashReceived) || 0) : (paymentMethod === 'upi/card' ? totalAmount : 0);
+      const bal = paymentMethod === 'cash' ? Math.max(0, received - totalAmount) : 0;
+      const status = paymentMethod === 'Not Specified' ? 'unpaid' : 'paid';
+
       const orderData = {
         customerDetails: {
           ...customer,
-          address: posOrderType === 'delivery' ? deliveryAddress : ''
+          address: posOrderType === 'delivery' ? deliveryAddress : '',
+          location: posOrderType === 'delivery' ? deliveryLocation : ''
         },
         items: cart,
         orderType: posOrderType,
         orderSource: 'admin',
         paymentMethod,
+        paymentStatus: status,
         subtotal,
         deliveryFee: dFee,
         tax: 0,
         discount: 0,
         totalAmount,
-        cashReceived: parseFloat(cashReceived) || 0,
-        balance: (parseFloat(cashReceived) || 0) - totalAmount,
+        cashReceived: received,
+        balance: bal,
         orderStatus: 'processing'
       };
 
@@ -465,10 +488,126 @@ const OrderSection = () => {
       const orderToUpdate = orders.find(o => o._id === orderId);
       const updateData = { orderStatus: newStatus };
 
-      // If any order is marked delivered, mark as paid
-      if (newStatus === 'delivered' && orderToUpdate) {
+      // If any order is marked delivered and is not already paid, ask for payment
+      if (newStatus === 'delivered' && orderToUpdate?.paymentStatus !== 'paid') {
+        const defaultMethod = (orderToUpdate?.paymentMethod && orderToUpdate.paymentMethod !== 'unpaid' && orderToUpdate.paymentMethod !== 'Not Specified') ? orderToUpdate.paymentMethod : 'cash';
+        const payOptions = [
+          { val: 'cash', label: 'Cash', color: '#16a34a', icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>` },
+          { val: 'upi/card', label: 'UPI / Card', color: '#7c3aed', icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><rect x="16" y="15" width="4" height="4" rx="1"/></svg>` },
+        ];
+        const result = await Swal.fire({
+          title: '<div style="font-size:20px; font-weight:800; color:var(--color-text-primary); letter-spacing:-0.5px; margin-bottom:10px;">Payment Method</div>',
+          html: `
+            <div style="display:flex; flex-direction:column; gap:12px; margin-top:5px;">
+              ${payOptions.map(({ val, label, color, icon }) => `
+                <label id="pay-label-${val}" onclick="
+                  document.querySelectorAll('[id^=pay-label-]').forEach(el=>{
+                    el.style.borderColor='var(--color-border-light)';
+                    el.style.background='var(--color-background-muted)';
+                    el.querySelector('.pay-icon-wrap').style.background='rgba(0,0,0,0.05)';
+                    el.querySelector('.pay-icon-wrap').style.color='var(--color-text-secondary)';
+                    el.querySelector('.pay-check').style.opacity='0';
+                  });
+                  this.style.borderColor='${color}';
+                  this.style.background='${color}15';
+                  this.querySelector('.pay-icon-wrap').style.background='${color}25';
+                  this.querySelector('.pay-icon-wrap').style.color='${color}';
+                  this.querySelector('.pay-check').style.opacity='1';
+                  document.getElementById('pay-val').value='${val}';
+                  if ('${val}' === 'cash') {
+                    document.getElementById('cash-calculator').style.display='block';
+                  } else {
+                    document.getElementById('cash-calculator').style.display='none';
+                    document.getElementById('swal-cash-received').value='';
+                    document.getElementById('swal-change-wrap').style.display='none';
+                  }
+                " style="display:flex; align-items:center; gap:16px; padding:16px; border:2px solid ${val === defaultMethod ? color : 'var(--color-border-light)'}; border-radius:18px; cursor:pointer; background:${val === defaultMethod ? color + '15' : 'var(--color-background-muted)'}; transition:all 0.25s cubic-bezier(0.4, 0, 0.2, 1);">
+                  <div class="pay-icon-wrap" style="width:44px; height:44px; border-radius:14px; display:flex; align-items:center; justify-content:center; background:${val === defaultMethod ? color + '25' : 'rgba(0,0,0,0.05)'}; color:${val === defaultMethod ? color : 'var(--color-text-secondary)'}; flex-shrink:0; transition:all 0.2s;">
+                    ${icon}
+                  </div>
+                  <div style="flex:1; text-align:left;">
+                    <div style="font-weight:700; font-size:16px; color:var(--color-text-primary);">${label}</div>
+                    <div style="font-size:12px; color:var(--color-text-secondary); margin-top:2px;">${val === 'cash' ? 'Pay by physical cash' : 'PhonePe, GPay, Debit/Credit cards'}</div>
+                  </div>
+                  <div class="pay-check" style="opacity:${val === defaultMethod ? '1' : '0'}; width:24px; height:24px; border-radius:50%; background:${color}; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all 0.2s;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  </div>
+                </label>
+              `).join('')}
+            </div>
+            <input type="hidden" id="pay-val" value="${defaultMethod}" />
+            <div id="cash-calculator" style="margin-top: 15px; display: ${defaultMethod === 'cash' ? 'block' : 'none'}; padding: 16px; background: rgba(0,0,0,0.02); border: 1px solid var(--color-border-light); border-radius: 18px;">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                <label style="font-size:10px; font-weight:800; color:var(--color-text-secondary); text-transform:uppercase; tracking-widest;">Cash Received</label>
+                <div style="position:relative; width:120px;">
+                  <span style="position:absolute; left:10px; top:50%; transform:translateY(-50%); font-size:12px; font-weight:bold; color:var(--color-text-muted);">₹</span>
+                  <input type="number" id="swal-cash-received" value="" oninput="
+                    const total = ${orderToUpdate.totalAmount || orderToUpdate.subtotal};
+                    const received = parseFloat(this.value) || 0;
+                    const changeWrap = document.getElementById('swal-change-wrap');
+                    const changeEl = document.getElementById('swal-change-val');
+                    if (received > 0) {
+                      changeWrap.style.display = 'flex';
+                      if (received >= total) {
+                        changeEl.textContent = '₹' + (received - total).toFixed(2);
+                        changeEl.style.color = '#10b981';
+                      } else {
+                        changeEl.textContent = 'Insufficient Cash';
+                        changeEl.style.color = '#f59e0b';
+                      }
+                    } else {
+                      changeWrap.style.display = 'none';
+                    }
+                  " placeholder="0" style="width:100%; padding:8px 8px 8px 22px; background:var(--color-background-card); border:1px solid var(--color-border-light); border-radius:12px; font-weight:900; text-align:right; font-size:13px; color:var(--color-text-primary);" />
+                </div>
+              </div>
+              <div id="swal-change-wrap" style="display:none; justify-content:space-between; align-items:center; margin-top:12px; padding-top:10px; border-top:1px dashed var(--color-border-light); font-size:12px; font-weight:800;">
+                <span style="color:var(--color-text-secondary); text-transform:uppercase; font-size:10px; tracking:widest;">Balance to Return</span>
+                <span id="swal-change-val" style="font-size:13px; color:#10b981;">₹0.00</span>
+              </div>
+            </div>
+          `,
+          background: 'var(--color-background-card)',
+          showCancelButton: true,
+          confirmButtonText: 'Confirm Payment',
+          confirmButtonColor: '#10b981',
+          cancelButtonColor: '#9ca3af',
+          customClass: {
+            confirmButton: 'swal-confirm-btn',
+            popup: 'swal-payment-popup',
+            title: 'swal-title'
+          },
+          didOpen: () => {
+            const style = document.createElement('style');
+            style.textContent = `
+              .swal-payment-popup { border-radius: 28px !important; padding: 30px !important; }
+              .swal-confirm-btn { border-radius: 14px !important; font-weight: 700 !important; font-size: 14px !important; padding: 12px 30px !important; text-transform: uppercase; letter-spacing: 0.5px; }
+              .swal-title { padding-top: 0 !important; }
+            `;
+            document.head.appendChild(style);
+          },
+          preConfirm: () => {
+            const val = document.getElementById('pay-val')?.value;
+            if (!val) { Swal.showValidationMessage('Please select a payment method'); return false; }
+            if (val === 'cash') {
+              const cashRec = parseFloat(document.getElementById('swal-cash-received')?.value) || 0;
+              const total = orderToUpdate.totalAmount || orderToUpdate.subtotal;
+              if (cashRec < total) {
+                Swal.showValidationMessage('Cash received is less than total order amount (₹' + total.toFixed(2) + ')');
+                return false;
+              }
+              return { paymentMethod: 'cash', cashReceived: cashRec, balance: cashRec - total };
+            }
+            return { paymentMethod: val, cashReceived: orderToUpdate.totalAmount || orderToUpdate.subtotal, balance: 0 };
+          }
+        });
+
+        if (!result.isConfirmed) return;
+        updateData.paymentMethod = result.value.paymentMethod;
         updateData.paymentStatus = 'paid';
-        updateData.paidAmount = orderToUpdate.totalAmount;
+        updateData.paidAmount = result.value.cashReceived;
+        updateData.cashReceived = result.value.cashReceived;
+        updateData.balance = result.value.balance;
       }
 
       const response = await axios.patch(`${API_BASE_URL}/orders/${orderId}/status`, updateData);
@@ -478,7 +617,7 @@ const OrderSection = () => {
         if (selectedOrder?._id === orderId) setSelectedOrder(response.data.data);
       }
     } catch (error) {
-      showToast('error', 'Failed to update order status');
+      showToast('error', error.response?.data?.message || 'Failed to update order status');
     }
   };
 
@@ -511,7 +650,7 @@ const OrderSection = () => {
     }
 
     const result = await showAlert({
-      title: 'Confirm Delivery Order?',
+      title: `Confirm ${order.orderType === 'takeaway' ? 'Takeaway' : 'Delivery'} Order?`,
       html: `
         <div class="space-y-6 mt-2 text-left">
           <!-- Items First -->
@@ -526,7 +665,7 @@ const OrderSection = () => {
           <div class="p-4 bg-primary/5 rounded-3xl border border-primary/10">
             <div class="flex justify-between items-start mb-3">
               <div>
-                <p class="text-[8px] font-black text-primary uppercase tracking-[0.2em] mb-1.5">Delivery To</p>
+                <p class="text-[8px] font-black text-primary uppercase tracking-[0.2em] mb-1.5">${order.orderType === 'takeaway' ? 'Customer' : 'Delivery To'}</p>
                 <p class="text-xs font-black text-text-primary">${customerName}</p>
                 <p class="text-[10px] font-bold text-text-muted mt-0.5">${customerPhone}</p>
               </div>
@@ -538,7 +677,7 @@ const OrderSection = () => {
               </div>
             </div>
             
-            <p class="text-[10px] font-bold text-text-secondary leading-relaxed border-t border-primary/5 pt-2 mt-2">${customerAddress}</p>
+            ${order.orderType === 'delivery' ? `<p class="text-[10px] font-bold text-text-secondary leading-relaxed border-t border-primary/5 pt-2 mt-2">${customerAddress}</p>` : ''}
             
             ${mapsUrl ? `
               <a href="${mapsUrl}" target="_blank" class="inline-flex items-center space-x-1.5 mt-3 px-3 py-1.5 bg-white border border-primary/20 rounded-xl text-[8px] font-black text-primary hover:bg-primary hover:text-white transition-all shadow-sm no-underline">
@@ -583,7 +722,7 @@ const OrderSection = () => {
         if (selectedOrder?._id === orderId) setSelectedOrder(updatedOrder);
       }
     } catch (error) {
-      showToast('error', 'Update failed');
+      showToast('error', error.response?.data?.message || 'Update failed');
     }
   };
 
@@ -607,7 +746,7 @@ const OrderSection = () => {
         if (selectedOrder?._id === orderId) setSelectedOrder(response.data.data);
       }
     } catch (error) {
-      showToast('error', 'Failed to update payment status');
+      showToast('error', error.response?.data?.message || 'Failed to update payment status');
     }
   };
 
@@ -883,6 +1022,7 @@ const OrderSection = () => {
     // Active States
     if (order.orderStatus === 'placed') return { label: 'New Order', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' };
     if (order.orderStatus === 'out-for-delivery') return { label: 'Out for Delivery', color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' };
+    if (order.orderStatus === 'billed') return { label: 'Billed', color: 'bg-purple-500/10 text-purple-500 border-purple-500/20' };
 
     if (order.orderStatus === 'processing') {
       const items = order.items || [];
@@ -973,8 +1113,8 @@ const OrderSection = () => {
       } else if (tabId === 'all') {
         matchesType = !isHistoryOrder;
       } else if (tabId === 'dine-in') {
-        // Special case: Show all waiter dine-in orders regardless of status
-        matchesType = (o.orderType === 'dine-in' || o.orderType === 'dining') && o.orderSource === 'waiter';
+        // Show all dine-in orders (admin or waiter) that are not in history
+        matchesType = (o.orderType === 'dine-in' || o.orderType === 'dining') && !isHistoryOrder;
       } else {
         if (isHistoryOrder) {
           matchesType = false;
@@ -1000,7 +1140,7 @@ const OrderSection = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, orderStatusFilter, paymentFilter, historyOrderTypeFilter, startDate, endDate]);
+  }, [searchTerm, orderStatusFilter, paymentFilter, paymentMethodFilter, historyOrderTypeFilter, startDate, endDate]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -1023,7 +1163,7 @@ const OrderSection = () => {
             <h2 className="text-2xl font-black text-text-primary tracking-tight">Order Management</h2>
             <p className="text-text-secondary text-sm">Monitor all orders and operational status</p>
           </div>
-          {activeTab !== 'all' && activeTab !== 'history' && (
+          {activeTab !== 'all' && activeTab !== 'history' && activeTab !== 'dine-in' && (
             <button
               onClick={() => {
                 setSelectedOrder(null);
@@ -1046,7 +1186,6 @@ const OrderSection = () => {
 
         <div className="flex items-center space-x-2 bg-background-card p-1.5 rounded-2xl border border-border/40 w-fit shadow-sm">
           {[
-            { id: 'all', label: 'All Orders', icon: Package },
             { id: 'takeaway', label: 'Counter', icon: ShoppingCart },
             { id: 'dine-in', label: 'Dine In', icon: Utensils },
             { id: 'delivery', label: 'Delivery', icon: ChevronRight },
@@ -1070,6 +1209,9 @@ const OrderSection = () => {
           ))}
         </div>
 
+        {activeTab === 'dine-in' ? (
+          <TableSection />
+        ) : (
         <div className="bg-background-card rounded-[2.5rem] border border-border/40 shadow-[0_10px_30px_rgba(0,0,0,0.02)] overflow-hidden">
           <div className="p-4 border-b border-border-light bg-background-muted/30 space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1106,7 +1248,7 @@ const OrderSection = () => {
                     >
                       <option value="all">Payment Method</option>
                       <option value="cash">Cash</option>
-                      <option value="razorpay">Razorpay</option>
+                      <option value="upi/card">UPI / Card</option>
                       <option value="online">Online</option>
                     </select>
                     <div className="flex items-center space-x-2">
@@ -1165,7 +1307,7 @@ const OrderSection = () => {
                     >
                       <option value="all">Payment Method</option>
                       <option value="cash">Cash</option>
-                      <option value="razorpay">Razorpay</option>
+                      <option value="upi/card">UPI / Card</option>
                       <option value="online">Online</option>
                     </select>
                   </>
@@ -1281,13 +1423,16 @@ const OrderSection = () => {
                   </th>
                   <th className="px-2 py-2.5 text-center">Order</th>
                   <th className="px-2 py-2.5 text-center">Payment</th>
+                  {activeTab === 'history' && (
+                    <th className="px-2 py-2.5 text-center">Method</th>
+                  )}
                   <th className="px-2 py-2.5 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={activeTab === 'history' ? 9 : (activeTab === 'dine-in' ? 8 : 7)} className="px-6 py-20 text-center">
+                    <td colSpan={activeTab === 'history' ? 10 : (activeTab === 'dine-in' ? 8 : 7)} className="px-6 py-20 text-center">
                       <div className="flex flex-col items-center justify-center space-y-6">
                         <Loader size="large" />
                         <p className="text-text-secondary text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Loading orders...</p>
@@ -1296,7 +1441,7 @@ const OrderSection = () => {
                   </tr>
                 ) : filteredOrders.length === 0 ? (
                   <tr>
-                    <td colSpan={activeTab === 'history' ? 9 : (activeTab === 'dine-in' ? 8 : 7)} className="px-6 py-12 text-center text-text-muted italic">No orders found</td>
+                    <td colSpan={activeTab === 'history' ? 10 : (activeTab === 'dine-in' ? 8 : 7)} className="px-6 py-12 text-center text-text-muted italic">No orders found</td>
                   </tr>
                 ) : (
                   paginatedOrders.map((order) => (
@@ -1392,7 +1537,7 @@ const OrderSection = () => {
                       <td className="px-2 py-2.5 text-center">
                         {(() => {
                           const status = getFriendlyStatus(order);
-                          const isActionable = status.label === 'Ready' || order.orderStatus === 'out-for-delivery';
+                          const isActionable = status.label === 'Ready' || order.orderStatus === 'out-for-delivery' || order.orderStatus === 'billed' || order.orderStatus === 'processing';
 
                           if (isActionable) {
                             return (
@@ -1402,7 +1547,17 @@ const OrderSection = () => {
                                 onClick={(e) => e.stopPropagation()}
                                 className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border cursor-pointer outline-none transition-all text-center ${status.color}`}
                               >
-                                <option value="processing" className="bg-background-card text-text-primary">Ready</option>
+                                {['Order Accepted', 'Preparing', 'Ready'].includes(status.label) && (
+                                  <>
+                                    <option value="processing" className="bg-background-card text-text-primary">{status.label}</option>
+                                    {order.orderType === 'dine-in' && (
+                                      <option value="billed" className="bg-background-card text-text-primary">Billed</option>
+                                    )}
+                                  </>
+                                )}
+                                {order.orderStatus === 'billed' && (
+                                  <option value="billed" className="bg-background-card text-text-primary">Billed</option>
+                                )}
                                 {order.orderType === 'delivery' && (
                                   <option value="out-for-delivery" className="bg-background-card text-text-primary">Out for Delivery</option>
                                 )}
@@ -1426,38 +1581,44 @@ const OrderSection = () => {
                           {order.paymentStatus}
                         </span>
                       </td>
+                      {activeTab === 'history' && (
+                        <td className="px-2 py-2.5 text-center">
+                          <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-background-muted text-text-secondary border border-border-light">
+                            {order.paymentMethod || 'N/A'}
+                          </span>
+                        </td>
+                      )}
                       <td className="px-2 py-2.5 text-center">
                         <div className="flex items-center justify-center space-x-1" onClick={(e) => e.stopPropagation()}>
                           {(() => {
                             const status = getFriendlyStatus(order);
                             return (
                               <>
-                                {order.orderStatus !== 'placed' && (
-                                  <>
-                                    <button
-                                      onClick={() => handlePrintKOT(order)}
-                                      className="p-2 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all"
-                                      title="Print KOT"
-                                    >
-                                      <Printer size={18} />
-                                    </button>
-                                    <button
-                                      onClick={() => handleOpenDetails(order)}
-                                      className="p-2 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all"
-                                      title="View Details"
-                                    >
-                                      <Eye size={18} />
-                                    </button>
-                                  </>
+                                {order.orderStatus === 'placed' && (
+                                  <button
+                                    onClick={() => handleConfirmOrder(order)}
+                                    className="p-2 bg-primary/10 text-primary rounded-lg hover:bg-primary hover:text-white transition-all animate-pulse"
+                                    title="Confirm Order"
+                                  >
+                                    <CheckCircle2 size={18} />
+                                  </button>
                                 )}
-                                {order.orderStatus === 'placed' && (order.orderSource === 'user' || order.orderSource === 'online') && (
-                                  <div className="flex items-center justify-center space-x-1 opacity-20 grayscale pointer-events-none">
-                                    <Printer size={18} />
-                                    <Eye size={18} />
-                                  </div>
-                                )}
+                                <button
+                                  onClick={() => handlePrintKOT(order)}
+                                  className="p-2 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all"
+                                  title="Print KOT"
+                                >
+                                  <Printer size={18} />
+                                </button>
+                                <button
+                                  onClick={() => handleOpenDetails(order)}
+                                  className="p-2 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all"
+                                  title="View Details"
+                                >
+                                  <Eye size={18} />
+                                </button>
 
-                                {status.label === 'Ready' && (
+                                {order.orderType === 'delivery' && (
                                   <button
                                     onClick={() => handleCopyForWhatsApp(order)}
                                     className="p-2 hover:bg-primary/10 text-primary rounded-lg transition-all"
@@ -1484,6 +1645,7 @@ const OrderSection = () => {
             onPageChange={setCurrentPage}
           />
         </div>
+        )}
       </div>
 
       {/* Details Modal */}
@@ -1561,7 +1723,10 @@ const OrderSection = () => {
                 )}
 
                 <div className="space-y-3">
-                  {selectedOrder?.items?.map((item) => (
+                  {selectedOrder?.items?.map((item) => {
+                    const ks = item?.kitchenStatus || 'placed';
+                    const ksStyles = ks === 'ready' ? 'bg-status-on/10 text-status-available border-status-on/20' : ks === 'preparing' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : ks === 'delayed' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20';
+                    return (
                     <div key={item._id} className="flex items-center justify-between p-3 bg-background-muted/20 rounded-2xl border border-border-light hover:border-primary/20 transition-all">
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 bg-background-card rounded-xl flex items-center justify-center border border-border-light overflow-hidden shrink-0">
@@ -1581,13 +1746,17 @@ const OrderSection = () => {
                         </div>
                       </div>
 
-                      <div className="flex items-center space-x-4">
+                      <div className="flex items-center space-x-3">
+                        <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${ksStyles}`}>
+                          {ks}
+                        </span>
                         <p className="text-xs font-black text-text-primary">
                           ₹{item?.totalPrice || ((item?.unitPrice || item?.price || 0) * item?.quantity)}
                         </p>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1734,29 +1903,7 @@ const OrderSection = () => {
                 )}
               </div>
               <div className="flex items-center space-x-4">
-                {(() => {
-                  const status = getFriendlyStatus(selectedOrder);
-                  if (status.label === 'Ready' || selectedOrder.orderStatus === 'out-for-delivery') {
-                    return (
-                      <div className="flex items-center space-x-3 bg-background-card p-2 rounded-2xl border border-border-light shadow-sm">
-                        <p className="text-[9px] font-black uppercase text-text-muted px-2">Update Status:</p>
-                        <select
-                          value={selectedOrder.orderStatus}
-                          onChange={(e) => {
-                            handleUpdateOrderStatus(selectedOrder._id, e.target.value);
-                            setIsDetailsModalOpen(false);
-                          }}
-                          className="bg-primary/5 text-primary text-xs font-black uppercase tracking-widest px-4 py-2 rounded-xl outline-none border-none cursor-pointer hover:bg-primary/10 transition-all"
-                        >
-                          <option value="processing" className="text-text-primary">Ready</option>
-                          <option value="out-for-delivery" className="text-text-primary">Out for Delivery</option>
-                          <option value="delivered" className="text-text-primary">Delivered</option>
-                        </select>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
+                {null}
 
                 {selectedOrder.orderStatus === 'placed' && (
                   <button
@@ -1921,7 +2068,7 @@ const OrderSection = () => {
                 )}
 
                 <div className="flex items-center space-x-2 bg-background-card p-1.5 rounded-2xl border border-border-light mb-4">
-                  {['takeaway', 'dine-in', 'delivery'].map(type => (
+                  {['takeaway', 'delivery'].map(type => (
                     <button
                       key={type}
                       onClick={() => {
@@ -2220,15 +2367,15 @@ const OrderSection = () => {
 
                 <div className="grid grid-cols-3 gap-1.5">
                   {[
+                    { id: 'Not Specified', label: 'Not Specified' },
                     { id: 'cash', label: 'Cash' },
-                    { id: 'upi', label: 'UPI' },
-                    { id: 'card', label: 'Card' }
+                    { id: 'upi/card', label: 'UPI / Card' }
                   ].map(m => (
                     <button
                       key={m.id}
                       onClick={() => {
                         setPaymentMethod(m.id);
-                        if (m.id !== 'cash') setCashReceived('');
+                        setCashReceived('');
                       }}
                       className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border ${paymentMethod === m.id
                         ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20'
@@ -2239,6 +2386,34 @@ const OrderSection = () => {
                     </button>
                   ))}
                 </div>
+
+                {paymentMethod === 'cash' && (
+                  <div className="p-3 bg-primary/5 rounded-2xl border border-primary/10 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[9px] font-black text-text-muted uppercase tracking-widest">Cash Received</label>
+                      <div className="relative w-28">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-black text-text-muted">₹</span>
+                        <input
+                          type="number"
+                          value={cashReceived}
+                          onChange={(e) => setCashReceived(e.target.value)}
+                          placeholder="0"
+                          className="w-full pl-6 pr-2.5 py-1.5 bg-background border border-border-light rounded-xl focus:outline-none focus:border-primary text-right font-black text-xs text-text-primary"
+                        />
+                      </div>
+                    </div>
+                    {parseFloat(cashReceived) > 0 && (
+                      <div className="flex justify-between items-center text-[10px] font-black border-t border-border-light/60 pt-2">
+                        <span className="text-text-secondary uppercase tracking-wider text-[8px]">Balance to Return</span>
+                        <span className={parseFloat(cashReceived) >= (cart.reduce((acc, i) => acc + i.totalPrice, 0) + (posOrderType === 'delivery' ? (parseFloat(deliveryFee) || 0) : 0)) ? "text-emerald-600 text-xs" : "text-amber-500 uppercase text-[8px]"}>
+                          {parseFloat(cashReceived) >= (cart.reduce((acc, i) => acc + i.totalPrice, 0) + (posOrderType === 'delivery' ? (parseFloat(deliveryFee) || 0) : 0))
+                            ? `₹${(parseFloat(cashReceived) - (cart.reduce((acc, i) => acc + i.totalPrice, 0) + (posOrderType === 'delivery' ? (parseFloat(deliveryFee) || 0) : 0))).toFixed(2)}`
+                            : "Insufficient Cash"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <button
                   onClick={handleCreateOrder}
                   disabled={isSubmitting}

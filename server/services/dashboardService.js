@@ -85,7 +85,8 @@ class DashboardService {
         { $group: { 
           _id: '$items.menuItem', 
           name: { $first: '$items.name' },
-          orders: { $sum: '$items.quantity' }
+          orders: { $sum: '$items.quantity' },
+          unitPrice: { $first: '$items.price' }
         } },
         {
           $lookup: {
@@ -100,7 +101,15 @@ class DashboardService {
           _id: 1,
           name: { $ifNull: ['$name', '$menuInfo.name'] },
           orders: 1,
-          image: '$menuInfo.image'
+          image: '$menuInfo.image',
+          price: { $ifNull: ['$menuInfo.price', '$unitPrice'] },
+          offerPrice: '$menuInfo.offerPrice',
+          variants: '$menuInfo.variants',
+          description: '$menuInfo.description',
+          foodType: '$menuInfo.foodType',
+          isCombo: '$menuInfo.isCombo',
+          comboItems: '$menuInfo.comboItems',
+          totalStock: '$menuInfo.totalStock'
         } },
         { $match: { name: { $ne: null } } },
         { $sort: { orders: -1 } },

@@ -11,7 +11,7 @@ const PaymentPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { cartItems, subtotal, clearCart, settings } = useCart();
-  const [paymentMethod, setPaymentMethod] = useState('card'); // 'card', 'cod', 'wallet'
+  const [paymentMethod, setPaymentMethod] = useState('online'); // 'online', 'cod', 'wallet'
   const [loading, setLoading] = useState(false);
   const [isOrderSuccess, setIsOrderSuccess] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -45,6 +45,8 @@ const PaymentPage = () => {
   const additionalNote = location.state?.additionalNote || '';
   const deliveryFee = location.state?.deliveryFee || 0;
   const platformFee = location.state?.platformFee || 0;
+  const dineInTableId = location.state?.dineInTableId;
+  const dineInTableNumber = location.state?.dineInTableNumber;
   const total = subtotal + deliveryFee + platformFee;
 
   useEffect(() => {
@@ -56,8 +58,8 @@ const PaymentPage = () => {
     script.async = true;
     document.body.appendChild(script);
 
-    // If no address or items, redirect back to cart (unless order was just successful)
-    if (!isOrderSuccess && (!deliveryAddress || cartItems.length === 0)) {
+    // If no address/table or items, redirect back to cart
+    if (!isOrderSuccess && (!(deliveryAddress || dineInTableId) || cartItems.length === 0)) {
       navigate('/cart');
     }
 
@@ -74,7 +76,7 @@ const PaymentPage = () => {
         document.body.removeChild(script);
       }
     };
-  }, [deliveryAddress, cartItems, navigate, isOrderSuccess]);
+  }, [deliveryAddress, dineInTableId, cartItems, navigate, isOrderSuccess]);
 
   const handlePlaceOrder = async () => {
     setLoading(true);
@@ -103,14 +105,19 @@ const PaymentPage = () => {
         subtotal,
         deliveryFee,
         platformFee,
-        remarks: additionalNote
+        remarks: additionalNote,
+        ...(dineInTableId && {
+          orderType: 'dine-in',
+          table: dineInTableId,
+          orderSource: 'waiter'
+        })
       };
 
       // 1. Always create the order in DB first (it will be 'pending' by default)
       const response = await api.post('/api/orders', orderData);
       const createdOrder = response.data.data;
 
-      if (paymentMethod === 'card') {
+      if (paymentMethod === 'online') {
         // 2. Create Razorpay Order
         const { data: { data: razorpayOrder } } = await api.post('/api/payments/create-order', {
           amount: total,
@@ -140,6 +147,8 @@ const PaymentPage = () => {
 
               if (verificationResult.success) {
                 clearCart();
+                localStorage.removeItem('dineInTableId');
+                localStorage.removeItem('dineInTableNumber');
                 setIsOrderSuccess(true);
                 showSuccessPopup(createdOrder);
               }
@@ -156,7 +165,7 @@ const PaymentPage = () => {
           prefill: {
             name: user?.name || '',
             email: user?.email || '',
-            contact: deliveryAddress.mobile || ''
+            contact: deliveryAddress?.mobile || ''
           },
           theme: {
             color: '#B91C1C'
@@ -169,6 +178,8 @@ const PaymentPage = () => {
       } else {
         // COD Flow Success
         clearCart();
+        localStorage.removeItem('dineInTableId');
+        localStorage.removeItem('dineInTableNumber');
         setIsOrderSuccess(true);
         showSuccessPopup(createdOrder);
       }
@@ -303,7 +314,7 @@ const PaymentPage = () => {
     });
   };
 
-  if (!isOrderSuccess && (!deliveryAddress || cartItems.length === 0)) return null;
+  if (!isOrderSuccess && (!(deliveryAddress || dineInTableId) || cartItems.length === 0)) return null;
 
   return (
     <div className="min-h-screen bg-background font-sans selection:bg-primary/10 overflow-x-hidden">
@@ -338,45 +349,66 @@ const PaymentPage = () => {
                   <p className="text-[11px] font-black text-primary tracking-[0.3em] uppercase opacity-90">delivery destination</p>
                 </div>
 
-                <div className="relative bg-background/50 backdrop-blur-xl rounded-[2.5rem] p-6 md:p-8 border border-white/10 shadow-xl flex flex-col md:flex-row gap-8 items-start md:items-center">
-                  <div className="w-16 h-16 rounded-3xl bg-primary shadow-[0_15px_35px_rgba(185,28,28,0.2)] flex items-center justify-center text-white flex-shrink-0 animate-bounce-slow">
-                    <MapPin size={32} strokeWidth={2} />
+                {dineInTableId ? (
+                  <div className="relative bg-primary/10 backdrop-blur-xl rounded-[2.5rem] p-6 md:p-8 border border-primary/20 shadow-xl flex flex-col md:flex-row gap-8 items-start md:items-center">
+                    <div className="w-16 h-16 rounded-3xl bg-primary shadow-[0_15px_35px_rgba(185,28,28,0.2)] flex items-center justify-center text-white flex-shrink-0 animate-bounce-slow">
+                      <Banknote size={32} strokeWidth={2} />
+                    </div>
+                    <div className="flex-1 space-y-3">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className="text-[10px] font-black text-white bg-primary px-4 py-1.5 rounded-full uppercase tracking-widest shadow-lg shadow-primary/20">
+                          Dine-in Order
+                        </span>
+                      </div>
+                      <h4 className="text-2xl font-black text-text-primary tracking-tighter capitalize leading-none">
+                        Table {dineInTableNumber}
+                      </h4>
+                      <p className="text-sm text-text-muted font-bold opacity-70 leading-relaxed max-w-lg">
+                        Order will be sent directly to the kitchen for preparation.
+                      </p>
+                    </div>
                   </div>
-
-                  <div className="flex-1 space-y-3">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span className="text-[10px] font-black text-white bg-primary px-4 py-1.5 rounded-full uppercase tracking-widest shadow-lg shadow-primary/20">
-                        {deliveryAddress.type || 'home'}
-                      </span>
-                      <div className="h-1.5 w-1.5 rounded-full bg-border/40"></div>
-                      <span className="text-sm font-black text-text-primary tracking-tight">{deliveryAddress.mobile}</span>
+                ) : (
+                  <div className="relative bg-background/50 backdrop-blur-xl rounded-[2.5rem] p-6 md:p-8 border border-white/10 shadow-xl flex flex-col md:flex-row gap-8 items-start md:items-center">
+                    <div className="w-16 h-16 rounded-3xl bg-primary shadow-[0_15px_35px_rgba(185,28,28,0.2)] flex items-center justify-center text-white flex-shrink-0 animate-bounce-slow">
+                      <MapPin size={32} strokeWidth={2} />
                     </div>
 
-                    <h4 className="text-2xl font-black text-text-primary tracking-tighter capitalize leading-none">
-                      {deliveryAddress.recipientName && deliveryAddress.recipientName !== 'Myself' && deliveryAddress.recipientName !== 'Others'
-                        ? deliveryAddress.recipientName
-                        : (user?.name || 'customer')}
-                    </h4>
-
-                    <p className="text-sm text-text-muted font-bold opacity-70 leading-relaxed max-w-lg">
-                      {deliveryAddress.address}
-                    </p>
-
-                    {deliveryAddress.landmark && (
-                      <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-background-muted/50 rounded-xl border border-border/40">
-                        <Info size={14} className="text-primary" />
-                        <span className="text-[10px] font-black text-text-primary uppercase tracking-wider opacity-80">landmark: {deliveryAddress.landmark}</span>
+                    <div className="flex-1 space-y-3">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className="text-[10px] font-black text-white bg-primary px-4 py-1.5 rounded-full uppercase tracking-widest shadow-lg shadow-primary/20">
+                          {deliveryAddress.type || 'home'}
+                        </span>
+                        <div className="h-1.5 w-1.5 rounded-full bg-border/40"></div>
+                        <span className="text-sm font-black text-text-primary tracking-tight">{deliveryAddress.mobile}</span>
                       </div>
-                    )}
-                  </div>
 
-                  <div className="w-full md:w-36 bg-background rounded-3xl border border-primary/20 shadow-lg p-5 flex flex-col items-center justify-center gap-2 group/arrival hover:border-primary transition-all duration-500 flex-shrink-0 relative overflow-hidden">
-                    <div className="absolute inset-0 bg-primary/5 translate-y-full group-hover/arrival:translate-y-0 transition-transform duration-500"></div>
-                    <Clock size={24} className="text-primary relative z-10" />
-                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest relative z-10">arrival</p>
-                    <h5 className="text-xl font-black text-text-primary tracking-tighter relative z-10">45 mins</h5>
+                      <h4 className="text-2xl font-black text-text-primary tracking-tighter capitalize leading-none">
+                        {deliveryAddress.recipientName && deliveryAddress.recipientName !== 'Myself' && deliveryAddress.recipientName !== 'Others'
+                          ? deliveryAddress.recipientName
+                          : (user?.name || 'customer')}
+                      </h4>
+
+                      <p className="text-sm text-text-muted font-bold opacity-70 leading-relaxed max-w-lg">
+                        {deliveryAddress.address}
+                      </p>
+
+                      {deliveryAddress.landmark && (
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-background-muted/50 rounded-xl border border-border/40">
+                          <Info size={14} className="text-primary" />
+                          <span className="text-[10px] font-black text-text-primary uppercase tracking-wider opacity-80">landmark: {deliveryAddress.landmark}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="w-full md:w-36 bg-background rounded-3xl border border-primary/20 shadow-lg p-5 flex flex-col items-center justify-center gap-2 group/arrival hover:border-primary transition-all duration-500 flex-shrink-0 relative overflow-hidden">
+                      <div className="absolute inset-0 bg-primary/5 translate-y-full group-hover/arrival:translate-y-0 transition-transform duration-500"></div>
+                      <Clock size={24} className="text-primary relative z-10" />
+                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest relative z-10">arrival</p>
+                      <h5 className="text-xl font-black text-text-primary tracking-tighter relative z-10">45 mins</h5>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {additionalNote && (
                   <div className="mt-8 p-6 bg-primary/5 rounded-[2.5rem] border-2 border-dashed border-primary/10 flex items-start gap-5 group/note">
@@ -453,20 +485,20 @@ const PaymentPage = () => {
                   <div className="space-y-3 mb-6">
                     {/* Online Payment Option */}
                     <div
-                      onClick={() => setPaymentMethod('card')}
-                      className={`cursor-pointer group/pay p-4 rounded-[1.5rem] border-2 transition-all duration-500 flex items-center justify-between ${paymentMethod === 'card' ? 'border-primary bg-primary/[0.03] shadow-lg shadow-primary/5 -translate-y-0.5' : 'border-border/20 bg-background hover:border-primary/30 hover:bg-background-card hover:-translate-y-0.5'}`}
+                      onClick={() => setPaymentMethod('online')}
+                      className={`cursor-pointer group/pay p-4 rounded-[1.5rem] border-2 transition-all duration-500 flex items-center justify-between ${paymentMethod === 'online' ? 'border-primary bg-primary/[0.03] shadow-lg shadow-primary/5 -translate-y-0.5' : 'border-border/20 bg-background hover:border-primary/30 hover:bg-background-card hover:-translate-y-0.5'}`}
                     >
                       <div className="flex items-center gap-4">
-                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-500 ${paymentMethod === 'card' ? 'bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white shadow-lg shadow-indigo-500/20 scale-105' : 'bg-background-card text-text-muted/40 group-hover/pay:text-indigo-500'}`}>
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-500 ${paymentMethod === 'online' ? 'bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white shadow-lg shadow-indigo-500/20 scale-105' : 'bg-background-card text-text-muted/40 group-hover/pay:text-indigo-500'}`}>
                           <CreditCard size={20} strokeWidth={2.5} />
                         </div>
                         <div>
-                          <h4 className="text-sm font-black text-text-primary tracking-tight">Card / UPI</h4>
+                          <h4 className="text-sm font-black text-text-primary tracking-tight">Online</h4>
                           <p className="text-[9px] font-bold text-text-muted tracking-widest uppercase opacity-50">secure checkout</p>
                         </div>
                       </div>
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${paymentMethod === 'card' ? 'border-primary bg-primary/10' : 'border-border/40 group-hover/pay:border-primary/40'}`}>
-                        <div className={`w-2 h-2 rounded-full bg-primary transition-all duration-500 ${paymentMethod === 'card' ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}></div>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${paymentMethod === 'online' ? 'border-primary bg-primary/10' : 'border-border/40 group-hover/pay:border-primary/40'}`}>
+                        <div className={`w-2 h-2 rounded-full bg-primary transition-all duration-500 ${paymentMethod === 'online' ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}></div>
                       </div>
                     </div>
 
@@ -504,8 +536,8 @@ const PaymentPage = () => {
                           <Banknote size={20} strokeWidth={2.5} />
                         </div>
                         <div>
-                          <h4 className="text-sm font-black text-text-primary tracking-tight">Cash</h4>
-                          <p className="text-[9px] font-bold text-text-muted tracking-widest uppercase opacity-50">pay on delivery</p>
+                          <h4 className="text-sm font-black text-text-primary tracking-tight">COD</h4>
+                          <p className="text-[9px] font-bold text-text-muted tracking-widest uppercase opacity-50">cash on delivery</p>
                         </div>
                       </div>
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${paymentMethod === 'cod' ? 'border-primary bg-primary/10' : 'border-border/40 group-hover/pay:border-primary/40'}`}>
