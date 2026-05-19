@@ -295,6 +295,7 @@ const AdminDashboard = () => {
                 items: [
                   { name: 'Categories', icon: Filter },
                   { name: 'Menu', icon: UtensilsCrossed },
+                  { name: 'Tables', icon: Layers },
                   { name: 'Offers', icon: Ticket },
                 ]
               },
@@ -895,6 +896,7 @@ const AdminDashboard = () => {
           {activeTab === 'Orders' && <OrderSection key={`order-${refreshKey}`} />}
           {activeTab === 'Categories' && <CategorySection key={`cat-${refreshKey}`} />}
           {activeTab === 'Menu' && <MenuSection key={`menu-${refreshKey}`} />}
+          {activeTab === 'Tables' && <TableSection key={`tables-${refreshKey}`} />}
 
           {activeTab === 'Staff' && <StaffManagement key={`staff-${refreshKey}`} />}
           {activeTab === 'Users' && <UserManagement key={`users-${refreshKey}`} />}

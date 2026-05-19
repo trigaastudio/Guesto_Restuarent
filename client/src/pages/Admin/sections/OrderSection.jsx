@@ -37,14 +37,14 @@ const OrderSection = () => {
 
     // Construct location URL if it's an object or already a string
     let locationUrl = '';
-    const locToUse = location || address; 
-    
+    const locToUse = location || address;
+
     if (typeof location === 'object' && location?.lat) {
       locationUrl = `\n📍 *Location:* https://www.google.com/maps?q=${location.lat},${location.lng}`;
     } else if (typeof locToUse === 'string' && locToUse && locToUse !== 'N/A') {
       const urlMatch = locToUse.match(/https?:\/\/[^\s]+/);
-      locationUrl = urlMatch 
-        ? `\n📍 *Location:* ${urlMatch[0]}` 
+      locationUrl = urlMatch
+        ? `\n📍 *Location:* ${urlMatch[0]}`
         : `\n📍 *Location:* https://www.google.com/maps?q=${encodeURIComponent(locToUse)}`;
     }
 
@@ -536,6 +536,10 @@ const OrderSection = () => {
               `).join('')}
             </div>
             <input type="hidden" id="pay-val" value="${defaultMethod}" />
+            <div style="margin-top: 15px; padding: 16px; background: rgba(0,0,0,0.02); border: 1px solid var(--color-border-light); border-radius: 18px; display: flex; justify-content: space-between; align-items: center; font-family: inherit;">
+              <span style="font-size: 11px; font-weight: 800; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; tracking-widest;">Total Amount</span>
+              <span style="font-size: 18px; font-weight: 900; color: var(--color-text-primary);">₹${orderToUpdate.totalAmount || orderToUpdate.subtotal}</span>
+            </div>
             <div id="cash-calculator" style="margin-top: 15px; display: ${defaultMethod === 'cash' ? 'block' : 'none'}; padding: 16px; background: rgba(0,0,0,0.02); border: 1px solid var(--color-border-light); border-radius: 18px;">
               <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
                 <label style="font-size:10px; font-weight:800; color:var(--color-text-secondary); text-transform:uppercase; tracking-widest;">Cash Received</label>
@@ -869,7 +873,7 @@ const OrderSection = () => {
     }
 
     const sizeName = variant.size || 'Standard';
-    
+
     const bogoInfo = (variant?.isBOGO && variant?.bogoItem) ? {
       name: menuItems.find(m => m._id.toString() === variant.bogoItem.toString())?.name || 'Free Item',
       size: variant.bogoVariant || '',
@@ -878,18 +882,31 @@ const OrderSection = () => {
 
     setCart(prevCart => {
       const existingIndex = prevCart.findIndex(c => c.menuItem === item._id && c.size === sizeName);
-      
+
       if (existingIndex > -1) {
-        const newCart = [...prevCart];
-        newCart[existingIndex].quantity += 1;
-        newCart[existingIndex].totalPrice = newCart[existingIndex].quantity * newCart[existingIndex].unitPrice;
-        if (bogoInfo) {
-          newCart[existingIndex].bogoItem = {
-            ...bogoInfo,
-            quantity: newCart[existingIndex].quantity
-          };
-        }
-        return newCart;
+        return prevCart.map((c, idx) => {
+          if (idx === existingIndex) {
+            const newQty = c.quantity + 1;
+            const updatedItem = {
+              ...c,
+              quantity: newQty,
+              totalPrice: newQty * c.unitPrice
+            };
+            if (bogoInfo) {
+              updatedItem.bogoItem = {
+                ...bogoInfo,
+                quantity: newQty
+              };
+            } else if (c.bogoItem) {
+              updatedItem.bogoItem = {
+                ...c.bogoItem,
+                quantity: newQty
+              };
+            }
+            return updatedItem;
+          }
+          return c;
+        });
       } else {
         return [...prevCart, {
           menuItem: item._id,
@@ -908,14 +925,24 @@ const OrderSection = () => {
   };
 
   const updateCartQuantity = (index, delta) => {
-    const newCart = [...cart];
-    const item = newCart[index];
-    item.quantity = Math.max(1, item.quantity + delta);
-    item.totalPrice = item.quantity * item.unitPrice;
-    if (item.bogoItem) {
-      item.bogoItem.quantity = item.quantity;
-    }
-    setCart(newCart);
+    setCart(prevCart => prevCart.map((item, idx) => {
+      if (idx === index) {
+        const newQty = Math.max(1, item.quantity + delta);
+        const updatedItem = {
+          ...item,
+          quantity: newQty,
+          totalPrice: newQty * item.unitPrice
+        };
+        if (item.bogoItem) {
+          updatedItem.bogoItem = {
+            ...item.bogoItem,
+            quantity: newQty
+          };
+        }
+        return updatedItem;
+      }
+      return item;
+    }));
   };
 
   const removeFromCart = (index) => {
@@ -1019,7 +1046,25 @@ const OrderSection = () => {
     if (order.orderStatus === 'cancelled') return { label: 'Cancelled', color: 'bg-status-off/10 text-status-unavailable border-status-off/20' };
     if (order.orderStatus === 'delivered' || order.orderStatus === 'completed') return { label: 'Delivered', color: 'bg-primary/10 text-primary border-primary/20' };
 
-    // Active States
+    // Dine In specific statuses
+    if (order.orderType === 'dine-in' || order.orderType === 'dining') {
+      const items = order.items || [];
+      const isReady = items.length > 0 && items.every(i => i.kitchenStatus === 'ready');
+      let actualOrderStatus = order.orderStatus;
+
+      if (actualOrderStatus === 'placed' && items.some(i => ['preparing', 'ready'].includes(i.kitchenStatus))) {
+        actualOrderStatus = 'processing';
+      }
+
+      const currentStatus = (actualOrderStatus === 'processing' && isReady) ? 'ready' : actualOrderStatus;
+
+      if (currentStatus === 'placed') return { label: 'Waiting Approval', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' };
+      if (currentStatus === 'processing') return { label: 'Preparing', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' };
+      if (currentStatus === 'ready') return { label: 'Ready', color: 'bg-status-on/10 text-status-available border-status-on/20' };
+      if (currentStatus === 'billed') return { label: 'Billed', color: 'bg-purple-500/10 text-purple-500 border-purple-500/20' };
+    }
+
+    // Active States (Other)
     if (order.orderStatus === 'placed') return { label: 'New Order', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' };
     if (order.orderStatus === 'out-for-delivery') return { label: 'Out for Delivery', color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' };
     if (order.orderStatus === 'billed') return { label: 'Billed', color: 'bg-purple-500/10 text-purple-500 border-purple-500/20' };
@@ -1209,9 +1254,6 @@ const OrderSection = () => {
           ))}
         </div>
 
-        {activeTab === 'dine-in' ? (
-          <TableSection />
-        ) : (
         <div className="bg-background-card rounded-[2.5rem] border border-border/40 shadow-[0_10px_30px_rgba(0,0,0,0.02)] overflow-hidden">
           <div className="p-4 border-b border-border-light bg-background-muted/30 space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1396,25 +1438,26 @@ const OrderSection = () => {
                       </div>
                     </th>
                   )}
-                  {activeTab === 'dine-in' && (
-                    <th className="px-2 py-2.5">
-                      <div className="flex items-center space-x-1">
-                        <span>Table</span>
-                      </div>
-                    </th>
-                  )}
                   <th className="px-2 py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('createdAt')}>
                     <div className="flex items-center space-x-1">
                       <span>Date & Time</span>
                       <ArrowUpDown size={12} className={sortConfig.key === 'createdAt' ? 'text-primary' : 'text-text-muted'} />
                     </div>
                   </th>
-                  <th className="px-2 py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('customer')}>
-                    <div className="flex items-center space-x-1">
-                      <span>Customer</span>
-                      <ArrowUpDown size={12} className={sortConfig.key === 'customer' ? 'text-primary' : 'text-text-muted'} />
-                    </div>
-                  </th>
+                  {activeTab === 'dine-in' ? (
+                    <th className="px-2 py-2.5">
+                      <div className="flex items-center space-x-1">
+                        <span>Table</span>
+                      </div>
+                    </th>
+                  ) : (
+                    <th className="px-2 py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('customer')}>
+                      <div className="flex items-center space-x-1">
+                        <span>Customer</span>
+                        <ArrowUpDown size={12} className={sortConfig.key === 'customer' ? 'text-primary' : 'text-text-muted'} />
+                      </div>
+                    </th>
+                  )}
                   <th className="px-2 py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('amount')}>
                     <div className="flex items-center space-x-1">
                       <span>Amount</span>
@@ -1475,7 +1518,7 @@ const OrderSection = () => {
                       )}
                       <td className="px-2 py-2.5 font-black text-text-primary">
                         <div className="flex items-center space-x-2">
-                          {order.orderStatus === 'placed' && (
+                          {order.orderStatus === 'placed' && activeTab !== 'dine-in' && order.orderType !== 'dine-in' && order.orderType !== 'dining' && (
                             <div className="flex items-center shrink-0">
                               <Zap size={12} className="text-primary fill-primary animate-pulse" />
                               <span className="ml-1 text-[8px] font-black text-primary uppercase tracking-tighter">New</span>
@@ -1494,50 +1537,51 @@ const OrderSection = () => {
                           </span>
                         </td>
                       )}
-                      {activeTab === 'dine-in' && (
-                        <td className="px-2 py-2.5">
-                          {order.table ? (
-                            <span className="bg-primary/10 text-primary px-2 py-1 rounded-lg text-[10px] font-black border border-primary/20">
-                              T-{order.table.tableNumber}
-                            </span>
-                          ) : (
-                            <span className="text-text-muted text-[10px] font-bold italic">No Table</span>
-                          )}
-                        </td>
-                      )}
                       <td className="px-2 py-2.5">
                         <div className="flex flex-col">
                           <span className="text-xs font-bold text-text-primary">{new Date(order.createdAt).toLocaleDateString('en-GB')}</span>
                           <span className="text-[10px] text-text-muted">{new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
                       </td>
-                      <td className="px-2 py-2.5 font-bold text-text-secondary">
-                        <div className="flex flex-col">
-                          <div className="flex items-center space-x-2">
-                            <span>
-                              {(order.orderSource === 'online' || order.orderSource === 'user')
-                                ? (order.address?.recipientName || order.customerDetails?.name || 'Walk-in')
-                                : (order.customerDetails?.name || order.address?.recipientName || 'Walk-in')
-                              }
+                      {activeTab === 'dine-in' ? (
+                        <td className="px-2 py-2.5">
+                          {order.table ? (
+                            <span className="bg-primary/10 text-primary px-3 py-1.5 rounded-xl text-xs font-black border border-primary/20 shadow-sm">
+                              T-{order.table.tableNumber}
                             </span>
-                            {/* Source Dot Indicator */}
-                            {(order.orderSource === 'online' || order.orderSource === 'user') ? (
-                              <span className="flex h-2 w-2 rounded-full bg-blue-500" title="Online Order"></span>
-                            ) : (
-                              <span className="flex h-2 w-2 rounded-full bg-amber-500" title="Admin Order"></span>
-                            )}
+                          ) : (
+                            <span className="text-text-muted text-[10px] font-bold italic bg-background-muted px-2 py-1 rounded-lg w-fit">No Table</span>
+                          )}
+                        </td>
+                      ) : (
+                        <td className="px-2 py-2.5 font-bold text-text-secondary">
+                          <div className="flex flex-col">
+                            <div className="flex items-center space-x-2">
+                              <span>
+                                {(order.orderSource === 'online' || order.orderSource === 'user')
+                                  ? (order.address?.recipientName || order.customerDetails?.name || 'Walk-in')
+                                  : (order.customerDetails?.name || order.address?.recipientName || 'Walk-in')
+                                }
+                              </span>
+                              {/* Source Dot Indicator */}
+                              {(order.orderSource === 'online' || order.orderSource === 'user') ? (
+                                <span className="flex h-2 w-2 rounded-full bg-blue-500" title="Online Order"></span>
+                              ) : (
+                                <span className="flex h-2 w-2 rounded-full bg-amber-500" title="Admin Order"></span>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-text-muted">{order.customerDetails?.phone || order.address?.mobile || '-'}</span>
+                            <span className="text-[8px] font-black uppercase tracking-tighter text-text-muted/50">
+                              Source: {order.orderSource || 'admin'}
+                            </span>
                           </div>
-                          <span className="text-[10px] text-text-muted">{order.customerDetails?.phone || order.address?.mobile || '-'}</span>
-                          <span className="text-[8px] font-black uppercase tracking-tighter text-text-muted/50">
-                            Source: {order.orderSource || 'admin'}
-                          </span>
-                        </div>
-                      </td>
+                        </td>
+                      )}
                       <td className="px-2 py-2.5 font-black text-text-primary">₹{order.totalAmount || order.subtotal || 0}</td>
                       <td className="px-2 py-2.5 text-center">
                         {(() => {
                           const status = getFriendlyStatus(order);
-                          const isActionable = status.label === 'Ready' || order.orderStatus === 'out-for-delivery' || order.orderStatus === 'billed' || order.orderStatus === 'processing';
+                          const isActionable = (status.label === 'Ready' || order.orderStatus === 'out-for-delivery' || order.orderStatus === 'billed' || order.orderStatus === 'processing') && activeTab !== 'dine-in';
 
                           if (isActionable) {
                             return (
@@ -1549,8 +1593,8 @@ const OrderSection = () => {
                               >
                                 {['Order Accepted', 'Preparing', 'Ready'].includes(status.label) && (
                                   <>
-                                    <option value="processing" className="bg-background-card text-text-primary">{status.label}</option>
-                                    {order.orderType === 'dine-in' && (
+                                    <option value={order.orderStatus} className="bg-background-card text-text-primary">{status.label}</option>
+                                    {(order.orderType === 'dine-in' || order.orderType === 'dining') && (
                                       <option value="billed" className="bg-background-card text-text-primary">Billed</option>
                                     )}
                                   </>
@@ -1573,13 +1617,25 @@ const OrderSection = () => {
                         })()}
                       </td>
                       <td className="px-2 py-2.5 text-center">
-                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${(order.paymentStatus === 'paid' || order.paymentStatus === 'completed') ? 'bg-status-on/10 text-status-available border-status-on/20' :
-                          order.paymentStatus === 'unpaid' ? 'bg-status-off/10 text-status-unavailable border-status-off/20' :
-                            order.paymentStatus === 'refunded' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                              'bg-status-off/10 text-status-unavailable border-status-off/20'
-                          }`}>
-                          {order.paymentStatus}
-                        </span>
+                        {activeTab !== 'history' && order.paymentStatus === 'unpaid' ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpdateOrderStatus(order._id, 'delivered');
+                            }}
+                            className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-[9px] font-black uppercase tracking-wider rounded-full shadow-md shadow-emerald-500/20 transition-all border border-emerald-600/20 cursor-pointer"
+                          >
+                            Pay Now
+                          </button>
+                        ) : (
+                          <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${(order.paymentStatus === 'paid' || order.paymentStatus === 'completed') ? 'bg-status-on/10 text-status-available border-status-on/20' :
+                            order.paymentStatus === 'unpaid' ? 'bg-status-off/10 text-status-unavailable border-status-off/20' :
+                              order.paymentStatus === 'refunded' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                'bg-status-off/10 text-status-unavailable border-status-off/20'
+                            }`}>
+                            {order.paymentStatus}
+                          </span>
+                        )}
                       </td>
                       {activeTab === 'history' && (
                         <td className="px-2 py-2.5 text-center">
@@ -1594,7 +1650,7 @@ const OrderSection = () => {
                             const status = getFriendlyStatus(order);
                             return (
                               <>
-                                {order.orderStatus === 'placed' && (
+                                {order.orderStatus === 'placed' && activeTab !== 'dine-in' && order.orderType !== 'dine-in' && order.orderType !== 'dining' && (
                                   <button
                                     onClick={() => handleConfirmOrder(order)}
                                     className="p-2 bg-primary/10 text-primary rounded-lg hover:bg-primary hover:text-white transition-all animate-pulse"
@@ -1610,13 +1666,15 @@ const OrderSection = () => {
                                 >
                                   <Printer size={18} />
                                 </button>
-                                <button
-                                  onClick={() => handleOpenDetails(order)}
-                                  className="p-2 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all"
-                                  title="View Details"
-                                >
-                                  <Eye size={18} />
-                                </button>
+                                {activeTab !== 'dine-in' && (
+                                  <button
+                                    onClick={() => handleOpenDetails(order)}
+                                    className="p-2 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all"
+                                    title="View Details"
+                                  >
+                                    <Eye size={18} />
+                                  </button>
+                                )}
 
                                 {order.orderType === 'delivery' && (
                                   <button
@@ -1645,7 +1703,6 @@ const OrderSection = () => {
             onPageChange={setCurrentPage}
           />
         </div>
-        )}
       </div>
 
       {/* Details Modal */}
@@ -1727,34 +1784,34 @@ const OrderSection = () => {
                     const ks = item?.kitchenStatus || 'placed';
                     const ksStyles = ks === 'ready' ? 'bg-status-on/10 text-status-available border-status-on/20' : ks === 'preparing' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : ks === 'delayed' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20';
                     return (
-                    <div key={item._id} className="flex items-center justify-between p-3 bg-background-muted/20 rounded-2xl border border-border-light hover:border-primary/20 transition-all">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-background-card rounded-xl flex items-center justify-center border border-border-light overflow-hidden shrink-0">
-                          {item?.image || item?.menuItem?.image ? (
-                            <img src={item?.image || item?.menuItem?.image} alt={item?.name || item?.menuItem?.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <Package size={16} className="text-primary/40" />
-                          )}
+                      <div key={item._id} className="flex items-center justify-between p-3 bg-background-muted/20 rounded-2xl border border-border-light hover:border-primary/20 transition-all">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-background-card rounded-xl flex items-center justify-center border border-border-light overflow-hidden shrink-0">
+                            {item?.image || item?.menuItem?.image ? (
+                              <img src={item?.image || item?.menuItem?.image} alt={item?.name || item?.menuItem?.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <Package size={16} className="text-primary/40" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-text-primary text-[13px] truncate">
+                              {item?.name && item.name !== 'Unknown Item' ? item.name : (item?.menuItem?.name || item?.name || 'Menu Item')}
+                            </p>
+                            <p className="text-[9px] text-text-muted font-bold uppercase">
+                              {item?.size} • ₹{item?.unitPrice || item?.price} x {item?.quantity}
+                            </p>
+                          </div>
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-bold text-text-primary text-[13px] truncate">
-                            {item?.name && item.name !== 'Unknown Item' ? item.name : (item?.menuItem?.name || item?.name || 'Menu Item')}
-                          </p>
-                          <p className="text-[9px] text-text-muted font-bold uppercase">
-                            {item?.size} • ₹{item?.unitPrice || item?.price} x {item?.quantity}
-                          </p>
-                        </div>
-                      </div>
 
-                      <div className="flex items-center space-x-3">
-                        <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${ksStyles}`}>
-                          {ks}
-                        </span>
-                        <p className="text-xs font-black text-text-primary">
-                          ₹{item?.totalPrice || ((item?.unitPrice || item?.price || 0) * item?.quantity)}
-                        </p>
+                        <div className="flex items-center space-x-3">
+                          <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${ksStyles}`}>
+                            {ks}
+                          </span>
+                          <p className="text-xs font-black text-text-primary">
+                            ₹{item?.totalPrice || ((item?.unitPrice || item?.price || 0) * item?.quantity)}
+                          </p>
+                        </div>
                       </div>
-                    </div>
                     );
                   })}
                 </div>
@@ -1905,7 +1962,7 @@ const OrderSection = () => {
               <div className="flex items-center space-x-4">
                 {null}
 
-                {selectedOrder.orderStatus === 'placed' && (
+                {selectedOrder.orderStatus === 'placed' && activeTab !== 'dine-in' && selectedOrder.orderType !== 'dine-in' && selectedOrder.orderType !== 'dining' && (
                   <button
                     onClick={() => {
                       handleUpdateOrderStatus(selectedOrder._id, 'processing');
@@ -1918,7 +1975,7 @@ const OrderSection = () => {
                   </button>
                 )}
 
-                {['placed', 'pending', 'processing', 'out-for-delivery'].includes(selectedOrder.orderStatus) && (
+                {['placed', 'pending', 'processing', 'out-for-delivery'].includes(selectedOrder.orderStatus) && activeTab !== 'dine-in' && selectedOrder.orderType !== 'dine-in' && selectedOrder.orderType !== 'dining' && (
                   <button
                     onClick={() => {
                       Swal.fire({
@@ -1974,11 +2031,11 @@ const OrderSection = () => {
                     return (item.name || '').toLowerCase().includes(searchLower);
                   })
                   .map(item => (
-                    <div 
-                      key={item._id} 
+                    <div
+                      key={item._id}
                       onClick={() => {
-                        const targetVariant = (item.variants && item.variants.length > 0) 
-                          ? item.variants[0] 
+                        const targetVariant = (item.variants && item.variants.length > 0)
+                          ? item.variants[0]
                           : { size: 'Standard', price: item.price || 0 };
                         addToCart(item, targetVariant);
                       }}
@@ -2012,8 +2069,8 @@ const OrderSection = () => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              const targetVariant = (item.variants && item.variants.length > 0) 
-                                ? item.variants[0] 
+                              const targetVariant = (item.variants && item.variants.length > 0)
+                                ? item.variants[0]
                                 : { size: 'Standard', price: item.price || 0 };
                               addToCart(item, targetVariant);
                             }}

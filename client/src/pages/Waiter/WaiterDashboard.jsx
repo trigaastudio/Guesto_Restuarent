@@ -23,9 +23,14 @@ const WaiterDashboard = () => {
   const [isPOSModalOpen, setIsPOSModalOpen] = useState(false);
   const [selectedTable, setSelectedTable] = useState(null);
   const [selectedOrderForEdit, setSelectedOrderForEdit] = useState(null);
+  const [selectedOrderSeats, setSelectedOrderSeats] = useState(0);
   const [expandedOrders, setExpandedOrders] = useState([]);
-  
-  
+  const [selectedViewTableId, setSelectedViewTableId] = useState(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedOrderForView, setSelectedOrderForView] = useState(null);
+  const [isMergeMode, setIsMergeMode] = useState(false);
+  const [selectedMergeTableNumbers, setSelectedMergeTableNumbers] = useState([]);
+
   const staff = JSON.parse(localStorage.getItem('staff_user') || '{}');
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
@@ -67,10 +72,110 @@ const WaiterDashboard = () => {
     navigate('/staff/login', { replace: true });
   };
 
-  const handleTakeOrder = (table) => {
-    setSelectedOrderForEdit(null);
-    setSelectedTable(table);
-    setIsPOSModalOpen(true);
+  const handleTakeOrder = async (table) => {
+    const capacity = table.capacity || 4;
+    const currentOccupied = table.occupiedSeats || 0;
+    const remainingSeats = capacity - currentOccupied;
+    
+    if (remainingSeats <= 0) {
+      Swal.fire({
+        title: '<div style="font-size:20px; font-weight:800; color:var(--color-text-primary);">Table is Fully Seated</div>',
+        text: 'All seats on this table are currently occupied.',
+        icon: 'warning',
+        confirmButtonColor: 'var(--color-primary)'
+      });
+      return;
+    }
+    
+    const result = await Swal.fire({
+      title: '<div style="font-size:24px; font-weight:900; color:var(--color-text-primary); letter-spacing:-0.5px; margin-bottom:4px; font-family:\'Inter\', sans-serif;">Guest Count</div>',
+      html: `
+        <div style="font-size:11px; font-weight:800; color:var(--color-primary); margin-bottom:24px; text-transform:uppercase; letter-spacing:1.5px; background: rgba(185, 28, 28, 0.05); padding: 6px 14px; display:inline-block; border: 1px solid rgba(185, 28, 28, 0.1); border-radius: 9999px;">
+          Table Capacity: ${capacity} Guests
+        </div>
+        <div style="display:flex; justify-content:center; gap:12px; margin-bottom:15px;">
+          ${Array.from({ length: capacity }, (_, i) => i + 1).map(num => {
+            const isOccupied = num <= currentOccupied;
+            if (isOccupied) {
+              return `
+                <button 
+                  disabled
+                  style="width: 54px; height: 54px; border-radius: 16px; border: 2px dashed rgba(156, 163, 175, 0.3); background: var(--color-background-muted); color: #9ca3af; font-size: 18px; font-weight: 900; cursor: not-allowed; opacity: 0.65; position: relative;"
+                  title="Already occupied"
+                >
+                  ${num}
+                </button>
+              `;
+            } else {
+              return `
+                <button 
+                  id="swal-seat-btn-${num}" 
+                  onclick="window.selectSwalSeats(${num})"
+                  style="width: 54px; height: 54px; border-radius: 16px; border: 2px solid var(--color-border); background: var(--color-background-card); color: var(--color-text-primary); font-size: 18px; font-weight: 900; cursor: pointer; transition: all 0.25s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.02);"
+                  onmouseover="this.style.transform='scale(1.08)'; this.style.borderColor='var(--color-primary)';"
+                  onmouseout="if(!window.clickedSeatIndex || window.clickedSeatIndex < ${num}) { this.style.transform='scale(1)'; this.style.borderColor='var(--color-border)'; }"
+                >
+                  ${num}
+                </button>
+              `;
+            }
+          }).join('')}
+        </div>
+      `,
+      showCancelButton: true,
+      cancelButtonText: 'Cancel',
+      confirmButtonText: 'Confirm',
+      confirmButtonColor: 'var(--color-primary)',
+      cancelButtonColor: '#9ca3af',
+      customClass: {
+        popup: 'rounded-3xl border border-border-light shadow-2xl p-6 bg-white dark:bg-gray-900',
+        confirmButton: 'px-8 py-3.5 rounded-2xl font-black text-xs uppercase tracking-wider text-white bg-primary hover:bg-primary-light shadow-xl shadow-primary/25 hover:shadow-primary/35 hover:-translate-y-0.5 transition-all duration-300',
+        cancelButton: 'px-8 py-3.5 rounded-2xl font-black text-xs uppercase tracking-wider text-text-secondary bg-background-muted hover:bg-background-card border border-border-light hover:-translate-y-0.5 transition-all duration-300'
+      },
+      didOpen: () => {
+        window.selectedSwalSeatsVal = 0;
+        window.clickedSeatIndex = 0;
+        
+        window.selectSwalSeats = (num) => {
+          window.selectedSwalSeatsVal = num - currentOccupied;
+          window.clickedSeatIndex = num;
+          
+          for (let i = currentOccupied + 1; i <= capacity; i++) {
+            const btn = document.getElementById(`swal-seat-btn-${i}`);
+            if (btn) {
+              if (i <= num) {
+                btn.style.background = 'var(--color-primary)';
+                btn.style.borderColor = 'var(--color-primary)';
+                btn.style.color = '#ffffff';
+                btn.style.transform = 'scale(1.08)';
+                btn.style.boxShadow = '0 10px 20px -3px rgba(185, 28, 28, 0.35)';
+              } else {
+                btn.style.background = 'var(--color-background-card)';
+                btn.style.borderColor = 'var(--color-border)';
+                btn.style.color = 'var(--color-text-primary)';
+                btn.style.transform = 'scale(1)';
+                btn.style.boxShadow = 'none';
+              }
+            }
+          }
+        };
+      },
+      preConfirm: () => {
+        if (!window.selectedSwalSeatsVal || window.selectedSwalSeatsVal === 0) {
+          Swal.showValidationMessage('Please select the guest count');
+          return false;
+        }
+        return window.selectedSwalSeatsVal;
+      }
+    });
+
+    if (result.isConfirmed) {
+      const selectedSeats = result.value;
+      setSelectedOrderForEdit(null);
+      setSelectedOrderSeats(selectedSeats);
+      setSelectedTable(table);
+      setIsPOSModalOpen(true);
+    }
   };
 
   const handleEditOrder = (table, order) => {
@@ -79,23 +184,89 @@ const WaiterDashboard = () => {
     setIsPOSModalOpen(true);
   };
 
+  const handleStartMergeMode = () => {
+    setIsMergeMode(true);
+    setSelectedMergeTableNumbers([]);
+    showToast('info', 'Select tables to merge and click "Merge Selected"');
+  };
+
+  const handleCancelMerge = () => {
+    setIsMergeMode(false);
+    setSelectedMergeTableNumbers([]);
+  };
+
+  const handleSaveMerge = async () => {
+    if (selectedMergeTableNumbers.length < 2) return;
+    setIsLoading(true);
+    try {
+      await api.post('/api/tables/coshare-merge', { tableNumbers: selectedMergeTableNumbers });
+      showToast('success', `Tables ${selectedMergeTableNumbers.join(', ')} merged successfully!`);
+      await fetchTables();
+      setIsMergeMode(false);
+      setSelectedMergeTableNumbers([]);
+    } catch (error) {
+      console.error('Error merging tables:', error);
+      showToast('error', error.response?.data?.message || 'Failed to merge tables');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUnmerge = async (tableNumber) => {
+    const confirmResult = await Swal.fire({
+      title: '<div style="font-size:20px; font-weight:800; color:var(--color-text-primary); letter-spacing:-0.5px;">Unmerge Tables?</div>',
+      text: `Are you sure you want to split and unmerge Table ${tableNumber} and its grouped tables?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Unmerge',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: 'var(--color-primary)',
+      cancelButtonColor: '#9ca3af',
+      customClass: {
+        popup: 'rounded-3xl border border-border-light shadow-2xl p-6 bg-white dark:bg-gray-900',
+        confirmButton: 'px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider text-white bg-primary hover:bg-primary-light transition-all',
+        cancelButton: 'px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider text-text-secondary bg-background-muted border border-border-light transition-all'
+      }
+    });
+
+    if (confirmResult.isConfirmed) {
+      setIsLoading(true);
+      try {
+        await api.post('/api/tables/coshare-unmerge', { tableNumber });
+        showToast('success', 'Tables successfully unmerged!');
+        await fetchTables();
+        setSelectedViewTableId(null);
+      } catch (error) {
+        console.error('Error unmerging tables:', error);
+        showToast('error', error.response?.data?.message || 'Failed to unmerge tables');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
 
 
   const toggleOrderExpansion = (e, orderId) => {
     e.stopPropagation();
-    setExpandedOrders(prev => 
-      prev.includes(orderId) 
-        ? prev.filter(id => id !== orderId) 
+    setExpandedOrders(prev =>
+      prev.includes(orderId)
+        ? prev.filter(id => id !== orderId)
         : [...prev, orderId]
     );
   };
 
-  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+  const handleUpdateOrderStatus = async (orderId, newStatus, forceSilent = false) => {
     try {
       const updateData = { orderStatus: newStatus };
       const orderToUpdate = tables.flatMap(t => t.activeOrders || []).find(o => o._id === orderId);
 
-      if (newStatus === 'delivered' && orderToUpdate?.paymentStatus !== 'paid') {
+      if (forceSilent) {
+        updateData.paymentStatus = 'paid';
+        updateData.paymentMethod = 'cash';
+      }
+
+      if (newStatus === 'delivered' && orderToUpdate?.paymentStatus !== 'paid' && !forceSilent) {
         const defaultMethod = (orderToUpdate?.paymentMethod && orderToUpdate.paymentMethod !== 'unpaid') ? orderToUpdate.paymentMethod : 'cash';
         const payOptions = [
           { val: 'cash', label: 'Cash', color: '#16a34a', icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>` },
@@ -225,10 +396,35 @@ const WaiterDashboard = () => {
 
   const handlePrintKOT = (order) => {
     const printWindow = window.open('', '_blank');
-    const itemsHtml = order.items.map(item => {
-      const name = item.name || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Menu Item');
-      const unitPrice = item.unitPrice || item.price || 0;
-      const totalPrice = item.totalPrice || (unitPrice * item.quantity);
+
+    // Aggregate duplicate items (identical MenuItem ID/Name and Size) for clean bill layout
+    const aggregatedItems = [];
+    order.items.forEach(item => {
+      const itemId = item.menuItem?._id || item.menuItem;
+      const itemName = item.name || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Menu Item');
+      const size = item.size || 'Standard';
+
+      const existing = aggregatedItems.find(
+        x => ((x.menuItem?._id || x.menuItem) === itemId || x.name === itemName) && x.size === size
+      );
+
+      if (existing) {
+        existing.quantity += item.quantity;
+        existing.totalPrice += item.totalPrice || ((item.unitPrice || item.price || 0) * item.quantity);
+      } else {
+        aggregatedItems.push({
+          ...item,
+          name: itemName,
+          unitPrice: item.unitPrice || item.price || 0,
+          totalPrice: item.totalPrice || ((item.unitPrice || item.price || 0) * item.quantity)
+        });
+      }
+    });
+
+    const itemsHtml = aggregatedItems.map(item => {
+      const name = item.name;
+      const unitPrice = item.unitPrice;
+      const totalPrice = item.totalPrice;
       return `
       <tr>
         <td colspan="4" style="text-transform: uppercase; font-weight: bold; padding-top: 8px;">${name} (${item.size})</td>
@@ -383,92 +579,16 @@ const WaiterDashboard = () => {
 
   return (
     <div className="flex h-screen bg-background text-text-primary overflow-hidden transition-colors duration-300">
-      {/* Mobile overlay */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />
-      )}
-
-      {/* Sidebar */}
-      <aside className={`
-        fixed inset-y-0 left-0 z-50 bg-background-card border-r border-border-light flex flex-col transition-all duration-300 ease-in-out
-        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        ${isSidebarCollapsed ? 'lg:w-[5.5rem]' : 'lg:w-64'}
-        w-64
-      `}>
-        <button
-          onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          className={`hidden lg:flex absolute -right-3 top-10 p-1.5 bg-primary text-white rounded-full shadow-lg border-2 border-background-card z-20 transition-transform duration-300 ${!isSidebarCollapsed ? 'rotate-180' : ''}`}
-        >
-          <ChevronRight size={14} />
-        </button>
-
-        <div className="flex-1 flex flex-col overflow-x-hidden no-scrollbar">
-          <div className="p-6 border-b border-border-light flex items-center justify-center relative">
-            <img
-              src={
-                (isSidebarCollapsed && !isMobileMenuOpen)
-                  ? '/browser-icon.png'
-                  : (isDarkMode ? (settings?.branding?.logoGold || '/logo-golden.png') : (settings?.branding?.logoDark || '/logo-dark.png'))
-              }
-              alt="Logo"
-              className={`${(isSidebarCollapsed && !isMobileMenuOpen) ? 'h-8' : 'h-10'} w-auto transition-all duration-500`}
-            />
-            <button
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="lg:hidden absolute right-6 p-2 text-text-secondary hover:text-status-unavailable transition-colors"
-            >
-              <X size={24} />
-            </button>
-          </div>
-
-          {(!isSidebarCollapsed || isMobileMenuOpen) && (
-            <div className="px-4 pt-4">
-              <div className="flex items-center space-x-2 p-3 bg-purple-500/10 rounded-xl border border-purple-500/20">
-                <UtensilsCrossed size={16} className="text-purple-500 shrink-0" />
-                <div>
-                  <p className="text-[10px] font-black text-purple-500 uppercase tracking-widest">Waiter Panel</p>
-                  <p className="text-xs font-bold text-text-primary truncate">{staff.name || 'Staff'}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <nav className="flex-1 p-4 space-y-2 overflow-y-auto no-scrollbar">
-            <button
-              className={`w-full flex items-center rounded-xl transition-all duration-200 p-3 group relative bg-primary text-white shadow-lg shadow-primary/20 font-semibold ${(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'}`}
-            >
-              <Hash size={20} className="shrink-0 transition-transform duration-300 group-hover:scale-110" />
-              <span className={`transition-all duration-300 overflow-hidden whitespace-nowrap flex-1 text-left ${(isSidebarCollapsed && !isMobileMenuOpen) ? 'max-w-0 opacity-0 ml-0' : 'max-w-[200px] opacity-100 ml-3'}`}>
-                Tables
-              </span>
-            </button>
-          </nav>
-
-          <div className="p-4 border-t border-border-light">
-            <button
-              onClick={handleLogout}
-              className={`w-full flex items-center rounded-xl text-status-unavailable hover:bg-status-off/5 transition-all p-3 ${(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : ''}`}
-            >
-              <LogOut size={20} className="shrink-0" />
-              <span className={`transition-all duration-300 overflow-hidden whitespace-nowrap font-medium ${(isSidebarCollapsed && !isMobileMenuOpen) ? 'max-w-0 opacity-0 ml-0' : 'max-w-[200px] opacity-100 ml-3'}`}>
-                Logout
-              </span>
-            </button>
-          </div>
-        </div>
-      </aside>
-
       {/* Main Content */}
-      <main className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'lg:ml-[5.5rem]' : 'lg:ml-64'}`}>
+      <main className="flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out">
         <header className="h-20 bg-background-card border-b border-border-main flex items-center justify-between px-4 lg:px-8 shrink-0">
           <div className="flex items-center space-x-4">
-            <button
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="lg:hidden p-2 text-text-secondary hover:bg-background-muted rounded-lg"
-            >
-              <Menu size={22} />
-            </button>
-            <div>
+            <img
+              src={isDarkMode ? (settings?.branding?.logoGold || '/logo-golden.png') : (settings?.branding?.logoDark || '/logo-dark.png')}
+              alt="Logo"
+              className="h-10 w-auto transition-all duration-500 mr-2"
+            />
+            <div className="border-l border-border-light pl-4">
               <h1 className="text-lg font-black text-text-primary tracking-tight">Waiter Dashboard</h1>
               <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest hidden sm:block">
                 Table & Dine-in Management
@@ -483,7 +603,7 @@ const WaiterDashboard = () => {
             <button onClick={() => fetchTables()} className="p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all group">
               <RefreshCw size={20} className={`${isLoading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
             </button>
-            <div className="flex items-center space-x-3 border-l pl-4 sm:pl-6 border-border-light">
+            <div className="flex items-center space-x-3 border-l border-r pr-4 sm:pr-6 pl-4 sm:pl-6 border-border-light">
               <div className="hidden sm:block text-right">
                 <p className="text-sm font-bold text-text-primary">{staff.name || 'User'}</p>
                 <p className="text-[10px] text-text-secondary uppercase tracking-wider">{staff.employeeId || 'Staff'}</p>
@@ -492,6 +612,14 @@ const WaiterDashboard = () => {
                 {staff.name?.charAt(0) || 'W'}
               </div>
             </div>
+            <button
+              onClick={handleLogout}
+              className="p-2 text-status-unavailable hover:bg-status-off/5 rounded-lg transition-all flex items-center space-x-1.5"
+              title="Logout"
+            >
+              <LogOut size={20} />
+              <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Logout</span>
+            </button>
           </div>
         </header>
 
@@ -511,219 +639,546 @@ const WaiterDashboard = () => {
                 <p className="text-text-secondary font-medium mt-1">Please ask an admin to configure tables.</p>
               </div>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              {tables.map((table) => {
-                const isOccupied = table.status === 'occupied';
-                const statusColor = isOccupied ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
-                const headerBg = isOccupied 
-                  ? 'bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/20 dark:to-red-900/10' 
-                  : 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/20 dark:to-emerald-900/10';
+          ) : selectedViewTableId ? (
+            (() => {
+              const currentTable = tables.find(t => t._id === selectedViewTableId);
+              if (!currentTable) {
+                setSelectedViewTableId(null);
+                return null;
+              }
+              const isOccupied = currentTable.status === 'occupied';
 
-                return (
-                  <div key={table._id} className="bg-background-card rounded-[2rem] border border-border-light shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden flex flex-col group hover:shadow-[0_25px_60px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-500 relative">
-                    <div className={`p-6 ${headerBg} border-b border-border-light/50 relative overflow-hidden`}>
-                      <div className="flex justify-between items-start relative z-0">
-                        <div className="space-y-1.5">
-                          <div className="flex items-center gap-3">
-                            <h3 className="text-5xl font-black text-text-primary tracking-tighter leading-none">{table.tableNumber}</h3>
-                            <div className={`w-2.5 h-2.5 rounded-full ${isOccupied ? 'bg-red-500' : 'bg-emerald-500'} animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]`} />
+              return (
+                <div className="animate-in fade-in slide-in-from-right-8 duration-500">
+                  {/* Top Bar Navigation */}
+                  <div className="flex items-center justify-between mb-6">
+                    <button
+                      onClick={() => setSelectedViewTableId(null)}
+                      className="flex items-center space-x-2 px-4 py-2.5 bg-background-card hover:bg-background-muted border border-border-light rounded-xl transition-all text-text-secondary hover:text-primary shadow-sm font-bold text-xs uppercase tracking-wider group"
+                    >
+                      <ChevronRight className="rotate-180 group-hover:-translate-x-1 transition-transform" size={16} strokeWidth={3} />
+                      <span>Back to Tables</span>
+                    </button>
+                    
+                    <span className="text-xs font-black text-text-muted uppercase tracking-[0.2em] bg-background-muted/80 px-4 py-2 rounded-full border border-border-light">
+                      Dine-in Console
+                    </span>
+                  </div>
+
+                  {/* Main Grid Layout */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                    
+                    {/* Left Column: Table Status Card */}
+                    <div className="lg:col-span-4 bg-background-card border border-border-light rounded-[2.5rem] p-6 lg:p-8 shadow-md flex flex-col items-center relative overflow-hidden">
+                      {/* Decorative Background Glows */}
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+                      <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary-light/5 rounded-full blur-3xl pointer-events-none" />
+                      
+                      <div className="w-full aspect-[4/3] max-w-[200px] mb-6 flex items-center justify-center p-2 relative bg-background-muted/30 rounded-3xl border border-border-light/60 overflow-hidden shadow-inner group">
+                        <img
+                          src="/table_pic.png"
+                          alt={`Table ${currentTable.tableNumber}`}
+                          className="w-full h-full object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
+
+                      <div className="text-center w-full mb-6">
+                        <h2 className="text-3xl font-black text-text-primary tracking-tight">Table {currentTable.tableNumber}</h2>
+                        {currentTable.mergedGroup && currentTable.mergedGroup.length > 0 && (
+                          <div className="mt-2 inline-flex items-center gap-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-3.5 py-1.5 rounded-2xl border border-amber-500/20 text-[10px] font-black uppercase tracking-wider animate-in fade-in duration-300">
+                            <GitMerge size={12} strokeWidth={3} />
+                            <span>Merged Group ({currentTable.mergedGroup.join(" + ")})</span>
                           </div>
-                          <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${statusColor} backdrop-blur-md`}>
-                            {table.status}
-                          </span>
-                        </div>
-                        <div className="flex flex-col items-end">
-                          <div className="flex items-center space-x-1.5 text-text-secondary bg-white/40 dark:bg-black/20 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-white/50 dark:border-white/10 shadow-sm">
-                            <Users size={15} className="text-text-muted" />
-                            <span className="font-extrabold text-sm">{table.capacity}</span>
-                          </div>
-                        </div>
+                        )}
+                        
+                        {(() => {
+                          const curCapacity = currentTable.capacity || 4;
+                          const curOccupied = currentTable.occupiedSeats || 0;
+                          const isCurFullyOccupied = curOccupied >= curCapacity;
+                          const isCurPartiallyOccupied = curOccupied > 0 && curOccupied < curCapacity;
+                          
+                          return (
+                            <div className="flex flex-col items-center mt-3 space-y-2">
+                              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                isCurFullyOccupied 
+                                  ? 'bg-red-500/10 text-red-600 border border-red-500/20' 
+                                  : isCurPartiallyOccupied 
+                                    ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20' 
+                                    : 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                              }`}>
+                                <span className={`w-2 h-2 rounded-full ${
+                                  isCurFullyOccupied ? 'bg-red-500' : isCurPartiallyOccupied ? 'bg-amber-500' : 'bg-emerald-500'
+                                } animate-pulse`} />
+                                {isCurFullyOccupied ? 'Fully Seated' : isCurPartiallyOccupied ? 'Partially Occupied' : 'Available'}
+                              </span>
+
+                              {/* Modern Progress Bar */}
+                              <div className="w-full max-w-[240px] mt-4">
+                                <div className="flex justify-between text-[10px] font-black text-text-muted uppercase tracking-widest mb-1.5">
+                                  <span>Seating Status</span>
+                                  <span>{curOccupied} / {curCapacity} Seats</span>
+                                </div>
+                                <div className="w-full h-2.5 bg-background-muted rounded-full overflow-hidden border border-border-light shadow-inner">
+                                  <div 
+                                    className={`h-full rounded-full transition-all duration-500 ${
+                                      isCurFullyOccupied ? 'bg-red-500' : isCurPartiallyOccupied ? 'bg-amber-500' : 'bg-emerald-500'
+                                    }`}
+                                    style={{ width: `${(curOccupied / curCapacity) * 100}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      <div className="w-full border-t border-border-light pt-6 space-y-3">
+                        {currentTable.mergedGroup && currentTable.mergedGroup.length > 0 && (
+                          <button
+                            onClick={() => handleUnmerge(currentTable.tableNumber)}
+                            className="w-full flex items-center justify-center space-x-2.5 py-4 rounded-2xl font-black text-sm bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border border-amber-500/20 transition-all duration-300 shadow-sm"
+                          >
+                            <GitMerge size={18} strokeWidth={2.5} className="rotate-180" />
+                            <span>Unmerge Tables</span>
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleTakeOrder(currentTable)}
+                          disabled={currentTable.activeOrders?.length >= 4}
+                          className={`w-full flex items-center justify-center space-x-2.5 py-4 rounded-2xl font-black text-sm transition-all duration-300 ${currentTable.activeOrders?.length >= 4
+                            ? 'bg-background-muted border border-border-light text-text-muted cursor-not-allowed opacity-60'
+                            : 'bg-primary hover:bg-primary-light text-white shadow-xl shadow-primary/25 hover:shadow-primary/35 hover:-translate-y-0.5 active:scale-98'
+                          }`}
+                          title={currentTable.activeOrders?.length >= 4 ? "Maximum 4 orders allowed per table" : ""}
+                        >
+                          <Plus size={18} strokeWidth={2.5} />
+                          <span>{currentTable.activeOrders?.length >= 4 ? 'Table Full' : 'Create Order'}</span>
+                        </button>
                       </div>
                     </div>
 
-                    <div className="p-6 flex-1 flex flex-col justify-between">
+                    {/* Right Column: Active Orders Area */}
+                    <div className="lg:col-span-8 bg-background-card border border-border-light rounded-[2.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.02)] p-6 lg:p-8 flex flex-col min-h-[55vh]">
                       {isOccupied ? (
-                        <div className="space-y-5">
-                          <div className="flex items-center justify-between text-[10px] font-black text-text-muted uppercase tracking-[0.15em] opacity-80 mb-1">
-                            <span>Active Orders ({table.activeOrders?.length || 0})</span>
-                            <div className="h-[1px] flex-1 bg-border-light mx-4 opacity-50" />
+                        <div className="space-y-6 flex-1 flex flex-col">
+                          <div className="flex items-center justify-between text-[11px] font-black text-text-muted uppercase tracking-[0.2em] opacity-90 border-b border-border-light pb-4">
+                            <span>Active Orders ({currentTable.activeOrders?.length || 0})</span>
+                            <span className="text-[10px] text-primary lowercase tracking-normal bg-primary/5 px-2.5 py-0.5 rounded-full font-bold">co-sharing enabled</span>
                           </div>
-                          <div className="space-y-4 max-h-60 overflow-y-auto pr-2 no-scrollbar scroll-smooth">
-                            {table.activeOrders?.map(order => {
-                              const isReady = order.items?.every(i => i.kitchenStatus === 'ready');
-                              const currentStatus = (order.orderStatus === 'processing' && isReady) ? 'ready' : order.orderStatus;
-                              const isPlaced = currentStatus === 'placed';
-                              const isActiveOrder = ['processing', 'ready', 'billed'].includes(currentStatus);
-                              const cardStatusStyle = isReady 
-                                ? 'bg-emerald-50/50 dark:bg-emerald-500/5 border-emerald-500/30' 
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {currentTable.activeOrders?.map(order => {
+                              const isReady = order.items?.length > 0 && order.items.every(i => i.kitchenStatus === 'ready');
+                              let actualOrderStatus = order.orderStatus;
+                              if (actualOrderStatus === 'placed' && order.items?.some(i => ['preparing', 'ready'].includes(i.kitchenStatus))) {
+                                actualOrderStatus = 'processing';
+                              }
+                              const currentStatus = (actualOrderStatus === 'processing' && isReady) ? 'ready' : actualOrderStatus;
+
+                              const isWaitingApproval = currentStatus === 'placed';
+                              const isPreparing = currentStatus === 'processing';
+                              const cardStatusStyle = isReady
+                                ? 'bg-emerald-50/40 dark:bg-emerald-500/5 border-emerald-500/30'
                                 : 'bg-background border-border-light/60';
 
                               return (
-                                <div key={order._id} className={`rounded-[1.5rem] border transition-all duration-300 shadow-sm hover:shadow-md ${cardStatusStyle} group/order overflow-hidden`}>
-                                  <div className="flex items-center justify-between px-4 pt-4 pb-2">
-                                    <div className="flex items-center gap-2.5">
-                                      <button 
-                                        onClick={(e) => toggleOrderExpansion(e, order._id)}
-                                        className={`p-1.5 rounded-xl transition-all ${expandedOrders.includes(order._id) ? 'rotate-180 bg-primary/10 text-primary' : 'bg-background-muted text-text-muted hover:bg-primary/5 hover:text-primary'}`}
-                                      >
-                                        <ChevronDown size={14} strokeWidth={3} />
-                                      </button>
-                                      <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">{order.orderNumber}</span>
+                                <div
+                                  key={order._id}
+                                  onClick={() => {
+                                    setSelectedTable(currentTable);
+                                    setSelectedOrderForView(order);
+                                    setIsDetailsModalOpen(true);
+                                  }}
+                                  className={`rounded-3xl border transition-all duration-300 shadow-sm hover:shadow-lg ${cardStatusStyle} group/order overflow-hidden flex flex-col cursor-pointer hover:border-primary/30`}
+                                >
+                                  <div className="flex items-center justify-between px-5 pt-5 pb-2">
+                                    <div className="flex items-center gap-3">
+                                      <span className="text-xs md:text-sm font-black text-primary uppercase tracking-wider bg-primary/5 px-3 py-1.5 rounded-full">{order.orderNumber?.toUpperCase()}</span>
                                     </div>
-                                    {isReady && (
-                                      <div className="flex items-center gap-1.5 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                                    {isReady ? (
+                                      <div className="flex items-center gap-1.5 bg-emerald-500/10 px-2.5 py-1 rounded-full">
                                         <CheckCircle2 size={12} className="text-emerald-500" strokeWidth={3} />
-                                        <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">Ready</span>
+                                        <span className="text-[10px] md:text-xs font-black text-emerald-500 capitalize tracking-wider">Ready</span>
                                       </div>
-                                    )}
-                                  </div>
-
-                                  <div onClick={() => handleEditOrder(table, order)} className="flex items-center justify-between px-4 pb-4 cursor-pointer">
-                                    <div className="flex items-center space-x-4">
-                                      <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary flex items-center justify-center font-black text-sm shrink-0 shadow-sm">
-                                        {order.customerDetails?.name?.charAt(0) || 'C'}
-                                      </div>
-                                      <div className="min-w-0">
-                                        <p className="text-[15px] font-extrabold text-text-primary truncate leading-tight">{order.customerDetails?.name || 'Walk-in'}</p>
-                                        <p className="text-[11px] text-text-muted font-bold tracking-wide mt-0.5">₹{order.totalAmount} • {order.items?.length || 0} items</p>
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center space-x-2 translate-x-2 group-hover/order:translate-x-0 transition-transform opacity-0 group-hover/order:opacity-100 duration-300">
-                                      <span className="text-[10px] font-black text-primary uppercase tracking-widest">View Detail</span>
-                                      <ChevronRight size={18} className="text-primary" strokeWidth={3} />
-                                    </div>
-                                  </div>
-
-                                  {expandedOrders.includes(order._id) && order.items && order.items.length > 0 && (
-                                    <div className="px-4 pb-4 space-y-2 border-t border-border-light/50 pt-4 bg-background-muted/30">
-                                      {order.items.map((item, idx) => {
-                                        const ks = item.kitchenStatus || 'placed';
-                                        const ksColor = ks === 'ready' ? 'text-emerald-500' : ks === 'preparing' ? 'text-blue-500' : ks === 'delayed' ? 'text-red-500' : 'text-amber-500';
-                                        const ksBg = ks === 'ready' ? 'bg-emerald-500' : ks === 'preparing' ? 'bg-blue-500' : ks === 'delayed' ? 'bg-red-500' : 'bg-amber-500';
-                                        return (
-                                          <div key={idx} className="flex items-center justify-between bg-white dark:bg-black/20 p-2 rounded-xl border border-border-light/50 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
-                                            <div className="min-w-0 flex-1 pr-4">
-                                              <div className="text-[10px] font-extrabold text-text-primary truncate uppercase tracking-tight">
-                                                {item.name || 'Item'} {item.size ? `(${item.size})` : ''}
-                                              </div>
-                                              <div className="text-[9px] font-bold text-text-muted mt-0.5">Quantity: {item.quantity}</div>
-                                            </div>
-                                            <div className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg border ${ksColor.replace('text-', 'border-').replace('500', '500/20')} ${ksColor.replace('text-', 'bg-').replace('500', '500/5')}`}>
-                                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${ksBg}`} />
-                                              <span className={`text-[8px] font-black uppercase tracking-widest ${ksColor}`}>{ks}</span>
-                                            </div>
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-
-                                  {isPlaced && (
-                                    <div className="px-4 pb-4 flex flex-wrap gap-3 border-t border-border-light/50 pt-4 items-center bg-amber-50/30 dark:bg-amber-950/10">
-                                      <div className="flex-1 min-w-[120px] text-[9px] font-black text-amber-600 uppercase tracking-widest flex items-center gap-2">
+                                    ) : isWaitingApproval ? (
+                                      <div className="flex items-center gap-1.5 bg-amber-500/10 px-2.5 py-1 rounded-full">
                                         <div className="flex space-x-1">
                                           <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-bounce" />
                                           <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-bounce [animation-delay:-0.15s]" />
                                           <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-bounce [animation-delay:-0.3s]" />
                                         </div>
-                                        Awaiting Confirmation
+                                        <span className="text-[10px] md:text-xs font-black text-amber-500 capitalize tracking-wider">Waiting Approval</span>
                                       </div>
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); handleUpdateOrderStatus(order._id, 'processing'); }}
-                                        className="px-4 py-2 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all whitespace-nowrap"
-                                      >
-                                        Confirm Order
-                                      </button>
-                                    </div>
-                                  )}
-
-                                  {isActiveOrder && (
-                                    <div className="px-4 pb-4 flex gap-2.5 border-t border-border-light/50 pt-4 items-center">
-                                      <div className="relative flex-1">
-                                        <select
-                                          value={currentStatus}
-                                          onChange={(e) => handleUpdateOrderStatus(order._id, e.target.value)}
-                                          onClick={(e) => e.stopPropagation()}
-                                          className="w-full text-[10px] font-black uppercase tracking-[0.15em] bg-background-muted/50 border border-border-light/80 rounded-xl px-3 py-2.5 text-text-primary outline-none cursor-pointer appearance-none hover:border-primary/50 transition-colors"
-                                        >
-                                          {currentStatus === 'processing' && (
-                                            <>
-                                              <option value="processing">Processing</option>
-                                              <option value="cancelled">Cancelled</option>
-                                            </>
-                                          )}
-                                          {currentStatus === 'ready' && (
-                                            <>
-                                              <option value="ready">Ready</option>
-                                              <option value="billed">Billed</option>
-                                              <option value="delivered">Delivered (Mark Paid)</option>
-                                              <option value="cancelled">Cancelled</option>
-                                            </>
-                                          )}
-                                          {currentStatus === 'billed' && (
-                                            <>
-                                              <option value="billed">Billed</option>
-                                              <option value="delivered">Delivered (Mark Paid)</option>
-                                              <option value="cancelled">Cancelled</option>
-                                            </>
-                                          )}
-                                        </select>
-                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted">
-                                          <ChevronDown size={12} strokeWidth={3} />
+                                    ) : isPreparing ? (
+                                      <div className="flex items-center gap-1.5 bg-blue-500/10 px-2.5 py-1 rounded-full">
+                                        <div className="flex space-x-1">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                                         </div>
+                                        <span className="text-[10px] md:text-xs font-black text-blue-500 capitalize tracking-wider">Preparing</span>
                                       </div>
-                                      {currentStatus === 'billed' && (
-                                        <button
-                                          onClick={(e) => { e.stopPropagation(); handlePrintKOT(order); }}
-                                          className="p-2.5 bg-background-muted/50 text-text-secondary hover:text-primary rounded-xl transition-all border border-border-light/80 hover:border-primary/50"
-                                          title="Print KOT / Bill"
-                                        >
-                                          <Printer size={16} strokeWidth={2.5} />
-                                        </button>
-                                      )}
+                                    ) : null}
+                                  </div>
+
+                                  <div className="flex items-center justify-between px-5 pb-4">
+                                    <div className="flex items-center space-x-3">
+                                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary flex items-center justify-center font-black text-lg shrink-0 shadow-sm border border-primary/10">
+                                        {order.customerDetails?.name?.charAt(0) || 'C'}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="text-base md:text-lg font-extrabold text-text-primary truncate leading-tight">{order.customerDetails?.name || 'Walk-in'}</p>
+                                        <p className="text-xs md:text-sm text-text-muted font-bold tracking-wide mt-0.5">₹{order.totalAmount} • {order.items?.length || 0} items</p>
+                                      </div>
                                     </div>
-                                  )}
+                                  </div>
+                                  <div className="px-5 pb-4 space-y-2 border-t border-border-light/50 pt-4 bg-background-muted/30 flex-1">
+                                    {order.items && order.items.slice(0, 3).map((item, idx) => {
+                                      const ks = item.kitchenStatus || 'placed';
+                                      const ksColor = ks === 'ready' ? 'text-emerald-500' : ks === 'preparing' ? 'text-blue-500' : ks === 'delayed' ? 'text-red-500' : 'text-amber-500';
+                                      const ksBg = ks === 'ready' ? 'bg-emerald-500' : ks === 'preparing' ? 'bg-blue-500' : ks === 'delayed' ? 'bg-red-500' : 'bg-amber-500';
+                                      const isLastSlotAndMore = idx === 2 && order.items.length > 3;
+
+                                      return (
+                                        <div key={idx} className="flex items-center justify-between bg-white dark:bg-black/20 p-2.5 rounded-xl border border-border-light/50 shadow-[0_2px_10px_rgba(0,0,0,0.02)] h-[52px]">
+                                          <div className="min-w-0 flex-1 pr-2 pl-1">
+                                            <div className="text-xs md:text-sm font-extrabold text-text-primary truncate capitalize tracking-normal flex items-center gap-1.5">
+                                              <span className="truncate">{item.name || 'Item'} {item.size ? `(${item.size})` : ''}</span>
+                                              {isLastSlotAndMore && (
+                                                <span className="bg-primary/10 text-primary text-[8px] font-black px-1.5 py-0.5 rounded-full shrink-0">
+                                                  +{order.items.length - 3} more
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className="text-[10px] md:text-xs font-bold text-text-muted mt-0.5">Quantity: {item.quantity}</div>
+                                          </div>
+                                          <div className={`flex items-center space-x-1.5 px-2 py-1 rounded-lg border ${ksColor.replace('text-', 'border-').replace('500', '500/30')} ${ksColor.replace('text-', 'bg-').replace('500', '500/10')} shrink-0`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${ksBg}`} />
+                                            <span className={`text-[10px] md:text-xs font-black capitalize tracking-wider ${ksColor}`}>{ks}</span>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
                                 </div>
                               );
                             })}
                           </div>
                         </div>
                       ) : (
-                        <div className="flex flex-col items-center justify-center h-full text-center py-6 text-text-muted opacity-60">
-                          <div className="w-16 h-16 rounded-full bg-background-muted flex items-center justify-center mb-3">
-                            <Hash size={24} />
+                        <div className="w-full flex-1 flex flex-col items-center justify-center text-center py-10 animate-in fade-in duration-500 my-auto">
+                          <div className="w-20 h-20 rounded-3xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center mb-6 shadow-inner border border-emerald-500/20">
+                            <CheckCircle2 size={32} strokeWidth={2.5} />
                           </div>
-                          <p className="font-bold text-sm">Table is empty</p>
-                          <p className="text-[10px] uppercase tracking-widest mt-1">Ready for seating</p>
+                          <h3 className="text-2xl font-black text-text-primary tracking-tight mb-2">
+                            Table is Vacant
+                          </h3>
+                          <p className="text-sm font-bold text-text-secondary max-w-sm mx-auto mb-8 leading-relaxed">
+                            There are currently no active orders on this table. Seating capacity is completely vacant and available for guest seating.
+                          </p>
+                          <button
+                            onClick={() => handleTakeOrder(currentTable)}
+                            className="flex items-center space-x-2.5 bg-primary hover:bg-primary-light text-white px-8 py-4 rounded-2xl font-black text-sm transition-all duration-300 shadow-xl shadow-primary/25 hover:shadow-primary/35 hover:-translate-y-0.5 active:scale-98"
+                          >
+                            <ShoppingCart size={18} strokeWidth={2.5} />
+                            <span>Start Serving Guests</span>
+                          </button>
                         </div>
                       )}
                     </div>
 
-                    <div className="px-6 pb-6 pt-0">
+                  </div>
+                </div>
+              );
+            })()
+          ) : (
+            <div className="space-y-6">
+              {/* Header / Action Controls Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-background-card border border-border-light rounded-3xl p-5 shadow-sm">
+                <div>
+                  <h2 className="text-xl font-black text-text-primary tracking-tight">
+                    {isMergeMode ? 'Merge Tables Mode' : 'Select a Table to Manage'}
+                  </h2>
+                  <p className="text-xs font-bold text-text-secondary mt-1">
+                    {isMergeMode 
+                      ? 'Select multiple tables below to link them in a shared dining group.' 
+                      : 'Select any table to view orders, seat guests, or manage table status.'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  {isMergeMode ? (
+                    <>
                       <button
-                        onClick={() => handleTakeOrder(table)}
-                        className="w-full flex items-center justify-center space-x-2 bg-primary hover:bg-primary-light text-white px-4 py-3 rounded-xl font-bold transition-colors text-sm shadow-md shadow-primary/20"
+                        onClick={handleCancelMerge}
+                        className="px-5 py-2.5 bg-background border border-border-light text-text-secondary hover:text-primary hover:bg-background-muted rounded-xl font-black text-xs uppercase tracking-wider transition-all"
                       >
-                        <ShoppingCart size={16} />
-                        <span>Add Customer Order</span>
+                        Cancel
                       </button>
+                      <button
+                        onClick={handleSaveMerge}
+                        disabled={selectedMergeTableNumbers.length < 2}
+                        className={`px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider text-white transition-all shadow-md ${
+                          selectedMergeTableNumbers.length < 2
+                            ? 'bg-background-muted text-text-muted border border-border-light cursor-not-allowed opacity-60'
+                            : 'bg-primary hover:bg-primary-light shadow-primary/25'
+                        }`}
+                      >
+                        Merge Selected ({selectedMergeTableNumbers.length})
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={handleStartMergeMode}
+                      className="px-5 py-2.5 bg-primary hover:bg-primary-light text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-primary/20 hover:shadow-primary/30 flex items-center gap-2"
+                    >
+                      <GitMerge size={14} strokeWidth={3} />
+                      <span>Merge Tables</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Table Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {tables.map((table) => {
+                  const isOccupied = table.status === 'occupied';
+                  const isSelectedForMerge = isMergeMode && selectedMergeTableNumbers.includes(table.tableNumber);
+                  const hasMergedGroup = table.mergedGroup && table.mergedGroup.length > 0;
+
+                  return (
+                    <div
+                      key={table._id}
+                      onClick={() => {
+                        if (isMergeMode) {
+                          setSelectedMergeTableNumbers(prev =>
+                            prev.includes(table.tableNumber)
+                              ? prev.filter(num => num !== table.tableNumber)
+                              : [...prev, table.tableNumber]
+                          );
+                        } else {
+                          setSelectedViewTableId(table._id);
+                        }
+                      }}
+                      className={`relative cursor-pointer rounded-2xl overflow-hidden shadow-sm hover:shadow-md bg-white dark:bg-gray-900 transition-all duration-300 ${
+                        isSelectedForMerge
+                          ? 'border-2 border-primary ring-4 ring-primary/10 scale-[1.02] shadow-lg'
+                          : 'border border-border-light hover:-translate-y-0.5 active:scale-98'
+                      }`}
+                    >
+                      {/* Selection checkmark for merge mode */}
+                      {isSelectedForMerge && (
+                        <div className="absolute top-3.5 left-3.5 bg-primary text-white p-1.5 rounded-xl z-20 shadow-md flex items-center justify-center animate-in zoom-in-50 duration-200">
+                          <CheckCircle2 size={14} strokeWidth={3} />
+                        </div>
+                      )}
+
+                      <div className="aspect-[4/3] w-full overflow-hidden bg-gradient-to-b from-gray-50 to-gray-200 dark:from-gray-800 dark:to-gray-950 flex items-center justify-center p-2">
+                        <img
+                          src="/table_pic.png"
+                          alt={`Table ${table.tableNumber}`}
+                          className="w-full h-full object-contain drop-shadow-lg"
+                        />
+                      </div>
+
+                      {/* Status indicator */}
+                      <div className="absolute top-3.5 right-3.5 flex items-center gap-2 z-10">
+                        {hasMergedGroup && (
+                          <div className="flex items-center gap-1 bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-lg border border-amber-500/20 text-[9px] font-black uppercase tracking-wider">
+                            <GitMerge size={10} strokeWidth={3} />
+                            <span>Merged</span>
+                          </div>
+                        )}
+                        {(() => {
+                          const capacity = table.capacity || 4;
+                          const occupied = table.occupiedSeats || 0;
+                          const isFullyOccupied = occupied >= capacity;
+                          const isPartiallyOccupied = occupied > 0 && occupied < capacity;
+                          return (
+                            <div className={`w-3 h-3 rounded-full ${
+                              isFullyOccupied 
+                                ? 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.85)]' 
+                                : isPartiallyOccupied 
+                                  ? 'bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.85)]' 
+                                  : 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.85)]'
+                            } animate-pulse border-2 border-white/80`} />
+                          );
+                        })()}
+                      </div>
+
+                    {/* Table Info Overlay */}
+                    <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/95 via-black/70 to-transparent">
+                      <div className="flex justify-between items-end">
+                        <div>
+                          <p className="text-white/60 text-[9px] font-black uppercase tracking-widest mb-0.5">Table</p>
+                          <h3 className="text-3xl font-black text-white drop-shadow-md leading-none">{table.tableNumber}</h3>
+                          <p className="text-white/85 text-[11px] font-bold mt-2 flex items-center gap-1.5">
+                            <Users size={12} className="opacity-80" /> {table.capacity} Seats
+                          </p>
+                        </div>
+                        {(() => {
+                          const capacity = table.capacity || 4;
+                          const occupied = table.occupiedSeats || 0;
+                          const isFullyOccupied = occupied >= capacity;
+                          const isPartiallyOccupied = occupied > 0 && occupied < capacity;
+                          const isFree = occupied === 0;
+
+                          if (isFullyOccupied) {
+                            return (
+                              <div className="bg-red-600/90 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-xl backdrop-blur-sm shadow-md">
+                                Fully Seated
+                              </div>
+                            );
+                          } else if (isPartiallyOccupied) {
+                            const remaining = capacity - occupied;
+                            return (
+                              <div className="bg-amber-500/90 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-xl backdrop-blur-sm shadow-md">
+                                {remaining} Seat{remaining > 1 ? 's' : ''} Available
+                              </div>
+                            );
+                          } else {
+                            return (
+                              <div className="bg-emerald-500/90 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-xl backdrop-blur-sm shadow-md">
+                                Available
+                              </div>
+                            );
+                          }
+                        })()}
+                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
-          )}
+          </div>
+        )}
         </div>
       </main>
 
-      <DineInPOSModal 
-        isOpen={isPOSModalOpen} 
-        onClose={() => setIsPOSModalOpen(false)} 
-        table={selectedTable} 
-        fetchTables={fetchTables} 
+      <DineInPOSModal
+        isOpen={isPOSModalOpen}
+        onClose={() => setIsPOSModalOpen(false)}
+        table={selectedTable}
+        fetchTables={fetchTables}
         editingOrder={selectedOrderForEdit}
+        orderSource={staff.role || "waiter"}
+        occupiedSeats={selectedOrderSeats}
       />
+
+      {isDetailsModalOpen && selectedOrderForView && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => {
+            setIsDetailsModalOpen(false);
+            setSelectedOrderForView(null);
+          }}></div>
+          <div className="bg-background-card w-full max-w-lg max-h-[80vh] rounded-[2.5rem] shadow-2xl relative z-10 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 border border-border-light">
+            {/* Header */}
+            <div className="p-6 border-b border-border-light flex justify-between items-center bg-background-card">
+              <div>
+                <h3 className="text-xl font-black text-text-primary tracking-tight">Order Details</h3>
+                <p className="text-xs font-bold text-text-muted mt-1 uppercase tracking-widest">
+                  {selectedOrderForView.orderNumber?.toUpperCase()}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setIsDetailsModalOpen(false);
+                  setSelectedOrderForView(null);
+                }}
+                className="p-2 bg-background-muted text-text-muted hover:text-primary rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-background">
+              {/* Meta Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-background-card p-4 rounded-2xl border border-border-light">
+                  <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">Customer</p>
+                  <p className="font-extrabold text-text-primary text-base">
+                    {selectedOrderForView.customerDetails?.name || 'Walk-in'}
+                  </p>
+                </div>
+                <div className="bg-background-card p-4 rounded-2xl border border-border-light">
+                  <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">Order Status</p>
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mt-1 ${selectedOrderForView.orderStatus === 'completed' || selectedOrderForView.orderStatus === 'delivered'
+                    ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                    : selectedOrderForView.orderStatus === 'placed'
+                      ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                      : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                    }`}>
+                    {selectedOrderForView.orderStatus}
+                  </span>
+                </div>
+              </div>
+
+              {/* Items List */}
+              <div className="space-y-3">
+                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">Items, Quantity & Status</p>
+                <div className="space-y-2">
+                  {selectedOrderForView.items?.map((item, idx) => {
+                    const ks = item.kitchenStatus || 'placed';
+                    const ksColor = ks === 'ready' ? 'text-emerald-500 border-emerald-500/30 bg-emerald-500/10' : ks === 'preparing' ? 'text-blue-500 border-blue-500/30 bg-blue-500/10' : ks === 'delayed' ? 'text-red-500 border-red-500/30 bg-red-500/10' : 'text-amber-500 border-amber-500/30 bg-amber-500/10';
+                    const ksBg = ks === 'ready' ? 'bg-emerald-500' : ks === 'preparing' ? 'bg-blue-500' : ks === 'delayed' ? 'bg-red-500' : 'bg-amber-500';
+                    return (
+                      <div key={idx} className="flex justify-between items-center bg-background-card p-4 rounded-2xl border border-border-light shadow-sm">
+                        <div className="min-w-0 flex-1 pr-3">
+                          <p className="font-extrabold text-text-primary text-sm truncate capitalize">
+                            {item.name || 'Item'} {item.size ? `(${item.size})` : ''}
+                          </p>
+                          <p className="text-xs font-bold text-text-muted mt-1 uppercase tracking-wider">
+                            Quantity: {item.quantity}
+                          </p>
+                        </div>
+                        <div className={`flex items-center space-x-1.5 px-3 py-1 rounded-xl border ${ksColor}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${ksBg}`} />
+                          <span className="text-xs font-black capitalize tracking-wider">{ks}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 bg-background-card border-t border-border-light flex justify-between items-center shrink-0 gap-3">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setIsDetailsModalOpen(false);
+                    setSelectedOrderForEdit(selectedOrderForView);
+                    setIsPOSModalOpen(true);
+                  }}
+                  className="px-4 py-3 bg-background border border-border-light text-text-primary hover:text-primary hover:border-primary/50 hover:bg-primary/5 rounded-2xl font-black uppercase tracking-wider text-xs transition-all shadow-sm active:scale-95 flex items-center gap-2"
+                >
+                  <Plus size={16} strokeWidth={2.5} />
+                  <span>Add Item</span>
+                </button>
+                <button
+                  onClick={() => {
+                    handlePrintKOT(selectedOrderForView);
+                    handleUpdateOrderStatus(selectedOrderForView._id, 'delivered', true);
+                    setIsDetailsModalOpen(false);
+                  }}
+                  className="px-4 py-3 bg-background border border-border-light text-text-secondary hover:text-primary hover:border-primary/50 hover:bg-primary/5 rounded-2xl font-black uppercase tracking-wider text-xs transition-all shadow-sm active:scale-95 flex items-center gap-2"
+                >
+                  <Printer size={16} strokeWidth={2.5} />
+                  <span>Print</span>
+                </button>
+              </div>
+              <button
+                onClick={() => {
+                  setIsDetailsModalOpen(false);
+                  setSelectedOrderForView(null);
+                }}
+                className="px-6 py-3 bg-primary text-white rounded-2xl font-black uppercase tracking-wider text-xs shadow-md shadow-primary/20 hover:bg-primary-light active:scale-[0.98] transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
 
     </div>

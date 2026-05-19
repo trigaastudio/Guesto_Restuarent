@@ -24,15 +24,15 @@ export const CartProvider = ({ children }) => {
       setCartItems(prev => prev.map(item => {
         // Find the actual Menu Item ID in our flattened cart item structure
         const itemMenuId = (
-          item.menuItemId || 
-          (item.menuItem && (item.menuItem._id || item.menuItem)) || 
-          item._id || 
+          item.menuItemId ||
+          (item.menuItem && (item.menuItem._id || item.menuItem)) ||
+          item._id ||
           ''
         ).toString();
 
         if (itemMenuId === receivedId) {
-          return { 
-            ...item, 
+          return {
+            ...item,
             totalStock: totalStock !== undefined ? totalStock : item.totalStock,
             isBlocked: isBlocked !== undefined ? isBlocked : item.isBlocked
           };
@@ -44,7 +44,7 @@ export const CartProvider = ({ children }) => {
     socket.on('offerUpdate', () => {
       fetchOffers();
     });
-    
+
     socket.on('settingsUpdate', (newSettings) => {
       if (newSettings) {
         setSettings(newSettings);
@@ -150,7 +150,7 @@ export const CartProvider = ({ children }) => {
   const checkStoreStatus = useCallback(() => {
     if (!settings?.operationalSettings) return { isOpen: true };
     const { isStoreOpen, isHolidayMode, businessHours } = settings.operationalSettings;
-    
+
     if (isHolidayMode) return { isOpen: false, reason: 'holiday' };
     if (isStoreOpen === false) return { isOpen: false, reason: 'manual_close' };
 
@@ -302,7 +302,7 @@ export const CartProvider = ({ children }) => {
       if (possibleCombos > 0 && possibleCombos !== Infinity) {
         // Combo application log removed
         let bundleBasePrice = 0;
-        
+
         // Calculate original price of ONE bundle
         Object.keys(requirements).forEach(key => {
           const [id, size] = key.split('-');
@@ -317,7 +317,7 @@ export const CartProvider = ({ children }) => {
 
         const discountPercent = Math.min(100, Math.max(0, parseFloat(offer.offerValue || 0)));
         const discountedBundlePrice = bundleBasePrice * (1 - discountPercent / 100);
-        
+
         totalSubtotal += possibleCombos * discountedBundlePrice;
 
         // Consume quantities
