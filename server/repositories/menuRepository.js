@@ -5,7 +5,7 @@ class MenuRepository {
     return await Menu.create(data);
   }
 
-  async getAll(filter = {}, skip = 0, limit = 0) {
+  async getAll(filter = {}, skip = 0, limit = 0, sortOption = { createdAt: -1 }) {
     let query = Menu.find({ isBlocked: false, ...filter })
       .populate('category')
       .populate({
@@ -20,7 +20,7 @@ class MenuRepository {
         path: 'comboItems.menuItem',
         select: 'name variants'
       })
-      .sort({ createdAt: -1 });
+      .sort(sortOption);
     if (skip > 0) query = query.skip(skip);
     if (limit > 0) query = query.limit(limit);
     return await query;

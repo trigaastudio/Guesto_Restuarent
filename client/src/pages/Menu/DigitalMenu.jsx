@@ -370,7 +370,7 @@ const DigitalMenu = () => {
       </div>
 
       {/* Floating Dynamic Navbar */}
-      <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[60] w-[95%] max-w-[420px]">
+      <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[60] w-[95%] max-w-[420px] md:hidden">
          <nav className="bg-[#0A0A0A]/95 backdrop-blur-3xl border border-white/10 rounded-[3.5rem] px-5 py-4 shadow-[0_50px_150px_rgba(0,0,0,0.8)] flex items-center justify-center gap-4 transition-all">
             
             <button 

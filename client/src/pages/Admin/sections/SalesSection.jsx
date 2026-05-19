@@ -66,12 +66,8 @@ const SalesSection = () => {
 
   const fetchInitialData = async () => {
     try {
-      const [menuRes, periodicRes] = await Promise.all([
-        api.get('/api/menus?all=true'),
-        api.get('/api/reports/periodic')
-      ]);
+      const menuRes = await api.get('/api/menus?all=true');
       setMenuItems(menuRes.data);
-      setPeriodicData(periodicRes.data.data);
     } catch (error) {
       console.error('Error fetching initial reporting data:', error);
     }
@@ -80,12 +76,14 @@ const SalesSection = () => {
   const fetchReportData = async () => {
     setLoading(true);
     try {
-      const [salesRes, itemsRes] = await Promise.all([
+      const [salesRes, itemsRes, periodicRes] = await Promise.all([
         api.get('/api/reports/sales', { params: filters }),
-        api.get('/api/reports/items', { params: { startDate: filters.startDate, endDate: filters.endDate } })
+        api.get('/api/reports/items', { params: filters }),
+        api.get('/api/reports/periodic', { params: { orderType: filters.orderType, orderSource: filters.orderSource, menuItem: filters.menuItem } })
       ]);
       setSalesData(salesRes.data.data);
       setItemStats(itemsRes.data.data);
+      setPeriodicData(periodicRes.data.data);
     } catch (error) {
       showToast('error', 'Failed to fetch report data');
     } finally {
@@ -190,18 +188,7 @@ const SalesSection = () => {
     return { label: order.orderStatus, color: 'bg-background-muted/10 text-text-muted border-border-light' };
   };
 
-  const StatCard = ({ title, value, icon: Icon, color }) => (
-    <div className="bg-background-card p-6 rounded-[2rem] border border-border/40 shadow-sm relative overflow-hidden group">
-      <div className="flex items-center justify-between mb-4">
-        <div className={`p-3 rounded-2xl ${color} bg-opacity-10 group-hover:scale-110 transition-transform`}>
-          <Icon className={color.replace('bg-', 'text-')} size={20} />
-        </div>
-        <div className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">{title}</div>
-      </div>
-      <div className="text-3xl font-black text-text-primary tracking-tighter">₹{Math.round(value).toLocaleString()}</div>
-      <div className={`absolute top-0 right-0 w-24 h-24 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-125 opacity-5 ${color}`} />
-    </div>
-  );
+  // StatCard removed as part of layout redesign
 
   const handleSort = (key) => {
     let direction = 'desc';
@@ -337,30 +324,56 @@ const SalesSection = () => {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <StatCard title="Total Revenue" value={salesData.stats.totalRevenue} icon={TrendingUp} color="bg-blue-500" />
-        <StatCard title="Total Orders" value={salesData.orders.length} icon={ShoppingBag} color="bg-purple-500" />
-      </div>
-
-      {/* Periodic Performance */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {[
-          { label: 'Today', data: periodicData.daily, color: 'text-blue-500' },
-          { label: 'This Week', data: periodicData.weekly, color: 'text-purple-500' },
-          { label: 'This Month', data: periodicData.monthly, color: 'text-orange-500' },
-          { label: 'This Year', data: periodicData.yearly, color: 'text-green-500' }
-        ].map((item, idx) => (
-          <div key={idx} className="bg-background-card p-6 rounded-3xl border border-border/40 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">{item.label}</span>
-              <div className={`w-2 h-2 rounded-full ${item.color.replace('text-', 'bg-')} animate-pulse`} />
-            </div>
-            <div className="space-y-1">
-              <div className="text-xl font-black text-text-primary">₹{Math.round(item.data.revenue || 0).toLocaleString()}</div>
-            </div>
+      {/* Revenue Section Layout */}
+      <div className="space-y-4">
+        <h3 className="text-xl font-black text-text-primary tracking-tight">Revenue</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Column 1: Today & Week */}
+          <div className="flex flex-col gap-4">
+            {[
+              { label: 'Today', data: periodicData.daily, color: 'text-blue-500' },
+              { label: 'This Week', data: periodicData.weekly, color: 'text-purple-500' },
+            ].map((item, idx) => (
+              <div key={idx} className="bg-background-card p-5 rounded-3xl border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)] transition-all flex flex-col justify-center flex-1 relative overflow-hidden group">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">{item.label}</span>
+                  <div className={`w-2 h-2 rounded-full ${item.color.replace('text-', 'bg-')} animate-pulse`} />
+                </div>
+                <div className="text-2xl font-black text-text-primary mt-1">₹{Math.round(item.data.revenue || 0).toLocaleString()}</div>
+              </div>
+            ))}
           </div>
-        ))}
+
+          {/* Column 2: Total Orders */}
+          <div className="bg-background-card p-5 rounded-3xl border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)] transition-all relative overflow-hidden group flex flex-col justify-between min-h-[160px]">
+            <div className="flex items-center justify-between">
+              <div className="p-2.5 bg-purple-500/10 text-purple-500 rounded-xl group-hover:scale-110 transition-transform">
+                <ShoppingBag size={18} />
+              </div>
+              <div className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Total Orders</div>
+            </div>
+            <div className="flex justify-center items-center flex-1 py-4">
+              <span className="text-5xl font-black text-text-primary tracking-tighter">{salesData.orders.length}</span>
+            </div>
+            <div className="absolute top-0 right-0 w-24 h-24 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-125 opacity-5 bg-purple-500" />
+          </div>
+
+          {/* Column 3: Month & Year */}
+          <div className="flex flex-col gap-4">
+            {[
+              { label: 'This Month', data: periodicData.monthly, color: 'text-orange-500' },
+              { label: 'This Year', data: periodicData.yearly, color: 'text-green-500' }
+            ].map((item, idx) => (
+              <div key={idx} className="bg-background-card p-5 rounded-3xl border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)] transition-all flex flex-col justify-center flex-1 relative overflow-hidden group">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">{item.label}</span>
+                  <div className={`w-2 h-2 rounded-full ${item.color.replace('text-', 'bg-')} animate-pulse`} />
+                </div>
+                <div className="text-2xl font-black text-text-primary mt-1">₹{Math.round(item.data.revenue || 0).toLocaleString()}</div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Tabs for detailed view */}

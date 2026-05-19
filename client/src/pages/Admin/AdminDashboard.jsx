@@ -530,87 +530,77 @@ const AdminDashboard = () => {
                       <h2 className="text-3xl font-black text-text-primary tracking-tight">Dashboard</h2>
                       <p className="text-text-secondary text-sm font-medium">Welcome back! Here's what's happening today.</p>
                     </div>
-                    <div className="flex space-x-2">
-                      <button className="bg-background-card border border-border-main text-text-primary px-4 py-2 rounded-xl text-sm font-semibold hover:bg-background-muted transition-colors">
-                        Export Table
-                      </button>
-                      <button
-                        onClick={handleRefresh}
-                        className="bg-primary text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-lg shadow-primary/20 hover:bg-primary-light transition-all"
-                      >
-                        Update Data
-                      </button>
-                    </div>
+
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Total Orders Card */}
                     <div
                       onClick={() => navigateWithFilter('Orders', 'history')}
-                      className="bg-background-card p-8 rounded-[2.5rem] border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)] transition-all relative overflow-hidden group cursor-pointer active:scale-[0.98]"
+                      className="bg-background-card p-6 rounded-[2rem] border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)] transition-all relative overflow-hidden group cursor-pointer active:scale-[0.98]"
                     >
-                      <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-3">
-                          <div className="p-3 bg-purple-500/10 text-purple-500 rounded-2xl group-hover:scale-110 transition-transform">
-                            <ShoppingCart size={20} />
+                          <div className="p-2.5 bg-purple-500/10 text-purple-500 rounded-xl group-hover:scale-110 transition-transform">
+                            <ShoppingCart size={18} />
                           </div>
                           <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Total Orders</span>
                         </div>
                         <ChevronRight size={16} className="text-text-muted group-hover:translate-x-1 transition-transform" />
                       </div>
-                      <div className="flex items-end space-x-4">
-                        <span className="text-5xl font-black text-text-primary tracking-tighter">{stats.metrics.totalOrders}</span>
-                        <div className="text-[9px] font-black text-text-muted uppercase mb-1.5 opacity-60">All Time</div>
+                      <div className="flex items-end space-x-3">
+                        <span className="text-4xl font-black text-text-primary tracking-tighter">{stats.metrics.totalOrders}</span>
+                        <div className="text-[9px] font-black text-text-muted uppercase mb-1 opacity-60">All Time</div>
                       </div>
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-125" />
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-125" />
                     </div>
 
                     {/* Dining Status Card */}
                     <div
                       onClick={() => navigateWithFilter('Orders', 'dine-in')}
-                      className="bg-background-card p-8 rounded-[2.5rem] border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)] transition-all relative overflow-hidden group cursor-pointer active:scale-[0.98]"
+                      className="bg-background-card p-6 rounded-[2rem] border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)] transition-all relative overflow-hidden group cursor-pointer active:scale-[0.98]"
                     >
-                      <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-3">
-                          <div className="p-3 bg-primary/10 text-primary rounded-2xl group-hover:scale-110 transition-transform">
-                            <UtensilsCrossed size={20} />
+                          <div className="p-2.5 bg-primary/10 text-primary rounded-xl group-hover:scale-110 transition-transform">
+                            <UtensilsCrossed size={18} />
                           </div>
                           <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Dining Status</span>
                         </div>
                         <ChevronRight size={16} className="text-text-muted group-hover:translate-x-1 transition-transform" />
                       </div>
-                      <div className="flex items-end space-x-4">
-                        <div className="flex items-baseline space-x-2">
-                          <span className="text-5xl font-black text-text-primary tracking-tighter">{stats.tableStats.available}</span>
-                          <span className="text-xl font-bold text-text-muted">/{stats.tableStats.total}</span>
+                      <div className="flex items-end space-x-3">
+                        <div className="flex items-baseline space-x-1.5">
+                          <span className="text-4xl font-black text-text-primary tracking-tighter">{stats.tableStats.available}</span>
+                          <span className="text-lg font-bold text-text-muted">/{stats.tableStats.total}</span>
                         </div>
-                        <div className="flex items-center space-x-1 mb-1.5 text-status-available text-[9px] font-black uppercase">
+                        <div className="flex items-center space-x-1 mb-1 text-status-available text-[9px] font-black uppercase">
                           <span>{stats.tableStats.total > 0 ? Math.round(((stats.tableStats.total - stats.tableStats.available) / stats.tableStats.total) * 100) : 0}%</span>
                           <span className="text-text-muted opacity-40 font-bold">Occupied</span>
                         </div>
                       </div>
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-125" />
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-125" />
                     </div>
 
                     {/* Today Revenue Card */}
                     <div
                       onClick={() => handleTabChange('Sales')}
-                      className="bg-background-card p-8 rounded-[2.5rem] border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)] transition-all relative overflow-hidden group cursor-pointer active:scale-[0.98]"
+                      className="bg-background-card p-6 rounded-[2rem] border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)] transition-all relative overflow-hidden group cursor-pointer active:scale-[0.98]"
                     >
-                      <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-3">
-                          <div className="p-3 bg-blue-500/10 text-blue-500 rounded-2xl group-hover:scale-110 transition-transform">
-                            <TrendingUp size={20} />
+                          <div className="p-2.5 bg-blue-500/10 text-blue-500 rounded-xl group-hover:scale-110 transition-transform">
+                            <TrendingUp size={18} />
                           </div>
                           <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Today Revenue</span>
                         </div>
                         <ChevronRight size={16} className="text-text-muted group-hover:translate-x-1 transition-transform" />
                       </div>
-                      <div className="flex items-end space-x-4">
-                        <span className="text-4xl font-black text-text-primary tracking-tighter">₹{stats.metrics.todayRevenue.toLocaleString()}</span>
-                        <div className="text-[9px] font-black text-blue-500 uppercase mb-1.5">Daily Sales</div>
+                      <div className="flex items-end space-x-3">
+                        <span className="text-3xl font-black text-text-primary tracking-tighter">₹{stats.metrics.todayRevenue.toLocaleString()}</span>
+                        <div className="text-[9px] font-black text-blue-500 uppercase mb-1">Daily Sales</div>
                       </div>
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-125" />
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-125" />
                     </div>
                   </div>
 

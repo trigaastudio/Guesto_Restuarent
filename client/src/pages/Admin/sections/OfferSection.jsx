@@ -248,29 +248,25 @@ const OfferSection = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {paginatedOffers.map((offer) => (
-          <div key={offer._id} className="bg-background-card rounded-[2rem] border border-border/40 overflow-hidden group hover:shadow-2xl transition-all border-b-4 border-b-primary/40">
-            <div className="relative h-48 overflow-hidden bg-background">
+          <div key={offer._id} className="bg-background-card rounded-3xl border border-border/40 overflow-hidden group hover:shadow-2xl transition-all border-b-4 border-b-primary/40">
+            <div className="relative h-36 overflow-hidden bg-background">
               <img src={offer.bannerImage} alt={offer.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-              <div className="absolute top-4 left-4 flex gap-2">
-                <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider ${offer.offerType === 'bogo' ? 'bg-orange-600 text-white' : offer.offerType === 'combo' ? 'bg-blue-600 text-white' : 'bg-green-600 text-white'}`}>{offer.offerType}</span>
+              <div className="absolute top-3 left-3 flex gap-2">
+                <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider ${offer.offerType === 'bogo' ? 'bg-orange-600 text-white' : offer.offerType === 'combo' ? 'bg-blue-600 text-white' : 'bg-green-600 text-white'}`}>{offer.offerType}</span>
               </div>
-              <div className="absolute top-4 right-4 flex gap-2">
-                <button onClick={() => toggleStatus(offer)} className="p-2 bg-black/20 backdrop-blur-md rounded-xl text-white hover:bg-black/40 transition-all border border-white/10">{offer.isActive ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}</button>
+              <div className="absolute top-3 right-3 flex gap-2">
+                <button onClick={() => toggleStatus(offer)} className="p-1.5 bg-black/20 backdrop-blur-md rounded-xl text-white hover:bg-black/40 transition-all border border-white/10">{offer.isActive ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}</button>
               </div>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-5 space-y-3">
               <div>
-                <h3 className="text-lg font-black text-text-primary uppercase tracking-tight line-clamp-1">{offer.title}</h3>
-                <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest mt-1 opacity-60">{offer.description}</p>
+                <h3 className="text-base font-black text-text-primary uppercase tracking-tight line-clamp-1">{offer.title}</h3>
+                <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest mt-0.5 opacity-60 line-clamp-2">{offer.description}</p>
               </div>
-              <div className="flex items-center justify-between pt-4 border-t border-border/10">
-                <div className="flex flex-col">
-                  <span className="text-[9px] font-black text-text-muted uppercase">Value</span>
-                  <span className="text-sm font-black text-primary">{offer.offerType === 'discount' ? `${offer.offerValue}% OFF` : offer.offerType === 'combo' ? `${offer.offerValue}% BUNDLE OFF` : 'FREE ITEM'}</span>
-                </div>
+              <div className="flex items-center justify-end pt-3 border-t border-border/10">
                 <div className="flex gap-2">
-                  <button onClick={() => handleEdit(offer)} className="p-2.5 bg-background-muted text-text-primary rounded-xl hover:bg-primary hover:text-white transition-all"><Edit2 size={16} /></button>
-                  <button onClick={() => handleDelete(offer._id)} className="p-2.5 bg-background-muted text-status-unavailable rounded-xl hover:bg-status-unavailable hover:text-white transition-all"><Trash2 size={16} /></button>
+                  <button onClick={() => handleEdit(offer)} className="p-2 bg-background-muted text-text-primary rounded-xl hover:bg-primary hover:text-white transition-all"><Edit2 size={14} /></button>
+                  <button onClick={() => handleDelete(offer._id)} className="p-2 bg-background-muted text-status-unavailable rounded-xl hover:bg-status-unavailable hover:text-white transition-all"><Trash2 size={14} /></button>
                 </div>
               </div>
             </div>
