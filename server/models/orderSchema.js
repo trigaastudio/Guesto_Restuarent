@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 import { getIO, emitOrderStatusUpdate } from "../socket.js";
+import Table from "./tableSchema.js";
+
 
 const orderSchema = new mongoose.Schema({
   orderNumber: {
@@ -23,6 +25,7 @@ const orderSchema = new mongoose.Schema({
   customer: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   user: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // Team app compatibility
   table: { type: mongoose.Schema.Types.ObjectId, ref: "Table" },
+  occupiedSeats: { type: Number, default: 0 },
   sessionId: String,
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "Staff" },
 
@@ -165,8 +168,26 @@ orderSchema.pre('validate', async function () {
   }
 });
 
-// Post-save hook for real-time notifications
-orderSchema.post('save', function (doc) {
+// Helper to dynamically update Table occupancy based on active orders
+async function updateTableOccupancy(tableId) {
+  if (!tableId) return;
+  try {
+    const Order = mongoose.model('Order');
+    const activeOrders = await Order.find({
+      table: tableId,
+      orderType: 'dine-in',
+      orderStatus: { $nin: ['cancelled', 'delivered'] }
+    });
+    const totalSeats = activeOrders.reduce((sum, o) => sum + (o.occupiedSeats || 0), 0);
+    const status = totalSeats > 0 ? 'occupied' : 'available';
+    await Table.findByIdAndUpdate(tableId, { occupiedSeats: totalSeats, status });
+  } catch (err) {
+    console.error("Error updating table occupancy in post hook:", err);
+  }
+}
+
+// Post-save hook for real-time notifications and Table occupancy sync
+orderSchema.post('save', async function (doc) {
   try {
     if (doc._id) {
       // General update for all listeners
@@ -176,10 +197,27 @@ orderSchema.post('save', function (doc) {
       if (doc.orderStatus) {
         emitOrderStatusUpdate(doc._id.toString(), doc.orderStatus, doc.kitchenStatus);
       }
+
+      // Sync Table occupiedSeats & status
+      if (doc.table && doc.orderType === 'dine-in') {
+        await updateTableOccupancy(doc.table);
+      }
     }
   } catch (err) {
-    console.error("Socket error in orderSchema post-save:", err);
+    console.error("Socket / table sync error in orderSchema post-save:", err);
+  }
+});
+
+// Post-findOneAndDelete hook to clean up Table occupancy when an order is deleted
+orderSchema.post('findOneAndDelete', async function (doc) {
+  try {
+    if (doc && doc.table && doc.orderType === 'dine-in') {
+      await updateTableOccupancy(doc.table);
+    }
+  } catch (err) {
+    console.error("Error in orderSchema post-findOneAndDelete table occupancy sync:", err);
   }
 });
 
 export default mongoose.model("Order", orderSchema);
+

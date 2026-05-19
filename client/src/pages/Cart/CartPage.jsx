@@ -82,7 +82,7 @@ const CartPage = () => {
   const [loading, setLoading] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const dropdownRef = useRef(null);
-  
+
   const dineInTableId = localStorage.getItem('dineInTableId');
   const dineInTableNumber = localStorage.getItem('dineInTableNumber');
 
@@ -240,7 +240,7 @@ const CartPage = () => {
   const handleSelectAddress = (address) => { setDeliveryAddress(address); };
   const getStock = React.useCallback((item) => {
     if (!item) return 0;
-    
+
     // Explicitly handle empty/null/undefined stock fields as 0
     const rawStock = (item.totalStock === undefined || item.totalStock === null) ? 0 : item.totalStock;
 
@@ -266,11 +266,11 @@ const CartPage = () => {
 
   const handleCheckout = () => {
     if (hasOutOfStockItems) {
-      Swal.fire({ 
-        title: 'Out of Stock', 
-        text: 'Some items in your cart are no longer available in the requested quantity. Please update your cart.', 
-        icon: 'error', 
-        confirmButtonColor: '#B91C1C' 
+      Swal.fire({
+        title: 'Out of Stock',
+        text: 'Some items in your cart are no longer available in the requested quantity. Please update your cart.',
+        icon: 'error',
+        confirmButtonColor: '#B91C1C'
       });
       return;
     }
@@ -328,12 +328,12 @@ const CartPage = () => {
                       <span className="text-lg font-black text-primary">Table {dineInTableNumber}</span>
                     </div>
                   </div>
-                  <button 
+                  <button
                     onClick={() => {
                       localStorage.removeItem('dineInTableId');
                       localStorage.removeItem('dineInTableNumber');
                       window.location.reload();
-                    }} 
+                    }}
                     className="text-xs font-bold text-status-unavailable border border-status-unavailable/30 px-4 py-2 rounded-lg hover:bg-status-off/10 transition-colors"
                   >
                     Cancel Dine-in
@@ -412,16 +412,16 @@ const CartPage = () => {
                             <div className="flex flex-wrap items-center gap-4 pt-2">
                               {/* Compact Quantity Control */}
                               <div className="flex items-center bg-background border border-border/40 rounded-xl overflow-hidden h-8 shadow-sm">
-                                <button 
-                                  onClick={() => updateQuantity(item._id, item.quantity - 1)} 
+                                <button
+                                  onClick={() => updateQuantity(item._id, item.quantity - 1)}
                                   disabled={item.quantity <= 1 || getStock(item) < item.quantity}
                                   className="w-8 flex items-center justify-center hover:bg-background-muted transition-colors text-text-muted disabled:opacity-20"
                                 >
                                   <Minus size={12} strokeWidth={3} />
                                 </button>
                                 <span className="w-6 text-center text-xs font-black text-text-primary">{item.quantity}</span>
-                                <button 
-                                  onClick={() => updateQuantity(item._id, item.quantity + 1)} 
+                                <button
+                                  onClick={() => updateQuantity(item._id, item.quantity + 1)}
                                   disabled={getStock(item) <= item.quantity}
                                   className="w-8 flex items-center justify-center hover:bg-background-muted transition-colors text-text-muted disabled:opacity-20"
                                 >
@@ -443,12 +443,12 @@ const CartPage = () => {
                               {activeOffer && (
                                 <span className="text-[8px] font-black uppercase text-green-600 bg-green-500/5 px-1.5 py-0.5 rounded border border-green-500/10">Saver Deal</span>
                               )}
-                                {(() => {
-                                  if (item.isBlocked) return <span className="text-[8px] font-black uppercase text-red-600 bg-red-500/5 px-1.5 py-0.5 rounded border border-red-500/10">Currently Unavailable</span>;
-                                  const stock = getStock(item);
-                                  if (stock < item.quantity) return <span className="text-[8px] font-black uppercase text-red-600 bg-red-500/5 px-1.5 py-0.5 rounded border border-red-500/10">Out of Stock</span>;
-                                  return null;
-                                })()}
+                              {(() => {
+                                if (item.isBlocked) return <span className="text-[8px] font-black uppercase text-red-600 bg-red-500/5 px-1.5 py-0.5 rounded border border-red-500/10">Currently Unavailable</span>;
+                                const stock = getStock(item);
+                                if (stock < item.quantity) return <span className="text-[8px] font-black uppercase text-red-600 bg-red-500/5 px-1.5 py-0.5 rounded border border-red-500/10">Out of Stock</span>;
+                                return null;
+                              })()}
                             </div>
                           </div>
                         </div>
@@ -462,10 +462,10 @@ const CartPage = () => {
                   <div className="w-2 h-8 bg-primary rounded-full"></div>
                   <h3 className="text-lg font-black text-text-primary lowercase">special instructions</h3>
                 </div>
-                <textarea 
-                  value={additionalNote} 
-                  onChange={(e) => setAdditionalNote(e.target.value)} 
-                  placeholder="Any specific requests for your meal?" 
+                <textarea
+                  value={additionalNote}
+                  onChange={(e) => setAdditionalNote(e.target.value)}
+                  placeholder="Any specific requests for your meal?"
                   className="w-full bg-background border border-border/40 rounded-3xl p-6 text-sm font-bold text-text-primary focus:border-primary/40 outline-none min-h-[140px] shadow-inner transition-all placeholder:text-text-muted/30"
                 ></textarea>
               </div>
@@ -474,7 +474,7 @@ const CartPage = () => {
             <div className="w-full lg:w-[450px] sticky top-32">
               <div className="bg-background-card rounded-[3rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-border/20 p-8 md:p-12 space-y-10 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
-                
+
                 <h2 className="text-xl font-black text-text-primary uppercase tracking-[0.1em] flex items-center gap-4 relative z-10">
                   <div className="p-3 bg-primary/10 text-primary rounded-2xl">
                     <ShoppingCart size={22} strokeWidth={2.5} />
@@ -540,14 +540,13 @@ const CartPage = () => {
                     <span className="text-3xl font-black text-primary tracking-tighter">₹{total}</span>
                   </div>
                 </div>
-                <button 
-                  onClick={handleCheckout} 
-                  disabled={loading || hasOutOfStockItems} 
-                  className={`w-full font-black py-5 rounded-2xl transition-all shadow-2xl uppercase tracking-[0.2em] flex items-center justify-center gap-4 text-xs ${
-                    hasOutOfStockItems 
-                      ? 'bg-background-muted text-text-muted/30 cursor-not-allowed border border-border/10 grayscale opacity-50' 
+                <button
+                  onClick={handleCheckout}
+                  disabled={loading || hasOutOfStockItems}
+                  className={`w-full font-black py-5 rounded-2xl transition-all shadow-2xl uppercase tracking-[0.2em] flex items-center justify-center gap-4 text-xs ${hasOutOfStockItems
+                      ? 'bg-background-muted text-text-muted/30 cursor-not-allowed border border-border/10 grayscale opacity-50'
                       : 'bg-primary text-white hover:bg-primary-dark active:scale-[0.98] shadow-primary/20'
-                  }`}
+                    }`}
                 >
                   Proceed to Payment
                   <ChevronRight size={18} strokeWidth={3} />

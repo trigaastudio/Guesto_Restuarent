@@ -57,8 +57,8 @@ const BottomNavbar = () => {
   };
 
   // Paths where the bottom navbar should NOT be shown
-  const excludedPaths = ['/login', '/register', '/admin/login', '/admin/dashboard', '/digital-menu'];
-  if (excludedPaths.includes(location.pathname) || location.pathname.startsWith('/admin')) {
+  const excludedPaths = ['/login', '/register', '/admin/login', '/admin/dashboard', '/digital-menu', '/waiter/dashboard', '/kitchen/dashboard'];
+  if (excludedPaths.includes(location.pathname) || location.pathname.startsWith('/admin') || location.pathname.startsWith('/waiter') || location.pathname.startsWith('/kitchen')) {
     return null;
   }
 

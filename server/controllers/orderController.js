@@ -447,8 +447,9 @@ class OrderController {
       const newOrder = new Order({
         orderNumber,
         orderType: orderType || 'takeaway',
-        orderSource: 'admin',
+        orderSource: req.body.orderSource || 'admin',
         orderStatus: orderType === 'dine-in' ? 'placed' : 'processing',
+        occupiedSeats: req.body.occupiedSeats || 0,
         customerDetails: {
           name: customerDetails?.name || 'Walk-in',
           phone: customerDetails?.phone,

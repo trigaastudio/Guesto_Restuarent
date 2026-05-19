@@ -115,9 +115,9 @@ const KitchenDashboard = () => {
     try {
       const response = await api.get('/api/orders');
       const allOrders = response.data.data || [];
-      // Show only confirmed and ready orders in the kitchen panel
+      // Show only placed and processing orders in the kitchen panel
       const kitchenOrders = allOrders.filter(o =>
-        o.orderStatus === 'processing'
+        o.orderStatus === 'processing' || o.orderStatus === 'placed'
       );
 
       // Detect new orders for notifications and sound

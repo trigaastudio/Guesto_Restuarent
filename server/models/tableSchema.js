@@ -16,16 +16,26 @@ const tableSchema = new mongoose.Schema({
     default: 4
   },
 
+  occupiedSeats: {
+    type: Number,
+    default: 0
+  },
+
   status: {
     type: String,
     enum: ["available", "occupied", "billing"],
     default: "available"
   },
 
-  
+
   isActive: {
     type: Boolean,
-    default: true  
+    default: true
+  },
+
+  mergedGroup: {
+    type: [Number],
+    default: []
   }
 
 }, { timestamps: true });
