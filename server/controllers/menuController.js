@@ -12,7 +12,7 @@ export const createMenu = async (req, res) => {
 
 export const getMenus = async (req, res) => {
   try {
-    const { category, page, limit, all } = req.query;
+    const { category, page, limit, all, search, dietary, sortBy } = req.query;
 
     if (all === 'true') {
       const menus = await menuService.getAllMenus();
@@ -31,14 +31,33 @@ export const getMenus = async (req, res) => {
     if (req.query.combo === 'true') {
       filter.isCombo = true;
     }
+    
+    if (search) {
+      filter.name = { $regex: search, $options: 'i' };
+    }
+
+    if (dietary && dietary !== 'all') {
+      filter.foodType = dietary;
+    }
+
+    let sortOption = { createdAt: -1 };
+    if (sortBy === 'price-low') {
+      sortOption = { offerPrice: 1 };
+    } else if (sortBy === 'price-high') {
+      sortOption = { offerPrice: -1 };
+    } else if (sortBy === 'name-az') {
+      sortOption = { name: 1 };
+    } else if (sortBy === 'rating') {
+      sortOption = { rating: -1 };
+    }
 
     if (page && limit) {
       const skip = (parseInt(page) - 1) * parseInt(limit);
-      const menus = await menuRepository.getAll(filter, skip, parseInt(limit));
+      const menus = await menuRepository.getAll(filter, skip, parseInt(limit), sortOption);
       return res.status(200).json(menus);
     }
 
-    const menus = await menuRepository.getAll(filter);
+    const menus = await menuRepository.getAll(filter, 0, 0, sortOption);
     res.status(200).json(menus);
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -142,7 +142,7 @@ const HomePage = () => {
     }
   }, []);
 
-  const fetchMenus = useCallback(async (categoryId = 'all', pageNum = 1, isBogo = bogoOnly, isCombo = comboOnly) => {
+  const fetchMenus = useCallback(async (categoryId = selectedCategory, pageNum = page, isBogo = bogoOnly, isCombo = comboOnly, search = debouncedSearchQuery, dietary = dietaryFilter, sort = sortBy) => {
     try {
       if (pageNum === 1) {
         setLoading(true);
@@ -150,11 +150,14 @@ const HomePage = () => {
         setLoadingMore(true);
       }
 
-      const currentLimit = isFirstVisit ? 6 : 100;
+      const currentLimit = 10;
       let url = `/api/menus?page=${pageNum}&limit=${currentLimit}`;
       if (categoryId !== 'all') url += `&category=${categoryId}`;
       if (isBogo) url += `&bogo=true`;
       if (isCombo) url += `&combo=true`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+      if (dietary !== 'all') url += `&dietary=${dietary}`;
+      if (sort !== 'default') url += `&sortBy=${sort}`;
 
       const response = await api.get(url);
 
@@ -171,7 +174,7 @@ const HomePage = () => {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [bogoOnly, comboOnly, isFirstVisit]);
+  }, [selectedCategory, bogoOnly, comboOnly, debouncedSearchQuery, dietaryFilter, sortBy]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -196,9 +199,16 @@ const HomePage = () => {
 
   useEffect(() => {
     if (page > 1) {
-      fetchMenus(selectedCategory, page, bogoOnly, comboOnly);
+      fetchMenus(selectedCategory, page, bogoOnly, comboOnly, debouncedSearchQuery, dietaryFilter, sortBy);
     }
-  }, [page, selectedCategory, bogoOnly, comboOnly, fetchMenus]);
+  }, [page, selectedCategory, bogoOnly, comboOnly, debouncedSearchQuery, dietaryFilter, sortBy, fetchMenus]);
+
+  useEffect(() => {
+    // Only fetch on search, sort, or dietary change. Category changes have their own handlers.
+    setPage(1);
+    setHasMore(true);
+    fetchMenus(selectedCategory, 1, bogoOnly, comboOnly, debouncedSearchQuery, dietaryFilter, sortBy);
+  }, [debouncedSearchQuery, dietaryFilter, sortBy]);
 
   const handleCategoryChange = useCallback((categoryId) => {
     setSelectedCategory(categoryId);
@@ -206,8 +216,8 @@ const HomePage = () => {
     setComboOnly(false);
     setPage(1);
     setHasMore(true);
-    fetchMenus(categoryId, 1, false, false);
-  }, [fetchMenus]);
+    fetchMenus(categoryId, 1, false, false, debouncedSearchQuery, dietaryFilter, sortBy);
+  }, [debouncedSearchQuery, dietaryFilter, sortBy, fetchMenus]);
 
   const handleBogoFilter = useCallback(() => {
     setSelectedCategory('all');
@@ -215,8 +225,8 @@ const HomePage = () => {
     setComboOnly(false);
     setPage(1);
     setHasMore(true);
-    fetchMenus('all', 1, true, false);
-  }, [fetchMenus]);
+    fetchMenus('all', 1, true, false, debouncedSearchQuery, dietaryFilter, sortBy);
+  }, [debouncedSearchQuery, dietaryFilter, sortBy, fetchMenus]);
 
   const handleComboFilter = useCallback(() => {
     setSelectedCategory('all');
@@ -224,8 +234,8 @@ const HomePage = () => {
     setComboOnly(true);
     setPage(1);
     setHasMore(true);
-    fetchMenus('all', 1, false, true);
-  }, [fetchMenus]);
+    fetchMenus('all', 1, false, true, debouncedSearchQuery, dietaryFilter, sortBy);
+  }, [debouncedSearchQuery, dietaryFilter, sortBy, fetchMenus]);
 
   const clearAllFilters = useCallback(() => {
     setSelectedCategory('all');
@@ -236,7 +246,9 @@ const HomePage = () => {
     setSearchQuery('');
     setPage(1);
     setHasMore(true);
-    fetchMenus('all', 1, false, false);
+    // Notice that debouncedSearchQuery will update shortly after searchQuery, 
+    // but we can proactively trigger fetch with empty search
+    fetchMenus('all', 1, false, false, '', 'all', 'default');
   }, [fetchMenus]);
 
   const handleLogout = useCallback(() => {
@@ -252,40 +264,9 @@ const HomePage = () => {
   }, [navigate]);
 
   const filteredMenus = useMemo(() => {
-    let result = menus.filter(menu => {
-      const matchesSearch = menu.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
-      const matchesDietary = dietaryFilter === 'all' ||
-        (dietaryFilter === 'veg' && menu.foodType === 'veg') ||
-        (dietaryFilter === 'non-veg' && menu.foodType === 'non-veg');
-      const matchesBogo = !bogoOnly || (menu.variants && menu.variants.some(v => v.isBOGO));
-      const matchesCombo = !comboOnly || menu.isCombo;
-      return matchesSearch && matchesDietary && matchesBogo && matchesCombo && !menu.isBlocked;
-    });
-
-    if (sortBy === 'price-low') {
-      result.sort((a, b) => {
-        const getMinPrice = (m) => {
-          const variants = m.variants || m.sizes || [];
-          return variants.length > 0 ? Math.min(...variants.map(v => v.price)) : (m.offerPrice || 0);
-        };
-        return getMinPrice(a) - getMinPrice(b);
-      });
-    } else if (sortBy === 'price-high') {
-      result.sort((a, b) => {
-        const getMinPrice = (m) => {
-          const variants = m.variants || m.sizes || [];
-          return variants.length > 0 ? Math.min(...variants.map(v => v.price)) : (m.offerPrice || 0);
-        };
-        return getMinPrice(b) - getMinPrice(a);
-      });
-    } else if (sortBy === 'name-az') {
-      result.sort((a, b) => a.name.localeCompare(b.name));
-    } else if (sortBy === 'rating') {
-      result.sort((a, b) => (b.rating || 4.5) - (a.rating || 4.5));
-    }
-
-    return result;
-  }, [menus, debouncedSearchQuery, sortBy, dietaryFilter, bogoOnly, comboOnly]);
+    // We moved all filtering and sorting to the backend for infinite scrolling!
+    return menus;
+  }, [menus]);
 
   const getCategoryName = () => {
     if (bogoOnly) return 'BOGO Offers';

@@ -49,6 +49,7 @@ router.get('/sales', async (req, res) => {
 // 2. Periodic Sales (Daily, Weekly, Monthly, Yearly)
 router.get('/periodic', async (req, res) => {
   try {
+    const { orderType, orderSource, menuItem } = req.query;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -59,8 +60,17 @@ router.get('/periodic', async (req, res) => {
     const firstDayOfYear = new Date(today.getFullYear(), 0, 1);
 
     const aggregateByDate = async (startDate) => {
+      let matchQuery = { orderStatus: { $ne: 'cancelled' }, createdAt: { $gte: startDate } };
+      
+      if (orderType && orderType !== 'all') matchQuery.orderType = orderType;
+      if (orderSource && orderSource !== 'all') matchQuery.orderSource = orderSource;
+      if (menuItem && menuItem !== 'all') {
+        const mongoose = await import('mongoose');
+        matchQuery['items.menuItem'] = new mongoose.Types.ObjectId(menuItem);
+      }
+
       return Order.aggregate([
-        { $match: { orderStatus: { $ne: 'cancelled' }, createdAt: { $gte: startDate } } },
+        { $match: matchQuery },
         { $group: { 
           _id: null, 
           revenue: { $sum: '$totalAmount' },
@@ -97,7 +107,7 @@ router.get('/periodic', async (req, res) => {
 // 3. Item-wise performance
 router.get('/items', async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, orderType, orderSource, menuItem } = req.query;
     let matchQuery = { orderStatus: { $ne: 'cancelled' } };
 
     if (startDate || endDate) {
@@ -110,9 +120,27 @@ router.get('/items', async (req, res) => {
       }
     }
 
-    const itemStats = await Order.aggregate([
+    if (orderType && orderType !== 'all') matchQuery.orderType = orderType;
+    if (orderSource && orderSource !== 'all') matchQuery.orderSource = orderSource;
+    
+    let itemMatchQuery = null;
+    if (menuItem && menuItem !== 'all') {
+      const mongoose = await import('mongoose');
+      const menuItemId = new mongoose.Types.ObjectId(menuItem);
+      matchQuery['items.menuItem'] = menuItemId;
+      itemMatchQuery = { 'items.menuItem': menuItemId };
+    }
+
+    const pipeline = [
       { $match: matchQuery },
-      { $unwind: '$items' },
+      { $unwind: '$items' }
+    ];
+
+    if (itemMatchQuery) {
+      pipeline.push({ $match: itemMatchQuery });
+    }
+
+    pipeline.push(
       {
         $lookup: {
           from: 'menus',
@@ -129,10 +157,13 @@ router.get('/items', async (req, res) => {
         qty: { $sum: '$items.quantity' },
         revenue: { $sum: '$items.totalPrice' },
         cost: { $sum: { $multiply: ['$items.quantity', '$items.costPrice'] } }
-      }},
+      }}
+    );
+
+    const itemStats = await Order.aggregate(pipeline.concat([
       { $addFields: { profit: { $subtract: ['$revenue', '$cost'] } } },
       { $sort: { qty: -1 } }
-    ]);
+    ]));
 
     res.json({ success: true, data: itemStats });
   } catch (error) {
