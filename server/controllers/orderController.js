@@ -503,12 +503,13 @@ class OrderController {
       const { type } = req.query;
       const query = type ? { orderType: type } : {};
 
-      // Filter: Show successful payments, COD/Cash orders, OR ANY Dine-In order
-      // This allows active tables to be visible while still hiding failed/unpaid online/delivery orders
+      // Filter: Show successful payments, COD/Cash orders, OR ANY Dine-In/Takeaway order
+      // This allows active tables and counter orders to be visible while still hiding failed/unpaid online/delivery orders
       query.$or = [
         { paymentStatus: 'paid' },
         { paymentMethod: { $in: ['cod', 'cash'] } },
-        { orderType: 'dine-in' }
+        { orderType: 'dine-in' },
+        { orderType: 'takeaway' }
       ];
 
       const orders = await Order.find(query)
@@ -624,6 +625,42 @@ class OrderController {
 
       item.kitchenStatus = kitchenStatus;
       await order.save();
+      await order.populate('items.menuItem', 'name image');
+
+      getIO().emit('ordersUpdated');
+      res.json({ success: true, data: order });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  async updateAllItemsStatus(req, res) {
+    try {
+      const { orderId } = req.params;
+      const { kitchenStatus } = req.body;
+
+      const allowedStatuses = ['placed', 'preparing', 'ready', 'delayed'];
+      if (!allowedStatuses.includes(kitchenStatus)) {
+        return res.status(400).json({ success: false, message: `Invalid kitchen status: "${kitchenStatus}"` });
+      }
+
+      const order = await Order.findById(orderId);
+      if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+      // Important: iterate through Mongoose Document Array properly
+      let isChanged = false;
+      order.items.forEach(item => {
+        if (item.kitchenStatus !== kitchenStatus) {
+          item.kitchenStatus = kitchenStatus;
+          isChanged = true;
+        }
+      });
+
+      if (isChanged) {
+        order.markModified('items');
+        await order.save();
+      }
+      
       await order.populate('items.menuItem', 'name image');
 
       getIO().emit('ordersUpdated');

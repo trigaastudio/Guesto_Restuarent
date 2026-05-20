@@ -76,7 +76,7 @@ const WaiterDashboard = () => {
     const capacity = table.capacity || 4;
     const currentOccupied = table.occupiedSeats || 0;
     const remainingSeats = capacity - currentOccupied;
-    
+
     if (remainingSeats <= 0) {
       Swal.fire({
         title: '<div style="font-size:20px; font-weight:800; color:var(--color-text-primary);">Table is Fully Seated</div>',
@@ -86,7 +86,7 @@ const WaiterDashboard = () => {
       });
       return;
     }
-    
+
     const result = await Swal.fire({
       title: '<div style="font-size:24px; font-weight:900; color:var(--color-text-primary); letter-spacing:-0.5px; margin-bottom:4px; font-family:\'Inter\', sans-serif;">Guest Count</div>',
       html: `
@@ -95,9 +95,9 @@ const WaiterDashboard = () => {
         </div>
         <div style="display:flex; justify-content:center; gap:12px; margin-bottom:15px;">
           ${Array.from({ length: capacity }, (_, i) => i + 1).map(num => {
-            const isOccupied = num <= currentOccupied;
-            if (isOccupied) {
-              return `
+        const isOccupied = num <= currentOccupied;
+        if (isOccupied) {
+          return `
                 <button 
                   disabled
                   style="width: 54px; height: 54px; border-radius: 16px; border: 2px dashed rgba(156, 163, 175, 0.3); background: var(--color-background-muted); color: #9ca3af; font-size: 18px; font-weight: 900; cursor: not-allowed; opacity: 0.65; position: relative;"
@@ -106,8 +106,8 @@ const WaiterDashboard = () => {
                   ${num}
                 </button>
               `;
-            } else {
-              return `
+        } else {
+          return `
                 <button 
                   id="swal-seat-btn-${num}" 
                   onclick="window.selectSwalSeats(${num})"
@@ -118,8 +118,8 @@ const WaiterDashboard = () => {
                   ${num}
                 </button>
               `;
-            }
-          }).join('')}
+        }
+      }).join('')}
         </div>
       `,
       showCancelButton: true,
@@ -135,11 +135,11 @@ const WaiterDashboard = () => {
       didOpen: () => {
         window.selectedSwalSeatsVal = 0;
         window.clickedSeatIndex = 0;
-        
+
         window.selectSwalSeats = (num) => {
           window.selectedSwalSeatsVal = num - currentOccupied;
           window.clickedSeatIndex = num;
-          
+
           for (let i = currentOccupied + 1; i <= capacity; i++) {
             const btn = document.getElementById(`swal-seat-btn-${i}`);
             if (btn) {
@@ -659,7 +659,7 @@ const WaiterDashboard = () => {
                       <ChevronRight className="rotate-180 group-hover:-translate-x-1 transition-transform" size={16} strokeWidth={3} />
                       <span>Back to Tables</span>
                     </button>
-                    
+
                     <span className="text-xs font-black text-text-muted uppercase tracking-[0.2em] bg-background-muted/80 px-4 py-2 rounded-full border border-border-light">
                       Dine-in Console
                     </span>
@@ -667,13 +667,13 @@ const WaiterDashboard = () => {
 
                   {/* Main Grid Layout */}
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                    
+
                     {/* Left Column: Table Status Card */}
                     <div className="lg:col-span-4 bg-background-card border border-border-light rounded-[2.5rem] p-6 lg:p-8 shadow-md flex flex-col items-center relative overflow-hidden">
                       {/* Decorative Background Glows */}
                       <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
                       <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary-light/5 rounded-full blur-3xl pointer-events-none" />
-                      
+
                       <div className="w-full aspect-[4/3] max-w-[200px] mb-6 flex items-center justify-center p-2 relative bg-background-muted/30 rounded-3xl border border-border-light/60 overflow-hidden shadow-inner group">
                         <img
                           src="/table_pic.png"
@@ -690,25 +690,23 @@ const WaiterDashboard = () => {
                             <span>Merged Group ({currentTable.mergedGroup.join(" + ")})</span>
                           </div>
                         )}
-                        
+
                         {(() => {
                           const curCapacity = currentTable.capacity || 4;
                           const curOccupied = currentTable.occupiedSeats || 0;
                           const isCurFullyOccupied = curOccupied >= curCapacity;
                           const isCurPartiallyOccupied = curOccupied > 0 && curOccupied < curCapacity;
-                          
+
                           return (
                             <div className="flex flex-col items-center mt-3 space-y-2">
-                              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                                isCurFullyOccupied 
-                                  ? 'bg-red-500/10 text-red-600 border border-red-500/20' 
-                                  : isCurPartiallyOccupied 
-                                    ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20' 
+                              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${isCurFullyOccupied
+                                  ? 'bg-red-500/10 text-red-600 border border-red-500/20'
+                                  : isCurPartiallyOccupied
+                                    ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
                                     : 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
-                              }`}>
-                                <span className={`w-2 h-2 rounded-full ${
-                                  isCurFullyOccupied ? 'bg-red-500' : isCurPartiallyOccupied ? 'bg-amber-500' : 'bg-emerald-500'
-                                } animate-pulse`} />
+                                }`}>
+                                <span className={`w-2 h-2 rounded-full ${isCurFullyOccupied ? 'bg-red-500' : isCurPartiallyOccupied ? 'bg-amber-500' : 'bg-emerald-500'
+                                  } animate-pulse`} />
                                 {isCurFullyOccupied ? 'Fully Seated' : isCurPartiallyOccupied ? 'Partially Occupied' : 'Available'}
                               </span>
 
@@ -719,10 +717,9 @@ const WaiterDashboard = () => {
                                   <span>{curOccupied} / {curCapacity} Seats</span>
                                 </div>
                                 <div className="w-full h-2.5 bg-background-muted rounded-full overflow-hidden border border-border-light shadow-inner">
-                                  <div 
-                                    className={`h-full rounded-full transition-all duration-500 ${
-                                      isCurFullyOccupied ? 'bg-red-500' : isCurPartiallyOccupied ? 'bg-amber-500' : 'bg-emerald-500'
-                                    }`}
+                                  <div
+                                    className={`h-full rounded-full transition-all duration-500 ${isCurFullyOccupied ? 'bg-red-500' : isCurPartiallyOccupied ? 'bg-amber-500' : 'bg-emerald-500'
+                                      }`}
                                     style={{ width: `${(curOccupied / curCapacity) * 100}%` }}
                                   />
                                 </div>
@@ -748,7 +745,7 @@ const WaiterDashboard = () => {
                           className={`w-full flex items-center justify-center space-x-2.5 py-4 rounded-2xl font-black text-sm transition-all duration-300 ${currentTable.activeOrders?.length >= 4
                             ? 'bg-background-muted border border-border-light text-text-muted cursor-not-allowed opacity-60'
                             : 'bg-primary hover:bg-primary-light text-white shadow-xl shadow-primary/25 hover:shadow-primary/35 hover:-translate-y-0.5 active:scale-98'
-                          }`}
+                            }`}
                           title={currentTable.activeOrders?.length >= 4 ? "Maximum 4 orders allowed per table" : ""}
                         >
                           <Plus size={18} strokeWidth={2.5} />
@@ -765,7 +762,7 @@ const WaiterDashboard = () => {
                             <span>Active Orders ({currentTable.activeOrders?.length || 0})</span>
                             <span className="text-[10px] text-primary lowercase tracking-normal bg-primary/5 px-2.5 py-0.5 rounded-full font-bold">co-sharing enabled</span>
                           </div>
-                          
+
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {currentTable.activeOrders?.map(order => {
                               const isReady = order.items?.length > 0 && order.items.every(i => i.kitchenStatus === 'ready');
@@ -898,8 +895,8 @@ const WaiterDashboard = () => {
                     {isMergeMode ? 'Merge Tables Mode' : 'Select a Table to Manage'}
                   </h2>
                   <p className="text-xs font-bold text-text-secondary mt-1">
-                    {isMergeMode 
-                      ? 'Select multiple tables below to link them in a shared dining group.' 
+                    {isMergeMode
+                      ? 'Select multiple tables below to link them in a shared dining group.'
                       : 'Select any table to view orders, seat guests, or manage table status.'}
                   </p>
                 </div>
@@ -915,11 +912,10 @@ const WaiterDashboard = () => {
                       <button
                         onClick={handleSaveMerge}
                         disabled={selectedMergeTableNumbers.length < 2}
-                        className={`px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider text-white transition-all shadow-md ${
-                          selectedMergeTableNumbers.length < 2
+                        className={`px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider text-white transition-all shadow-md ${selectedMergeTableNumbers.length < 2
                             ? 'bg-background-muted text-text-muted border border-border-light cursor-not-allowed opacity-60'
                             : 'bg-primary hover:bg-primary-light shadow-primary/25'
-                        }`}
+                          }`}
                       >
                         Merge Selected ({selectedMergeTableNumbers.length})
                       </button>
@@ -957,11 +953,10 @@ const WaiterDashboard = () => {
                           setSelectedViewTableId(table._id);
                         }
                       }}
-                      className={`relative cursor-pointer rounded-2xl overflow-hidden shadow-sm hover:shadow-md bg-white dark:bg-gray-900 transition-all duration-300 ${
-                        isSelectedForMerge
+                      className={`relative cursor-pointer rounded-2xl overflow-hidden shadow-sm hover:shadow-md bg-white dark:bg-gray-900 transition-all duration-300 ${isSelectedForMerge
                           ? 'border-2 border-primary ring-4 ring-primary/10 scale-[1.02] shadow-lg'
                           : 'border border-border-light hover:-translate-y-0.5 active:scale-98'
-                      }`}
+                        }`}
                     >
                       {/* Selection checkmark for merge mode */}
                       {isSelectedForMerge && (
@@ -992,63 +987,62 @@ const WaiterDashboard = () => {
                           const isFullyOccupied = occupied >= capacity;
                           const isPartiallyOccupied = occupied > 0 && occupied < capacity;
                           return (
-                            <div className={`w-3 h-3 rounded-full ${
-                              isFullyOccupied 
-                                ? 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.85)]' 
-                                : isPartiallyOccupied 
-                                  ? 'bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.85)]' 
+                            <div className={`w-3 h-3 rounded-full ${isFullyOccupied
+                                ? 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.85)]'
+                                : isPartiallyOccupied
+                                  ? 'bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.85)]'
                                   : 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.85)]'
-                            } animate-pulse border-2 border-white/80`} />
+                              } animate-pulse border-2 border-white/80`} />
                           );
                         })()}
                       </div>
 
-                    {/* Table Info Overlay */}
-                    <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/95 via-black/70 to-transparent">
-                      <div className="flex justify-between items-end">
-                        <div>
-                          <p className="text-white/60 text-[9px] font-black uppercase tracking-widest mb-0.5">Table</p>
-                          <h3 className="text-3xl font-black text-white drop-shadow-md leading-none">{table.tableNumber}</h3>
-                          <p className="text-white/85 text-[11px] font-bold mt-2 flex items-center gap-1.5">
-                            <Users size={12} className="opacity-80" /> {table.capacity} Seats
-                          </p>
-                        </div>
-                        {(() => {
-                          const capacity = table.capacity || 4;
-                          const occupied = table.occupiedSeats || 0;
-                          const isFullyOccupied = occupied >= capacity;
-                          const isPartiallyOccupied = occupied > 0 && occupied < capacity;
-                          const isFree = occupied === 0;
+                      {/* Table Info Overlay */}
+                      <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/95 via-black/70 to-transparent">
+                        <div className="flex justify-between items-end">
+                          <div>
+                            <p className="text-white/60 text-[9px] font-black uppercase tracking-widest mb-0.5">Table</p>
+                            <h3 className="text-3xl font-black text-white drop-shadow-md leading-none">{table.tableNumber}</h3>
+                            <p className="text-white/85 text-[11px] font-bold mt-2 flex items-center gap-1.5">
+                              <Users size={12} className="opacity-80" /> {table.capacity} Seats
+                            </p>
+                          </div>
+                          {(() => {
+                            const capacity = table.capacity || 4;
+                            const occupied = table.occupiedSeats || 0;
+                            const isFullyOccupied = occupied >= capacity;
+                            const isPartiallyOccupied = occupied > 0 && occupied < capacity;
+                            const isFree = occupied === 0;
 
-                          if (isFullyOccupied) {
-                            return (
-                              <div className="bg-red-600/90 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-xl backdrop-blur-sm shadow-md">
-                                Fully Seated
-                              </div>
-                            );
-                          } else if (isPartiallyOccupied) {
-                            const remaining = capacity - occupied;
-                            return (
-                              <div className="bg-amber-500/90 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-xl backdrop-blur-sm shadow-md">
-                                {remaining} Seat{remaining > 1 ? 's' : ''} Available
-                              </div>
-                            );
-                          } else {
-                            return (
-                              <div className="bg-emerald-500/90 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-xl backdrop-blur-sm shadow-md">
-                                Available
-                              </div>
-                            );
-                          }
-                        })()}
+                            if (isFullyOccupied) {
+                              return (
+                                <div className="bg-red-600/90 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-xl backdrop-blur-sm shadow-md">
+                                  Fully Seated
+                                </div>
+                              );
+                            } else if (isPartiallyOccupied) {
+                              const remaining = capacity - occupied;
+                              return (
+                                <div className="bg-amber-500/90 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-xl backdrop-blur-sm shadow-md">
+                                  {remaining} Seat{remaining > 1 ? 's' : ''} Available
+                                </div>
+                              );
+                            } else {
+                              return (
+                                <div className="bg-emerald-500/90 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-xl backdrop-blur-sm shadow-md">
+                                  Available
+                                </div>
+                              );
+                            }
+                          })()}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          )}
         </div>
       </main>
 

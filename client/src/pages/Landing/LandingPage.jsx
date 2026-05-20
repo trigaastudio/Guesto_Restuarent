@@ -171,7 +171,7 @@ const LandingPage = () => {
 
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const dropdownRef = useRef(null);
-  const user = JSON.parse(localStorage.getItem('user') || localStorage.getItem('admin_user') || 'null');
+  const user = JSON.parse(localStorage.getItem('user') || localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || 'null');
   const { cartItems } = useCart();
 
   useEffect(() => {
@@ -185,27 +185,31 @@ const LandingPage = () => {
   }, []);
 
   const handleLogout = () => {
-    const isAdmin = !!localStorage.getItem('admin_token');
-    if (localStorage.getItem('user')) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      navigate('/login', { replace: true });
-    } else {
+    const currentUser = JSON.parse(localStorage.getItem('user') || localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || '{}');
+    if (currentUser.role === 'admin') {
       localStorage.removeItem('admin_token');
       localStorage.removeItem('admin_user');
       navigate('/admin/login', { replace: true });
+    } else if (currentUser.role === 'kitchen' || currentUser.role === 'waiter') {
+      localStorage.removeItem('staff_token');
+      localStorage.removeItem('staff_user');
+      navigate('/staff/login', { replace: true });
+    } else {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      navigate('/login', { replace: true });
     }
   };
 
   if (loading && menus.length === 0 && categories.length === 0) {
     return <Loader fullPage={true} />;
   }
-  
+
   return (
     <div className={`min-h-screen bg-background font-sans overflow-x-hidden ${theme}`}>
       <div className="relative w-full overflow-hidden flex flex-col bg-[#B91C1C]">
         <div className="absolute inset-0 z-0 bg-[#B91C1C]"></div>
-        <Navbar 
+        <Navbar
           user={user}
           cartItems={cartItems}
           showUserDropdown={showUserDropdown}
@@ -214,7 +218,7 @@ const LandingPage = () => {
           navigate={navigate}
           dropdownRef={dropdownRef}
         />
-        
+
         <HeroSection
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}

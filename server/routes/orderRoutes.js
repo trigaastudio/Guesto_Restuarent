@@ -19,6 +19,7 @@ router.post('/counter', orderController.createCounterOrder);
 router.patch('/:id/add-items', orderController.addItems);
 router.patch('/:id/items', orderController.updateOrderItems);
 router.patch('/:orderId/items/:itemId/remove', orderController.removeItem);
+router.patch('/:orderId/items/bulk-status', orderController.updateAllItemsStatus);
 router.patch('/:orderId/items/:itemId/status', orderController.updateItemStatus);
 router.patch('/:orderId/items/:itemId/quantity', orderController.updateItemQuantity);
 router.delete('/clear-history', orderController.clearHistory);

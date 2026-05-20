@@ -43,7 +43,7 @@ const HomePage = () => {
 
   const { addToCart, cartItems } = useCart();
   const { theme } = useTheme();
-  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('user') || '{}'));
+  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('user') || localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || '{}'));
 
   // Listen for storage changes (useful if updated in another tab or component)
   useEffect(() => {
@@ -251,15 +251,20 @@ const HomePage = () => {
     fetchMenus('all', 1, false, false, '', 'all', 'default');
   }, [fetchMenus]);
 
-  const handleLogout = useCallback(() => {
-    if (localStorage.getItem('user')) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      navigate('/login', { replace: true });
-    } else {
+    const handleLogout = React.useCallback(() => {
+    const currentUser = JSON.parse(localStorage.getItem('user') || localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || '{}');
+    if (currentUser.role === 'admin') {
       localStorage.removeItem('admin_token');
       localStorage.removeItem('admin_user');
       navigate('/admin/login', { replace: true });
+    } else if (currentUser.role === 'kitchen' || currentUser.role === 'waiter') {
+      localStorage.removeItem('staff_token');
+      localStorage.removeItem('staff_user');
+      navigate('/staff/login', { replace: true });
+    } else {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      navigate('/login', { replace: true });
     }
   }, [navigate]);
 

@@ -117,6 +117,17 @@ const StaffManagement = () => {
     }
   };
 
+  const handleToggleStatus = async (staff) => {
+    try {
+      const updateData = { ...staff, isActive: !staff.isActive };
+      await api.put(`/api/staff/${staff._id}`, updateData);
+      showToast('success', `Staff ${updateData.isActive ? 'activated' : 'deactivated'} successfully`);
+      fetchStaff(true);
+    } catch (error) {
+      showToast('error', 'Failed to update status');
+    }
+  };
+
   const handleSort = (key) => {
     let direction = 'asc';
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
@@ -262,11 +273,17 @@ const StaffManagement = () => {
                       </div>
                     </td>
                     <td className="px-3 py-4 text-center">
-                      <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
-                        staff.isActive ? 'bg-status-on/10 text-status-available border-status-on/20' : 'bg-status-off/10 text-status-unavailable border-status-off/20'
-                      }`}>
-                        {staff.isActive ? 'Active' : 'Inactive'}
-                      </span>
+                      <button
+                        onClick={() => handleToggleStatus(staff)}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
+                          staff.isActive ? 'bg-primary' : 'bg-text-muted/50'
+                        }`}
+                        title={staff.isActive ? 'Deactivate Staff' : 'Activate Staff'}
+                      >
+                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                          staff.isActive ? 'translate-x-5' : 'translate-x-1'
+                        }`} />
+                      </button>
                     </td>
                     <td className="px-3 py-4 text-center">
                       <div className="flex items-center justify-center space-x-1">
@@ -389,19 +406,6 @@ const StaffManagement = () => {
                 </div>
               </div>
 
-              <div className="flex items-center space-x-3 pt-2">
-                <button
-                  onClick={() => setCurrentStaff({...currentStaff, isActive: !currentStaff.isActive})}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                    currentStaff.isActive ? 'bg-primary' : 'bg-text-muted'
-                  }`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    currentStaff.isActive ? 'translate-x-6' : 'translate-x-1'
-                  }`} />
-                </button>
-                <span className="text-xs font-bold text-text-primary uppercase tracking-widest">Active Status</span>
-              </div>
             </div>
 
             <div className="p-8 bg-background-muted/30 border-t border-border-light flex space-x-4">

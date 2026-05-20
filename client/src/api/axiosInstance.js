@@ -37,7 +37,7 @@ api.interceptors.response.use(
       const path = window.location.pathname;
       const isLoginRequest = error.config?.url?.includes('/api/auth/login');
       const publicPaths = ['/', '/login', '/register', '/admin/login', '/staff/login', '/about', '/digital-menu'];
-      
+
       // Don't redirect if we're on a public page or it's a login attempt
       if (isLoginRequest || publicPaths.includes(path)) {
         return Promise.reject(error);
