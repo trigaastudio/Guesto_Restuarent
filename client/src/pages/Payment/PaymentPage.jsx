@@ -18,13 +18,24 @@ const PaymentPage = () => {
   const [walletBalance, setWalletBalance] = useState(0);
   const dropdownRef = React.useRef(null);
 
-  const handleLogout = React.useCallback(() => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/login', { replace: true });
+    const handleLogout = React.useCallback(() => {
+    const currentUser = JSON.parse(localStorage.getItem('user') || localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || '{}');
+    if (currentUser.role === 'admin') {
+      localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_user');
+      navigate('/admin/login', { replace: true });
+    } else if (currentUser.role === 'kitchen' || currentUser.role === 'waiter') {
+      localStorage.removeItem('staff_token');
+      localStorage.removeItem('staff_user');
+      navigate('/staff/login', { replace: true });
+    } else {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      navigate('/login', { replace: true });
+    }
   }, [navigate]);
 
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  const user = JSON.parse(localStorage.getItem('user') || localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || 'null');
 
   useEffect(() => {
     const fetchWallet = async () => {

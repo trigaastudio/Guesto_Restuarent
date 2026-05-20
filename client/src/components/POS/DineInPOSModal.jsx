@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Minus, X, ShoppingCart, User, Phone, CheckCircle2 } from 'lucide-react';
+import { io } from 'socket.io-client';
 import api from '../../api/axiosInstance';
 import { showToast } from '../../utils/sweetAlert';
 
@@ -11,6 +12,27 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [existingItems, setExistingItems] = useState([]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
+    const socket = io(SOCKET_URL);
+
+    socket.on('stockUpdate', ({ itemId, totalStock, isBlocked }) => {
+      setMenuItems(prevItems =>
+        prevItems.map(item =>
+          item._id === itemId
+            ? { ...item, totalStock, isBlocked }
+            : item
+        )
+      );
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -48,8 +70,14 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
     }
   };
 
+  const getDynamicStock = (item) => {
+    const inCart = cart.reduce((acc, c) => c.menuItem === item._id ? acc + c.quantity : acc, 0);
+    return Math.max(0, (item.totalStock ?? 0) - inCart);
+  };
+
   const addToCart = (item, variant) => {
-    if (item.totalStock !== undefined && item.totalStock <= 0) {
+    const dynamicStock = getDynamicStock(item);
+    if (item.totalStock !== undefined && dynamicStock <= 0) {
       showToast('error', `Out of stock: ${item.name}`);
       return;
     }
@@ -85,34 +113,91 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
   };
 
   const updateCartQuantity = (index, delta) => {
-    setCart(prevCart => prevCart.map((item, idx) => {
-      if (idx === index) {
-        const newQty = Math.max(1, item.quantity + delta);
-        return {
-          ...item,
-          quantity: newQty,
-          totalPrice: newQty * item.unitPrice
-        };
+    setCart(prevCart => {
+      const targetItem = prevCart[index];
+      if (!targetItem) return prevCart;
+
+      if (delta > 0) {
+        const menuItem = menuItems.find(m => m._id === targetItem.menuItem);
+        if (menuItem && menuItem.totalStock !== undefined) {
+          const currentTotalInCart = prevCart.reduce((acc, c) => c.menuItem === targetItem.menuItem ? acc + c.quantity : acc, 0);
+          if (currentTotalInCart + delta > menuItem.totalStock) {
+            showToast('error', `Cannot exceed available stock of ${menuItem.totalStock} for ${targetItem.name}`);
+            return prevCart;
+          }
+        }
       }
-      return item;
-    }));
+
+      return prevCart.map((item, idx) => {
+        if (idx === index) {
+          const newQty = Math.max(1, item.quantity + delta);
+          return {
+            ...item,
+            quantity: newQty,
+            totalPrice: newQty * item.unitPrice
+          };
+        }
+        return item;
+      });
+    });
   };
 
   const removeFromCart = (index) => {
     setCart(cart.filter((_, i) => i !== index));
   };
 
-  const handleNext = () => {
+  const validateCartStock = async () => {
+    try {
+      const response = await api.get('/api/menus');
+      const latestMenu = response.data.filter(m => !m.isBlocked);
+      
+      // Update local menuItems with the absolute latest stock from server
+      setMenuItems(latestMenu);
+
+      for (const cartItem of cart) {
+        const menuItem = latestMenu.find(m => m._id === cartItem.menuItem);
+        if (!menuItem) {
+          showToast('error', `${cartItem.name} is no longer available in the menu.`);
+          return false;
+        }
+
+        const totalQtyInCart = cart.reduce((acc, c) => c.menuItem === cartItem.menuItem ? acc + c.quantity : acc, 0);
+
+        if (menuItem.totalStock === undefined || totalQtyInCart > menuItem.totalStock) {
+          const availableStock = menuItem.totalStock !== undefined ? menuItem.totalStock : 0;
+          showToast('error', `Insufficient stock for ${cartItem.name}. Available: ${availableStock}, Requested: ${totalQtyInCart}`);
+          return false;
+        }
+      }
+      return true;
+    } catch (error) {
+      console.error('Error validating stock:', error);
+      showToast('error', 'Failed to validate stock. Please try again.');
+      return false;
+    }
+  };
+
+  const handleNext = async () => {
     if (cart.length === 0) {
       showToast('warning', 'Please add at least one item to the cart');
       return;
     }
+    const isValid = await validateCartStock();
+    if (!isValid) return;
+
     setShowConfirmModal(true);
   };
 
   const handleConfirmOrder = async () => {
     setIsSubmitting(true);
     try {
+      const isValid = await validateCartStock();
+      if (!isValid) {
+        setIsSubmitting(false);
+        setShowConfirmModal(false);
+        return;
+      }
+
       const subtotal = cart.reduce((acc, item) => acc + item.totalPrice, 0);
 
       if (editingOrder) {
@@ -209,80 +294,83 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
           </div>
 
           <div className="flex-1 overflow-y-auto p-6 grid grid-cols-2 lg:grid-cols-3 gap-4 no-scrollbar">
-            {filteredMenu.map(item => (
-              <div
-                key={item._id}
-                onClick={() => {
-                  const targetVariant = (item.variants && item.variants.length > 0)
-                    ? item.variants[0]
-                    : { size: 'Standard', price: item.price || 0 };
-                  addToCart(item, targetVariant);
-                }}
-                className={`bg-background-muted/30 p-3 rounded-2xl border border-border-light hover:border-primary/30 transition-all group relative cursor-pointer active:scale-[0.98] ${item.totalStock <= 0 ? 'opacity-40 grayscale pointer-events-none' : ''}`}
-              >
-                <div className="w-full aspect-square bg-background-card rounded-xl mb-3 overflow-hidden border border-border-light relative">
-                  <img src={item.image || '/placeholder-dish.png'} alt={item.name} className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${item.totalStock <= 0 ? 'grayscale' : ''}`} />
-                  {item.totalStock <= 0 && (
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px]">
-                      <span className="bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest shadow-lg">Out of Stock</span>
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-col mb-2">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <p className="font-bold text-text-primary text-sm md:text-base line-clamp-1">{item.name}</p>
-                    <span className={`text-[9px] md:text-[10px] font-black px-2 py-0.5 rounded-full ${item.totalStock > 10 ? 'bg-primary/10 text-primary' : item.totalStock > 0 ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'}`}>
-                      {item.totalStock} Left
-                    </span>
+            {filteredMenu.map(item => {
+              const dynamicStock = getDynamicStock(item);
+              return (
+                <div
+                  key={item._id}
+                  onClick={() => {
+                    const targetVariant = (item.variants && item.variants.length > 0)
+                      ? item.variants[0]
+                      : { size: 'Standard', price: item.price || 0 };
+                    addToCart(item, targetVariant);
+                  }}
+                  className={`bg-background-muted/30 p-3 rounded-2xl border border-border-light hover:border-primary/30 transition-all group relative cursor-pointer active:scale-[0.98] ${dynamicStock <= 0 ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+                >
+                  <div className="w-full aspect-square bg-background-card rounded-xl mb-3 overflow-hidden border border-border-light relative">
+                    <img src={item.image || '/placeholder-dish.png'} alt={item.name} className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${dynamicStock <= 0 ? 'grayscale' : ''}`} />
+                    {dynamicStock <= 0 && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px]">
+                        <span className="bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest shadow-lg">Out of Stock</span>
+                      </div>
+                    )}
                   </div>
-                  {item.isCombo && item.comboItems && item.comboItems.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {item.comboItems.map((ci, idx) => (
-                        <span key={idx} className="text-[7px] font-black text-text-muted bg-background-muted px-1.5 py-0.5 rounded-md uppercase tracking-tighter border border-border-light">
-                          {ci.menuItem?.name || ci.name || 'Item'}
-                        </span>
-                      ))}
+                  <div className="flex flex-col mb-2">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <p className="font-bold text-text-primary text-sm md:text-base line-clamp-1">{item.name}</p>
+                      <span className={`text-[9px] md:text-[10px] font-black px-2 py-0.5 rounded-full ${dynamicStock > 10 ? 'bg-primary/10 text-primary' : dynamicStock > 0 ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'}`}>
+                        {dynamicStock} Left
+                      </span>
                     </div>
-                  )}
-                  {item.isCombo ? (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const targetVariant = (item.variants && item.variants.length > 0)
-                          ? item.variants[0]
-                          : { size: 'Standard', price: item.price || 0 };
-                        addToCart(item, targetVariant);
-                      }}
-                      className="w-full py-2.5 md:py-3 bg-primary text-white text-[11px] md:text-xs font-black rounded-xl uppercase tracking-widest hover:bg-primary-light transition-all shadow-lg shadow-primary/20 mt-2"
-                    >
-                      Add to Cart
-                    </button>
-                  ) : (
-                    <div className="flex flex-wrap gap-1.5 mt-1">
-                      {item.variants && item.variants.map((v, idx) => {
-                        const isOutOfStock = item.totalStock !== undefined && item.totalStock <= 0;
-                        return (
-                          <button
-                            key={idx}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!isOutOfStock) addToCart(item, v);
-                            }}
-                            disabled={isOutOfStock}
-                            className={`px-2.5 md:px-3 py-1.5 md:py-2 text-[10px] md:text-[11px] font-black rounded-lg transition-all ${isOutOfStock
-                              ? 'bg-background-muted text-text-muted cursor-not-allowed border border-border-light'
-                              : 'bg-primary text-white hover:bg-primary-light shadow-sm active:scale-95'
-                              }`}
-                          >
-                            {v.size}: ₹{v.price}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                    {item.isCombo && item.comboItems && item.comboItems.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {item.comboItems.map((ci, idx) => (
+                          <span key={idx} className="text-[7px] font-black text-text-muted bg-background-muted px-1.5 py-0.5 rounded-md uppercase tracking-tighter border border-border-light">
+                            {ci.menuItem?.name || ci.name || 'Item'}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {item.isCombo ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const targetVariant = (item.variants && item.variants.length > 0)
+                            ? item.variants[0]
+                            : { size: 'Standard', price: item.price || 0 };
+                          addToCart(item, targetVariant);
+                        }}
+                        className="w-full py-2.5 md:py-3 bg-primary text-white text-[11px] md:text-xs font-black rounded-xl uppercase tracking-widest hover:bg-primary-light transition-all shadow-lg shadow-primary/20 mt-2"
+                      >
+                        Add to Cart
+                      </button>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        {item.variants && item.variants.map((v, idx) => {
+                          const isOutOfStock = item.totalStock !== undefined && dynamicStock <= 0;
+                          return (
+                            <button
+                              key={idx}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!isOutOfStock) addToCart(item, v);
+                              }}
+                              disabled={isOutOfStock}
+                              className={`px-2.5 md:px-3 py-1.5 md:py-2 text-[10px] md:text-[11px] font-black rounded-lg transition-all ${isOutOfStock
+                                ? 'bg-background-muted text-text-muted cursor-not-allowed border border-border-light'
+                                : 'bg-primary text-white hover:bg-primary-light shadow-sm active:scale-95'
+                                }`}
+                            >
+                              {v.size}: ₹{v.price}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

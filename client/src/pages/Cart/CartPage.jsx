@@ -191,7 +191,7 @@ const CartPage = () => {
     }
   };
 
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  const user = JSON.parse(localStorage.getItem('user') || localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || 'null');
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -236,7 +236,22 @@ const CartPage = () => {
     } catch (error) { Swal.fire('Error', error.response?.data?.message || 'Failed to save address', 'error'); } finally { setLoading(false); }
   };
 
-  const handleLogout = React.useCallback(() => { localStorage.removeItem('token'); localStorage.removeItem('user'); navigate('/login', { replace: true }); }, [navigate]);
+    const handleLogout = React.useCallback(() => {
+    const currentUser = JSON.parse(localStorage.getItem('user') || localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || '{}');
+    if (currentUser.role === 'admin') {
+      localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_user');
+      navigate('/admin/login', { replace: true });
+    } else if (currentUser.role === 'kitchen' || currentUser.role === 'waiter') {
+      localStorage.removeItem('staff_token');
+      localStorage.removeItem('staff_user');
+      navigate('/staff/login', { replace: true });
+    } else {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      navigate('/login', { replace: true });
+    }
+  }, [navigate]);
   const handleSelectAddress = (address) => { setDeliveryAddress(address); };
   const getStock = React.useCallback((item) => {
     if (!item) return 0;

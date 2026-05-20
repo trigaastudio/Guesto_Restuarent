@@ -36,13 +36,13 @@ const StaffLogin = () => {
     setIsLoading(true);
     try {
       const response = await axios.post(`${API_BASE_URL}/staff/login`, { employeeId, password });
-      
+
       if (response.data.success) {
         const staffData = response.data.data;
         localStorage.setItem('staff_token', staffData.token);
         localStorage.setItem('staff_user', JSON.stringify(staffData));
         showToast('success', `Welcome back, ${staffData.name}!`);
-        
+
         if (staffData.role === 'kitchen') {
           navigate('/kitchen/dashboard', { replace: true });
         } else if (staffData.role === 'waiter') {

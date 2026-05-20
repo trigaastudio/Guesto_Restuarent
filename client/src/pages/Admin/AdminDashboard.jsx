@@ -9,7 +9,6 @@ import {
   UtensilsCrossed,
   Settings,
   Bell,
-  Search,
   LogOut,
   TrendingUp,
   Clock,
@@ -388,14 +387,7 @@ const AdminDashboard = () => {
                 <span className={`w-full h-0.5 bg-current rounded-full transition-all duration-300 ${isMobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
               </div>
             </button>
-            <div className="relative hidden sm:flex w-64 lg:w-96 font-sans">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
-              <input
-                type="text"
-                placeholder="Search..."
-                className="w-full pl-10 pr-4 py-2 bg-background border border-border/40 rounded-xl focus:bg-background-card focus:border-primary/40 transition-all outline-none text-sm placeholder:text-text-muted/40"
-              />
-            </div>
+
           </div>
 
           <div className="flex items-center space-x-2 sm:space-x-6">

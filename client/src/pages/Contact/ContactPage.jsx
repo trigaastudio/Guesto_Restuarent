@@ -15,7 +15,7 @@ const ContactPage = () => {
   const navigate = useNavigate();
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const dropdownRef = useRef(null);
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  const user = JSON.parse(localStorage.getItem('user') || localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || 'null');
   
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,9 +34,20 @@ const ContactPage = () => {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.replace('/login');
+    const currentUser = JSON.parse(localStorage.getItem('user') || localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || '{}');
+    if (currentUser.role === 'admin') {
+      localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_user');
+      navigate('/admin/login', { replace: true });
+    } else if (currentUser.role === 'kitchen' || currentUser.role === 'waiter') {
+      localStorage.removeItem('staff_token');
+      localStorage.removeItem('staff_user');
+      navigate('/staff/login', { replace: true });
+    } else {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      navigate('/login', { replace: true });
+    }
   };
 
   const handleSubmit = (e) => {

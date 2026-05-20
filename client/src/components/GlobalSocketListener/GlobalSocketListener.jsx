@@ -41,7 +41,7 @@ const GlobalSocketListener = () => {
     localStorage.removeItem('admin_user');
     localStorage.removeItem('staff_token');
     localStorage.removeItem('staff_user');
-    
+
     // Close socket
     socket.disconnect();
 

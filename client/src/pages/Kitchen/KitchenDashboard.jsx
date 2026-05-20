@@ -285,6 +285,18 @@ const KitchenDashboard = () => {
     }
   };
 
+  const handleBulkUpdateOrderItems = async (orderId, newStatus, orderNumber) => {
+    try {
+      await api.patch(`/api/orders/${orderId}/items/bulk-status`, { kitchenStatus: newStatus });
+      const labels = { placed: 'Placed', preparing: 'Preparing', ready: 'Ready', delayed: 'Delayed' };
+      showToast('success', `All items in ${orderNumber} → ${labels[newStatus]}`);
+      fetchOrders(true);
+    } catch (error) {
+      console.error('Bulk status update failed:', error);
+      showToast('error', error.response?.data?.message || 'Failed to update all item statuses');
+    }
+  };
+
   const handleStartPreparation = async (order) => {
     try {
       // Update only 'placed' items to 'preparing' (not already-preparing/ready items)
@@ -692,6 +704,20 @@ const KitchenDashboard = () => {
                     </div>
 
 
+
+                    {/* Overall Bulk Status Setter */}
+                    {activeStatusFilter !== 'new' && (
+                      <div className="px-4 py-2.5 border-b border-border-light flex items-center justify-between">
+                        <span className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Overall Status</span>
+                        <StatusDropdown
+                          value={(() => {
+                            const statuses = order.items?.map(i => i.kitchenStatus || 'placed') || [];
+                            return statuses.length > 0 && statuses.every(s => s === statuses[0]) ? statuses[0] : 'preparing';
+                          })()}
+                          onChange={(newStatus) => handleBulkUpdateOrderItems(order._id, newStatus, order.orderNumber)}
+                        />
+                      </div>
+                    )}
 
                     {/* Items */}
                     <div className="flex-1 p-4 space-y-3">
