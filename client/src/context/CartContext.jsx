@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import api from '../api/axiosInstance';
 import { showToast, showCartToast } from '../utils/sweetAlert';
 import socket from '../services/socket';
@@ -10,6 +10,7 @@ export const CartProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState(null);
   const [offers, setOffers] = useState([]);
+  const pendingUpdatesRef = useRef({});
 
   useEffect(() => {
     fetchCart();
@@ -57,6 +58,9 @@ export const CartProvider = ({ children }) => {
       socket.off('stockUpdate');
       socket.off('offerUpdate');
       socket.off('settingsUpdate');
+      if (pendingUpdatesRef.current) {
+        Object.values(pendingUpdatesRef.current).forEach(clearTimeout);
+      }
     };
   }, []);
 
@@ -111,23 +115,11 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  const updateQuantity = async (id, quantity) => {
-    if (quantity < 1) {
-      return removeFromCart(id);
+  const removeFromCart = useCallback(async (id) => {
+    if (pendingUpdatesRef.current[id]) {
+      clearTimeout(pendingUpdatesRef.current[id]);
+      delete pendingUpdatesRef.current[id];
     }
-    try {
-      const response = await api.put(`/api/cart/${id}`, {
-        quantity
-      });
-      if (response.data.success) {
-        setCartItems(response.data.data.items);
-      }
-    } catch (error) {
-      showToast('error', 'Failed to update quantity');
-    }
-  };
-
-  const removeFromCart = async (id) => {
     try {
       const response = await api.delete(`/api/cart/${id}`);
       if (response.data.success) {
@@ -136,7 +128,38 @@ export const CartProvider = ({ children }) => {
     } catch (error) {
       showToast('error', 'Failed to remove item');
     }
-  };
+  }, []);
+
+  const updateQuantity = useCallback(async (id, quantity) => {
+    if (quantity < 1) {
+      return removeFromCart(id);
+    }
+
+    // Optimistically update the UI state immediately
+    setCartItems(prev => prev.map(item => item._id === id ? { ...item, quantity } : item));
+
+    // Clear existing timeout for this item if any
+    if (pendingUpdatesRef.current[id]) {
+      clearTimeout(pendingUpdatesRef.current[id]);
+    }
+
+    // Set a new timeout to sync with backend
+    pendingUpdatesRef.current[id] = setTimeout(async () => {
+      try {
+        const response = await api.put(`/api/cart/${id}`, { quantity });
+        if (response.data.success) {
+          // Sync with the actual database response in case other things changed
+          setCartItems(response.data.data.items);
+        }
+      } catch (error) {
+        showToast('error', 'Failed to update quantity');
+        // Fetch cart to revert to correct state on error
+        fetchCart();
+      } finally {
+        delete pendingUpdatesRef.current[id];
+      }
+    }, 400); // 400ms debounce time
+  }, [removeFromCart]);
 
   const clearCart = async () => {
     try {
@@ -230,156 +253,33 @@ export const CartProvider = ({ children }) => {
 
   // --- ADVANCED OFFER CALCULATION ---
   const subtotal = useMemo(() => {
-    let tempItems = cartItems.map(item => {
+    let totalSubtotal = 0;
+
+    cartItems.forEach(item => {
       // Find base price from variants or fallback fields
       const variantPrice = (item.variants || item.sizes || []).find(v => v.size === item.selectedSize)?.price;
       const basePrice = variantPrice || item.offerPrice || item.price || 0;
 
-      return {
-        ...item,
-        originalPrice: basePrice,
-        remainingQty: item.quantity
-      };
-    });
-
-    let totalSubtotal = 0;
-    const now = new Date();
-    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    const istDate = new Date(utc + (330 * 60000));
-
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const today = dayNames[istDate.getDay()];
-
-    // Offer calculation logs removed for professional console output
-
-    const activeOffers = offers.filter(o => {
-      if (!o.isActive) return false;
-
-      const normalizedToday = today.toLowerCase();
-      const specificDays = (o.specificDays || []).map(d => d.toLowerCase());
-
-      if (o.isWeekendOnly && !['saturday', 'sunday'].includes(normalizedToday)) return false;
-      if (specificDays.length > 0 && !specificDays.includes(normalizedToday)) return false;
-      return true;
-    }).sort((a, b) => (b.priority || 0) - (a.priority || 0));
-
-    // Active offers logging removed
-
-    // 1. PROCESS COMBOS (Bundle Percent Discount)
-    activeOffers.filter(o => o.offerType === 'combo').forEach(offer => {
-      const bundleItems = offer.applicableItems || [];
-      if (bundleItems.length === 0) return;
-
-      // Combo checking log removed
-
-      // Aggregate requirements for this bundle (in case same item is listed twice with same size)
-      const requirements = {};
-      bundleItems.forEach(b => {
-        const id = (b.menuItem?._id || b.menuItem || '').toString().toLowerCase();
-        if (!id) return; // Skip invalid entries
-        const size = (b.selectedSize || '').toString().toLowerCase();
-        const key = `${id}-${size}`;
-        requirements[key] = (requirements[key] || 0) + (b.quantity || 1);
-      });
-
-      let possibleCombos = Infinity;
-      Object.keys(requirements).forEach(key => {
-        const [id, size] = key.split('-');
-        const needed = requirements[key];
-        const cartItem = tempItems.find(i => {
-          const itemId = (i.menuItemId || i.menuItem?._id || i._id || i.id || '').toString().toLowerCase();
-          const itemSize = (i.selectedSize || '').toString().toLowerCase();
-          return itemId === id && (size === '' || itemSize === size);
-        });
-
-        if (!cartItem) {
-          possibleCombos = 0;
-        } else {
-          possibleCombos = Math.min(possibleCombos, Math.floor(cartItem.remainingQty / needed));
-        }
-      });
-
-      if (possibleCombos > 0 && possibleCombos !== Infinity) {
-        // Combo application log removed
-        let bundleBasePrice = 0;
-        
-        // Calculate original price of ONE bundle
-        Object.keys(requirements).forEach(key => {
-          const [id, size] = key.split('-');
-          const needed = requirements[key];
-          const cartItem = tempItems.find(i => {
-            const itemId = (i.menuItemId || i.menuItem?._id || i._id || i.id || '').toString().toLowerCase();
-            const itemSize = (i.selectedSize || '').toString().toLowerCase();
-            return itemId === id && (size === '' || itemSize === size);
-          });
-          bundleBasePrice += (cartItem.originalPrice || 0) * needed;
-        });
-
-        const discountPercent = Math.min(100, Math.max(0, parseFloat(offer.offerValue || 0)));
-        const discountedBundlePrice = bundleBasePrice * (1 - discountPercent / 100);
-        
-        totalSubtotal += possibleCombos * discountedBundlePrice;
-
-        // Consume quantities
-        Object.keys(requirements).forEach(key => {
-          const [id, size] = key.split('-');
-          const needed = requirements[key];
-          const cartItem = tempItems.find(i => {
-            const itemId = (i.menuItemId || i.menuItem?._id || i._id || i.id || '').toString().toLowerCase();
-            const itemSize = (i.selectedSize || '').toString().toLowerCase();
-            return itemId === id && (size === '' || itemSize === size);
-          });
-          cartItem.remainingQty -= (possibleCombos * needed);
-        });
-      }
-    });
-
-    // 2. PROCESS REMAINING ITEMS (BOGO & DISCOUNTS)
-    tempItems.forEach(item => {
-      if (item.remainingQty <= 0) return;
-      const itemId = (item.menuItemId || item.menuItem?._id || item._id || item.id || '').toString().toLowerCase();
-      const itemCatId = (item.category?._id || item.category || '').toString().toLowerCase();
-
-      // Check for BOGO first
-      const bogoOffer = activeOffers.find(o => {
-        const bogoSize = parseInt(o.offerValue) || 2;
-        return (
-          o.offerType === 'bogo' &&
-          (o.applicableItems?.some(bi => (bi.menuItem?._id || bi.menuItem || '').toString().toLowerCase() === itemId) ||
-            o.applicableCategories?.some(catId => (catId._id || catId || '').toString().toLowerCase() === itemCatId))
-        );
-      });
-
-      if (bogoOffer) {
-        const bundleSize = parseInt(bogoOffer.offerValue) || 2;
-        const paidCount = Math.floor(item.remainingQty / bundleSize) * (bundleSize - 1) + (item.remainingQty % bundleSize);
-        totalSubtotal += paidCount * (item.originalPrice || 0);
-        item.remainingQty = 0;
+      if (item.isCombo) {
+        totalSubtotal += basePrice * item.quantity;
         return;
       }
 
-      // Check for Discount
-      const discountOffer = activeOffers.find(o =>
-        o.offerType === 'discount' &&
-        item.remainingQty >= (o.minQuantity || 1) &&
-        (o.applicableItems?.some(bi => (bi.menuItem?._id || bi.menuItem || '').toString().toLowerCase() === itemId) ||
-          o.applicableCategories?.some(catId => (catId._id || catId || '').toString().toLowerCase() === itemCatId))
-      );
+      // Check for Item/Category Discount
+      const menuDiscount = item.menuItem?.discountPercentage || item.discountPercentage || 0;
+      const categoryDiscount = item.menuItem?.category?.discountPercentage || item.category?.discountPercentage || 0;
+      const maxDiscountPercent = Math.max(menuDiscount, categoryDiscount);
 
-      if (discountOffer) {
-        // Discount application log removed
-        const discountPercent = discountOffer.offerValue || 0;
-        const discountedPrice = (item.originalPrice || 0) * (1 - discountPercent / 100);
-        totalSubtotal += item.remainingQty * discountedPrice;
+      if (maxDiscountPercent > 0) {
+        const discountedPrice = basePrice * (1 - maxDiscountPercent / 100);
+        totalSubtotal += item.quantity * discountedPrice;
       } else {
-        totalSubtotal += item.remainingQty * (item.originalPrice || 0);
+        totalSubtotal += item.quantity * basePrice;
       }
-      item.remainingQty = 0;
     });
 
-    // Final subtotal log removed
     return Math.round(totalSubtotal);
-  }, [cartItems, offers, settings]);
+  }, [cartItems]);
 
   return (
     <CartContext.Provider value={{

@@ -1,13 +1,17 @@
 import React from 'react';
-import { Mail, Phone, LogOut, Camera, ShieldCheck, Lock, RefreshCcw, Wallet } from 'lucide-react';
+import { Mail, Phone, LogOut, Camera, ShieldCheck, Lock, MapPin, User, Shield } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
-const SideNavbar = ({ user, handleLogout, navigate, onAvatarClick, fileInputRef, handleAvatarUpload, onChangePassword }) => {
-  const location = useLocation();
-  const currentPath = location.pathname;
-
-
-
+const SideNavbar = ({ 
+  user, 
+  handleLogout, 
+  navigate, 
+  onAvatarClick, 
+  fileInputRef, 
+  handleAvatarUpload, 
+  activeTab, 
+  setActiveTab 
+}) => {
   return (
     <div className="bg-background-card rounded-[2.5rem] md:rounded-[3.5rem] p-6 md:p-8 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.04)] relative overflow-hidden group w-full">
       {/* Abstract Backdrop Decor */}
@@ -64,39 +68,51 @@ const SideNavbar = ({ user, handleLogout, navigate, onAvatarClick, fileInputRef,
           </div>
         </div>
 
-        {/* Contact Info (Compact) */}
+        {/* Navigation Tabs */}
         <div className="w-full space-y-2 pt-6 border-t border-border/40">
-          <div className="flex items-center gap-3 px-2">
-            <div className="w-8 h-8 rounded-xl bg-background-muted flex items-center justify-center text-primary">
-              <Mail size={14} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-black text-text-muted tracking-widest uppercase opacity-40">Email</p>
-              <p className="text-xs font-bold text-text-primary truncate">{user.email}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 px-2">
-            <div className="w-8 h-8 rounded-xl bg-background-muted flex items-center justify-center text-primary">
-              <Phone size={14} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-black text-text-muted tracking-widest uppercase opacity-40">Phone</p>
-              <p className="text-xs font-bold text-text-primary">{user.phone || user.mobile || 'Not linked'}</p>
-            </div>
-          </div>
-        </div>
+          <button
+            onClick={() => setActiveTab('addresses')}
+            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-500 font-black text-xs tracking-widest uppercase border ${
+              activeTab === 'addresses'
+                ? 'bg-primary text-white border-primary shadow-[0_8px_25px_rgba(185,28,28,0.2)]'
+                : 'bg-background-muted hover:bg-background text-text-primary border-border/40'
+            }`}
+          >
+            <MapPin size={15} />
+            Addresses
+          </button>
+          
+          <button
+            onClick={() => setActiveTab('profile')}
+            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-500 font-black text-xs tracking-widest uppercase border ${
+              activeTab === 'profile'
+                ? 'bg-primary text-white border-primary shadow-[0_8px_25px_rgba(185,28,28,0.2)]'
+                : 'bg-background-muted hover:bg-background text-text-primary border-border/40'
+            }`}
+          >
+            <User size={15} />
+            Edit Profile
+          </button>
+          
+          <button
+            onClick={() => setActiveTab('security')}
+            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-500 font-black text-xs tracking-widest uppercase border ${
+              activeTab === 'security'
+                ? 'bg-primary text-white border-primary shadow-[0_8px_25px_rgba(185,28,28,0.2)]'
+                : 'bg-background-muted hover:bg-background text-text-primary border-border/40'
+            }`}
+          >
+            <Shield size={15} />
+            Security
+          </button>
 
-        {/* Security Actions */}
-        <div className="w-full mt-6 space-y-2">
-          {!user.googleId && (
-            <button
-              onClick={onChangePassword}
-              className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-background-muted hover:bg-background text-text-primary rounded-2xl transition-all duration-500 font-black text-xs tracking-widest uppercase border border-border/40 group/pass"
-            >
-              <Lock size={16} className="group-hover/pass:rotate-12 transition-transform" />
-              Change password
-            </button>
-          )}
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3.5 mt-4 bg-red-500/10 hover:bg-red-500 hover:text-white text-red-500 rounded-2xl transition-all duration-500 font-black text-xs tracking-widest uppercase border border-red-500/20 group/logout"
+          >
+            <LogOut size={15} className="group-hover/logout:-translate-x-1 transition-transform" />
+            Logout
+          </button>
         </div>
       </div>
     </div>

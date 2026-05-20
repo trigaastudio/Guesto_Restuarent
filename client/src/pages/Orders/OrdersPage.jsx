@@ -79,6 +79,8 @@ const OrdersPage = () => {
         confirmButtonColor: '#B91C1C',
         cancelButtonColor: '#6b7280',
         confirmButtonText: 'Yes, cancel it!',
+        scrollbarPadding: false,
+        heightAuto: false,
         customClass: {
           popup: 'rounded-[2rem] bg-background-card text-text-primary',
           title: 'text-text-primary',
@@ -94,6 +96,8 @@ const OrdersPage = () => {
             text: 'Your order has been cancelled.',
             icon: 'success',
             confirmButtonColor: '#B91C1C',
+            scrollbarPadding: false,
+            heightAuto: false,
             customClass: {
               popup: 'rounded-[2rem] bg-background-card text-text-primary'
             }
@@ -107,6 +111,8 @@ const OrdersPage = () => {
         text: error.response?.data?.message || 'Failed to cancel order',
         icon: 'error',
         confirmButtonColor: '#B91C1C',
+        scrollbarPadding: false,
+        heightAuto: false,
         customClass: {
           popup: 'rounded-[2rem] bg-background-card text-text-primary'
         }
@@ -317,7 +323,7 @@ const OrdersPage = () => {
                           setSelectedOrder(order);
                           setShowDetailsModal(true);
                         }}
-                        className="bg-white rounded-xl border border-border/60 hover:shadow-md transition-all duration-300 overflow-hidden group cursor-pointer active:scale-[0.99]"
+                        className="bg-background rounded-xl border border-border/60 hover:shadow-md transition-all duration-300 overflow-hidden group cursor-pointer active:scale-[0.99]"
                       >
                         {/* Each order is a clean row on desktop */}
                         <div className="p-5 md:p-6 flex flex-col md:flex-row items-start md:items-center gap-6">
@@ -363,9 +369,11 @@ const OrdersPage = () => {
                           <div className="w-full md:w-auto md:min-w-[120px] md:text-center">
                             <p className="text-lg font-black text-text-primary tracking-tighter">₹{order.totalAmount}</p>
                             <div className="flex items-center gap-1.5 md:justify-center mt-0.5">
-                              <span className={`text-[9px] font-bold uppercase tracking-wider ${order.paymentStatus === 'paid' ? 'text-emerald-600' : 'text-orange-600 animate-pulse'}`}>
-                                {order.paymentStatus}
-                              </span>
+                              {order.orderStatus !== 'cancelled' && (
+                                <span className={`text-[9px] font-bold uppercase tracking-wider ${order.paymentStatus === 'paid' ? 'text-emerald-600' : 'text-orange-600 animate-pulse'}`}>
+                                  {order.paymentStatus}
+                                </span>
+                              )}
                             </div>
                           </div>
 
@@ -445,7 +453,7 @@ const OrdersPage = () => {
                 {selectedOrder.items.map((item, idx) => (
                   <div key={idx} className="flex items-center justify-between p-4 rounded-2xl bg-background-muted/20 border border-border/5">
                     <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 rounded-xl bg-white border border-border/10 p-2 flex-shrink-0">
+                      <div className="w-16 h-16 rounded-xl bg-background border border-border/10 p-2 flex-shrink-0">
                         <img 
                           src={item.image || item.menuItem?.image || '/placeholder-food.jpg'} 
                           alt={item.name} 

@@ -80,6 +80,10 @@ class CartController {
         path: 'items.menuItem',
         populate: [
           {
+            path: 'category',
+            model: 'Category'
+          },
+          {
             path: 'variants.includedItems.menuItem',
             model: 'Menu'
           },
@@ -105,6 +109,10 @@ class CartController {
       const cart = await Cart.findOne({ user: userId }).populate({
         path: 'items.menuItem',
         populate: [
+          {
+            path: 'category',
+            model: 'Category'
+          },
           {
             path: 'variants.includedItems.menuItem',
             model: 'Menu'
@@ -149,6 +157,10 @@ class CartController {
           path: 'items.menuItem',
           populate: [
             {
+              path: 'category',
+              model: 'Category'
+            },
+            {
               path: 'variants.includedItems.menuItem',
               model: 'Menu'
             },
@@ -183,6 +195,10 @@ class CartController {
       const updatedCart = await Cart.findOne({ user: userId }).populate({
         path: 'items.menuItem',
         populate: [
+          {
+            path: 'category',
+            model: 'Category'
+          },
           {
             path: 'variants.includedItems.menuItem',
             model: 'Menu'

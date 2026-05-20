@@ -3,31 +3,39 @@ import { LayoutGrid, UtensilsCrossed, Plus } from 'lucide-react';
 import Loader from '../Loader/Loader';
 import { useCart } from '../../context/CartContext';
 
-const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navigate, sortBy, setSortBy, dietaryFilter, setDietaryFilter, setSearchQuery, observerTarget, hasMore, loadingMore, onAddClick, selectedCategory, bogoOnly, comboOnly, searchQuery, onClearAll, viewOnly }) => {
+const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navigate, sortBy, setSortBy, dietaryFilter, setDietaryFilter, setSearchQuery, observerTarget, hasMore, loadingMore, onAddClick, selectedCategory, offerFilter, handlePromoFilterToggle, searchQuery, onClearAll, viewOnly }) => {
   const { offers, checkStoreStatus } = useCart();
   const storeStatus = checkStoreStatus ? checkStoreStatus() : { isOpen: true };
   const isClosed = !storeStatus.isOpen;
 
-  const isAnyFilterActive = sortBy !== 'default' || dietaryFilter !== 'all' || bogoOnly || comboOnly || selectedCategory !== 'all' || !!searchQuery;
+  const isAnyFilterActive = sortBy !== 'default' || dietaryFilter !== 'all' || !!offerFilter || selectedCategory !== 'all' || !!searchQuery;
 
   return (
     <section id="menu" className="bg-background pt-2 md:pt-8 pb-6 w-full">
       <div className="max-w-6xl mx-auto px-6">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 md:mb-12 gap-6">
-          <div className="space-y-3">
-            <h2 className="text-2xl md:text-4xl font-black text-text-primary tracking-tighter flex items-center gap-3 md:gap-4">
-              {title || 'Popular'} <span className="text-primary">menu</span>
-            </h2>
-            <p className="text-[10px] md:text-base text-text-muted font-bold opacity-80 tracking-widest uppercase md:normal-case">Discover the most loved dishes</p>
-          </div>
+        <div className="flex flex-col gap-5 mb-8 md:mb-10">
+          {/* Title Row */}
+          <div className="flex items-end justify-between">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-3 flex-wrap">
+                <h2 className="text-2xl md:text-4xl font-black text-text-primary tracking-tighter">
+                  Popular <span className="text-primary">menu</span>
+                </h2>
+                {offerFilter && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-full text-[10px] font-black text-primary uppercase tracking-wider">
+                    {offerFilter === 'bogo' ? 'Buy 1 Get 1' : offerFilter === 'combo' ? 'Combos' : offerFilter === 'discount' ? 'Discounts' : 'Special Offer'}
+                  </span>
+                )}
+              </div>
+              <p className="text-[10px] md:text-sm text-text-muted font-bold opacity-80 tracking-widest uppercase md:normal-case">Discover the most loved dishes</p>
+            </div>
 
-          {/* Sort & Filter Controls */}
-          <div className="flex flex-wrap items-center gap-2 md:gap-4 pt-2">
-            <div className="relative group flex-1 md:flex-none min-w-[120px]">
+            {/* Sort dropdown — always top right */}
+            <div className="relative group flex-shrink-0">
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="w-full appearance-none bg-background-muted border border-border/40 text-text-primary text-[9px] md:text-xs font-black tracking-widest rounded-xl px-4 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-primary/40 transition-all cursor-pointer shadow-sm"
+                className="appearance-none bg-background-muted border border-border/40 text-text-primary text-[9px] md:text-xs font-black tracking-widest rounded-xl px-4 py-3 pr-8 focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-primary/40 transition-all cursor-pointer shadow-sm"
               >
                 <option value="default">Relevance</option>
                 <option value="name-az">Name (A-Z)</option>
@@ -35,35 +43,60 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
                 <option value="price-high">Price (H-L)</option>
                 <option value="rating">Top Rated</option>
               </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-primary">
-                <LayoutGrid size={12} />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-primary">
+                <LayoutGrid size={11} />
               </div>
             </div>
+          </div>
 
-            <div className="flex items-center gap-2 w-full md:w-auto">
-              <button
-                onClick={() => setDietaryFilter(dietaryFilter === 'veg' ? 'all' : 'veg')}
-                className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 border text-[9px] md:text-xs font-black tracking-widest rounded-xl transition-all shadow-sm group ${dietaryFilter === 'veg' ? 'bg-primary text-white border-primary' : 'bg-background-muted border-border/60 text-text-primary hover:bg-background-card hover:border-primary/40'}`}
-              >
-                <span className={`w-2 h-2 rounded-full bg-green-500 ${dietaryFilter === 'veg' ? 'brightness-150' : ''}`}></span>
-                Veg
-              </button>
-              <button
-                onClick={() => setDietaryFilter(dietaryFilter === 'non-veg' ? 'all' : 'non-veg')}
-                className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 border text-[9px] md:text-xs font-black tracking-widest rounded-xl transition-all shadow-sm ${dietaryFilter === 'non-veg' ? 'bg-primary text-white border-primary' : 'bg-background-muted border-border/60 text-text-primary hover:bg-background-card hover:border-primary/40'}`}
-              >
-                <span className={`w-2 h-2 rounded-full bg-red-500 ${dietaryFilter === 'non-veg' ? 'brightness-150' : ''}`}></span>
-                Non-veg
-              </button>
-            </div>
+          {/* Filter Pills Row */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setDietaryFilter(dietaryFilter === 'veg' ? 'all' : 'veg')}
+              className={`flex items-center gap-1.5 px-3.5 py-2 border text-[10px] font-black tracking-widest rounded-xl transition-all shadow-sm ${dietaryFilter === 'veg' ? 'bg-primary text-white border-primary' : 'bg-background-muted border-border/60 text-text-primary hover:border-primary/40'}`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full bg-green-500`}></span>
+              Veg
+            </button>
+            <button
+              onClick={() => setDietaryFilter(dietaryFilter === 'non-veg' ? 'all' : 'non-veg')}
+              className={`flex items-center gap-1.5 px-3.5 py-2 border text-[10px] font-black tracking-widest rounded-xl transition-all shadow-sm ${dietaryFilter === 'non-veg' ? 'bg-primary text-white border-primary' : 'bg-background-muted border-border/60 text-text-primary hover:border-primary/40'}`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full bg-red-500`}></span>
+              Non-veg
+            </button>
+
+            <div className="h-5 w-px bg-border/50 mx-1"></div>
+
+            <button
+              onClick={() => handlePromoFilterToggle && handlePromoFilterToggle('bogo', 'Buy 1 Get 1')}
+              className={`flex items-center gap-1.5 px-3.5 py-2 border text-[10px] font-black tracking-widest rounded-xl transition-all shadow-sm ${offerFilter === 'bogo' ? 'bg-primary text-white border-primary' : 'bg-background-muted border-border/60 text-text-primary hover:border-primary/40'}`}
+            >
+              🎁 BOGO
+            </button>
+            <button
+              onClick={() => handlePromoFilterToggle && handlePromoFilterToggle('combo', 'Combos')}
+              className={`flex items-center gap-1.5 px-3.5 py-2 border text-[10px] font-black tracking-widest rounded-xl transition-all shadow-sm ${offerFilter === 'combo' ? 'bg-primary text-white border-primary' : 'bg-background-muted border-border/60 text-text-primary hover:border-primary/40'}`}
+            >
+              🍱 Combo
+            </button>
+            <button
+              onClick={() => handlePromoFilterToggle && handlePromoFilterToggle('discount', 'Discounts')}
+              className={`flex items-center gap-1.5 px-3.5 py-2 border text-[10px] font-black tracking-widest rounded-xl transition-all shadow-sm ${offerFilter === 'discount' ? 'bg-primary text-white border-primary' : 'bg-background-muted border-border/60 text-text-primary hover:border-primary/40'}`}
+            >
+              🏷️ Discounts
+            </button>
 
             {isAnyFilterActive && (
-              <button
-                onClick={onClearAll}
-                className="text-[10px] md:text-xs font-black tracking-widest text-primary hover:underline underline-offset-4 px-2"
-              >
-                Clear all
-              </button>
+              <>
+                <div className="h-5 w-px bg-border/50 mx-1"></div>
+                <button
+                  onClick={onClearAll}
+                  className="text-[10px] font-black tracking-widest text-primary hover:underline underline-offset-4 whitespace-nowrap"
+                >
+                  Clear all
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -97,30 +130,23 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
                 : (variants.length > 0 ? Math.min(...variants.map(v => v.price)) : (menu.offerPrice || 0));
 
               // Find active discount offer for this item
-              const activeDiscount = !menu.isCombo && offers?.find(o => {
-                if (!o.isActive || o.offerType !== 'discount') return false;
-                
-                // Check Schedule
-                const day = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-                if (o.isWeekendOnly && !['Saturday', 'Sunday'].includes(day)) return false;
-                if (o.specificDays?.length > 0 && !o.specificDays.includes(day)) return false;
-
-                // Check Applicability
-                const isItemMatch = o.applicableItems?.some(bundleItem => (bundleItem.menuItem?._id || bundleItem.menuItem) === menu._id);
-                const isCategoryMatch = o.applicableCategories?.some(cat => (cat._id || cat) === (menu.category?._id || menu.category));
-                
-                return isItemMatch || isCategoryMatch;
-              });
-
-              const isTriggered = activeDiscount && (activeDiscount.minQuantity || 1) <= 1;
-              const discountPercent = isTriggered ? activeDiscount.offerValue : 0;
+              // Compute discount percentage based on max of menu and category discount
+              const menuDiscount = menu.discountPercentage || 0;
+              const categoryDiscount = menu.category?.discountPercentage || 0; 
+              
+              const discountPercent = Math.max(menuDiscount, categoryDiscount);
               const discountedPrice = menu.isCombo 
                 ? (menu.price || originalPrice)
                 : (discountPercent > 0 ? originalPrice * (1 - discountPercent / 100) : originalPrice);
 
               const hasSavings = originalPrice > discountedPrice;
 
-              const isOutOfStock = menu.totalStock <= 0 || isClosed;
+              const isComboOutOfStock = menu.isCombo && menu.comboItems?.length > 0 && menu.comboItems.some(ci => {
+                const item = ci.menuItem;
+                return !item || item.isBlocked || item.totalStock <= 0;
+              });
+
+              const isOutOfStock = menu.totalStock <= 0 || isClosed || !!isComboOutOfStock;
 
               return (
                 <div
@@ -152,11 +178,9 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
                       </div>
                     )}
 
-                    {activeDiscount && !isOutOfStock && (
+                    {discountPercent > 0 && !isOutOfStock && !menu.isCombo && (
                       <div className="absolute top-2 left-2 bg-primary text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-lg animate-bounce-slow z-10">
-                        {activeDiscount.minQuantity > 1 
-                          ? `BUY ${activeDiscount.minQuantity} GET ${activeDiscount.offerValue}% OFF` 
-                          : `${activeDiscount.offerValue}% OFF`}
+                        {`${discountPercent}% OFF`}
                       </div>
                     )}
                     {variants.some(v => v.isBOGO) && !isOutOfStock && (

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useCart } from '../../context/CartContext';
-import { ShoppingCart, User as UserIcon, LayoutGrid, UtensilsCrossed, Menu, X, Home, Info, Phone, Utensils, Wallet, LogOut, Sun, Moon, LayoutDashboard } from 'lucide-react';
+import { ShoppingCart, User as UserIcon, LayoutGrid, UtensilsCrossed, Menu, X, Home, Info, Phone, Utensils, LogOut, Sun, Moon, LayoutDashboard } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
 const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown, handleLogout, navigate, dropdownRef, hideCart }) => {

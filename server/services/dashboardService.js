@@ -109,7 +109,9 @@ class DashboardService {
           foodType: '$menuInfo.foodType',
           isCombo: '$menuInfo.isCombo',
           comboItems: '$menuInfo.comboItems',
-          totalStock: '$menuInfo.totalStock'
+          totalStock: '$menuInfo.totalStock',
+          discountPercentage: '$menuInfo.discountPercentage',
+          category: '$menuInfo.category'
         } },
         { $match: { name: { $ne: null } } },
         { $sort: { orders: -1 } },

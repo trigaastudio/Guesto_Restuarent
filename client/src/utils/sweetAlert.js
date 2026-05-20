@@ -37,6 +37,8 @@ export const showAlert = (options) => {
     iconColor: options.icon === 'error' ? themeColors.error : 
                options.icon === 'success' ? themeColors.success : 
                themeColors.primary,
+    scrollbarPadding: false,
+    heightAuto: false,
     customClass: {
       popup: 'rounded-[2.5rem] border-none shadow-2xl max-w-[400px] bg-background-card text-text-primary',
       title: 'text-xl font-black tracking-tight pt-6 text-text-primary',
@@ -63,22 +65,21 @@ export const showToast = (icon, title) => {
 
 export const showCartToast = (item) => {
   return Toast.fire({
-    icon: 'success',
-    timer: 1200, // Consistent fast speed
-    iconColor: themeColors.success,
+    timer: 1800, // Slightly longer timer so they can appreciate the gorgeous large card
+    width: 'auto',
     html: `
-      <div class="flex items-center gap-2.5 text-left">
-        <div class="w-7 h-7 rounded-md overflow-hidden flex-shrink-0 border border-border/10 bg-white p-0.5 shadow-sm">
-          <img src="${item.image || '/placeholder-food.jpg'}" alt="${item.name}" class="w-full h-full object-contain" />
+      <div class="flex items-center gap-5 text-left whitespace-nowrap pr-4">
+        <div class="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 shadow-2xl">
+          <img src="${item.image || '/placeholder-food.jpg'}" alt="${item.name}" class="w-full h-full object-cover" />
         </div>
         <div class="flex flex-col min-w-0 leading-tight">
-          <span class="text-[10px] font-black uppercase tracking-wider text-text-primary truncate max-w-[120px]">${item.name}</span>
-          <span class="text-[7px] font-black text-primary uppercase tracking-[0.1em] opacity-80">Added to Feast</span>
+          <span class="text-[16px] font-black uppercase tracking-wider text-text-primary truncate max-w-[210px] block">${item.name}</span>
+          <span class="text-[11px] font-black text-primary uppercase tracking-[0.15em] mt-1.5 block">Added to Feast</span>
         </div>
       </div>
     `,
     customClass: {
-      popup: 'rounded-xl bg-background-card text-text-primary shadow-2xl border border-border/40 px-3 py-1.5 min-w-[140px] max-w-[200px]',
+      popup: 'rounded-[1.75rem] bg-background-card text-text-primary shadow-2xl border border-border/40 px-4.5 py-3.5',
       htmlContainer: 'm-0 p-0',
       icon: 'hidden'
     }
@@ -95,6 +96,8 @@ export const showDeleteConfirmation = (title = 'Are you sure?', text = "You won'
     cancelButtonColor: '#9CA3AF',
     confirmButtonText: 'Yes, proceed',
     cancelButtonText: 'Cancel',
+    scrollbarPadding: false,
+    heightAuto: false,
     customClass: {
       popup: 'rounded-[2.5rem] border-none shadow-2xl p-6 max-w-[400px] bg-background-card text-text-primary',
       title: 'text-xl font-black tracking-tight text-text-primary',

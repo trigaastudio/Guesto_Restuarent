@@ -2,6 +2,12 @@ import Menu from '../models/menuSchema.js';
 
 class MenuRepository {
   async create(data) {
+    if (data.variants && data.variants.length > 0) {
+      const prices = data.variants.map(v => v.price).filter(p => typeof p === 'number' && !isNaN(p));
+      if (prices.length > 0) {
+        data.price = Math.min(...prices);
+      }
+    }
     return await Menu.create(data);
   }
 
@@ -18,7 +24,7 @@ class MenuRepository {
       })
       .populate({
         path: 'comboItems.menuItem',
-        select: 'name variants'
+        select: 'name variants totalStock isBlocked'
       })
       .sort(sortOption);
     if (skip > 0) query = query.skip(skip);
@@ -39,7 +45,7 @@ class MenuRepository {
       })
       .populate({
         path: 'comboItems.menuItem',
-        select: 'name variants'
+        select: 'name variants totalStock isBlocked'
       })
       .sort({ createdAt: -1 });
   }
@@ -57,7 +63,7 @@ class MenuRepository {
       })
       .populate({
         path: 'comboItems.menuItem',
-        select: 'name variants'
+        select: 'name variants totalStock isBlocked'
       });
   }
 
@@ -74,11 +80,17 @@ class MenuRepository {
       })
       .populate({
         path: 'comboItems.menuItem',
-        select: 'name variants'
+        select: 'name variants totalStock isBlocked'
       });
   }
 
   async update(id, data) {
+    if (data.variants && data.variants.length > 0) {
+      const prices = data.variants.map(v => v.price).filter(p => typeof p === 'number' && !isNaN(p));
+      if (prices.length > 0) {
+        data.price = Math.min(...prices);
+      }
+    }
     return await Menu.findByIdAndUpdate(id, data, { returnDocument: 'after' });
   }
 

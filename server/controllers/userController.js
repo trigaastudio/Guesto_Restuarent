@@ -1,18 +1,23 @@
 import User from '../models/userSchema.js';
 import userService from '../services/userService.js';
+import authService from '../services/authService.js';
 
 class UserController {
   // --- USER FACING METHODS ---
   async getProfile(req, res) {
     try {
       const userId = req.user._id;
-      const user = await User.findById(userId).select('-password');
+      const user = await User.findById(userId).select('+password');
       if (!user) {
         return res.status(404).json({ success: false, message: 'User not found' });
       }
+      const userObj = user.toObject();
+      userObj.hasPassword = !!user.password;
+      delete userObj.password;
+
       res.status(200).json({
         success: true,
-        data: user
+        data: userObj
       });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });
@@ -148,16 +153,35 @@ class UserController {
   async changePassword(req, res) {
     try {
       const userId = req.user._id;
-      const { oldPassword, newPassword } = req.body;
+      const { currentPassword, newPassword, otp } = req.body;
+
+      if (!newPassword) {
+        return res.status(400).json({ success: false, message: 'New password is required' });
+      }
+      if (!otp) {
+        return res.status(400).json({ success: false, message: 'OTP is required' });
+      }
 
       const user = await User.findById(userId).select('+password');
       if (!user) {
         return res.status(404).json({ success: false, message: 'User not found' });
       }
 
-      const isMatch = await user.comparePassword(oldPassword);
-      if (!isMatch) {
-        return res.status(400).json({ success: false, message: 'Invalid current password' });
+      // If user has a password set, currentPassword is required and must match
+      if (user.password) {
+        if (!currentPassword) {
+          return res.status(400).json({ success: false, message: 'Current password is required' });
+        }
+        const isMatch = await user.comparePassword(currentPassword);
+        if (!isMatch) {
+          return res.status(400).json({ success: false, message: 'Invalid current password' });
+        }
+      }
+
+      // Verify OTP (sent to current email)
+      const isOtpValid = await authService.verifyOTP(user.email, otp);
+      if (!isOtpValid) {
+        return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
       }
 
       user.password = newPassword;
@@ -166,6 +190,120 @@ class UserController {
       res.status(200).json({
         success: true,
         message: 'Password updated successfully'
+      });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  async updateProfile(req, res) {
+    try {
+      const userId = req.user._id;
+      const { name, phone } = req.body;
+
+      if (!name) {
+        return res.status(400).json({ success: false, message: 'Name is required' });
+      }
+
+      // Check if phone number is already taken by someone else
+      if (phone) {
+        const existingPhone = await User.findOne({ phone, _id: { $ne: userId } });
+        if (existingPhone) {
+          return res.status(400).json({ success: false, message: 'Phone number already taken by another account' });
+        }
+      }
+
+      const user = await User.findByIdAndUpdate(
+        userId,
+        { name, phone },
+        { returnDocument: 'after', runValidators: true }
+      ).select('-password');
+
+      res.status(200).json({
+        success: true,
+        message: 'Profile updated successfully',
+        data: user
+      });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  async sendChangeEmailOTP(req, res) {
+    try {
+      const { newEmail } = req.body;
+      if (!newEmail) {
+        return res.status(400).json({ success: false, message: 'New email address is required' });
+      }
+      await authService.sendChangeEmailOTP(newEmail);
+      res.status(200).json({ success: true, message: 'Verification OTP sent to new email' });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  async sendChangePasswordOTP(req, res) {
+    try {
+      const email = req.user.email;
+      await authService.sendChangePasswordOTP(email);
+      res.status(200).json({ success: true, message: 'Verification OTP sent to your email' });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  async changeEmail(req, res) {
+    try {
+      const userId = req.user._id;
+      const { currentPassword, newEmail, otp } = req.body;
+
+      if (!newEmail) {
+        return res.status(400).json({ success: false, message: 'New email is required' });
+      }
+      if (!otp) {
+        return res.status(400).json({ success: false, message: 'OTP is required' });
+      }
+
+      const user = await User.findById(userId).select('+password');
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+
+      // If user has a password set, currentPassword is required and must match
+      if (user.password) {
+        if (!currentPassword) {
+          return res.status(400).json({ success: false, message: 'Current password is required' });
+        }
+        const isMatch = await user.comparePassword(currentPassword);
+        if (!isMatch) {
+          return res.status(400).json({ success: false, message: 'Invalid current password' });
+        }
+      }
+
+      // Verify OTP (sent to newEmail)
+      const isOtpValid = await authService.verifyOTP(newEmail, otp);
+      if (!isOtpValid) {
+        return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
+      }
+
+      // Check if another user has this new email
+      const existingEmail = await User.findOne({ email: newEmail.toLowerCase().trim(), _id: { $ne: userId } });
+      if (existingEmail) {
+        return res.status(400).json({ success: false, message: 'Email is already taken by another account' });
+      }
+
+      user.email = newEmail.toLowerCase().trim();
+      await user.save();
+
+      // Return user without password
+      const updatedUser = user.toObject();
+      updatedUser.hasPassword = !!user.password;
+      delete updatedUser.password;
+
+      res.status(200).json({
+        success: true,
+        message: 'Email updated successfully',
+        data: updatedUser
       });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });

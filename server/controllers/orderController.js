@@ -203,29 +203,18 @@ class OrderController {
     try {
       const { items, address, paymentMethod, totalAmount, subtotal, discount, tax, razorpayOrderId, razorpayPaymentId } = req.body;
 
+      // Check Minimum Order Amount
+      if (subtotal < 140) {
+        return res.status(400).json({ success: false, message: 'Minimum order amount is ₹140 to proceed to payment.' });
+      }
+
       // Check Stock First
       const stockCheck = await checkStockAvailability(items);
       if (!stockCheck.available) {
         return res.status(400).json({ success: false, message: `Insufficient stock for: ${stockCheck.itemName}` });
       }
 
-      // Handle Wallet Payment
-      if (paymentMethod === 'wallet') {
-        const user = await User.findById(req.user._id);
-        const orderTotal = totalAmount; // totalAmount should already include fee/tax/discount
-
-        if (user.walletBalance < orderTotal) {
-          return res.status(400).json({ success: false, message: 'Insufficient wallet balance' });
-        }
-
-        user.walletBalance -= orderTotal;
-        user.walletTransactions.push({
-          amount: orderTotal,
-          type: 'debit',
-          description: `Payment for Order`
-        });
-        await user.save();
-      }
+      // Wallet Payment logic removed
 
       // Determine Order Source and Type
       const isUser = req.user.role === 'user';
@@ -296,12 +285,13 @@ class OrderController {
         paymentMethod: paymentMethod || 'cod',
         subtotal,
         deliveryFee: deliveryFee || req.body.deliveryFee || 0,
+        platformFee: req.body.platformFee || 0,
         discount: discount || 0,
         tax: tax || 0,
-        totalAmount: subtotal + (deliveryFee || req.body.deliveryFee || 0) - (discount || 0) + (tax || 0),
+        totalAmount: subtotal + (deliveryFee || req.body.deliveryFee || 0) + (req.body.platformFee || 0) - (discount || 0) + (tax || 0),
         orderStatus: 'placed',
         kitchenStatus: 'placed',
-        paymentStatus: (paymentMethod === 'wallet') ? 'paid' : 'unpaid',
+        paymentStatus: 'unpaid',
         razorpayOrderId,
         razorpayPaymentId
       });
@@ -316,13 +306,7 @@ class OrderController {
       // Reduce Stock
       await handleStock(items, 'reduce');
 
-      // Update wallet transaction description with order number
-      if (paymentMethod === 'wallet') {
-        const user = await User.findById(req.user._id);
-        const lastTx = user.walletTransactions[user.walletTransactions.length - 1];
-        lastTx.description = `Payment for Order #${newOrder.orderNumber}`;
-        await user.save();
-      }
+      // Wallet transaction update removed
 
       // Clear cart
       await Cart.findOneAndDelete({ customer: req.user._id }).catch(() => { });
@@ -378,10 +362,10 @@ class OrderController {
         return res.status(404).json({ success: false, message: 'Order not found' });
       }
 
-      if (order.orderStatus !== 'placed' && order.orderStatus !== 'processing') {
+      if (order.orderStatus !== 'placed') {
         return res.status(400).json({
           success: false,
-          message: `This order is too far along to be cancelled. Status: ${order.orderStatus}`
+          message: 'This order has already been accepted and can no longer be cancelled.'
         });
       }
 
@@ -395,16 +379,8 @@ class OrderController {
       // Restore Stock
       await restoreStock(order.items);
 
-      // Refund to wallet if paid
+      // Mark refunded if paid
       if (order.paymentStatus === 'paid') {
-        const user = await User.findById(req.user._id);
-        user.walletBalance += order.totalAmount;
-        user.walletTransactions.push({
-          amount: order.totalAmount,
-          type: 'credit',
-          description: `Refund for Cancelled Order #${order.orderNumber}`
-        });
-        await user.save();
         order.paymentStatus = 'refunded';
       }
 
@@ -414,7 +390,7 @@ class OrderController {
       res.status(200).json({
         success: true,
         message: order.paymentStatus === 'refunded'
-          ? 'Order cancelled and amount refunded to your wallet'
+          ? 'Order cancelled and amount refunded'
           : 'Order cancelled successfully'
       });
     } catch (error) {
@@ -801,9 +777,9 @@ class OrderController {
 
       const subtotal = order.items.reduce((acc, item) => acc + (item.totalPrice || ((item.unitPrice || item.price || 0) * item.quantity)), 0);
       order.subtotal = subtotal;
-      order.totalAmount = subtotal + (order.deliveryFee || 0) - (order.discount || 0) + (order.tax || 0);
+      order.totalAmount = subtotal + (order.deliveryFee || 0) + (order.platformFee || 0) - (order.discount || 0) + (order.tax || 0);
 
-      if (!["cash", "upi/card", "online", "cod", "wallet", "Not Specified"].includes(order.paymentMethod)) {
+      if (!["cash", "upi/card", "online", "cod", "Not Specified"].includes(order.paymentMethod)) {
         order.paymentMethod = 'Not Specified';
       }
 

@@ -13,6 +13,7 @@ import { useCart } from '../../context/CartContext';
 import Loader from '../../components/Loader/Loader';
 import OffersCarousel from '../../components/Offers/OffersCarousel';
 import StoreStatusBanner from '../../components/StoreStatus/StoreStatusBanner';
+import { Sparkles, X, Flame, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const heroImages = ['/heroSection/hero1.png', '/heroSection/hero2.png', '/heroSection/hero3.png', '/heroSection/hero4.png', '/heroSection/hero5.png'];
 
@@ -23,8 +24,8 @@ const LandingPage = () => {
   const [categories, setCategories] = useState([]);
   const [trendingItems, setTrendingItems] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [bogoOnly, setBogoOnly] = useState(false);
-  const [comboOnly, setComboOnly] = useState(false);
+  const [offerFilter, setOfferFilter] = useState(null); // null | 'bogo' | 'combo' | 'discount' | mongoId
+  const [offerName, setOfferName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -37,6 +38,14 @@ const LandingPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const observerTarget = useRef(null);
+  const scrollContainerRef = useRef(null);
+
+  const scrollTrending = (direction) => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = direction === 'left' ? -300 : 300;
+      scrollContainerRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -51,7 +60,7 @@ const LandingPage = () => {
     document.title = "GuestO | Premium Dining Experience";
     fetchTrendingDishes();
     fetchCategories();
-    fetchMenus(1, true);
+    fetchMenus();
   }, []);
 
   useEffect(() => {
@@ -81,31 +90,37 @@ const LandingPage = () => {
     }
   }, []);
 
-  const fetchMenus = useCallback(async (pageNum = 1, isInitial = false) => {
-    if (isInitial) setLoading(true);
-    else setLoadingMore(true);
-
+  const fetchMenus = useCallback(async (pageNum = 1, filterOverride = offerFilter) => {
     try {
-      const response = await api.get('/api/menus', {
-        params: {
-          page: pageNum,
-          limit: 10,
-          category: selectedCategory !== 'all' ? selectedCategory : undefined,
-          search: debouncedSearchQuery || undefined,
-          foodType: dietaryFilter !== 'all' ? dietaryFilter : undefined,
-          sort: sortBy !== 'default' ? sortBy : undefined,
-          bogo: bogoOnly ? 'true' : undefined,
-          combo: comboOnly ? 'true' : undefined
-        }
-      });
-
-      const newMenus = response.data;
-      if (isInitial) {
-        setMenus(newMenus);
+      if (pageNum === 1) {
+        setLoading(true);
       } else {
-        setMenus(prev => [...prev, ...newMenus]);
+        setLoadingMore(true);
       }
-      setHasMore(newMenus.length === 10);
+
+      const params = {
+        page: pageNum,
+        limit: 10,
+        category: selectedCategory !== 'all' ? selectedCategory : undefined,
+        search: debouncedSearchQuery || undefined,
+        dietary: dietaryFilter !== 'all' ? dietaryFilter : undefined,
+        sortBy: sortBy !== 'default' ? sortBy : undefined,
+        // Smart routing: 24-char hex = MongoDB ID (poster click), else type string
+        offerId: filterOverride && filterOverride.length === 24 ? filterOverride : undefined,
+        bogo: filterOverride === 'bogo' ? 'true' : undefined,
+        combo: filterOverride === 'combo' ? 'true' : undefined,
+        discount: filterOverride === 'discount' ? 'true' : undefined,
+      };
+
+      const response = await api.get('/api/menus', { params });
+
+      if (pageNum === 1) {
+        setMenus(response.data);
+      } else {
+        setMenus(prev => [...prev, ...response.data]);
+      }
+
+      setHasMore(response.data.length === 10);
       setPage(pageNum);
     } catch (error) {
       console.error('Error fetching menus:', error);
@@ -113,17 +128,17 @@ const LandingPage = () => {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [selectedCategory, searchQuery, dietaryFilter, sortBy, bogoOnly, comboOnly]);
+  }, [selectedCategory, debouncedSearchQuery, dietaryFilter, sortBy, offerFilter]);
 
   useEffect(() => {
-    fetchMenus(1, true);
-  }, [selectedCategory, searchQuery, dietaryFilter, sortBy, bogoOnly, comboOnly]);
+    fetchMenus(1, offerFilter);
+  }, [selectedCategory, debouncedSearchQuery, dietaryFilter, sortBy, offerFilter]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       entries => {
         if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
-          fetchMenus(page + 1);
+          fetchMenus(page + 1, offerFilter);
         }
       },
       { threshold: 1.0 }
@@ -133,32 +148,44 @@ const LandingPage = () => {
       observer.observe(observerTarget.current);
     }
 
-    return () => observer.disconnect();
-  }, [hasMore, loading, loadingMore, page, fetchMenus]);
+    return () => {
+      if (observerTarget.current) {
+        observer.unobserve(observerTarget.current);
+      }
+    };
+  }, [hasMore, loading, loadingMore]);
 
-  const handleCategoryChange = (categoryId) => {
+  const handleCategoryChange = useCallback((categoryId) => {
     setSelectedCategory(categoryId);
-    setBogoOnly(false);
-    setComboOnly(false);
+    setOfferFilter(null);
+    setOfferName('');
     setPage(1);
     setHasMore(true);
-  };
+  }, []);
 
-  const handleBogoFilter = () => {
-    setSelectedCategory('all');
-    setBogoOnly(true);
-    setComboOnly(false);
+  const handlePromoFilterToggle = useCallback((type, label) => {
+    if (offerFilter === type) {
+      setOfferFilter(null);
+      setOfferName('');
+    } else {
+      setSelectedCategory('all');
+      setOfferFilter(type);
+      setOfferName(label);
+    }
     setPage(1);
     setHasMore(true);
-  };
+  }, [offerFilter]);
 
-  const handleComboFilter = () => {
+  const clearAllFilters = useCallback(() => {
     setSelectedCategory('all');
-    setBogoOnly(false);
-    setComboOnly(true);
+    setOfferFilter(null);
+    setOfferName('');
+    setSortBy('default');
+    setDietaryFilter('all');
+    setSearchQuery('');
     setPage(1);
     setHasMore(true);
-  };
+  }, []);
 
   const filteredMenus = useMemo(() => {
     return menus;
@@ -224,28 +251,119 @@ const LandingPage = () => {
         />
       </div>
 
-      <OffersCarousel
-        onOfferClick={(offer) => {
-          if (offer.offerType === 'bogo') {
-            handleBogoFilter();
-          } else if (offer.offerType === 'combo') {
-            handleComboFilter();
-          } else if (offer.applicableCategories?.length > 0) {
-            handleCategoryChange(offer.applicableCategories[0]._id);
-          } else {
-            setSelectedCategory('all');
-            setBogoOnly(false);
-            setComboOnly(false);
-          }
-          const menuElement = document.getElementById('menu');
-          if (menuElement) {
-            menuElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
-        }}
-      />
-
       <div className="relative z-10 bg-background rounded-t-[3rem] -mt-12 md:-mt-20">
-        <main className="max-w-7xl mx-auto px-6 py-0">
+        <main className="max-w-7xl mx-auto px-6 pt-16 pb-0">
+          <div className="mb-12">
+            <OffersCarousel
+              onOfferClick={(offer) => {
+                setSelectedCategory('all');
+                setOfferFilter(offer._id);
+                setOfferName(offer.title);
+                setPage(1);
+                setHasMore(true);
+                const menuElement = document.getElementById('menu');
+                if (menuElement) {
+                  menuElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+              }}
+            />
+          </div>
+
+          {/* Most Loved Dishes Slider */}
+          {trendingItems.length > 0 && (
+             <div className="mb-20 relative group/slider mt-12">
+                <div className="flex items-center justify-between mb-8 px-6">
+                   <div className="space-y-1">
+                      <div className="flex items-center gap-3">
+                         <div className="w-10 h-10 bg-primary/10 rounded-2xl flex items-center justify-center">
+                            <Flame size={24} className="text-primary animate-pulse" />
+                         </div>
+                         <h2 className="text-3xl font-black text-text-primary tracking-tighter">
+                            Most Loved <span className="text-primary italic">Dishes</span>
+                         </h2>
+                      </div>
+                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest opacity-60 ml-14">Most loved by our community</p>
+                   </div>
+
+                   <div className="hidden md:flex items-center gap-4">
+                      <button 
+                        onClick={() => scrollTrending('left')}
+                        className="p-3 bg-background-muted border border-border/10 rounded-full text-text-primary hover:bg-primary hover:text-white transition-all shadow-xl active:scale-90"
+                      >
+                         <ChevronLeft size={20} />
+                      </button>
+                      <button 
+                        onClick={() => scrollTrending('right')}
+                        className="p-3 bg-background-muted border border-border/10 rounded-full text-text-primary hover:bg-primary hover:text-white transition-all shadow-xl active:scale-90"
+                      >
+                         <ChevronRight size={20} />
+                      </button>
+                   </div>
+                </div>
+
+                <div 
+                  ref={scrollContainerRef}
+                  className="flex overflow-x-auto no-scrollbar gap-6 px-6 pb-6 snap-x"
+                >
+                    {trendingItems.map((item, idx) => (
+                      <div 
+                        key={idx} 
+                        onClick={() => { setSelectedMenu(item); setIsModalOpen(true); }}
+                        className="flex-shrink-0 w-[200px] md:w-[260px] bg-background-muted rounded-[2rem] p-4 border border-border/5 shadow-xl transition-all duration-500 group snap-center relative overflow-hidden hover:shadow-[0_20px_50px_rgba(185,28,28,0.1)] cursor-pointer"
+                      >
+                         <div className="relative h-40 md:h-48 rounded-[1.5rem] overflow-hidden mb-4">
+                            <img 
+                              src={item.image || '/placeholder-food.jpg'} 
+                              alt={item.name} 
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" 
+                            />
+                            {(() => {
+                               const menuDiscount = item.discountPercentage || 0;
+                               const cat = categories.find(c => c._id === item.category);
+                               const categoryDiscount = cat?.discountPercentage || 0;
+                               const maxDiscountPercent = Math.max(menuDiscount, categoryDiscount);
+                               return maxDiscountPercent > 0 && !item.isCombo ? (
+                                  <div className="absolute top-3 left-3 bg-primary text-white text-[9px] font-black px-2 py-1 rounded-lg shadow-lg z-10">
+                                     {`${maxDiscountPercent}% OFF`}
+                                  </div>
+                               ) : null;
+                            })()}
+                         </div>
+                         <div className="px-1">
+                            <h3 className="text-base font-black text-text-primary mb-2 group-hover:text-primary transition-colors truncate">{item.name}</h3>
+                            <div className="flex items-center justify-between border-t border-border/10 pt-3">
+                               {(() => {
+                                  const originalPrice = item.offerPrice || item.price || (item.variants && item.variants.length > 0 ? Math.min(...item.variants.map(v => v.price)) : 0);
+                                  const menuDiscount = item.discountPercentage || 0;
+                                  const cat = categories.find(c => c._id === item.category);
+                                  const categoryDiscount = cat?.discountPercentage || 0;
+                                  const maxDiscountPercent = Math.max(menuDiscount, categoryDiscount);
+                                  const discountedPrice = maxDiscountPercent > 0 && !item.isCombo ? originalPrice * (1 - maxDiscountPercent / 100) : originalPrice;
+                                  
+                                  return (
+                                     <div className="flex flex-col">
+                                        {maxDiscountPercent > 0 && !item.isCombo && (
+                                           <span className="text-[9px] text-text-muted line-through opacity-60">
+                                             ₹{Math.round(originalPrice)}
+                                           </span>
+                                        )}
+                                        <span className="text-lg font-black text-text-primary">
+                                          ₹{Math.round(discountedPrice)}
+                                        </span>
+                                     </div>
+                                  );
+                               })()}
+                               <div className="px-3 py-1 bg-background-card rounded-xl text-[9px] font-black text-text-muted uppercase tracking-wider">
+                                  15 Min
+                               </div>
+                            </div>
+                         </div>
+                      </div>
+                    ))}
+                </div>
+             </div>
+          )}
+
           <CategorySection
             categories={categories}
             selectedCategory={selectedCategory}
@@ -257,6 +375,23 @@ const LandingPage = () => {
               }
             }}
           />
+
+          {offerFilter && (
+            <div className="max-w-3xl mx-auto mb-8 px-4 flex items-center justify-between bg-primary/10 border border-primary/20 p-4 rounded-2xl animate-fade-in" id="menu">
+              <div className="flex items-center gap-2">
+                <Sparkles size={18} className="text-primary" />
+                <span className="text-sm font-bold text-primary">
+                  Showing: {offerName || 'Special Offer'}
+                </span>
+              </div>
+              <button 
+                onClick={() => { setOfferFilter(null); setOfferName(''); setPage(1); setHasMore(true); }}
+                className="text-xs font-bold text-text-muted hover:text-primary transition-colors flex items-center gap-1"
+              >
+                <X size={14} /> Clear Filter
+              </button>
+            </div>
+          )}
 
           <div className="pb-32">
             <MenuSection
@@ -270,20 +405,11 @@ const LandingPage = () => {
               observerTarget={observerTarget}
               hasMore={hasMore}
               loadingMore={loadingMore}
-              bogoOnly={bogoOnly}
-              comboOnly={comboOnly}
               selectedCategory={selectedCategory}
               searchQuery={searchQuery}
-              onClearAll={() => {
-                setSelectedCategory('all');
-                setBogoOnly(false);
-                setComboOnly(false);
-                setSortBy('default');
-                setDietaryFilter('all');
-                setSearchQuery('');
-                setPage(1);
-                setHasMore(true);
-              }}
+              offerFilter={offerFilter}
+              handlePromoFilterToggle={handlePromoFilterToggle}
+              onClearAll={clearAllFilters}
               onAddClick={(menu) => {
                 setSelectedMenu(menu);
                 setIsModalOpen(true);

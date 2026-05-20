@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, Package, CheckCircle2, Truck, Timer, MapPin, 
-  Phone, MessageSquare, ChevronRight, Clock, Star, 
+import {
+  ArrowLeft, Package, CheckCircle2, Truck, Timer, MapPin,
+  Phone, ChevronRight, Clock, Star,
   Home, HelpCircle, XCircle, Info
 } from 'lucide-react';
 import api from '../../api/axiosInstance';
@@ -89,6 +89,8 @@ const TrackOrderPage = () => {
         confirmButtonColor: '#B91C1C',
         cancelButtonColor: '#6b7280',
         confirmButtonText: 'Yes, cancel it!',
+        scrollbarPadding: false,
+        heightAuto: false,
         customClass: {
           popup: 'rounded-[2rem] bg-background-card text-text-primary',
           title: 'text-text-primary',
@@ -104,6 +106,8 @@ const TrackOrderPage = () => {
             text: 'Your order has been cancelled.',
             icon: 'success',
             confirmButtonColor: '#B91C1C',
+            scrollbarPadding: false,
+            heightAuto: false,
             customClass: {
               popup: 'rounded-[2rem] bg-background-card text-text-primary'
             }
@@ -117,6 +121,8 @@ const TrackOrderPage = () => {
         text: error.response?.data?.message || 'Failed to cancel order',
         icon: 'error',
         confirmButtonColor: '#B91C1C',
+        scrollbarPadding: false,
+        heightAuto: false,
         customClass: {
           popup: 'rounded-[2rem] bg-background-card text-text-primary'
         }
@@ -147,18 +153,18 @@ const TrackOrderPage = () => {
 
   // Base steps
   let steps = [
-    { id: 'placed', label: 'Order placed', color: 'text-primary', bg: 'bg-primary/5', dot: 'bg-primary', description: 'Your order has been received' },
-    { id: 'accepted', label: 'Order accepted', color: 'text-blue-500', bg: 'bg-blue-50', dot: 'bg-blue-500', description: 'Admin has approved your order' },
-    { id: 'preparing', label: 'Order preparing', color: 'text-orange-500', bg: 'bg-orange-50', dot: 'bg-orange-500', description: 'Chef is preparing your meal' },
-    { id: 'out-for-delivery', label: 'On the way', color: 'text-indigo-600', bg: 'bg-indigo-50', dot: 'bg-indigo-600', description: 'Our delivery partner is nearby' },
-    { id: 'delivered', label: 'Delivered', color: 'text-green-600', bg: 'bg-green-50', dot: 'bg-green-600', description: 'Enjoy your meal!' }
+    { id: 'placed', label: 'Order placed', color: 'text-primary', bg: 'bg-primary/10', dot: 'bg-primary', description: 'Your order has been received' },
+    { id: 'accepted', label: 'Order accepted', color: 'text-blue-500', bg: 'bg-blue-500/10', dot: 'bg-blue-500', description: 'Admin has approved your order' },
+    { id: 'preparing', label: 'Order preparing', color: 'text-orange-500', bg: 'bg-orange-500/10', dot: 'bg-orange-500', description: 'Chef is preparing your meal' },
+    { id: 'out-for-delivery', label: 'On the way', color: 'text-indigo-600', bg: 'bg-indigo-500/10', dot: 'bg-indigo-600', description: 'Our delivery partner is nearby' },
+    { id: 'delivered', label: 'Delivered', color: 'text-green-600', bg: 'bg-green-500/10', dot: 'bg-green-600', description: 'Enjoy your meal!' }
   ];
 
   // Logic to determine current tracking step
   let activeStepIndex = 0;
   if (order.orderStatus === 'cancelled') {
-    const cancelStep = { id: 'cancelled', label: 'Order cancelled', color: 'text-red-600', bg: 'bg-red-50', dot: 'bg-red-600', description: 'This order has been cancelled' };
-    
+    const cancelStep = { id: 'cancelled', label: 'Order cancelled', color: 'text-red-600', bg: 'bg-red-500/10', dot: 'bg-red-600', description: 'This order has been cancelled' };
+
     // Determine where the order was before cancellation to place the 'Cancelled' step correctly
     if (order.kitchenStatus !== 'placed') {
       // If it somehow got cancelled while preparing
@@ -192,9 +198,9 @@ const TrackOrderPage = () => {
     <div className={`min-h-screen bg-background font-sans selection:bg-primary/10 overflow-x-hidden ${theme}`}>
       <div className="relative w-full overflow-hidden flex flex-col bg-primary">
         <div className="absolute inset-0 z-0 bg-primary"></div>
-        
+
         <StoreStatusBanner />
-        
+
         <Navbar
           user={user}
           cartItems={cartItems}
@@ -204,7 +210,7 @@ const TrackOrderPage = () => {
           navigate={navigate}
           dropdownRef={dropdownRef}
         />
-        
+
         {/* Spacer for Navbar visibility */}
         <div className="h-24 md:h-32"></div>
       </div>
@@ -220,18 +226,18 @@ const TrackOrderPage = () => {
         </button>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          
+
           {/* LEFT COLUMN: Tracking & Items */}
           <div className="lg:col-span-8 space-y-6">
-            
+
             {/* Product & Tracking Card */}
             <div className="bg-background-card rounded-2xl border border-border/60 shadow-sm overflow-hidden">
               {/* Product Header */}
               <div className="p-6 border-b border-border/40 flex flex-col sm:flex-row gap-6">
                 <div className="w-24 h-24 sm:w-20 sm:h-20 bg-background rounded-lg border border-border/40 p-2 flex-shrink-0">
-                  <img 
-                    src={mainItem?.menuItem?.image || '/placeholder-food.jpg'} 
-                    alt={mainItem?.menuItem?.name} 
+                  <img
+                    src={mainItem?.menuItem?.image || '/placeholder-food.jpg'}
+                    alt={mainItem?.menuItem?.name}
                     className="w-full h-full object-contain"
                   />
                 </div>
@@ -242,9 +248,11 @@ const TrackOrderPage = () => {
                   <p className="text-xs text-text-muted mb-2 font-medium">Order ID: <span className="font-bold text-text-primary">#{order.orderNumber || order._id.slice(-8).toUpperCase()}</span></p>
                   <div className="flex items-center gap-2">
                     <span className="text-lg font-black text-text-primary">₹{order.totalAmount}</span>
-                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${order.paymentStatus === 'paid' ? 'text-green-600 bg-green-50' : 'text-primary bg-primary/10'}`}>
-                      {order.paymentStatus === 'paid' ? 'Paid' : 'Payment pending'}
-                    </span>
+                    {order.orderStatus !== 'cancelled' && (
+                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${order.paymentStatus === 'paid' ? 'text-emerald-500 bg-emerald-500/10' : 'text-primary bg-primary/10'}`}>
+                        {order.paymentStatus === 'paid' ? 'Paid' : 'Payment pending'}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -288,13 +296,7 @@ const TrackOrderPage = () => {
                           <p className={`text-[11px] font-semibold leading-relaxed ${isCompleted ? 'text-text-muted' : 'text-text-muted/40'}`}>
                             {step.description}
                           </p>
-                          {isActive && (
-                            <div className="mt-4">
-                              <button className="text-[10px] font-bold text-primary flex items-center gap-1 hover:underline group">
-                                See all updates <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                              </button>
-                            </div>
-                          )}
+
                         </div>
                       </div>
                     );
@@ -303,58 +305,39 @@ const TrackOrderPage = () => {
               </div>
 
               {/* Action Buttons */}
-              <div className="border-t border-border/40 grid grid-cols-2">
-                {order.orderStatus !== 'cancelled' && 
-                 order.orderStatus !== 'delivered' && 
-                 order.orderStatus !== 'out-for-delivery' && 
-                 order.kitchenStatus === 'placed' ? (
-                  <button 
-                    className="flex items-center justify-center gap-2 py-5 text-xs font-bold text-text-secondary hover:bg-background transition-colors border-r border-border/40"
+              <div className="border-t border-border/40 flex">
+                {order.orderStatus === 'placed' ? (
+                  <button
+                    className="w-full flex items-center justify-center gap-2 py-5 text-xs font-bold text-text-secondary hover:bg-background transition-colors"
                     onClick={handleCancelOrder}
                   >
                     <XCircle size={18} className="text-text-muted" />
                     Cancel
                   </button>
                 ) : (
-                   <button 
-                    className="flex items-center justify-center gap-2 py-5 text-xs font-bold text-text-muted opacity-50 cursor-not-allowed border-r border-border/40"
+                  <button
+                    className="w-full flex items-center justify-center gap-2 py-5 text-xs font-bold text-text-muted opacity-50 cursor-not-allowed"
                     disabled
                   >
                     <XCircle size={18} />
                     {order.orderStatus === 'cancelled' ? 'Cancelled' : (order.orderStatus === 'delivered' ? 'Delivered' : 'In Progress')}
                   </button>
                 )}
-                <button 
-                  className="flex items-center justify-center gap-2 py-5 text-xs font-bold text-text-secondary hover:bg-background transition-colors"
-                  onClick={() => navigate('/about')}
-                >
-                  <MessageSquare size={18} className="text-text-muted" />
-                  Chat with us
-                </button>
               </div>
             </div>
 
-            {/* Support Action */}
-            <div className="bg-primary/5 rounded-2xl p-6 border border-primary/10 flex items-center justify-between">
-              <div>
-                <h4 className="text-sm font-bold text-text-primary mb-1">Need help with your order?</h4>
-                <p className="text-[11px] text-text-muted font-semibold">Our support team is available 24/7</p>
-              </div>
-              <button className="bg-primary text-white px-6 py-3 rounded-xl text-[10px] font-bold active:scale-95 transition-all shadow-lg shadow-primary/20">
-                Contact support
-              </button>
-            </div>
+
 
           </div>
 
           {/* RIGHT COLUMN: Sidebar Details */}
           <div className="lg:col-span-4 space-y-6 sticky top-24">
-            
+
             {/* Delivery Details Card */}
             <div className="bg-background-card rounded-2xl border border-border/60 shadow-sm p-6 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
               <h2 className="text-sm font-bold text-text-primary mb-6 relative z-10">Delivery details</h2>
-              
+
               <div className="space-y-6 relative z-10">
                 <div className="flex gap-4 group cursor-pointer">
                   <div className="w-10 h-10 rounded-xl bg-background border border-border/40 flex items-center justify-center text-text-muted shrink-0 group-hover:text-primary group-hover:bg-primary/5 transition-all">
@@ -394,9 +377,9 @@ const TrackOrderPage = () => {
 
             {/* Price Details Card */}
             <div className="bg-background-card rounded-2xl border border-border/60 shadow-sm p-6 relative overflow-hidden">
-               <div className="absolute bottom-0 left-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
               <h2 className="text-sm font-bold text-text-primary mb-6 relative z-10">Price details</h2>
-              
+
               <div className="space-y-4 relative z-10">
                 <div className="flex justify-between items-center text-xs font-semibold text-text-muted">
                   <span>Listing price</span>
@@ -408,11 +391,17 @@ const TrackOrderPage = () => {
                   </span>
                   <span className="font-bold text-text-primary">₹{order.deliveryFee || 0}</span>
                 </div>
+                {order.platformFee > 0 && (
+                  <div className="flex justify-between items-center text-xs font-semibold text-text-muted">
+                    <span>Platform fee</span>
+                    <span className="font-bold text-text-primary">₹{order.platformFee}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center text-xs font-semibold text-green-600">
                   <span>Special discount</span>
-                  <span className="font-bold">-₹0</span>
+                  <span className="font-bold">-₹{order.discount || 0}</span>
                 </div>
-                
+
                 <div className="pt-4 border-t border-border/40 border-dashed">
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-sm font-bold text-text-primary">Total amount</span>
@@ -424,14 +413,8 @@ const TrackOrderPage = () => {
                   </div>
                 </div>
               </div>
-              
-              <div className="mt-8 flex items-center gap-3 p-4 bg-green-50 rounded-2xl border border-green-100 relative z-10 group overflow-hidden">
-                <div className="absolute inset-0 bg-green-600 opacity-0 group-hover:opacity-[0.02] transition-opacity"></div>
-                <Star size={16} className="text-green-600 fill-green-600" />
-                <p className="text-[10px] font-bold text-green-700">
-                  You earned 5 reward points
-                </p>
-              </div>
+
+
             </div>
 
           </div>

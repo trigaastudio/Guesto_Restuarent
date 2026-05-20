@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
-import { ArrowLeft, CreditCard, Banknote, MapPin, ChevronRight, CheckCircle2, ShieldCheck, Info, Clock, Wallet } from 'lucide-react';
+import { ArrowLeft, CreditCard, Banknote, MapPin, ChevronRight, CheckCircle2, ShieldCheck, Info, Clock } from 'lucide-react';
 import api from '../../api/axiosInstance';
 import Swal from 'sweetalert2';
 import Navbar from '../../components/Navbar/Navbar';
@@ -11,11 +11,10 @@ const PaymentPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { cartItems, subtotal, clearCart, settings } = useCart();
-  const [paymentMethod, setPaymentMethod] = useState('online'); // 'online', 'cod', 'wallet'
+  const [paymentMethod, setPaymentMethod] = useState('online'); // 'online', 'cod'
   const [loading, setLoading] = useState(false);
   const [isOrderSuccess, setIsOrderSuccess] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
-  const [walletBalance, setWalletBalance] = useState(0);
   const dropdownRef = React.useRef(null);
 
   const handleLogout = React.useCallback(() => {
@@ -25,20 +24,6 @@ const PaymentPage = () => {
   }, [navigate]);
 
   const user = JSON.parse(localStorage.getItem('user') || 'null');
-
-  useEffect(() => {
-    const fetchWallet = async () => {
-      try {
-        const response = await api.get('/api/users/profile');
-        if (response.data.success) {
-          setWalletBalance(response.data.data.walletBalance || 0);
-        }
-      } catch (error) {
-        console.error('Error fetching wallet balance:', error);
-      }
-    };
-    fetchWallet();
-  }, []);
 
   // Get delivery address and additional note from location state or fallback
   const deliveryAddress = location.state?.deliveryAddress;
@@ -58,8 +43,8 @@ const PaymentPage = () => {
     script.async = true;
     document.body.appendChild(script);
 
-    // If no address/table or items, redirect back to cart
-    if (!isOrderSuccess && (!(deliveryAddress || dineInTableId) || cartItems.length === 0)) {
+    // If no address/table, no items, or subtotal is under ₹140, redirect back to cart
+    if (!isOrderSuccess && (!(deliveryAddress || dineInTableId) || cartItems.length === 0 || subtotal < 140)) {
       navigate('/cart');
     }
 
@@ -76,7 +61,7 @@ const PaymentPage = () => {
         document.body.removeChild(script);
       }
     };
-  }, [deliveryAddress, dineInTableId, cartItems, navigate, isOrderSuccess]);
+  }, [deliveryAddress, dineInTableId, cartItems, navigate, isOrderSuccess, subtotal]);
 
   const handlePlaceOrder = async () => {
     setLoading(true);
@@ -433,7 +418,7 @@ const PaymentPage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {cartItems.map((item) => (
                     <div key={item._id} className="flex items-center gap-5 p-4 rounded-[2rem] bg-background border border-border/40 group hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all duration-500">
-                      <div className="w-16 h-16 rounded-2xl bg-white p-1 shadow-sm border border-border/40 shrink-0 overflow-hidden group-hover:rotate-3 transition-transform duration-500">
+                      <div className="w-16 h-16 rounded-2xl shrink-0 overflow-hidden group-hover:rotate-3 transition-transform duration-500">
                         <img src={item.image || '/placeholder-food.jpg'} alt={item.name} className="w-full h-full object-contain" />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -502,29 +487,6 @@ const PaymentPage = () => {
                       </div>
                     </div>
 
-                    {/* Wallet Option */}
-                    <div
-                      onClick={() => walletBalance >= total ? setPaymentMethod('wallet') : null}
-                      className={`cursor-pointer group/pay p-4 rounded-[1.5rem] border-2 transition-all duration-500 flex items-center justify-between ${paymentMethod === 'wallet' ? 'border-primary bg-primary/[0.03] shadow-lg shadow-primary/5 -translate-y-0.5' : walletBalance < total ? 'opacity-40 cursor-not-allowed border-border/40 bg-background grayscale' : 'border-border/20 bg-background hover:border-primary/30 hover:bg-background-card hover:-translate-y-0.5'}`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-500 ${paymentMethod === 'wallet' ? 'bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-500 text-white shadow-lg shadow-emerald-500/20 scale-105' : 'bg-background-card text-text-muted/40 group-hover/pay:text-emerald-500'}`}>
-                          <Wallet size={20} strokeWidth={2.5} />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className="text-sm font-black text-text-primary tracking-tight">Wallet</h4>
-                            <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-lg border shadow-sm ${walletBalance >= total ? 'bg-emerald-500 text-white border-emerald-500/20' : 'bg-red-500 text-white border-red-500/20'}`}>
-                              ₹{walletBalance}
-                            </span>
-                          </div>
-                          <p className="text-[9px] font-bold text-text-muted tracking-widest uppercase opacity-50">guesto credit</p>
-                        </div>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${paymentMethod === 'wallet' ? 'border-primary bg-primary/10' : 'border-border/40 group-hover/pay:border-primary/40'}`}>
-                        <div className={`w-2 h-2 rounded-full bg-primary transition-all duration-500 ${paymentMethod === 'wallet' ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}></div>
-                      </div>
-                    </div>
 
                     {/* COD Option */}
                     <div
@@ -570,6 +532,13 @@ const PaymentPage = () => {
                       <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary animate-pulse">
                         <ShieldCheck size={20} />
                       </div>
+                    </div>
+
+                    <div className="relative z-10 flex items-center gap-2 p-3 bg-primary/5 rounded-xl border border-primary/10 mt-3">
+                      <Info size={14} className="text-primary flex-shrink-0" />
+                      <p className="text-[10px] font-bold text-text-muted leading-snug">
+                        Delivery is free within 5 km. Beyond 5 km, a delivery charge of ₹10 per km applies.
+                      </p>
                     </div>
                   </div>
 

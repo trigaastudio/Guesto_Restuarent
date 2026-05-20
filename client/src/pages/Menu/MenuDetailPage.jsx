@@ -87,20 +87,8 @@ const MenuDetailPage = () => {
   const handleAddToCart = () => {
     if (!menu) return;
 
-    // Prepare item for cart
-    const itemToAdd = {
-      ...menu,
-      selectedSize: selectedSize?.size || null,
-      price: selectedSize?.price || menu.offerPrice,
-      quantity: quantity
-    };
-
-    // Add multiple times based on quantity (CartContext usually handles 1 at a time or has quantity param)
-    // Checking current addToCart implementation - usually it adds one. 
-    // If it only adds one, I'll call it multiple times or check context.
-    for (let i = 0; i < quantity; i++) {
-      addToCart(itemToAdd);
-    }
+    // Add item to cart with proper quantity and selected size
+    addToCart(menu, quantity, selectedSize?.size || null);
 
     Swal.fire({
       icon: 'success',

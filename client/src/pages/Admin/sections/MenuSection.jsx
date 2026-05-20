@@ -33,6 +33,7 @@ const MenuSection = () => {
     isCombo: false,
     comboItems: [],
     offerPercentage: 0,
+    discountPercentage: 0,
     includedItems: [] // Global addons if needed, but we'll focus on variants
   });
 
@@ -85,6 +86,7 @@ const MenuSection = () => {
           price: ci.price || 0
         })) || [],
         offerPercentage: menu.offerPercentage || 0,
+        discountPercentage: menu.discountPercentage || 0,
         variants: menu.variants?.map(v => ({
           size: v.size,
           price: v.price,
@@ -114,7 +116,8 @@ const MenuSection = () => {
         isBlocked: false,
         isCombo: false,
         comboItems: [],
-        offerPercentage: 0
+        offerPercentage: 0,
+        discountPercentage: 0
       });
       setIsEditing(false);
     }
@@ -161,7 +164,7 @@ const MenuSection = () => {
     }
 
     const comboTotalPrice = isComboCategory 
-      ? currentMenu.comboItems.reduce((sum, item) => sum + (item.price || 0), 0) * (1 - (currentMenu.offerPercentage || 0) / 100)
+      ? currentMenu.comboItems.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0) * (1 - (currentMenu.offerPercentage || 0) / 100)
       : 0;
 
     const cleanedVariants = currentMenu.variants.map(v => ({
@@ -477,12 +480,13 @@ const MenuSection = () => {
                   </div>
                 </th>
                 <th className="px-3 py-4 text-center">Type</th>
-                <th className="px-3 py-4 cursor-pointer hover:text-primary transition-colors group min-w-[120px]" onClick={() => handleSort('price')}>
+                 <th className="px-3 py-4 cursor-pointer hover:text-primary transition-colors group min-w-[120px]" onClick={() => handleSort('price')}>
                   <div className="flex items-center space-x-1">
                     <span>Pricing</span>
                     <ArrowUpDown size={12} className={`opacity-0 group-hover:opacity-100 transition-opacity ${sortConfig.key === 'price' ? 'opacity-100 text-primary' : ''}`} />
                   </div>
                 </th>
+                <th className="px-3 py-4 text-center">Discount</th>
                 <th className="px-3 py-4 text-center">Inventory</th>
                 <th className="px-3 py-4 text-center">Status</th>
                 <th className="px-3 py-4 text-center">Actions</th>
@@ -592,6 +596,15 @@ const MenuSection = () => {
                           return null;
                         })()}
                       </div>
+                    </td>
+                    <td className="px-3 py-4 text-center">
+                      {menu.discountPercentage > 0 ? (
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-status-on/10 text-status-available border border-status-on/20">
+                          {menu.discountPercentage}% Off
+                        </span>
+                      ) : (
+                        <span className="text-text-muted text-[11px] font-medium italic">No Discount</span>
+                      )}
                     </td>
                     <td className="px-3 py-4 text-center">
                       <div className="flex flex-col items-center">
@@ -746,6 +759,19 @@ const MenuSection = () => {
                     </label>
                   </div>
                 </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-text-secondary">Discount Percentage (%)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={currentMenu.discountPercentage === 0 ? '' : currentMenu.discountPercentage}
+                    onChange={(e) => setCurrentMenu({ ...currentMenu, discountPercentage: e.target.value === '' ? 0 : Math.min(100, Math.max(0, parseInt(e.target.value) || 0)) })}
+                    className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold"
+                    placeholder="e.g. 15"
+                  />
+                </div>
               </div>
               <div className="bg-background-muted/30 p-4 rounded-2xl border border-border-light space-y-4">
                 <div className="flex items-center justify-between">
@@ -823,16 +849,7 @@ const MenuSection = () => {
                               placeholder="0"
                             />
                           </div>
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider ml-1">Cost Price (₹)</label>
-                            <input
-                              type="number"
-                              value={variant.costPrice || ''}
-                              onChange={(e) => handleSizeChange(idx, 'costPrice', e.target.value)}
-                              className="w-full px-4 py-3 bg-background-card border border-border-main focus:border-primary/50 rounded-xl text-xs font-bold transition-all outline-none"
-                              placeholder="0"
-                            />
-                          </div>
+
                           <div className="space-y-2">
                             <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider ml-1 flex items-center justify-between">
                               <span>Stock Val</span>
@@ -985,7 +1002,7 @@ const MenuSection = () => {
                       onClick={() => {
                         setCurrentMenu({
                           ...currentMenu,
-                          comboItems: [...currentMenu.comboItems, { menuItem: '', price: 0 }]
+                          comboItems: [...currentMenu.comboItems, { menuItem: '', price: 0, quantity: 1 }]
                         });
                       }}
                       className="text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 px-3 py-1.5 rounded-xl border border-primary/20 transition-all flex items-center space-x-1.5"
@@ -1007,7 +1024,8 @@ const MenuSection = () => {
                             newComboItems[idx] = {
                               ...newComboItems[idx],
                               menuItem: selectedId,
-                              price: selectedMenu?.variants?.[0]?.price || 0 // Default to first variant price
+                              price: selectedMenu?.variants?.[0]?.price || 0, // Default to first variant price
+                              quantity: newComboItems[idx].quantity || 1
                             };
                             setCurrentMenu({ ...currentMenu, comboItems: newComboItems });
                           }}
@@ -1030,6 +1048,20 @@ const MenuSection = () => {
                             }}
                             className="w-full pl-5 pr-2 py-2 bg-background-card border border-border-main rounded-lg text-sm text-text-primary outline-none"
                             placeholder="Price"
+                          />
+                        </div>
+                        <div className="w-20 relative">
+                          <input
+                            type="number"
+                            min="1"
+                            value={item.quantity || 1}
+                            onChange={(e) => {
+                              const newComboItems = [...currentMenu.comboItems];
+                              newComboItems[idx].quantity = parseInt(e.target.value) || 1;
+                              setCurrentMenu({ ...currentMenu, comboItems: newComboItems });
+                            }}
+                            className="w-full px-2 py-2 bg-background-card border border-border-main rounded-lg text-sm text-text-primary outline-none text-center"
+                            placeholder="Qty"
                           />
                         </div>
                         <button
@@ -1088,33 +1120,9 @@ const MenuSection = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-3">
                   <div className="flex items-center space-x-3">
-                    <label className="text-sm font-semibold text-text-secondary">Has Offer?</label>
-                    <button
-                      onClick={() => setCurrentMenu({ ...currentMenu, hasOffer: !currentMenu.hasOffer })}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${currentMenu.hasOffer ? 'bg-primary' : 'bg-text-muted'
-                        }`}
-                    >
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${currentMenu.hasOffer ? 'translate-x-6' : 'translate-x-1'
-                        }`} />
-                    </button>
-                  </div>
-                  {currentMenu.hasOffer && (
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm">₹</span>
-                      <input
-                        type="number"
-                        placeholder="Offer Price"
-                        value={currentMenu.offerPrice === 0 ? '' : currentMenu.offerPrice}
-                        onChange={(e) => setCurrentMenu({ ...currentMenu, offerPrice: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
-                        className="w-full pl-7 pr-3 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all"
-                      />
-                    </div>
-                  )}
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-3">
                     <label className="text-sm font-semibold text-text-secondary">Block Item?</label>
                     <button
+                      type="button"
                       onClick={() => setCurrentMenu({ ...currentMenu, isBlocked: !currentMenu.isBlocked })}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${currentMenu.isBlocked ? 'bg-status-off' : 'bg-text-muted'
                         }`}

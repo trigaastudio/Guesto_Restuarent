@@ -55,7 +55,7 @@ const AddressListModal = ({ isOpen, onClose, addresses, onSelect, onAddAddress }
               </div>
               <div className="flex-1">
                 <h4 className="text-sm font-black text-text-primary capitalize mb-1">{addr.type}</h4>
-                <p className="text-[10px] font-bold text-text-muted opacity-70">{addr.address}, {addr.city} {addr.zipCode}</p>
+                <p className="text-[10px] font-bold text-text-muted opacity-70">{addr.address}</p>
               </div>
             </div>
           ))}
@@ -244,8 +244,15 @@ const CartPage = () => {
     // Explicitly handle empty/null/undefined stock fields as 0
     const rawStock = (item.totalStock === undefined || item.totalStock === null) ? 0 : item.totalStock;
 
-    // For combos, we check totalStock directly
-    if (item.isCombo) return rawStock;
+    // For combos, we check totalStock directly and also check if any combo item is out of stock/blocked
+    if (item.isCombo) {
+      const isAnyComboItemOutOfStock = item.comboItems?.some(ci => {
+        const menuItem = ci.menuItem;
+        return !menuItem || menuItem.isBlocked || menuItem.totalStock <= 0;
+      });
+      if (isAnyComboItemOutOfStock) return 0;
+      return rawStock;
+    }
 
     // For items with sizes, totalStock is divided by stockValue (multiplier)
     if (item.selectedSize) {
@@ -265,6 +272,16 @@ const CartPage = () => {
   }, [cartItems, getStock]);
 
   const handleCheckout = () => {
+    if (subtotal < 140) {
+      Swal.fire({
+        title: 'Minimum Order Amount Required',
+        text: 'The minimum order amount is ₹140 to proceed to payment. Please add more items to your cart.',
+        icon: 'warning',
+        confirmButtonColor: '#B91C1C',
+        customClass: { popup: 'rounded-[2rem] bg-background text-text-primary' }
+      });
+      return;
+    }
     if (hasOutOfStockItems) {
       Swal.fire({ 
         title: 'Out of Stock', 
@@ -405,6 +422,28 @@ const CartPage = () => {
                                 <p className="text-[9px] font-black text-text-muted uppercase tracking-widest opacity-60">
                                   {item.selectedSize ? `size: ${item.selectedSize}` : (item.category?.name || 'Main Course')}
                                 </p>
+
+                                {item.isCombo && item.comboItems?.length > 0 && (
+                                  <div className="mt-2 space-y-1 pl-2 border-l border-primary/30">
+                                    <span className="text-[8px] font-black text-primary uppercase tracking-wider block">Combo includes:</span>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {item.comboItems.map((ci, idx) => (
+                                        <span key={idx} className="inline-flex items-center bg-primary/5 text-primary text-[9px] font-bold px-2 py-0.5 rounded-lg border border-primary/10">
+                                          {ci.quantity || 1}x {ci.menuItem?.name || 'Item'}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {item.bogoItem && (
+                                  <div className="mt-2 space-y-1 pl-2 border-l border-emerald-500/30">
+                                    <span className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">Buy 1 Get 1 Free Add-on:</span>
+                                    <div className="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[9px] font-bold px-2 py-0.5 rounded-lg border border-emerald-500/20">
+                                      🎁 Free {item.bogoItem.name} {item.bogoItem.size ? `(${item.bogoItem.size})` : ''} x {item.bogoItem.quantity || item.quantity}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                               <button onClick={() => removeFromCart(item._id)} className="text-text-muted/20 hover:text-red-500 transition-colors p-1"><Trash2 size={16} /></button>
                             </div>
@@ -539,6 +578,22 @@ const CartPage = () => {
                     <span className="text-lg font-black text-text-primary uppercase">Grand Total</span>
                     <span className="text-3xl font-black text-primary tracking-tighter">₹{total}</span>
                   </div>
+
+                  <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-xl border border-primary/10 mt-3">
+                    <Info size={14} className="text-primary flex-shrink-0" />
+                    <p className="text-[10px] font-bold text-text-muted leading-snug">
+                      Delivery is free within 5 km. Beyond 5 km, a delivery charge of ₹10 per km applies.
+                    </p>
+                  </div>
+
+                  {subtotal < 140 && (
+                    <div className="flex items-center gap-2 p-3 bg-status-off/10 text-status-unavailable rounded-xl border border-status-unavailable/20 mt-3 animate-pulse">
+                      <Info size={14} className="flex-shrink-0 text-status-unavailable" />
+                      <p className="text-[10px] font-bold leading-snug text-status-unavailable">
+                        Add ₹{140 - subtotal} more to reach the minimum order amount of ₹140.
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <button 
                   onClick={handleCheckout} 

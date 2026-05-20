@@ -1,33 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { X, Lock, ShieldCheck, Eye, EyeOff, AlertCircle, Mail, CheckCircle2 } from 'lucide-react';
+import { X, Lock, Eye, EyeOff, AlertCircle, Mail, CheckCircle2 } from 'lucide-react';
 import api from '../../api/axiosInstance';
 import { showToast } from '../../utils/sweetAlert';
 
-const ChangePasswordModal = ({ isOpen, onClose, user }) => {
-  const [step, setStep] = useState(1); // 1: Send OTP, 2: Enter Passwords & OTP, 3: Success
+const ChangeEmailModal = ({ isOpen, onClose, user }) => {
+  const [step, setStep] = useState(1); // 1: Enter New Email, 2: Enter Password & OTP, 3: Success
+  const [newEmail, setNewEmail] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [formData, setFormData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
-  });
-  const [showPasswords, setShowPasswords] = useState({
-    current: false,
-    new: false,
-    confirm: false
-  });
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (!isOpen) {
       setStep(1);
+      setNewEmail('');
       setOtp(['', '', '', '', '', '']);
-      setFormData({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      });
+      setCurrentPassword('');
       setError('');
     }
   }, [isOpen]);
@@ -49,11 +39,22 @@ const ChangePasswordModal = ({ isOpen, onClose, user }) => {
   if (!isOpen) return null;
 
   const handleSendOTP = async (e) => {
-    if (e) e.preventDefault();
+    e.preventDefault();
     setError('');
+
+    if (!newEmail || newEmail.trim() === '') {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    if (newEmail.toLowerCase().trim() === user.email.toLowerCase().trim()) {
+      setError('New email must be different from current email');
+      return;
+    }
+
     setLoading(true);
     try {
-      const response = await api.post('/api/users/send-change-password-otp');
+      const response = await api.post('/api/users/send-change-email-otp', { newEmail: newEmail.toLowerCase().trim() });
       if (response.data.success) {
         setStep(2);
         showToast('success', 'OTP Verification Code Sent');
@@ -65,20 +66,9 @@ const ChangePasswordModal = ({ isOpen, onClose, user }) => {
     }
   };
 
-  const handleUpdatePassword = async (e) => {
+  const handleUpdateEmail = async (e) => {
     e.preventDefault();
     setError('');
-
-    if (formData.newPassword !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&^#()_+\-=\[\]{};':"\\|,.<>\/?]).{8,64}$/;
-    if (!passwordRegex.test(formData.newPassword)) {
-      setError('Password must be 8-64 characters and include uppercase, lowercase, number, and special character');
-      return;
-    }
 
     const otpCode = otp.join('');
     if (otpCode.length < 6) {
@@ -89,14 +79,14 @@ const ChangePasswordModal = ({ isOpen, onClose, user }) => {
     setLoading(true);
     try {
       const payload = {
-        newPassword: formData.newPassword,
+        newEmail: newEmail.toLowerCase().trim(),
         otp: otpCode
       };
       if (user.hasPassword) {
-        payload.currentPassword = formData.currentPassword;
+        payload.currentPassword = currentPassword;
       }
 
-      const response = await api.put('/api/users/change-password', payload);
+      const response = await api.put('/api/users/change-email', payload);
 
       if (response.data.success) {
         setStep(3);
@@ -109,14 +99,10 @@ const ChangePasswordModal = ({ isOpen, onClose, user }) => {
         }, 3000);
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update password');
+      setError(err.response?.data?.message || 'Failed to update email');
     } finally {
       setLoading(false);
     }
-  };
-
-  const togglePassword = (field) => {
-    setShowPasswords(prev => ({ ...prev, [field]: !prev[field] }));
   };
 
   const handleOtpChange = (value, index) => {
@@ -127,14 +113,14 @@ const ChangePasswordModal = ({ isOpen, onClose, user }) => {
 
     // Auto-focus next input
     if (value && index < 5) {
-      const nextInput = document.getElementById(`otp-${index + 1}`);
+      const nextInput = document.getElementById(`otp-email-${index + 1}`);
       nextInput?.focus();
     }
   };
 
   const handleOtpKeyDown = (e, index) => {
     if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      const prevInput = document.getElementById(`otp-${index - 1}`);
+      const prevInput = document.getElementById(`otp-email-${index - 1}`);
       prevInput?.focus();
     }
   };
@@ -148,7 +134,7 @@ const ChangePasswordModal = ({ isOpen, onClose, user }) => {
     });
     setOtp(newOtp);
     const nextIndex = Math.min(data.length, 5);
-    document.getElementById(`otp-${nextIndex}`)?.focus();
+    document.getElementById(`otp-email-${nextIndex}`)?.focus();
   };
 
   return (
@@ -159,9 +145,9 @@ const ChangePasswordModal = ({ isOpen, onClose, user }) => {
         <div className="p-6 bg-primary text-white flex justify-between items-center relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl"></div>
           <div className="relative z-10">
-            <h3 className="text-xl font-black tracking-tight">{user.hasPassword ? 'Change Password' : 'Setup Password'}</h3>
+            <h3 className="text-xl font-black tracking-tight">Change Email</h3>
             <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mt-1">
-              {step === 1 ? 'Verify your identity' : step === 2 ? 'Set your new password' : 'All secured!'}
+              {step === 1 ? 'Enter your new email' : step === 2 ? 'Verify & complete' : 'All secured!'}
             </p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors relative z-10">
@@ -192,25 +178,35 @@ const ChangePasswordModal = ({ isOpen, onClose, user }) => {
           </div>
 
           {step === 1 && (
-            <div className="space-y-6">
-              <p className="text-xs font-bold text-text-muted leading-relaxed text-center">
-                To configure or update your password, we need to send a 6-digit verification code to your registered email:
-                <br />
-                <span className="text-text-primary font-black block mt-2">{user.email}</span>
-              </p>
+            <form onSubmit={handleSendOTP} className="space-y-6">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">New Email Address</label>
+                <div className="relative group">
+                  <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors" size={18} />
+                  <input
+                    type="email"
+                    required
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    className="w-full pl-14 pr-5 py-4 bg-background border border-border/40 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary/20 transition-all shadow-sm text-text-primary"
+                    placeholder="new.email@example.com"
+                  />
+                </div>
+                <p className="text-[9px] font-bold text-text-muted opacity-60 ml-1">We will send a 6-digit verification code to this new address</p>
+              </div>
               
               <button
-                onClick={handleSendOTP}
+                type="submit"
                 disabled={loading}
                 className="w-full bg-primary hover:bg-primary-dark text-white font-black py-4 rounded-2xl transition-all shadow-xl shadow-primary/20 active:scale-[0.98] uppercase tracking-widest text-xs flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {loading ? 'Sending OTP...' : 'Send Verification Code'}
               </button>
-            </div>
+            </form>
           )}
 
           {step === 2 && (
-            <form onSubmit={handleUpdatePassword} className="space-y-5">
+            <form onSubmit={handleUpdateEmail} className="space-y-5">
               
               {user.hasPassword && (
                 <div className="space-y-1.5">
@@ -218,55 +214,19 @@ const ChangePasswordModal = ({ isOpen, onClose, user }) => {
                   <div className="relative group">
                     <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors" size={18} />
                     <input
-                      type={showPasswords.current ? 'text' : 'password'}
+                      type={showPassword ? 'text' : 'password'}
                       required
-                      value={formData.currentPassword}
-                      onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })}
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
                       className="w-full pl-14 pr-12 py-3.5 bg-background border border-border/40 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary/20 transition-all shadow-sm text-text-primary"
-                      placeholder="Current password"
+                      placeholder="Enter current password"
                     />
-                    <button type="button" onClick={() => togglePassword('current')} className="absolute right-5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors">
-                      {showPasswords.current ? <EyeOff size={18} /> : <Eye size={18} />}
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors">
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
                 </div>
               )}
-
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">New Password</label>
-                <div className="relative group">
-                  <ShieldCheck className="absolute left-5 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors" size={18} />
-                  <input
-                    type={showPasswords.new ? 'text' : 'password'}
-                    required
-                    value={formData.newPassword}
-                    onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
-                    className="w-full pl-14 pr-12 py-3.5 bg-background border border-border/40 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary/20 transition-all shadow-sm text-text-primary"
-                    placeholder="••••••••"
-                  />
-                  <button type="button" onClick={() => togglePassword('new')} className="absolute right-5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors">
-                    {showPasswords.new ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">Confirm New Password</label>
-                <div className="relative group">
-                  <ShieldCheck className="absolute left-5 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors" size={18} />
-                  <input
-                    type={showPasswords.confirm ? 'text' : 'password'}
-                    required
-                    value={formData.confirmPassword}
-                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    className="w-full pl-14 pr-12 py-3.5 bg-background border border-border/40 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary/20 transition-all shadow-sm text-text-primary"
-                    placeholder="••••••••"
-                  />
-                  <button type="button" onClick={() => togglePassword('confirm')} className="absolute right-5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors">
-                    {showPasswords.confirm ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
 
               <div className="space-y-3 pt-2">
                 <label className="text-[10px] font-black text-text-muted uppercase tracking-widest block text-center">Enter 6-Digit OTP</label>
@@ -274,7 +234,7 @@ const ChangePasswordModal = ({ isOpen, onClose, user }) => {
                   {otp.map((digit, index) => (
                     <input
                       key={index}
-                      id={`otp-${index}`}
+                      id={`otp-email-${index}`}
                       type="text"
                       maxLength={1}
                       value={digit}
@@ -285,7 +245,7 @@ const ChangePasswordModal = ({ isOpen, onClose, user }) => {
                   ))}
                 </div>
                 <div className="flex justify-between items-center px-1 pt-1">
-                  <p className="text-[9px] font-bold text-text-muted opacity-60 uppercase tracking-widest">Sent to {user.email}</p>
+                  <p className="text-[9px] font-bold text-text-muted opacity-60 uppercase tracking-widest">Sent to {newEmail}</p>
                   <button type="button" onClick={handleSendOTP} className="text-[9px] font-black text-primary uppercase tracking-widest hover:underline">Resend OTP</button>
                 </div>
               </div>
@@ -295,7 +255,7 @@ const ChangePasswordModal = ({ isOpen, onClose, user }) => {
                 disabled={loading}
                 className="w-full bg-primary hover:bg-primary-dark text-white font-black py-4 rounded-2xl transition-all shadow-xl shadow-primary/20 active:scale-[0.98] uppercase tracking-widest text-xs flex items-center justify-center gap-2 disabled:opacity-50 mt-4"
               >
-                {loading ? 'Updating Password...' : 'Update Password'}
+                {loading ? 'Verifying & Updating...' : 'Update Email Address'}
               </button>
             </form>
           )}
@@ -310,9 +270,9 @@ const ChangePasswordModal = ({ isOpen, onClose, user }) => {
               </div>
               
               <div className="space-y-3">
-                <h3 className="text-3xl font-black text-text-primary tracking-tight">All Secured!</h3>
+                <h3 className="text-3xl font-black text-text-primary tracking-tight">Email Updated!</h3>
                 <p className="text-[11px] font-black text-text-muted uppercase tracking-[0.2em] leading-relaxed opacity-60">
-                  Password updated. <br /> Redirecting to login page...
+                  Email changed. <br /> Redirecting to login page...
                 </p>
               </div>
             </div>
@@ -323,4 +283,4 @@ const ChangePasswordModal = ({ isOpen, onClose, user }) => {
   );
 };
 
-export default ChangePasswordModal;
+export default ChangeEmailModal;

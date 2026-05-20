@@ -6,6 +6,7 @@ import api from '../../api/axiosInstance';
 import { useTheme } from '../../context/ThemeContext';
 import { useCart } from '../../context/CartContext';
 import ForgotPasswordModal from '../../components/ForgotPasswordModal/ForgotPasswordModal';
+import FunnyDumpling from '../../components/FunnyDumpling/FunnyDumpling';
 
 const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" width="20" height="20">
@@ -24,9 +25,30 @@ const LoginPage = () => {
   const [apiError, setApiError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
+  const [activeField, setActiveField] = useState('');
   const { theme } = useTheme();
   const { settings } = useCart();
-  const logoSrc = theme === 'dark' ? (settings?.branding?.logoGold || "/logo-golden.png") : (settings?.branding?.logoDark || "/logo-dark.png");
+  const logoSrc = settings?.branding?.logoGold || '/logo-golden.png';
+  const containerRef = React.useRef(null);
+
+  React.useEffect(() => {
+    window.scrollTo(0, 0);
+    if (containerRef.current) {
+      containerRef.current.scrollTop = 0;
+    }
+    const originalTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    document.documentElement.setAttribute('data-theme', 'dark');
+    document.documentElement.classList.add('dark');
+
+    return () => {
+      document.documentElement.setAttribute('data-theme', originalTheme);
+      if (originalTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    };
+  }, []);
 
   React.useEffect(() => {
     const token = localStorage.getItem('token');
@@ -35,283 +57,304 @@ const LoginPage = () => {
 
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
-      if (!tokenResponse.access_token) {
-        setApiError('Failed to get access token from Google.');
-        return;
-      }
-      setLoading(true);
-      setApiError('');
+      if (!tokenResponse.access_token) { setApiError('Failed to get access token from Google.'); return; }
+      setLoading(true); setApiError('');
       try {
-        const response = await api.post('/api/auth/google', {
-          token: tokenResponse.access_token
-        });
-        if (response.data.success) {
-          const userData = response.data.data;
-          localStorage.setItem('token', userData.token);
-          localStorage.setItem('user', JSON.stringify(userData));
+        const res = await api.post('/api/auth/google', { token: tokenResponse.access_token });
+        if (res.data.success) {
+          const u = res.data.data;
+          localStorage.setItem('token', u.token);
+          localStorage.setItem('user', JSON.stringify(u));
           window.dispatchEvent(new Event('storage'));
           window.dispatchEvent(new Event('cart-refresh'));
-
           navigate('/home', { replace: true });
         }
       } catch (err) {
-        setApiError(err.response?.data?.message || err.message || 'Google Login failed.');
-      } finally {
-        setLoading(false);
-      }
+        setApiError(err.response?.data?.message || 'Google Login failed.');
+      } finally { setLoading(false); }
     },
     onError: () => setApiError('Google Login failed. Please try again.')
   });
 
   const validateField = (name, value) => {
-    let error = '';
     if (name === 'email') {
-      if (!value.trim()) error = 'REQUIRED';
-      else if (!/\S+@\S+\.\S+/.test(value)) error = 'Invalid email format';
-    } else if (name === 'password') {
-      if (!value) error = 'REQUIRED';
+      if (!value.trim()) return 'REQUIRED';
+      if (!/\S+@\S+\.\S+/.test(value)) return 'Invalid email format';
     }
-    return error;
+    if (name === 'password' && !value) return 'REQUIRED';
+    return '';
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFields((prev) => ({ ...prev, [name]: value }));
-    
-    // Live CLEARING of errors
-    if (errors[name]) {
-      const fieldError = validateField(name, value);
-      if (!fieldError) {
-        setErrors((prev) => ({ ...prev, [name]: '' }));
-      }
-    }
+    setFields(p => ({ ...p, [name]: value }));
+    if (errors[name] && !validateField(name, value))
+      setErrors(p => ({ ...p, [name]: '' }));
   };
 
   const handleBlur = (e) => {
     const { name, value } = e.target;
-    const fieldError = validateField(name, value);
-    if (fieldError) {
-      setErrors((prev) => ({ ...prev, [name]: fieldError }));
-    }
+    const err = validateField(name, value);
+    if (err) setErrors(p => ({ ...p, [name]: err }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setApiError('');
     const newErrors = {};
-    
     if (!fields.email.trim()) newErrors.email = 'REQUIRED';
     else if (!/\S+@\S+\.\S+/.test(fields.email)) newErrors.email = 'Invalid email format';
-    
     if (!fields.password) newErrors.password = 'REQUIRED';
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
+    if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
 
     setLoading(true);
     try {
-      const response = await api.post('/api/auth/login', fields);
-      if (response.data.success) {
-        const userData = response.data.data;
-        localStorage.setItem('user', JSON.stringify(userData));
-        localStorage.setItem('token', userData.token);
-
-        // Dispatch events
+      const res = await api.post('/api/auth/login', fields);
+      if (res.data.success) {
+        const u = res.data.data;
+        localStorage.setItem('user', JSON.stringify(u));
+        localStorage.setItem('token', u.token);
         window.dispatchEvent(new Event('storage'));
         window.dispatchEvent(new Event('cart-refresh'));
-
         navigate('/home', { replace: true });
       }
     } catch (err) {
       setApiError(err.response?.data?.message || 'Login failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
-  return (
-    <div className="h-screen w-full bg-[#D10000] flex flex-col relative overflow-hidden font-sans select-none text-white">
+  /* ── Input field style helper ── */
+  const inputCls = (field) =>
+    `w-full bg-background-muted border rounded-2xl py-2.5 sm:py-3.5 pl-10 sm:pl-12 pr-4 text-xs sm:text-sm font-semibold
+     placeholder:text-text-muted/50 focus:outline-none transition-all text-text-primary ${
+       errors[field]
+         ? 'border-primary/60 bg-primary/5 focus:ring-1 focus:ring-primary'
+         : 'border-border focus:border-primary focus:ring-1 focus:ring-primary/40'
+     }`;
 
-      {/* Background Image with Vibrant Red Studio Overlay */}
-      <div className="absolute inset-0 z-0">
+  return (
+    <div className="min-h-screen w-full bg-background font-sans select-none flex">
+
+      {/* ── Left Panel (desktop only) ── */}
+      <div className="hidden lg:flex w-1/2 relative overflow-hidden">
+        {/* Cinematic photo */}
         <img
           src="/heroSection/hero.png"
           alt="Guesto Restaurant"
-          className="w-full h-full object-cover object-center lg:object-[center_35%] opacity-40 md:opacity-50 animate-slow-zoom brightness-75 contrast-125"
+          className="absolute inset-0 w-full h-full object-cover animate-slow-zoom"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#FF0000]/95 via-[#D10000]/90 to-[#800000]/95 z-10 mix-blend-multiply"></div>
+        {/* Gradient overlay in brand red */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/90 via-primary/70 to-black/80 z-10" />
+
+        <div className="relative z-20 flex flex-col items-center justify-center text-center px-14 w-full page-fade-in">
+          <div
+            className="mb-10 cursor-pointer hover:scale-105 transition-transform duration-500"
+            onClick={() => navigate('/')}
+          >
+            <img
+              src={settings?.branding?.logoGold || '/logo-golden.png'}
+              alt="Guesto"
+              className="h-16 mx-auto drop-shadow-2xl"
+            />
+          </div>
+          <h2 className="text-4xl xl:text-5xl font-black text-white mb-5 tracking-tight leading-tight">
+            Savor the<br />
+            <span className="text-primary-light">Extraordinary</span>
+          </h2>
+          <p className="text-base text-white/75 font-medium leading-relaxed max-w-xs">
+            Sign in to unlock exclusive dining experiences & personalized recommendations.
+          </p>
+          {/* Decorative dots */}
+          <div className="mt-12 flex gap-2">
+            <span className="w-2 h-2 rounded-full bg-primary-light opacity-80"></span>
+            <span className="w-2 h-2 rounded-full bg-white/40"></span>
+            <span className="w-2 h-2 rounded-full bg-white/20"></span>
+          </div>
+        </div>
       </div>
 
-      {/* Header / Logo */}
-      <header className="absolute top-0 left-0 w-full px-6 md:px-12 py-4 z-30">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-          <img src={settings?.branding?.logoGold || "/logo-golden.png"} alt={settings?.restaurantDetails?.name || "Guesto Restaurant"} className="h-7 md:h-9 object-contain" />
+      <div ref={containerRef} className="w-full lg:w-1/2 flex flex-col justify-start sm:justify-center items-center px-3 xs:px-4 sm:px-12 pt-3 pb-12 sm:py-6 relative min-h-screen lg:h-screen lg:overflow-y-auto no-scrollbar">
+
+        {/* Mobile hero bg tint */}
+        <div className="lg:hidden fixed inset-0 pointer-events-none">
+          <div className="absolute inset-0 bg-background" />
+          <img src="/heroSection/hero.png" alt="" className="w-full h-full object-cover opacity-25" />
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-background/80 to-background/95" />
         </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center justify-center px-6 relative z-20 w-full pt-8 pb-4">
+        {/* Mobile/Tablet Logo */}
+        <div className="lg:hidden flex justify-center mb-12 mt-2 cursor-pointer z-20" onClick={() => navigate('/')}>
+          <img src={logoSrc} alt="Logo" className="h-12 xs:h-14 sm:h-16 object-contain" />
+        </div>
 
-        {/* Login Card */}
-        <div className="w-full max-w-md page-fade-in scale-[0.95] md:scale-100">
-          <div className="backdrop-blur-xl bg-white/10 border border-white/20 p-6 md:p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden group">
+        <div className="w-full max-w-[330px] xs:max-w-[360px] md:max-w-[440px] lg:max-w-[420px] relative z-10 page-fade-in mt-1 sm:my-auto">
 
-            {/* Decorative Glow */}
-            <div className="absolute -top-24 -right-24 w-48 h-48 bg-white/10 rounded-full blur-[70px]"></div>
+          {/* Funny Dumpling Chef walks along the top edge of the card */}
+          <div className="relative h-16 sm:h-20 w-full overflow-visible z-20">
+            <FunnyDumpling isHiding={activeField === 'password'} activeField={activeField} />
+          </div>
 
-            <div className="space-y-4 relative z-10">
-              <div className="space-y-1 text-center">
-                <h1 className="text-2xl md:text-3xl font-black tracking-tight uppercase text-white">
-                  Welcome <span className="opacity-90">Back</span>
-                </h1>
-                <p className="text-white/70 text-[10px] font-medium uppercase tracking-widest">Log in to savor the extraordinary</p>
+          {/* Card */}
+          <div className="bg-background-card border border-border rounded-[1.5rem] sm:rounded-[2rem] px-4 py-6 xs:px-5 xs:py-7 sm:p-10 shadow-xl relative overflow-hidden">
+
+            {/* Ambient glow blobs */}
+            <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/15 rounded-full blur-[50px] pointer-events-none" />
+            <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-primary-light/10 rounded-full blur-[50px] pointer-events-none" />
+
+            <div className="relative z-10 space-y-6">
+              {/* Heading */}
+              <div className="text-center space-y-1">
+                <h1 className="text-2xl font-black tracking-tight text-text-primary">Welcome Back</h1>
+                <p className="text-[11px] text-text-muted font-semibold uppercase tracking-widest">Sign in to your account</p>
               </div>
 
+              {/* API Error */}
               {apiError && (
-                <div className="bg-red-500/20 border border-red-500/30 text-white px-4 py-3 rounded-2xl text-xs font-bold text-center animate-shake">
+                <div className="bg-primary/10 border border-primary/25 text-primary px-4 py-3 rounded-xl text-xs font-bold text-center animate-shake flex items-center justify-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse flex-shrink-0" />
                   {apiError}
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-3.5">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">Email Address</label>
-                  <div className="relative group">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-[#DA9133] transition-all duration-300" size={18} />
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Email */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest ml-1">
+                    Email Address
+                  </label>
+                  <div className="relative group/i">
+                    <Mail
+                      className="absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within/i:text-primary transition-colors duration-300"
+                      size={15}
+                    />
                     <input
-                      type="email"
-                      name="email"
-                      placeholder="name@example.com"
-                      value={fields.email}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      className={`w-full bg-white/5 border rounded-2xl py-3.5 pl-12 pr-4 text-sm font-medium placeholder:text-white/30 focus:outline-none transition-all text-white autofill:bg-transparent ${
-                        errors.email ? 'border-red-500/50 bg-red-500/5 focus:border-red-500' : 'border-white/10 focus:border-[#DA9133]/50 focus:bg-white/10'
-                      }`}
+                      type="email" name="email" placeholder="name@example.com"
+                      value={fields.email} onChange={handleChange} onBlur={(e) => { handleBlur(e); setActiveField(''); }}
+                      onFocus={() => setActiveField('email')}
+                      className={inputCls('email')}
                     />
                   </div>
-                  {errors.email && errors.email !== 'REQUIRED' && <p className="text-[10px] text-white font-bold ml-1">{errors.email}</p>}
+                  {errors.email && errors.email !== 'REQUIRED' && (
+                    <p className="text-[10px] text-primary font-bold ml-1">{errors.email}</p>
+                  )}
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">Password</label>
-                  <div className="relative group">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-[#DA9133] transition-all duration-300" size={18} />
+                {/* Password */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest ml-1">
+                    Password
+                  </label>
+                  <div className="relative group/i">
+                    <Lock
+                      className="absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within/i:text-primary transition-colors duration-300"
+                      size={15}
+                    />
                     <input
-                      type={showPassword ? "text" : "password"}
-                      name="password"
-                      placeholder="••••••••"
-                      value={fields.password}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      className={`w-full bg-white/5 border rounded-2xl py-3.5 pl-12 pr-12 text-sm font-medium placeholder:text-white/30 focus:outline-none transition-all text-white autofill:bg-transparent ${
-                        errors.password ? 'border-red-500/50 bg-red-500/5 focus:border-red-500' : 'border-white/10 focus:border-[#DA9133]/50 focus:bg-white/10'
-                      }`}
+                      type={showPassword ? 'text' : 'password'} name="password" placeholder="••••••••"
+                      value={fields.password} onChange={handleChange} onBlur={(e) => { handleBlur(e); setActiveField(''); }}
+                      onFocus={() => setActiveField('password')}
+                      className={`${inputCls('password')} pr-12`}
                     />
                     <button
                       type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors"
+                      onClick={() => setShowPassword(v => !v)}
+                      className="absolute right-3.5 sm:right-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors focus:outline-none"
                     >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
                   </div>
-                  {errors.password && errors.password !== 'REQUIRED' && <p className="text-[10px] text-white font-bold ml-1">{errors.password}</p>}
+                  {errors.password && errors.password !== 'REQUIRED' && (
+                    <p className="text-[10px] text-primary font-bold ml-1">{errors.password}</p>
+                  )}
                 </div>
 
+                {/* Forgot */}
                 <div className="flex justify-end">
-                  <button type="button" onClick={() => setShowResetModal(true)} className="text-[10px] font-black text-[#DA9133] hover:text-[#C27D29] transition-colors uppercase tracking-widest">
+                  <button
+                    type="button"
+                    onClick={() => setShowResetModal(true)}
+                    className="text-[10px] font-black text-primary-light hover:text-primary transition-colors uppercase tracking-widest focus:outline-none"
+                  >
                     Forgot Password?
                   </button>
                 </div>
 
+                {/* Submit */}
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-[#DA9133] hover:bg-[#C27D29] text-white py-3.5 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-xl shadow-black/20 disabled:opacity-50 disabled:cursor-not-allowed group flex items-center justify-center gap-2"
+                  className="w-full bg-primary hover:bg-primary-dark text-white py-3 sm:py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-[0.98] shadow-md shadow-primary/25 disabled:opacity-60 disabled:cursor-not-allowed group/btn flex items-center justify-center gap-2"
                 >
-                  {loading ? 'Authenticating...' : (
+                  {loading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Authenticating...
+                    </>
+                  ) : (
                     <>
                       Sign In
-                      <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                      <ArrowRight size={17} className="group-hover/btn:translate-x-1 transition-transform" />
                     </>
                   )}
                 </button>
               </form>
 
-              <div className="relative flex items-center py-1">
-                <div className="flex-grow border-t border-white/10"></div>
-                <span className="flex-shrink mx-4 text-[10px] font-black text-white/40 uppercase tracking-widest">Or continue with</span>
-                <div className="flex-grow border-t border-white/10"></div>
+              {/* Divider */}
+              <div className="flex items-center gap-3">
+                <div className="flex-grow h-px bg-border" />
+                <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">Or</span>
+                <div className="flex-grow h-px bg-border" />
               </div>
 
+              {/* Google */}
               <button
                 type="button"
                 onClick={() => googleLogin()}
-                className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white py-3.5 rounded-2xl font-bold text-sm transition-all active:scale-95 flex items-center justify-center gap-3"
+                className="w-full bg-background-muted hover:bg-border/60 border border-border text-text-primary py-2.5 sm:py-3.5 rounded-2xl font-bold text-xs sm:text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-3"
               >
                 <GoogleIcon />
-                Google Account
+                Continue with Google
               </button>
 
-              <p className="text-center text-xs font-medium text-white/50">
+              {/* Register link */}
+              <p className="text-center text-[11px] sm:text-xs font-semibold text-text-muted">
                 Don't have an account?{' '}
-                <Link to="/register" className="text-[#DA9133] hover:text-[#C27D29] font-black underline underline-offset-4 decoration-[#DA9133]/30">
-                  Register now
+                <Link
+                  to="/register"
+                  className="text-primary font-black underline underline-offset-4 decoration-primary/30 hover:text-primary-dark transition-colors"
+                >
+                  Sign Up
                 </Link>
               </p>
             </div>
           </div>
         </div>
-      </main>
+      </div>
 
-      {/* Footer / Info */}
-      <footer className="w-full px-6 py-4 relative z-30 text-center">
-        <p className="text-[10px] font-black text-white/30 uppercase tracking-widest">
-          © 2024 Guesto Restaurant Group. Secure Authentication.
-        </p>
-      </footer>
-
-      {/* Custom Styles */}
-      <style dangerouslySetInnerHTML={{
-        __html: `
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes slow-zoom {
-          0% { transform: scale(1); }
-          100% { transform: scale(1.05); }
+          from { transform: scale(1); }
+          to   { transform: scale(1.07); }
         }
-        .animate-slow-zoom {
-          animation: slow-zoom 20s ease-out infinite alternate;
-        }
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .page-fade-in {
-          animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-        }
+        .animate-slow-zoom { animation: slow-zoom 20s ease-out infinite alternate; }
+
         @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-5px); }
-          75% { transform: translateX(5px); }
+          0%,100%{ transform:translateX(0); }
+          25%    { transform:translateX(-4px); }
+          75%    { transform:translateX(4px); }
         }
-        .animate-shake {
-          animation: shake 0.4s ease-in-out;
-        }
+        .animate-shake { animation: shake .35s ease-in-out; }
+
         input:-webkit-autofill,
-        input:-webkit-autofill:hover, 
-        input:-webkit-autofill:focus, 
-        input:-webkit-autofill:active{
-            -webkit-box-shadow: 0 0 0 30px #8B0000 inset !important;
-            -webkit-text-fill-color: white !important;
-            transition: background-color 5000s ease-in-out 0s;
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus,
+        input:-webkit-autofill:active {
+          -webkit-box-shadow: 0 0 0 40px var(--color-background-muted) inset !important;
+          -webkit-text-fill-color: var(--color-text-primary) !important;
         }
       `}} />
-      <ForgotPasswordModal
-        isOpen={showResetModal}
-        onClose={() => setShowResetModal(false)}
-      />
+
+      <ForgotPasswordModal isOpen={showResetModal} onClose={() => setShowResetModal(false)} />
     </div>
   );
 };

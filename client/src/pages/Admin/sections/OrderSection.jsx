@@ -671,7 +671,7 @@ const OrderSection = () => {
               </div>
               <div class="text-right">
                 <p class="text-[8px] font-black text-primary uppercase tracking-[0.2em] mb-1.5">Payment</p>
-                <span class="px-2 py-1 bg-white border border-primary/10 rounded-lg text-[9px] font-black text-text-primary uppercase tracking-wider shadow-sm">
+                <span class="px-2 py-1 bg-background-card border border-border-light rounded-lg text-[9px] font-black text-text-primary uppercase tracking-wider shadow-sm">
                   ${paymentMethod}
                 </span>
               </div>
@@ -680,7 +680,7 @@ const OrderSection = () => {
             ${order.orderType === 'delivery' ? `<p class="text-[10px] font-bold text-text-secondary leading-relaxed border-t border-primary/5 pt-2 mt-2">${customerAddress}</p>` : ''}
             
             ${mapsUrl ? `
-              <a href="${mapsUrl}" target="_blank" class="inline-flex items-center space-x-1.5 mt-3 px-3 py-1.5 bg-white border border-primary/20 rounded-xl text-[8px] font-black text-primary hover:bg-primary hover:text-white transition-all shadow-sm no-underline">
+              <a href="${mapsUrl}" target="_blank" class="inline-flex items-center space-x-1.5 mt-3 px-3 py-1.5 bg-background-card border border-primary/20 rounded-xl text-[8px] font-black text-primary hover:bg-primary hover:text-white transition-all shadow-sm no-underline">
                 <span>📍 VIEW ON GOOGLE MAPS</span>
               </a>
             ` : ''}
@@ -1861,6 +1861,11 @@ const OrderSection = () => {
                     <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">
                       Subtotal: ₹{selectedOrder.subtotal || 0}
                     </span>
+                    {selectedOrder.platformFee > 0 && (
+                      <span className="text-[10px] text-primary font-bold uppercase tracking-widest">
+                        Platform Fee: +₹{selectedOrder.platformFee}
+                      </span>
+                    )}
                     {selectedOrder.deliveryFee > 0 && (
                       <span className="text-[10px] text-primary font-bold uppercase tracking-widest">
                         Delivery Fee: +₹{selectedOrder.deliveryFee}
@@ -1928,7 +1933,9 @@ const OrderSection = () => {
                         showCancelButton: true,
                         confirmButtonColor: '#ef4444',
                         cancelButtonColor: '#6b7280',
-                        confirmButtonText: 'Yes, Cancel'
+                        confirmButtonText: 'Yes, Cancel',
+                        scrollbarPadding: false,
+                        heightAuto: false
                       }).then((result) => {
                         if (result.isConfirmed) {
                           handleUpdateOrderStatus(selectedOrder._id, 'cancelled');

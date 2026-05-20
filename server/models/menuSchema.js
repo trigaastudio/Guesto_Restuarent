@@ -99,6 +99,10 @@ const menuSchema = new mongoose.Schema({
       price: {
         type: Number,
         default: 0
+      },
+      quantity: {
+        type: Number,
+        default: 1
       }
     }
   ],
@@ -127,6 +131,13 @@ const menuSchema = new mongoose.Schema({
   isBlocked: {
     type: Boolean,
     default: false
+  },
+
+  discountPercentage: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100
   }
 
 }, { timestamps: true });
