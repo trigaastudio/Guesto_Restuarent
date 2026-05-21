@@ -1729,8 +1729,8 @@ const OrderSection = () => {
                     const ks = item?.kitchenStatus || 'placed';
                     const ksStyles = ks === 'ready' ? 'bg-status-on/10 text-status-available border-status-on/20' : ks === 'preparing' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : ks === 'delayed' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20';
                     return (
-                    <div key={item._id} className="flex items-center justify-between p-3 bg-background-muted/20 rounded-2xl border border-border-light hover:border-primary/20 transition-all">
-                      <div className="flex items-center space-x-3">
+                    <div key={item._id} className="flex items-start justify-between p-3 bg-background-muted/20 rounded-2xl border border-border-light hover:border-primary/20 transition-all">
+                      <div className="flex items-start space-x-3 flex-1 min-w-0">
                         <div className="w-10 h-10 bg-background-card rounded-xl flex items-center justify-center border border-border-light overflow-hidden shrink-0">
                           {item?.image || item?.menuItem?.image ? (
                             <img src={item?.image || item?.menuItem?.image} alt={item?.name || item?.menuItem?.name} className="w-full h-full object-cover" />
@@ -1745,10 +1745,34 @@ const OrderSection = () => {
                           <p className="text-[9px] text-text-muted font-bold uppercase">
                             {item?.size} • ₹{item?.unitPrice || item?.price} x {item?.quantity}
                           </p>
+
+                          {/* Combo Sub-items */}
+                          {item?.comboItems && item.comboItems.length > 0 && (
+                            <div className="mt-1.5 pl-2 border-l-2 border-primary/30">
+                              <p className="text-[8px] font-black text-primary uppercase tracking-widest mb-1">Combo includes:</p>
+                              <div className="flex flex-wrap gap-1">
+                                {item.comboItems.map((ci, i) => (
+                                  <span key={i} className="text-[8px] font-bold bg-primary/5 text-primary px-1.5 py-0.5 rounded border border-primary/10">
+                                    {ci.quantity || 1}× {ci.menuItem?.name || ci.name || 'Item'}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* BOGO Free Item */}
+                          {item?.bogoItem && (
+                            <div className="mt-1.5 pl-2 border-l-2 border-emerald-500/40">
+                              <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest mb-1">BOGO Free:</p>
+                              <span className="inline-flex items-center gap-1 text-[8px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                                🎁 {item.bogoItem.name} {item.bogoItem.size ? `(${item.bogoItem.size})` : ''} × {item.bogoItem.quantity || item.quantity}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
 
-                      <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-3 shrink-0 ml-2">
                         <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${ksStyles}`}>
                           {ks}
                         </span>
