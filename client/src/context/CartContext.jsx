@@ -253,9 +253,7 @@ export const CartProvider = ({ children }) => {
 
   // --- ADVANCED OFFER CALCULATION ---
   const subtotal = useMemo(() => {
-    let totalSubtotal = 0;
-
-    cartItems.forEach(item => {
+    let tempItems = cartItems.map(item => {
       // Find base price from variants or fallback fields
       const variantPrice = (item.variants || item.sizes || []).find(v => v.size === item.selectedSize)?.price;
       const basePrice = variantPrice || item.offerPrice || item.price || 0;
