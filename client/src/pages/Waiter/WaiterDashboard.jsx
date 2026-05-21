@@ -57,7 +57,14 @@ const WaiterDashboard = () => {
 
     // Socket Setup
     socketRef.current = io(SOCKET_URL);
+
+    // Re-fetch when any order changes (kitchen status, payment, new order etc.)
     socketRef.current.on('ordersUpdated', () => {
+      fetchTables(true);
+    });
+
+    // Re-fetch when table structure changes (merge, unmerge, create, delete)
+    socketRef.current.on('tablesUpdated', () => {
       fetchTables(true);
     });
 
@@ -65,6 +72,17 @@ const WaiterDashboard = () => {
       if (socketRef.current) socketRef.current.disconnect();
     };
   }, []);
+
+  const getComputedOrderStatus = (order) => {
+    if (!order) return '';
+    let actualStatus = order.orderStatus;
+    const isReady = order.items?.length > 0 && order.items.every(i => i.kitchenStatus === 'ready');
+    if (actualStatus === 'placed' && order.items?.some(i => ['preparing', 'ready'].includes(i.kitchenStatus))) {
+      actualStatus = 'processing';
+    }
+    return (actualStatus === 'processing' && isReady) ? 'ready' : actualStatus;
+  };
+
 
   const handleLogout = () => {
     localStorage.removeItem('staff_token');
@@ -700,10 +718,10 @@ const WaiterDashboard = () => {
                           return (
                             <div className="flex flex-col items-center mt-3 space-y-2">
                               <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${isCurFullyOccupied
-                                  ? 'bg-red-500/10 text-red-600 border border-red-500/20'
-                                  : isCurPartiallyOccupied
-                                    ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
-                                    : 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                                ? 'bg-red-500/10 text-red-600 border border-red-500/20'
+                                : isCurPartiallyOccupied
+                                  ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
+                                  : 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
                                 }`}>
                                 <span className={`w-2 h-2 rounded-full ${isCurFullyOccupied ? 'bg-red-500' : isCurPartiallyOccupied ? 'bg-amber-500' : 'bg-emerald-500'
                                   } animate-pulse`} />
@@ -765,13 +783,8 @@ const WaiterDashboard = () => {
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {currentTable.activeOrders?.map(order => {
-                              const isReady = order.items?.length > 0 && order.items.every(i => i.kitchenStatus === 'ready');
-                              let actualOrderStatus = order.orderStatus;
-                              if (actualOrderStatus === 'placed' && order.items?.some(i => ['preparing', 'ready'].includes(i.kitchenStatus))) {
-                                actualOrderStatus = 'processing';
-                              }
-                              const currentStatus = (actualOrderStatus === 'processing' && isReady) ? 'ready' : actualOrderStatus;
-
+                              const currentStatus = getComputedOrderStatus(order);
+                              const isReady = currentStatus === 'ready';
                               const isWaitingApproval = currentStatus === 'placed';
                               const isPreparing = currentStatus === 'processing';
                               const cardStatusStyle = isReady
@@ -913,8 +926,8 @@ const WaiterDashboard = () => {
                         onClick={handleSaveMerge}
                         disabled={selectedMergeTableNumbers.length < 2}
                         className={`px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider text-white transition-all shadow-md ${selectedMergeTableNumbers.length < 2
-                            ? 'bg-background-muted text-text-muted border border-border-light cursor-not-allowed opacity-60'
-                            : 'bg-primary hover:bg-primary-light shadow-primary/25'
+                          ? 'bg-background-muted text-text-muted border border-border-light cursor-not-allowed opacity-60'
+                          : 'bg-primary hover:bg-primary-light shadow-primary/25'
                           }`}
                       >
                         Merge Selected ({selectedMergeTableNumbers.length})
@@ -934,7 +947,16 @@ const WaiterDashboard = () => {
 
               {/* Table Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                {tables.map((table) => {
+                {(() => {
+                  const displayTables = tables.filter(table => {
+                    if (table.mergedGroup && table.mergedGroup.length > 0) {
+                      const sortedGroup = [...table.mergedGroup].sort((a, b) => parseInt(a) - parseInt(b));
+                      return table.tableNumber.toString() === sortedGroup[0].toString();
+                    }
+                    return true;
+                  });
+
+                  return displayTables.map((table) => {
                   const isOccupied = table.status === 'occupied';
                   const isSelectedForMerge = isMergeMode && selectedMergeTableNumbers.includes(table.tableNumber);
                   const hasMergedGroup = table.mergedGroup && table.mergedGroup.length > 0;
@@ -944,6 +966,10 @@ const WaiterDashboard = () => {
                       key={table._id}
                       onClick={() => {
                         if (isMergeMode) {
+                          if (table.occupiedSeats > 0) {
+                            showToast('warning', 'Only available tables can be selected for merging.');
+                            return;
+                          }
                           setSelectedMergeTableNumbers(prev =>
                             prev.includes(table.tableNumber)
                               ? prev.filter(num => num !== table.tableNumber)
@@ -954,7 +980,9 @@ const WaiterDashboard = () => {
                         }
                       }}
                       className={`relative cursor-pointer rounded-2xl overflow-hidden shadow-sm hover:shadow-md bg-white dark:bg-gray-900 transition-all duration-300 ${isSelectedForMerge
-                          ? 'border-2 border-primary ring-4 ring-primary/10 scale-[1.02] shadow-lg'
+                        ? 'border-2 border-primary ring-4 ring-primary/10 scale-[1.02] shadow-lg'
+                        : isMergeMode && table.occupiedSeats > 0
+                          ? 'border border-border-light opacity-60 cursor-not-allowed grayscale'
                           : 'border border-border-light hover:-translate-y-0.5 active:scale-98'
                         }`}
                     >
@@ -988,10 +1016,10 @@ const WaiterDashboard = () => {
                           const isPartiallyOccupied = occupied > 0 && occupied < capacity;
                           return (
                             <div className={`w-3 h-3 rounded-full ${isFullyOccupied
-                                ? 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.85)]'
-                                : isPartiallyOccupied
-                                  ? 'bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.85)]'
-                                  : 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.85)]'
+                              ? 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.85)]'
+                              : isPartiallyOccupied
+                                ? 'bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.85)]'
+                                : 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.85)]'
                               } animate-pulse border-2 border-white/80`} />
                           );
                         })()}
@@ -1001,8 +1029,12 @@ const WaiterDashboard = () => {
                       <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/95 via-black/70 to-transparent">
                         <div className="flex justify-between items-end">
                           <div>
-                            <p className="text-white/60 text-[9px] font-black uppercase tracking-widest mb-0.5">Table</p>
-                            <h3 className="text-3xl font-black text-white drop-shadow-md leading-none">{table.tableNumber}</h3>
+                            <p className="text-white/60 text-[9px] font-black uppercase tracking-widest mb-0.5">
+                              {hasMergedGroup ? 'Tables' : 'Table'}
+                            </p>
+                            <h3 className="text-3xl font-black text-white drop-shadow-md leading-none">
+                              {hasMergedGroup ? [...table.mergedGroup].sort((a, b) => parseInt(a) - parseInt(b)).join(' & ') : table.tableNumber}
+                            </h3>
                             <p className="text-white/85 text-[11px] font-bold mt-2 flex items-center gap-1.5">
                               <Users size={12} className="opacity-80" /> {table.capacity} Seats
                             </p>
@@ -1039,7 +1071,7 @@ const WaiterDashboard = () => {
                       </div>
                     </div>
                   );
-                })}
+                })})()}
               </div>
             </div>
           )}
@@ -1094,14 +1126,20 @@ const WaiterDashboard = () => {
                 </div>
                 <div className="bg-background-card p-4 rounded-2xl border border-border-light">
                   <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">Order Status</p>
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mt-1 ${selectedOrderForView.orderStatus === 'completed' || selectedOrderForView.orderStatus === 'delivered'
-                    ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-                    : selectedOrderForView.orderStatus === 'placed'
-                      ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                      : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
-                    }`}>
-                    {selectedOrderForView.orderStatus}
-                  </span>
+                  {(() => {
+                    const status = getComputedOrderStatus(selectedOrderForView);
+                    return (
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mt-1 ${
+                        status === 'completed' || status === 'delivered' || status === 'ready'
+                          ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                          : status === 'placed'
+                            ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                            : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                      }`}>
+                        {status}
+                      </span>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -1151,12 +1189,15 @@ const WaiterDashboard = () => {
                 <button
                   onClick={() => {
                     handlePrintKOT(selectedOrderForView);
-                    handleUpdateOrderStatus(selectedOrderForView._id, 'delivered', true);
                     setIsDetailsModalOpen(false);
                   }}
-                  className="px-4 py-3 bg-background border border-border-light text-text-secondary hover:text-primary hover:border-primary/50 hover:bg-primary/5 rounded-2xl font-black uppercase tracking-wider text-xs transition-all shadow-sm active:scale-95 flex items-center gap-2"
+                  disabled={selectedOrderForView.kitchenStatus !== 'ready'}
+                  title={selectedOrderForView.kitchenStatus !== 'ready' ? 'Kitchen has not marked this order as Ready yet' : 'Print Bill'}
+                  className={`px-4 py-3 rounded-2xl font-black uppercase tracking-wider text-xs transition-all shadow-sm flex items-center gap-2 ${selectedOrderForView.kitchenStatus !== 'ready'
+                      ? 'bg-background-muted border border-border-light text-text-muted cursor-not-allowed opacity-60'
+                      : 'bg-background border border-border-light text-text-secondary hover:text-primary hover:border-primary/50 hover:bg-primary/5 active:scale-95'
+                    }`}
                 >
-                  <Printer size={16} strokeWidth={2.5} />
                   <span>Print</span>
                 </button>
               </div>

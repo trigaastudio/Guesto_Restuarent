@@ -70,15 +70,29 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
     }
   };
 
-  const getDynamicStock = (item) => {
-    const inCart = cart.reduce((acc, c) => c.menuItem === item._id ? acc + c.quantity : acc, 0);
-    return Math.max(0, (item.totalStock ?? 0) - inCart);
+  // Sum of raw stock consumed by cart items for this menu item (qty × stockValue per variant)
+  const getConsumedStock = (item) =>
+    cart
+      .filter(c => c.menuItem === item._id)
+      .reduce((acc, c) => {
+        const variant = item.variants?.find(v => v.size === c.size);
+        const stockValue = variant?.stockValue || 1;
+        return acc + (c.quantity * stockValue);
+      }, 0);
+
+  // Remaining RAW stock shown in the badge (e.g. 18 Left when stock=20, 1×Full(sv=2) in cart)
+  const getDynamicRawStock = (item) =>
+    Math.max(0, (item.totalStock ?? 0) - getConsumedStock(item));
+
+  // Can we add one more serving of a specific variant right now?
+  const canAddVariant = (item, variant) => {
+    const stockValue = variant?.stockValue || 1;
+    return getDynamicRawStock(item) >= stockValue;
   };
 
   const addToCart = (item, variant) => {
-    const dynamicStock = getDynamicStock(item);
-    if (item.totalStock !== undefined && dynamicStock <= 0) {
-      showToast('error', `Out of stock: ${item.name}`);
+    if (item.totalStock !== undefined && !canAddVariant(item, variant)) {
+      showToast('error', `Not enough stock for: ${item.name} (${variant?.size || 'Standard'})`);
       return;
     }
 
@@ -120,9 +134,18 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
       if (delta > 0) {
         const menuItem = menuItems.find(m => m._id === targetItem.menuItem);
         if (menuItem && menuItem.totalStock !== undefined) {
-          const currentTotalInCart = prevCart.reduce((acc, c) => c.menuItem === targetItem.menuItem ? acc + c.quantity : acc, 0);
-          if (currentTotalInCart + delta > menuItem.totalStock) {
-            showToast('error', `Cannot exceed available stock of ${menuItem.totalStock} for ${targetItem.name}`);
+          const variant = menuItem.variants?.find(v => v.size === targetItem.size);
+          const stockValue = variant?.stockValue || 1;
+          // Total raw stock consumed by ALL sizes of this item currently in cart
+          const totalConsumed = prevCart
+            .filter(c => c.menuItem === targetItem.menuItem)
+            .reduce((acc, c) => {
+              const v = menuItem.variants?.find(vv => vv.size === c.size);
+              return acc + (c.quantity * (v?.stockValue || 1));
+            }, 0);
+          if (totalConsumed + stockValue > menuItem.totalStock) {
+            const remaining = Math.floor((menuItem.totalStock - totalConsumed) / stockValue);
+            showToast('error', `Only ${remaining} more serving${remaining !== 1 ? 's' : ''} of ${targetItem.name} available`);
             return prevCart;
           }
         }
@@ -295,7 +318,8 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
 
           <div className="flex-1 overflow-y-auto p-6 grid grid-cols-2 lg:grid-cols-3 gap-4 no-scrollbar">
             {filteredMenu.map(item => {
-              const dynamicStock = getDynamicStock(item);
+              const rawStock = getDynamicRawStock(item);
+              const isFullyOutOfStock = item.totalStock !== undefined && rawStock <= 0;
               return (
                 <div
                   key={item._id}
@@ -305,11 +329,11 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                       : { size: 'Standard', price: item.price || 0 };
                     addToCart(item, targetVariant);
                   }}
-                  className={`bg-background-muted/30 p-3 rounded-2xl border border-border-light hover:border-primary/30 transition-all group relative cursor-pointer active:scale-[0.98] ${dynamicStock <= 0 ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+                  className={`bg-background-muted/30 p-3 rounded-2xl border border-border-light hover:border-primary/30 transition-all group relative cursor-pointer active:scale-[0.98] ${isFullyOutOfStock ? 'opacity-40 grayscale pointer-events-none' : ''}`}
                 >
                   <div className="w-full aspect-square bg-background-card rounded-xl mb-3 overflow-hidden border border-border-light relative">
-                    <img src={item.image || '/placeholder-dish.png'} alt={item.name} className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${dynamicStock <= 0 ? 'grayscale' : ''}`} />
-                    {dynamicStock <= 0 && (
+                    <img src={item.image || '/placeholder-dish.png'} alt={item.name} className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${isFullyOutOfStock ? 'grayscale' : ''}`} />
+                    {isFullyOutOfStock && (
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px]">
                         <span className="bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest shadow-lg">Out of Stock</span>
                       </div>
@@ -318,8 +342,8 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                   <div className="flex flex-col mb-2">
                     <div className="flex items-center justify-between mb-1.5">
                       <p className="font-bold text-text-primary text-sm md:text-base line-clamp-1">{item.name}</p>
-                      <span className={`text-[9px] md:text-[10px] font-black px-2 py-0.5 rounded-full ${dynamicStock > 10 ? 'bg-primary/10 text-primary' : dynamicStock > 0 ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'}`}>
-                        {dynamicStock} Left
+                      <span className={`text-[9px] md:text-[10px] font-black px-2 py-0.5 rounded-full ${rawStock > 10 ? 'bg-primary/10 text-primary' : rawStock > 0 ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'}`}>
+                        {rawStock} Left
                       </span>
                     </div>
                     {item.isCombo && item.comboItems && item.comboItems.length > 0 && (
@@ -347,16 +371,16 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                     ) : (
                       <div className="flex flex-wrap gap-1.5 mt-1">
                         {item.variants && item.variants.map((v, idx) => {
-                          const isOutOfStock = item.totalStock !== undefined && dynamicStock <= 0;
+                          const isVariantOut = item.totalStock !== undefined && !canAddVariant(item, v);
                           return (
                             <button
                               key={idx}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (!isOutOfStock) addToCart(item, v);
+                                if (!isVariantOut) addToCart(item, v);
                               }}
-                              disabled={isOutOfStock}
-                              className={`px-2.5 md:px-3 py-1.5 md:py-2 text-[10px] md:text-[11px] font-black rounded-lg transition-all ${isOutOfStock
+                              disabled={isVariantOut}
+                              className={`px-2.5 md:px-3 py-1.5 md:py-2 text-[10px] md:text-[11px] font-black rounded-lg transition-all ${isVariantOut
                                 ? 'bg-background-muted text-text-muted cursor-not-allowed border border-border-light'
                                 : 'bg-primary text-white hover:bg-primary-light shadow-sm active:scale-95'
                                 }`}

@@ -371,8 +371,8 @@ const RegisterPage = () => {
                   type="submit"
                   disabled={!isFormValid() || loading}
                   className={`w-full py-2.5 sm:py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-[0.98] group/btn flex items-center justify-center gap-2 ${isFormValid()
-                      ? 'bg-primary hover:bg-primary-dark text-white shadow-md shadow-primary/25'
-                      : 'bg-background-muted text-text-muted cursor-not-allowed border border-border'
+                    ? 'bg-primary hover:bg-primary-dark text-white shadow-md shadow-primary/25'
+                    : 'bg-background-muted text-text-muted cursor-not-allowed border border-border'
                     }`}
                 >
                   {loading ? (
