@@ -4,7 +4,6 @@ import { User, Lock, Loader2, ArrowRight, Sun, Moon, ChefHat } from 'lucide-reac
 import axios from 'axios';
 import { useTheme } from '../../context/ThemeContext';
 import { useCart } from '../../context/CartContext';
-import { showToast } from '../../utils/sweetAlert';
 import Loader from '../../components/Loader/Loader';
 
 const API_BASE_URL = 'http://localhost:5000/api';
@@ -13,6 +12,7 @@ const StaffLogin = () => {
   const [employeeId, setEmployeeId] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { settings } = useCart();
@@ -43,8 +43,9 @@ const StaffLogin = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setErrorMsg('');
     if (!employeeId || !password) {
-      showToast('warning', 'Please enter both Employee ID and Password');
+      setErrorMsg('Please enter both Employee ID and Password');
       return;
     }
 
@@ -54,20 +55,26 @@ const StaffLogin = () => {
 
       if (response.data.success) {
         const staffData = response.data.data;
+
+        // Block admin and user roles from accessing staff portal
+        if (staffData.role === 'admin' || staffData.role === 'user') {
+          setErrorMsg('Access denied. This portal is for Waiter & Kitchen staff only.');
+          return;
+        }
+
         localStorage.setItem('staff_token', staffData.token);
         localStorage.setItem('staff_user', JSON.stringify(staffData));
-        showToast('success', `Welcome back, ${staffData.name}!`);
 
         if (staffData.role === 'kitchen') {
           navigate('/kitchen/dashboard', { replace: true });
         } else if (staffData.role === 'waiter') {
           navigate('/waiter/dashboard', { replace: true });
         } else {
-          showToast('error', 'Unrecognized role. Please contact admin.');
+          setErrorMsg('Unrecognized role. Please contact admin.');
         }
       }
     } catch (error) {
-      showToast('error', error.response?.data?.message || 'Login failed. Please check your credentials.');
+      setErrorMsg('Invalid credentials');
     } finally {
       setIsLoading(false);
     }
@@ -93,6 +100,12 @@ const StaffLogin = () => {
         <h2 className="text-xl font-medium text-text-primary text-center mb-8 italic opacity-70 border-b border-border-light pb-6">
           Kitchen &amp; Waiter Access
         </h2>
+
+        {errorMsg && (
+          <div className="bg-red-500/10 border border-red-500/50 text-red-500 text-sm p-3 rounded-xl mb-6 text-center font-medium">
+            {errorMsg}
+          </div>
+        )}
 
         <form onSubmit={handleLogin} className="space-y-6">
           <div className="space-y-2">

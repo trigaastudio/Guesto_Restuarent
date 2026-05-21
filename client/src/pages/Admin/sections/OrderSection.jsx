@@ -1549,7 +1549,10 @@ const OrderSection = () => {
                         <td className="px-2 py-2.5">
                           {order.table ? (
                             <span className="bg-primary/10 text-primary px-3 py-1.5 rounded-xl text-xs font-black border border-primary/20 shadow-sm">
-                              T-{order.table.tableNumber}
+                              {order.table.mergedGroup && order.table.mergedGroup.length > 0
+                                ? `T-${[...order.table.mergedGroup].sort((a, b) => parseInt(a) - parseInt(b)).join(' & ')}`
+                                : `T-${order.table.tableNumber}`
+                              }
                             </span>
                           ) : (
                             <span className="text-text-muted text-[10px] font-bold italic bg-background-muted px-2 py-1 rounded-lg w-fit">No Table</span>
@@ -1831,7 +1834,10 @@ const OrderSection = () => {
                     </p>
                     {selectedOrder.orderType === 'dine-in' && selectedOrder.table && (
                       <span className="mt-2 bg-primary/10 text-primary px-2 py-0.5 rounded text-[10px] font-black uppercase border border-primary/20">
-                        Table {selectedOrder.table.tableNumber}
+                        {selectedOrder.table.mergedGroup && selectedOrder.table.mergedGroup.length > 0
+                          ? `Tables ${[...selectedOrder.table.mergedGroup].sort((a, b) => parseInt(a) - parseInt(b)).join(' & ')}`
+                          : `Table ${selectedOrder.table.tableNumber}`
+                        }
                       </span>
                     )}
                   </div>

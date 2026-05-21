@@ -73,3 +73,9 @@ export const emitSettingsUpdate = (settings) => {
     io.emit('settingsUpdate', settings);
   }
 };
+
+export const emitTablesUpdated = () => {
+  if (io) {
+    io.emit('tablesUpdated');
+  }
+};

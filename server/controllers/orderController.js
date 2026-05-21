@@ -5,7 +5,8 @@ import User from '../models/userSchema.js';
 import Counter from '../models/counterSchema.js';
 import Menu from '../models/menuSchema.js';
 import Settings from '../models/settingsSchema.js';
-import { getIO, emitStockUpdate } from '../socket.js';
+import Table from '../models/tableSchema.js';
+import { getIO, emitStockUpdate, emitTablesUpdated } from '../socket.js';
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; // km
@@ -507,6 +508,8 @@ class OrderController {
       order.orderStatus = 'cancelled';
       await order.save();
 
+      getIO().emit('ordersUpdated');
+
       res.status(200).json({
         success: true,
         message: order.paymentStatus === 'refunded'
@@ -610,7 +613,7 @@ class OrderController {
 
       const orders = await Order.find(query)
         .populate('items.menuItem', 'name image')
-        .populate('table', 'tableNumber')
+        .populate('table', 'tableNumber mergedGroup')
         .sort({ createdAt: -1 });
       res.json({ success: true, data: orders });
     } catch (error) {
@@ -675,8 +678,30 @@ class OrderController {
       const order = await originalOrder.save();
       await order.populate([
         { path: 'items.menuItem', select: 'name image' },
-        { path: 'table', select: 'tableNumber' }
+        { path: 'table', select: 'tableNumber mergedGroup' }
       ]);
+
+      // Auto-unmerge logic for Dine-In tables when order is completed/paid
+      if (order.orderType === 'dine-in' && (order.orderStatus === 'completed' || order.orderStatus === 'delivered' || order.paymentStatus === 'paid')) {
+        if (order.table) {
+          const activeOrdersRemaining = await Order.countDocuments({
+            table: order.table._id,
+            orderStatus: { $nin: ['completed', 'delivered', 'cancelled'] },
+            _id: { $ne: order._id } // Just in case, though this order's status is already updated
+          });
+
+          if (activeOrdersRemaining === 0) {
+            const currentTable = await Table.findById(order.table._id);
+            if (currentTable && currentTable.mergedGroup && currentTable.mergedGroup.length > 0) {
+              await Table.updateMany(
+                { tableNumber: { $in: currentTable.mergedGroup } },
+                { $set: { mergedGroup: [] } }
+              );
+              if (typeof emitTablesUpdated === 'function') emitTablesUpdated();
+            }
+          }
+        }
+      }
 
       getIO().emit('ordersUpdated');
       res.json({ success: true, data: order });
@@ -803,6 +828,7 @@ class OrderController {
       await handleStock(items, 'reduce');
 
       await order.populate('items.menuItem', 'name image');
+      getIO().emit('ordersUpdated');
       res.json({ success: true, data: order });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });

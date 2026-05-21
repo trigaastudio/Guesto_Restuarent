@@ -1,5 +1,6 @@
 import Table from '../models/tableSchema.js';
 import Order from '../models/orderSchema.js';
+import { emitTablesUpdated, getIO } from '../socket.js';
 
 // Create a new table
 export const createTable = async (req, res) => {
@@ -7,6 +8,7 @@ export const createTable = async (req, res) => {
     const table = new Table(req.body);
     await table.save();
     res.status(201).json(table);
+    emitTablesUpdated();
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -73,6 +75,7 @@ export const updateTable = async (req, res) => {
     const table = await Table.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!table) return res.status(404).json({ message: 'Table not found' });
     res.status(200).json(table);
+    emitTablesUpdated();
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -84,6 +87,7 @@ export const deleteTable = async (req, res) => {
     const table = await Table.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
     if (!table) return res.status(404).json({ message: 'Table not found' });
     res.status(200).json({ message: 'Table deactivated successfully' });
+    emitTablesUpdated();
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -138,6 +142,8 @@ export const mergeTables = async (req, res) => {
     });
 
     res.status(200).json({ message: `Successfully merged ${activeOrders.length} orders into the new table.` });
+    emitTablesUpdated();
+    getIO().emit('ordersUpdated');
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -163,6 +169,7 @@ export const coshareMergeTables = async (req, res) => {
     );
 
     res.status(200).json({ message: `Tables ${tableNumbers.join(", ")} merged successfully.`, mergedGroup: tableNumbers });
+    emitTablesUpdated();
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -192,6 +199,7 @@ export const coshareUnmergeTables = async (req, res) => {
     );
 
     res.status(200).json({ message: "Tables unmerged successfully." });
+    emitTablesUpdated();
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
