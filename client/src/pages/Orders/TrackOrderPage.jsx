@@ -325,83 +325,8 @@ const TrackOrderPage = () => {
                 )}
               </div>
             </div>
-            </div>
 
-            {/* Items Breakdown Card */}
-            <div className="bg-background-card rounded-2xl border border-border/60 shadow-sm overflow-hidden">
-              <div className="p-5 border-b border-border/40 flex items-center gap-3">
-                <Package size={16} className="text-primary" />
-                <h2 className="text-sm font-bold text-text-primary">Your Order</h2>
-                <span className="ml-auto text-[10px] font-bold text-text-muted opacity-60 uppercase tracking-widest">{order.items.length} item{order.items.length > 1 ? 's' : ''}</span>
-              </div>
-              <div className="divide-y divide-border/30">
-                {order.items.map((item, idx) => (
-                  <div key={item._id || idx} className="p-4 flex gap-4 items-start">
-                    {/* Image */}
-                    <div className="w-14 h-14 rounded-xl overflow-hidden border border-border/40 bg-background shrink-0">
-                      <img
-                        src={item.image || item.menuItem?.image || '/placeholder-food.jpg'}
-                        alt={item.name || item.menuItem?.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    {/* Details */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="text-sm font-bold text-text-primary leading-tight">
-                            {item.name || item.menuItem?.name || 'Menu Item'}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1">
-                            {item.size && (
-                              <span className="text-[9px] font-black uppercase tracking-widest bg-background px-2 py-0.5 rounded-md border border-border/40 text-text-muted">
-                                {item.size}
-                              </span>
-                            )}
-                            <span className="text-[10px] font-black text-primary">× {item.quantity}</span>
-                          </div>
-                        </div>
-                        <span className="text-sm font-black text-text-primary shrink-0">
-                          ₹{item.totalPrice || ((item.unitPrice || item.price || 0) * item.quantity)}
-                        </span>
-                      </div>
 
-                      {/* Combo Items */}
-                      {item.comboItems && item.comboItems.length > 0 && (
-                        <div className="mt-2 pl-2 border-l-2 border-primary/30 space-y-1">
-                          <p className="text-[8px] font-black text-primary uppercase tracking-widest">Combo includes:</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {item.comboItems.map((ci, i) => (
-                              <span key={i} className="text-[9px] font-bold bg-primary/5 text-primary px-2 py-0.5 rounded-lg border border-primary/10">
-                                {ci.quantity || 1}× {ci.menuItem?.name || ci.name || 'Item'}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* BOGO Free Item */}
-                      {item.bogoItem && (
-                        <div className="mt-2 pl-2 border-l-2 border-emerald-500/40 space-y-1">
-                          <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">Buy 1 Get 1 Free:</p>
-                          <span className="inline-flex items-center gap-1.5 text-[9px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-lg border border-emerald-500/20">
-                            🎁 Free {item.bogoItem.name} {item.bogoItem.size ? `(${item.bogoItem.size})` : ''} × {item.bogoItem.quantity || item.quantity}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Special Instructions */}
-              {order.remarks && (
-                <div className="p-4 border-t border-border/40 bg-amber-500/5">
-                  <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest mb-1">📝 Special Instructions</p>
-                  <p className="text-xs font-semibold text-text-primary">{order.remarks}</p>
-                </div>
-              )}
-            </div>
 
           </div>
 

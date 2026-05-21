@@ -702,7 +702,7 @@ const KitchenDashboard = () => {
                       )?.map((item) => {
                         const status = item.kitchenStatus || 'placed';
                         return (
-                          <div key={item._id} className={`grid ${activeStatusFilter === 'new' ? 'grid-cols-[40px_1fr]' : 'grid-cols-[40px_1fr_auto]'} items-start p-3 bg-background-muted/10 rounded-2xl border border-border-light hover:border-primary/20 transition-all gap-3 group/item`}>
+                          <div key={item._id} className={`grid ${activeStatusFilter === 'new' ? 'grid-cols-[40px_1fr]' : 'grid-cols-[48px_1fr_auto]'} items-center p-3 bg-background-muted/10 rounded-2xl border border-border-light hover:border-primary/20 transition-all gap-3 group/item`}>
                             {/* Column 1: Image */}
                             <div className="w-10 h-10 bg-background-card rounded-xl flex items-center justify-center border border-border-light shrink-0 overflow-hidden shadow-sm">
                               {item.image || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.image : '') ? (
@@ -721,29 +721,6 @@ const KitchenDashboard = () => {
                                 <span className="text-[8px] bg-background-card px-1.5 py-0.5 rounded-md border border-border-light text-text-muted font-black uppercase tracking-widest truncate max-w-[50px]">{item.size}</span>
                                 <span className="text-[9px] text-primary font-black uppercase tracking-widest shrink-0">x {item.quantity}</span>
                               </div>
-
-                              {/* Combo Sub-items */}
-                              {item.comboItems && item.comboItems.length > 0 && (
-                                <div className="mt-1.5 pl-2 border-l-2 border-primary/40">
-                                  <p className="text-[7px] font-black text-primary uppercase tracking-widest mb-0.5">Combo:</p>
-                                  <div className="flex flex-wrap gap-1">
-                                    {item.comboItems.map((ci, i) => (
-                                      <span key={i} className="text-[7px] font-bold bg-primary/5 text-primary px-1.5 py-0.5 rounded border border-primary/10">
-                                        {ci.quantity || 1}× {ci.menuItem?.name || ci.name || 'Item'}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* BOGO Free Item */}
-                              {item.bogoItem && (
-                                <div className="mt-1.5 pl-2 border-l-2 border-emerald-500/40">
-                                  <span className="inline-flex items-center gap-1 text-[7px] font-bold bg-emerald-500/10 text-emerald-600 px-1.5 py-0.5 rounded border border-emerald-500/20">
-                                    🎁 {item.bogoItem.name} {item.bogoItem.size ? `(${item.bogoItem.size})` : ''} ×{item.bogoItem.quantity || item.quantity}
-                                  </span>
-                                </div>
-                              )}
                             </div>
 
                             {/* Column 3: Status (Hidden in 'new' view) */}
