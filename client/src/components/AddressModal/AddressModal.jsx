@@ -9,9 +9,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
     address: '',
     landmark: '',
     location: '',
-    type: 'home',
-    city: '',
-    zipCode: ''
+    type: 'home'
   });
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [errors, setErrors] = useState({});
@@ -27,9 +25,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
         address: '',
         landmark: '',
         location: '',
-        type: 'home',
-        city: '',
-        zipCode: ''
+        type: 'home'
       });
       setRecipientType('myself');
       setErrors({});
@@ -44,8 +40,6 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
         landmark: editData.landmark || '',
         location: editData.location || '',
         type: editData.type || 'home',
-        city: editData.city || '',
-        zipCode: editData.zipCode || '',
         _id: editData._id
       });
       setRecipientType(editData.name === user?.name ? 'myself' : 'others');
@@ -87,9 +81,9 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
         if (!window.L) return;
         const initialLat = 10.668194;
         const initialLng = 76.025111;
-        
+
         lMap.current = window.L.map(mapRef.current).setView([initialLat, initialLng], 15);
-        
+
         window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '© OpenStreetMap contributors'
         }).addTo(lMap.current);
@@ -98,7 +92,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
           draggable: true
         }).addTo(lMap.current);
 
-        lMap.current.on('click', function(e) {
+        lMap.current.on('click', function (e) {
           markerRef.current.setLatLng(e.latlng);
         });
       }, 100);
@@ -132,7 +126,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
     if (!formData.address.trim()) newErrors.address = true;
     if (recipientType === 'others' && !formData.landmark.trim()) newErrors.landmark = true;
     if (recipientType === 'myself' && !formData.location) newErrors.location = true;
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -148,7 +142,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
   return (
     <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
       <div className="bg-background-card w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 relative flex flex-col max-h-[90vh]">
-        
+
         {/* Modal Header */}
         <div className="bg-primary p-6 md:p-8 text-white relative">
           <button onClick={onClose} className="absolute top-6 right-6 p-2 hover:bg-white/20 rounded-full transition-colors">
@@ -220,86 +214,24 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
             />
           </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">Landmark {recipientType === 'others' ? '(Required)' : '(Optional)'}</label>
-              <input
-                type="text"
-                value={formData.landmark}
-                onChange={(e) => {
-                  setFormData({ ...formData, landmark: e.target.value });
-                  if (errors.landmark) setErrors(prev => ({ ...prev, landmark: null }));
-                }}
-                className={`w-full px-5 py-3.5 bg-background-muted border ${errors.landmark ? 'border-primary' : 'border-border/40'} rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary`}
-                placeholder="E.g. Near City Hospital, Beside Park"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">City</label>
-                <input
-                  type="text"
-                  value={formData.city}
-                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  className="w-full px-5 py-3.5 bg-background-muted border border-border/40 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary"
-                  placeholder="Enter city"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">ZIP Code</label>
-                <input
-                  type="text"
-                  value={formData.zipCode}
-                  onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
-                  className="w-full px-5 py-3.5 bg-background-muted border border-border/40 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary"
-                  placeholder="Enter zip code"
-                />
-              </div>
-            </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">Landmark {recipientType === 'others' ? '(Required)' : '(Optional)'}</label>
+            <input
+              type="text"
+              value={formData.landmark}
+              onChange={(e) => {
+                setFormData({ ...formData, landmark: e.target.value });
+                if (errors.landmark) setErrors(prev => ({ ...prev, landmark: null }));
+              }}
+              className={`w-full px-5 py-3.5 bg-background-muted border ${errors.landmark ? 'border-primary' : 'border-border/40'} rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary`}
+              placeholder="E.g. Near City Hospital, Beside Park"
+            />
+          </div>
 
           {/* Location Section */}
           <div className="space-y-1.5">
             <div className="flex justify-between items-center ml-1">
-              <label className="text-[10px] font-black text-text-muted uppercase tracking-widest">Precise Location (GPS)</label>
-              <button
-                onClick={() => {
-                  if (recipientType === 'myself') {
-                    if (navigator.geolocation) {
-                      const btn = document.getElementById('locate-me-btn');
-                      btn.classList.add('animate-pulse');
-                      btn.innerText = 'Sending...';
-
-                      navigator.geolocation.getCurrentPosition(
-                        (position) => {
-                          const { latitude, longitude } = position.coords;
-                          const mapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
-                          setFormData({
-                            ...formData,
-                            location: `📍 Precise Location: ${mapsUrl}`
-                          });
-                          if (errors.location) setErrors(prev => ({ ...prev, location: null }));
-                          btn.classList.remove('animate-pulse');
-                          btn.innerText = 'Sent! ✅';
-                          setTimeout(() => btn.innerText = 'Send Location', 2000);
-                        },
-                        (error) => {
-                          console.error(error);
-                          btn.classList.remove('animate-pulse');
-                          btn.innerText = 'Error! ❌';
-                          setTimeout(() => btn.innerText = 'Send Location', 2000);
-                        }
-                      );
-                    }
-                  } else {
-                    // Open map picker for others
-                    setIsMapOpen(true);
-                  }
-                }}
-                id="locate-me-btn"
-                className="text-[9px] font-black text-primary uppercase tracking-widest bg-primary/5 px-2 py-1 rounded-lg hover:bg-primary hover:text-white transition-all flex items-center gap-1 shadow-sm"
-              >
-                Send Location
-              </button>
+              <label className="text-[10px] font-black text-text-muted uppercase tracking-widest">Precise Location</label>
             </div>
             <div className="relative">
               <MapPin size={16} className={`absolute left-5 top-1/2 -translate-y-1/2 ${formData.location ? 'text-green-500' : 'text-gray-300'}`} />
@@ -311,20 +243,12 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
                   if (errors.location) setErrors(prev => ({ ...prev, location: null }));
                 }}
                 className={`w-full pl-12 pr-5 py-3.5 bg-background-muted/50 border ${errors.location ? 'border-primary' : 'border-border/40'} rounded-2xl text-[10px] font-bold text-text-muted focus:outline-none transition-all`}
-                placeholder={recipientType === 'myself' ? "GPS link will appear here or paste Google Maps link" : "Paste Google Maps link or click Send Location to pick"}
+                placeholder="Google Maps link or Pick on Map location"
               />
             </div>
             <p className="text-[8px] font-bold text-text-muted mt-1 ml-1 italic opacity-80">
-              Tip: You can paste a Google Maps link directly here if you have one.
+              Tip: Click "Pick on Map" to locate, or paste a Google Maps link directly here if you have one.
             </p>
-            {recipientType === 'myself' && (
-              <button 
-                onClick={() => setIsMapOpen(true)}
-                className="mt-2 text-[8px] font-black text-text-muted uppercase tracking-widest hover:text-primary-light transition-all flex items-center gap-1"
-              >
-                <MapPin size={10} /> Pick on Map instead of GPS?
-              </button>
-            )}
           </div>
 
           {/* Address Type */}

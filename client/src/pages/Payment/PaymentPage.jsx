@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
-import { ArrowLeft, CreditCard, Banknote, MapPin, ChevronRight, CheckCircle2, ShieldCheck, Info, Clock, Wallet } from 'lucide-react';
+import { ArrowLeft, CreditCard, Banknote, MapPin, ChevronRight, CheckCircle2, ShieldCheck, Info, Clock, UtensilsCrossed } from 'lucide-react';
 import api from '../../api/axiosInstance';
 import Swal from 'sweetalert2';
 import Navbar from '../../components/Navbar/Navbar';
@@ -10,12 +10,11 @@ import Footer from '../../components/Footer/Footer';
 const PaymentPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { cartItems, subtotal, clearCart, settings } = useCart();
-  const [paymentMethod, setPaymentMethod] = useState('online'); // 'online', 'cod', 'wallet'
+  const { cartItems, subtotal, clearCart, settings, checkStoreStatus } = useCart();
+  const [paymentMethod, setPaymentMethod] = useState('online'); // 'online', 'cod'
   const [loading, setLoading] = useState(false);
   const [isOrderSuccess, setIsOrderSuccess] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
-  const [walletBalance, setWalletBalance] = useState(0);
   const dropdownRef = React.useRef(null);
 
     const handleLogout = React.useCallback(() => {
@@ -37,20 +36,6 @@ const PaymentPage = () => {
 
   const user = JSON.parse(localStorage.getItem('user') || localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || 'null');
 
-  useEffect(() => {
-    const fetchWallet = async () => {
-      try {
-        const response = await api.get('/api/users/profile');
-        if (response.data.success) {
-          setWalletBalance(response.data.data.walletBalance || 0);
-        }
-      } catch (error) {
-        console.error('Error fetching wallet balance:', error);
-      }
-    };
-    fetchWallet();
-  }, []);
-
   // Get delivery address and additional note from location state or fallback
   const deliveryAddress = location.state?.deliveryAddress;
   const additionalNote = location.state?.additionalNote || '';
@@ -69,8 +54,34 @@ const PaymentPage = () => {
     script.async = true;
     document.body.appendChild(script);
 
-    // If no address/table or items, redirect back to cart
-    if (!isOrderSuccess && (!(deliveryAddress || dineInTableId) || cartItems.length === 0)) {
+    // Check store status
+    const storeStatus = checkStoreStatus ? checkStoreStatus() : { isOpen: true };
+    if (!isOrderSuccess && !storeStatus.isOpen) {
+      let message = 'Store is currently closed.';
+      if (storeStatus.reason === 'holiday') {
+        message = 'We are closed for holidays. Please order again when we reopen.';
+      } else if (storeStatus.reason === 'closed_day') {
+        message = 'We are closed today. Please order again tomorrow.';
+      } else if (storeStatus.reason === 'manual_close') {
+        message = 'The store is currently closed. Please check back later.';
+      } else if (storeStatus.reason) {
+        message = `The store is currently closed (${storeStatus.reason}).`;
+      }
+      
+      Swal.fire({
+        title: 'Store Closed',
+        text: message,
+        icon: 'warning',
+        confirmButtonColor: '#B91C1C',
+        customClass: { popup: 'rounded-[2rem] bg-background text-text-primary' }
+      }).then(() => {
+        navigate('/cart');
+      });
+      return;
+    }
+
+    // If no address/table, no items, or subtotal is under ₹140, redirect back to cart
+    if (!isOrderSuccess && (!(deliveryAddress || dineInTableId) || cartItems.length === 0 || subtotal < 140)) {
       navigate('/cart');
     }
 
@@ -87,9 +98,33 @@ const PaymentPage = () => {
         document.body.removeChild(script);
       }
     };
-  }, [deliveryAddress, dineInTableId, cartItems, navigate, isOrderSuccess]);
+  }, [deliveryAddress, dineInTableId, cartItems, navigate, isOrderSuccess, subtotal]);
 
   const handlePlaceOrder = async () => {
+    const storeStatus = checkStoreStatus ? checkStoreStatus() : { isOpen: true };
+    if (!storeStatus.isOpen) {
+      let message = 'Store is currently closed.';
+      if (storeStatus.reason === 'holiday') {
+        message = 'We are closed for holidays. Please order again when we reopen.';
+      } else if (storeStatus.reason === 'closed_day') {
+        message = 'We are closed today. Please order again tomorrow.';
+      } else if (storeStatus.reason === 'manual_close') {
+        message = 'The store is currently closed. Please check back later.';
+      } else if (storeStatus.reason) {
+        message = `The store is currently closed (${storeStatus.reason}).`;
+      }
+      Swal.fire({
+        title: 'Store Closed',
+        text: message,
+        icon: 'warning',
+        confirmButtonColor: '#B91C1C',
+        customClass: { popup: 'rounded-[2rem] bg-background text-text-primary' }
+      }).then(() => {
+        navigate('/cart');
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const orderItems = cartItems.map(item => {
@@ -124,16 +159,12 @@ const PaymentPage = () => {
         })
       };
 
-      // 1. Always create the order in DB first (it will be 'pending' by default)
-      const response = await api.post('/api/orders', orderData);
-      const createdOrder = response.data.data;
-
       if (paymentMethod === 'online') {
-        // 2. Create Razorpay Order
+        // 1. Create Razorpay Order
         const { data: { data: razorpayOrder } } = await api.post('/api/payments/create-order', {
           amount: total,
           currency: 'INR',
-          receipt: `receipt_${createdOrder.orderNumber}`
+          receipt: `receipt_temp_${Date.now()}`
         });
 
         const options = {
@@ -145,32 +176,45 @@ const PaymentPage = () => {
           image: `${window.location.origin}${settings?.branding?.logoGold || '/logo-golden.png'}`,
           order_id: razorpayOrder.id,
           handler: async function (paymentResponse) {
-            // 3. Verify Payment and Update Order
+            // 2. Verify Payment and Place Order
             try {
-              const verificationData = {
-                razorpay_order_id: paymentResponse.razorpay_order_id,
-                razorpay_payment_id: paymentResponse.razorpay_payment_id,
-                razorpay_signature: paymentResponse.razorpay_signature,
-                orderId: createdOrder._id
+              const orderDataWithPayment = {
+                ...orderData,
+                razorpayOrderId: paymentResponse.razorpay_order_id,
+                razorpayPaymentId: paymentResponse.razorpay_payment_id,
+                razorpaySignature: paymentResponse.razorpay_signature
               };
 
-              const { data: verificationResult } = await api.post('/api/payments/verify', verificationData);
+              const response = await api.post('/api/orders', orderDataWithPayment);
+              const createdOrder = response.data.data;
 
-              if (verificationResult.success) {
-                clearCart();
-                localStorage.removeItem('dineInTableId');
-                localStorage.removeItem('dineInTableNumber');
-                setIsOrderSuccess(true);
-                showSuccessPopup(createdOrder);
-              }
+              clearCart();
+              localStorage.removeItem('dineInTableId');
+              localStorage.removeItem('dineInTableNumber');
+              setIsOrderSuccess(true);
+              showSuccessPopup(createdOrder);
             } catch (err) {
-              console.error('Payment Verification Failed:', err);
-              handlePaymentFailure(createdOrder._id);
+              console.error('Order Placement or Payment Verification Failed:', err);
+              setLoading(false);
+              Swal.fire({
+                title: 'Order Placement Failed',
+                text: err.response?.data?.message || 'Payment verification or order placement failed. Please contact support.',
+                icon: 'error',
+                confirmButtonColor: '#B91C1C',
+                customClass: { popup: 'rounded-[2rem] bg-background text-text-primary' }
+              });
             }
           },
           modal: {
             ondismiss: function () {
-              handlePaymentFailure(createdOrder._id, 'Payment cancelled by user');
+              setLoading(false);
+              Swal.fire({
+                title: 'Payment Cancelled',
+                text: 'Your payment was cancelled. You can choose Cash on Delivery or try paying again.',
+                icon: 'info',
+                confirmButtonColor: '#B91C1C',
+                customClass: { popup: 'rounded-[2rem] bg-background text-text-primary' }
+              });
             }
           },
           prefill: {
@@ -185,9 +229,11 @@ const PaymentPage = () => {
 
         const rzp = new window.Razorpay(options);
         rzp.open();
-        setLoading(false);
       } else {
-        // COD Flow Success
+        // COD Flow Success - Directly place order
+        const response = await api.post('/api/orders', orderData);
+        const createdOrder = response.data.data;
+
         clearCart();
         localStorage.removeItem('dineInTableId');
         localStorage.removeItem('dineInTableNumber');
@@ -444,7 +490,7 @@ const PaymentPage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {cartItems.map((item) => (
                     <div key={item._id} className="flex items-center gap-5 p-4 rounded-[2rem] bg-background border border-border/40 group hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all duration-500">
-                      <div className="w-16 h-16 rounded-2xl bg-white p-1 shadow-sm border border-border/40 shrink-0 overflow-hidden group-hover:rotate-3 transition-transform duration-500">
+                      <div className="w-16 h-16 rounded-2xl shrink-0 overflow-hidden group-hover:rotate-3 transition-transform duration-500">
                         <img src={item.image || '/placeholder-food.jpg'} alt={item.name} className="w-full h-full object-contain" />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -513,29 +559,6 @@ const PaymentPage = () => {
                       </div>
                     </div>
 
-                    {/* Wallet Option */}
-                    <div
-                      onClick={() => walletBalance >= total ? setPaymentMethod('wallet') : null}
-                      className={`cursor-pointer group/pay p-4 rounded-[1.5rem] border-2 transition-all duration-500 flex items-center justify-between ${paymentMethod === 'wallet' ? 'border-primary bg-primary/[0.03] shadow-lg shadow-primary/5 -translate-y-0.5' : walletBalance < total ? 'opacity-40 cursor-not-allowed border-border/40 bg-background grayscale' : 'border-border/20 bg-background hover:border-primary/30 hover:bg-background-card hover:-translate-y-0.5'}`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-500 ${paymentMethod === 'wallet' ? 'bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-500 text-white shadow-lg shadow-emerald-500/20 scale-105' : 'bg-background-card text-text-muted/40 group-hover/pay:text-emerald-500'}`}>
-                          <Wallet size={20} strokeWidth={2.5} />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className="text-sm font-black text-text-primary tracking-tight">Wallet</h4>
-                            <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-lg border shadow-sm ${walletBalance >= total ? 'bg-emerald-500 text-white border-emerald-500/20' : 'bg-red-500 text-white border-red-500/20'}`}>
-                              ₹{walletBalance}
-                            </span>
-                          </div>
-                          <p className="text-[9px] font-bold text-text-muted tracking-widest uppercase opacity-50">guesto credit</p>
-                        </div>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${paymentMethod === 'wallet' ? 'border-primary bg-primary/10' : 'border-border/40 group-hover/pay:border-primary/40'}`}>
-                        <div className={`w-2 h-2 rounded-full bg-primary transition-all duration-500 ${paymentMethod === 'wallet' ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}></div>
-                      </div>
-                    </div>
 
                     {/* COD Option */}
                     <div
@@ -581,6 +604,13 @@ const PaymentPage = () => {
                       <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary animate-pulse">
                         <ShieldCheck size={20} />
                       </div>
+                    </div>
+
+                    <div className="relative z-10 flex items-center gap-2 p-3 bg-primary/5 rounded-xl border border-primary/10 mt-3">
+                      <Info size={14} className="text-primary flex-shrink-0" />
+                      <p className="text-[10px] font-bold text-text-muted leading-snug">
+                        Delivery is free within 5 km. Beyond 5 km, a delivery charge of ₹10 per km applies.
+                      </p>
                     </div>
                   </div>
 

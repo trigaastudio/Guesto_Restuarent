@@ -1057,7 +1057,7 @@ const SettingsSection = () => {
                               autoComplete="new-password"
                               value={securityData.currentPassword}
                               onChange={(e) => setSecurityData({ ...securityData, currentPassword: e.target.value })}
-                              className="w-full pl-14 pr-5 py-4 bg-background-muted/50 rounded-2xl border border-transparent focus:border-primary/40 focus:bg-white focus:text-black focus:shadow-[0_0_20px_rgba(var(--primary-rgb),0.1)] transition-all outline-none font-bold text-text-primary"
+                              className="w-full pl-14 pr-5 py-4 bg-background border border-border/40 rounded-2xl text-sm font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary/20 transition-all shadow-sm placeholder:text-text-muted/40"
                               placeholder="Enter your current password"
                             />
                           </div>
@@ -1073,7 +1073,7 @@ const SettingsSection = () => {
                                 autoComplete="off"
                                 value={securityData.newEmail}
                                 onChange={(e) => setSecurityData({ ...securityData, newEmail: e.target.value })}
-                                className="w-full pl-14 pr-5 py-4 bg-background-muted/50 rounded-2xl border border-transparent focus:border-primary/40 focus:bg-white focus:text-black focus:shadow-[0_0_20px_rgba(var(--primary-rgb),0.1)] transition-all outline-none font-bold text-text-primary"
+                                className="w-full pl-14 pr-5 py-4 bg-background border border-border/40 rounded-2xl text-sm font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary/20 transition-all shadow-sm placeholder:text-text-muted/40"
                                 placeholder="e.g. new.admin@guesto.com"
                               />
                             </div>
@@ -1089,7 +1089,7 @@ const SettingsSection = () => {
                                   autoComplete="new-password"
                                   value={securityData.newPassword}
                                   onChange={(e) => setSecurityData({ ...securityData, newPassword: e.target.value })}
-                                  className="w-full pl-14 pr-5 py-4 bg-background-muted/50 rounded-2xl border border-transparent focus:border-primary/40 focus:bg-white focus:text-black focus:shadow-[0_0_20px_rgba(var(--primary-rgb),0.1)] transition-all outline-none font-bold text-text-primary"
+                                  className="w-full pl-14 pr-5 py-4 bg-background border border-border/40 rounded-2xl text-sm font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary/20 transition-all shadow-sm placeholder:text-text-muted/40"
                                   placeholder="Min. 6 characters"
                                 />
                               </div>
@@ -1103,7 +1103,7 @@ const SettingsSection = () => {
                                   autoComplete="new-password"
                                   value={securityData.confirmPassword}
                                   onChange={(e) => setSecurityData({ ...securityData, confirmPassword: e.target.value })}
-                                  className="w-full pl-14 pr-5 py-4 bg-background-muted/50 rounded-2xl border border-transparent focus:border-primary/40 focus:bg-white focus:text-black focus:shadow-[0_0_20px_rgba(var(--primary-rgb),0.1)] transition-all outline-none font-bold text-text-primary"
+                                  className="w-full pl-14 pr-5 py-4 bg-background border border-border/40 rounded-2xl text-sm font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary/20 transition-all shadow-sm placeholder:text-text-muted/40"
                                   placeholder="Repeat new password"
                                 />
                               </div>
@@ -1114,7 +1114,7 @@ const SettingsSection = () => {
                         <button
                           onClick={handleRequestOTP}
                           disabled={isRequestingOTP}
-                          className="w-full bg-primary text-white py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-primary-light transition-all flex items-center justify-center space-x-3 shadow-xl shadow-primary/20"
+                          className="w-full bg-primary text-white py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-primary-dark transition-all flex items-center justify-center space-x-3 shadow-xl shadow-primary/20"
                         >
                           {isRequestingOTP ? <Loader2 size={18} className="animate-spin" /> : <Zap size={18} />}
                           <span>Request OTP Verification</span>
@@ -1122,7 +1122,7 @@ const SettingsSection = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="bg-background-card/80 backdrop-blur-xl p-10 rounded-[3rem] border border-border-light space-y-8 animate-in zoom-in-95 duration-300 text-center relative shadow-2xl">
+                    <div className="bg-background-card/80 backdrop-blur-xl p-10 rounded-[3rem] border border-border/40 space-y-8 animate-in zoom-in-95 duration-300 text-center relative shadow-2xl">
                       <button
                         onClick={() => setOtpStep(false)}
                         className="absolute top-6 left-6 p-2 hover:bg-primary/10 rounded-xl text-primary transition-all flex items-center space-x-2 text-[10px] font-black uppercase tracking-widest"
@@ -1157,7 +1157,7 @@ const SettingsSection = () => {
                           autoComplete="one-time-code"
                           value={securityData.otp}
                           onChange={(e) => setSecurityData({ ...securityData, otp: e.target.value })}
-                          className="w-full max-w-[220px] text-center text-4xl font-black tracking-[0.4em] bg-background-muted/30 py-5 rounded-3xl border-2 border-primary/20 focus:border-primary focus:bg-white focus:text-primary outline-none transition-all shadow-xl text-primary"
+                          className="w-full max-w-[220px] text-center text-4xl font-black tracking-[0.4em] bg-background border border-border/40 rounded-3xl py-5 focus:border-primary outline-none transition-all shadow-xl text-primary"
                           placeholder="000000"
                           autoFocus
                         />
@@ -1167,7 +1167,7 @@ const SettingsSection = () => {
                         <button
                           onClick={handleVerifyAndUpdate}
                           disabled={isVerifying}
-                          className="w-full bg-primary text-white py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-primary-light transition-all flex items-center justify-center space-x-3 shadow-lg shadow-primary/20"
+                          className="w-full bg-primary text-white py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-primary-dark transition-all flex items-center justify-center space-x-3 shadow-lg shadow-primary/20"
                         >
                           {isVerifying ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
                           <span>Verify & Complete</span>

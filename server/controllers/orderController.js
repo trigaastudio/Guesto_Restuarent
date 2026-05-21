@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import Order from '../models/orderSchema.js';
 import Cart from '../models/cartSchema.js';
 import User from '../models/userSchema.js';
@@ -196,12 +197,123 @@ const restoreStock = async (items) => {
   await handleStock(items, 'restore');
 };
 
+const checkStoreStatusHelper = (settings) => {
+  if (!settings?.operationalSettings) return { isOpen: true };
+  const { isStoreOpen, isHolidayMode, businessHours } = settings.operationalSettings;
+  
+  if (isHolidayMode) return { isOpen: false, reason: 'holiday' };
+  if (isStoreOpen === false) return { isOpen: false, reason: 'manual_close' };
+
+  // BULLETPROOF IST CALCULATION (UTC + 5:30)
+  const now = new Date();
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  const istDate = new Date(utc + (330 * 60000));
+
+  const day = istDate.toLocaleDateString('en-US', { weekday: 'long' });
+
+  // Check if today is a closed day
+  const closedDays = businessHours?.closedDays || [];
+  const isClosedToday = closedDays.some(d => d.toLowerCase() === day.toLowerCase());
+  if (isClosedToday) {
+    return { isOpen: false, reason: 'closed_day' };
+  }
+
+  if (businessHours?.open && businessHours?.close) {
+    // Robust Time Parsing (Handles "11:00", "11.00", etc.)
+    const parseTime = (timeStr) => {
+      if (!timeStr) return 0;
+      const parts = timeStr.replace('.', ':').split(':');
+      const h = parseInt(parts[0], 10) || 0;
+      const m = parseInt(parts[1], 10) || 0;
+      return h * 60 + m;
+    };
+
+    // Format HH:mm string to 12-hour AM/PM format
+    const format12Hour = (timeStr) => {
+      if (!timeStr) return '';
+      const parts = timeStr.replace('.', ':').split(':');
+      let h = parseInt(parts[0], 10) || 0;
+      const m = parseInt(parts[1], 10) || 0;
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      h = h % 12;
+      h = h ? h : 12; // the hour '0' should be '12'
+      const mStr = m < 10 ? `0${m}` : m;
+      return `${h}:${mStr} ${ampm}`;
+    };
+
+    const currentTime = istDate.getHours() * 60 + istDate.getMinutes();
+    const openMinutes = parseTime(businessHours.open);
+    const closeMinutes = parseTime(businessHours.close);
+
+    let isStoreCurrentlyOpen = true;
+    let reason = '';
+
+    if (closeMinutes < openMinutes) {
+      // CROSSES MIDNIGHT (e.g. 11:00 AM to 12:57 AM the next morning)
+      if (currentTime >= openMinutes || currentTime <= closeMinutes) {
+        isStoreCurrentlyOpen = true;
+      } else {
+        isStoreCurrentlyOpen = false;
+        reason = `We open at ${format12Hour(businessHours.open)}`;
+      }
+    } else {
+      // DOES NOT CROSS MIDNIGHT (e.g. 09:00 AM to 10:00 PM)
+      if (currentTime >= openMinutes && currentTime <= closeMinutes) {
+        isStoreCurrentlyOpen = true;
+      } else {
+        isStoreCurrentlyOpen = false;
+        if (currentTime < openMinutes) {
+          reason = `We open at ${format12Hour(businessHours.open)}`;
+        } else {
+          reason = `We closed at ${format12Hour(businessHours.close)}`;
+        }
+      }
+    }
+
+    if (!isStoreCurrentlyOpen) {
+      return { isOpen: false, reason };
+    }
+  }
+
+  return { isOpen: true };
+};
+
 class OrderController {
   // --- USER FACING METHODS ---
 
   async placeOrder(req, res) {
     try {
-      const { items, address, paymentMethod, totalAmount, subtotal, discount, tax, razorpayOrderId, razorpayPaymentId } = req.body;
+      const { items, address, paymentMethod, totalAmount, subtotal, discount, tax, razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
+
+      // Determine Order Source and Type
+      const isUser = req.user.role === 'user';
+      const finalOrderSource = isUser ? 'user' : (req.user.role || 'admin');
+      const finalOrderType = isUser ? 'delivery' : (req.body.orderType || 'dine-in');
+
+      const settings = await Settings.getSettings();
+
+      // Check Store Status (Holidays, Working Hours) for customer orders
+      if (finalOrderSource === 'user') {
+        const storeStatus = checkStoreStatusHelper(settings);
+        if (!storeStatus.isOpen) {
+          let msg = 'Store is currently closed.';
+          if (storeStatus.reason === 'holiday') {
+            msg = 'We are closed for holidays. Please order again when we reopen.';
+          } else if (storeStatus.reason === 'closed_day') {
+            msg = 'We are closed today. Please order again tomorrow.';
+          } else if (storeStatus.reason === 'manual_close') {
+            msg = 'The store is currently closed. Please check back later.';
+          } else if (storeStatus.reason) {
+            msg = `The store is currently closed (${storeStatus.reason}).`;
+          }
+          return res.status(400).json({ success: false, message: msg });
+        }
+      }
+
+      // Check Minimum Order Amount
+      if (subtotal < 140) {
+        return res.status(400).json({ success: false, message: 'Minimum order amount is ₹140 to proceed to payment.' });
+      }
 
       // Check Stock First
       const stockCheck = await checkStockAvailability(items);
@@ -209,35 +321,31 @@ class OrderController {
         return res.status(400).json({ success: false, message: `Insufficient stock for: ${stockCheck.itemName}` });
       }
 
-      // Handle Wallet Payment
-      if (paymentMethod === 'wallet') {
-        const user = await User.findById(req.user._id);
-        const orderTotal = totalAmount; // totalAmount should already include fee/tax/discount
-
-        if (user.walletBalance < orderTotal) {
-          return res.status(400).json({ success: false, message: 'Insufficient wallet balance' });
+      // Verify Razorpay Payment Signature for online payments
+      if (paymentMethod === 'online') {
+        if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+          return res.status(400).json({ success: false, message: 'Payment verification details are missing.' });
         }
 
-        user.walletBalance -= orderTotal;
-        user.walletTransactions.push({
-          amount: orderTotal,
-          type: 'debit',
-          description: `Payment for Order`
-        });
-        await user.save();
+        const body = razorpayOrderId + "|" + razorpayPaymentId;
+        const expectedSignature = crypto
+          .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+          .update(body.toString())
+          .digest("hex");
+
+        const isAuthentic = expectedSignature === razorpaySignature;
+        if (!isAuthentic) {
+          return res.status(400).json({ success: false, message: 'Invalid payment signature.' });
+        }
       }
 
-      // Determine Order Source and Type
-      const isUser = req.user.role === 'user';
-      const finalOrderSource = isUser ? 'user' : (req.user.role || 'admin');
-      const finalOrderType = isUser ? 'delivery' : (req.body.orderType || 'dine-in');
+      // Wallet Payment logic removed
 
       const orderNumber = await getNextOrderNumber();
 
       // Calculate delivery fee on server for security
       let deliveryFee = 0;
       if (finalOrderType === 'delivery' && address.location) {
-        const settings = await Settings.getSettings();
         const { freeDistanceLimit, chargePerExtraKm } = settings.deliverySettings || { freeDistanceLimit: 5, chargePerExtraKm: 10 };
         const restLat = settings.restaurantDetails?.location?.lat || parseFloat(process.env.RESTAURANT_LAT || '10.668194');
         const restLng = settings.restaurantDetails?.location?.lng || parseFloat(process.env.RESTAURANT_LNG || '76.025111');
@@ -296,14 +404,16 @@ class OrderController {
         paymentMethod: paymentMethod || 'cod',
         subtotal,
         deliveryFee: deliveryFee || req.body.deliveryFee || 0,
+        platformFee: req.body.platformFee || 0,
         discount: discount || 0,
         tax: tax || 0,
-        totalAmount: subtotal + (deliveryFee || req.body.deliveryFee || 0) - (discount || 0) + (tax || 0),
+        totalAmount: subtotal + (deliveryFee || req.body.deliveryFee || 0) + (req.body.platformFee || 0) - (discount || 0) + (tax || 0),
         orderStatus: 'placed',
         kitchenStatus: 'placed',
-        paymentStatus: (paymentMethod === 'wallet') ? 'paid' : 'unpaid',
+        paymentStatus: paymentMethod === 'online' ? 'paid' : 'unpaid',
         razorpayOrderId,
-        razorpayPaymentId
+        razorpayPaymentId,
+        remarks: req.body.remarks || ''
       });
 
       if (finalOrderType === 'dine-in') {
@@ -316,13 +426,7 @@ class OrderController {
       // Reduce Stock
       await handleStock(items, 'reduce');
 
-      // Update wallet transaction description with order number
-      if (paymentMethod === 'wallet') {
-        const user = await User.findById(req.user._id);
-        const lastTx = user.walletTransactions[user.walletTransactions.length - 1];
-        lastTx.description = `Payment for Order #${newOrder.orderNumber}`;
-        await user.save();
-      }
+      // Wallet transaction update removed
 
       // Clear cart
       await Cart.findOneAndDelete({ customer: req.user._id }).catch(() => { });
@@ -334,13 +438,13 @@ class OrderController {
         data: newOrder
       });
 
-      // Global Notification (Only for COD/Wallet. Online orders wait for payment verification)
-      const onlineMethods = ['online', 'upi/card', 'razorpay'];
-      if (!onlineMethods.includes(newOrder.paymentMethod)) {
+      // Global Notification (COD and Paid Online Orders)
+      if (newOrder.paymentMethod === 'cod' || newOrder.paymentStatus === 'paid') {
         getIO().emit('newOrder', {
           order: newOrder,
           message: `🔔 New ${newOrder.orderType.toUpperCase()} Order Received! (#${newOrder.orderNumber})`
         });
+        getIO().emit('ordersUpdated');
       }
     } catch (error) {
       console.error('Order Error Details:', error);
@@ -378,10 +482,10 @@ class OrderController {
         return res.status(404).json({ success: false, message: 'Order not found' });
       }
 
-      if (order.orderStatus !== 'placed' && order.orderStatus !== 'processing') {
+      if (order.orderStatus !== 'placed') {
         return res.status(400).json({
           success: false,
-          message: `This order is too far along to be cancelled. Status: ${order.orderStatus}`
+          message: 'This order has already been accepted and can no longer be cancelled.'
         });
       }
 
@@ -395,16 +499,8 @@ class OrderController {
       // Restore Stock
       await restoreStock(order.items);
 
-      // Refund to wallet if paid
+      // Mark refunded if paid
       if (order.paymentStatus === 'paid') {
-        const user = await User.findById(req.user._id);
-        user.walletBalance += order.totalAmount;
-        user.walletTransactions.push({
-          amount: order.totalAmount,
-          type: 'credit',
-          description: `Refund for Cancelled Order #${order.orderNumber}`
-        });
-        await user.save();
         order.paymentStatus = 'refunded';
       }
 
@@ -414,7 +510,7 @@ class OrderController {
       res.status(200).json({
         success: true,
         message: order.paymentStatus === 'refunded'
-          ? 'Order cancelled and amount refunded to your wallet'
+          ? 'Order cancelled and amount refunded'
           : 'Order cancelled successfully'
       });
     } catch (error) {
@@ -839,9 +935,9 @@ class OrderController {
 
       const subtotal = order.items.reduce((acc, item) => acc + (item.totalPrice || ((item.unitPrice || item.price || 0) * item.quantity)), 0);
       order.subtotal = subtotal;
-      order.totalAmount = subtotal + (order.deliveryFee || 0) - (order.discount || 0) + (order.tax || 0);
+      order.totalAmount = subtotal + (order.deliveryFee || 0) + (order.platformFee || 0) - (order.discount || 0) + (order.tax || 0);
 
-      if (!["cash", "upi/card", "online", "cod", "wallet", "Not Specified"].includes(order.paymentMethod)) {
+      if (!["cash", "upi/card", "online", "cod", "Not Specified"].includes(order.paymentMethod)) {
         order.paymentMethod = 'Not Specified';
       }
 

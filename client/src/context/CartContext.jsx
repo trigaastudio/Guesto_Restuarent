@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import api from '../api/axiosInstance';
 import { showToast, showCartToast } from '../utils/sweetAlert';
 import socket from '../services/socket';
@@ -10,6 +10,7 @@ export const CartProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState(null);
   const [offers, setOffers] = useState([]);
+  const pendingUpdatesRef = useRef({});
 
   useEffect(() => {
     fetchCart();
@@ -57,6 +58,9 @@ export const CartProvider = ({ children }) => {
       socket.off('stockUpdate');
       socket.off('offerUpdate');
       socket.off('settingsUpdate');
+      if (pendingUpdatesRef.current) {
+        Object.values(pendingUpdatesRef.current).forEach(clearTimeout);
+      }
     };
   }, []);
 
@@ -111,23 +115,11 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  const updateQuantity = async (id, quantity) => {
-    if (quantity < 1) {
-      return removeFromCart(id);
+  const removeFromCart = useCallback(async (id) => {
+    if (pendingUpdatesRef.current[id]) {
+      clearTimeout(pendingUpdatesRef.current[id]);
+      delete pendingUpdatesRef.current[id];
     }
-    try {
-      const response = await api.put(`/api/cart/${id}`, {
-        quantity
-      });
-      if (response.data.success) {
-        setCartItems(response.data.data.items);
-      }
-    } catch (error) {
-      showToast('error', 'Failed to update quantity');
-    }
-  };
-
-  const removeFromCart = async (id) => {
     try {
       const response = await api.delete(`/api/cart/${id}`);
       if (response.data.success) {
@@ -136,7 +128,38 @@ export const CartProvider = ({ children }) => {
     } catch (error) {
       showToast('error', 'Failed to remove item');
     }
-  };
+  }, []);
+
+  const updateQuantity = useCallback(async (id, quantity) => {
+    if (quantity < 1) {
+      return removeFromCart(id);
+    }
+
+    // Optimistically update the UI state immediately
+    setCartItems(prev => prev.map(item => item._id === id ? { ...item, quantity } : item));
+
+    // Clear existing timeout for this item if any
+    if (pendingUpdatesRef.current[id]) {
+      clearTimeout(pendingUpdatesRef.current[id]);
+    }
+
+    // Set a new timeout to sync with backend
+    pendingUpdatesRef.current[id] = setTimeout(async () => {
+      try {
+        const response = await api.put(`/api/cart/${id}`, { quantity });
+        if (response.data.success) {
+          // Sync with the actual database response in case other things changed
+          setCartItems(response.data.data.items);
+        }
+      } catch (error) {
+        showToast('error', 'Failed to update quantity');
+        // Fetch cart to revert to correct state on error
+        fetchCart();
+      } finally {
+        delete pendingUpdatesRef.current[id];
+      }
+    }, 400); // 400ms debounce time
+  }, [removeFromCart]);
 
   const clearCart = async () => {
     try {
@@ -230,7 +253,9 @@ export const CartProvider = ({ children }) => {
 
   // --- ADVANCED OFFER CALCULATION ---
   const subtotal = useMemo(() => {
-    let tempItems = cartItems.map(item => {
+    let totalSubtotal = 0;
+
+    cartItems.forEach(item => {
       // Find base price from variants or fallback fields
       const variantPrice = (item.variants || item.sizes || []).find(v => v.size === item.selectedSize)?.price;
       const basePrice = variantPrice || item.offerPrice || item.price || 0;
@@ -337,6 +362,13 @@ export const CartProvider = ({ children }) => {
     // 2. PROCESS REMAINING ITEMS (BOGO & DISCOUNTS)
     tempItems.forEach(item => {
       if (item.remainingQty <= 0) return;
+
+      if (item.isCombo) {
+        totalSubtotal += (item.originalPrice || 0) * item.remainingQty;
+        item.remainingQty = 0;
+        return;
+      }
+
       const itemId = (item.menuItemId || item.menuItem?._id || item._id || item.id || '').toString().toLowerCase();
       const itemCatId = (item.category?._id || item.category || '').toString().toLowerCase();
 
@@ -358,18 +390,13 @@ export const CartProvider = ({ children }) => {
         return;
       }
 
-      // Check for Discount
-      const discountOffer = activeOffers.find(o =>
-        o.offerType === 'discount' &&
-        item.remainingQty >= (o.minQuantity || 1) &&
-        (o.applicableItems?.some(bi => (bi.menuItem?._id || bi.menuItem || '').toString().toLowerCase() === itemId) ||
-          o.applicableCategories?.some(catId => (catId._id || catId || '').toString().toLowerCase() === itemCatId))
-      );
+      // Check for Item/Category Discount
+      const menuDiscount = item.menuItem?.discountPercentage || item.discountPercentage || 0;
+      const categoryDiscount = item.menuItem?.category?.discountPercentage || item.category?.discountPercentage || 0;
+      const maxDiscountPercent = Math.max(menuDiscount, categoryDiscount);
 
-      if (discountOffer) {
-        // Discount application log removed
-        const discountPercent = discountOffer.offerValue || 0;
-        const discountedPrice = (item.originalPrice || 0) * (1 - discountPercent / 100);
+      if (maxDiscountPercent > 0) {
+        const discountedPrice = (item.originalPrice || 0) * (1 - maxDiscountPercent / 100);
         totalSubtotal += item.remainingQty * discountedPrice;
       } else {
         totalSubtotal += item.remainingQty * (item.originalPrice || 0);
@@ -377,9 +404,8 @@ export const CartProvider = ({ children }) => {
       item.remainingQty = 0;
     });
 
-    // Final subtotal log removed
     return Math.round(totalSubtotal);
-  }, [cartItems, offers, settings]);
+  }, [cartItems]);
 
   return (
     <CartContext.Provider value={{

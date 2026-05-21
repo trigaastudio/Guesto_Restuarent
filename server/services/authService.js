@@ -156,6 +156,49 @@ class AuthService {
     return true;
   }
 
+  async sendChangeEmailOTP(newEmail) {
+    const existing = await userRepository.findByEmail(newEmail.toLowerCase().trim());
+    if (existing) {
+      throw new Error('User with this email already exists');
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 5 * 60 * 1000;
+    otps.set(newEmail.toLowerCase(), { otp, expiresAt });
+
+    const settings = await Settings.getSettings();
+    const restaurantName = settings.restaurantDetails.name || "GuestO";
+    
+    await this._sendStylishEmail(
+      newEmail, 
+      `Verify your new email for ${restaurantName}`,
+      "Verify New Email",
+      `Please use the following verification code to change your email to this address.`,
+      otp,
+      settings
+    );
+    return true;
+  }
+
+  async sendChangePasswordOTP(email) {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 5 * 60 * 1000;
+    otps.set(email.toLowerCase(), { otp, expiresAt });
+
+    const settings = await Settings.getSettings();
+    const restaurantName = settings.restaurantDetails.name || "GuestO";
+    
+    await this._sendStylishEmail(
+      email, 
+      `Change Password Verification - ${restaurantName}`,
+      "Verification Code",
+      `Please use the following verification code to authorize changing your password.`,
+      otp,
+      settings
+    );
+    return true;
+  }
+
   async googleLogin(token) {
     try {
       console.log('🚀 Starting Google login with token...');

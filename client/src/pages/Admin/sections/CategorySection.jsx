@@ -9,7 +9,7 @@ import Pagination from '../../../components/Pagination/Pagination';
 const CategorySection = () => {
   const [categories, setCategories] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentCategory, setCurrentCategory] = useState({ name: '', isActive: true, image: '' });
+  const [currentCategory, setCurrentCategory] = useState({ name: '', isActive: true, image: '', discountPercentage: 0 });
   const [isEditing, setIsEditing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -53,11 +53,12 @@ const CategorySection = () => {
         _id: category._id,
         name: category.name || '',
         isActive: category.isActive !== undefined ? category.isActive : true,
-        image: category.image || ''
+        image: category.image || '',
+        discountPercentage: category.discountPercentage || 0
       });
       setIsEditing(true);
     } else {
-      setCurrentCategory({ name: '', isActive: true, image: '' });
+      setCurrentCategory({ name: '', isActive: true, image: '', discountPercentage: 0 });
       setIsEditing(false);
     }
     setIsModalOpen(true);
@@ -277,6 +278,7 @@ const CategorySection = () => {
                   </div>
                 </th>
                 <th className="px-3 py-4">Items</th>
+                <th className="px-3 py-4">Discount</th>
                 <th className="px-3 py-4">Total Stock</th>
                 <th className="px-3 py-4 text-center">Actions</th>
               </tr>
@@ -321,6 +323,15 @@ const CategorySection = () => {
                       </span>
                     </td>
                     <td className="px-3 py-4 font-medium text-text-secondary">{category.itemCount || 0} Items</td>
+                    <td className="px-3 py-4">
+                      {category.discountPercentage > 0 ? (
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-status-on/10 text-status-available border border-status-on/20">
+                          {category.discountPercentage}% Off
+                        </span>
+                      ) : (
+                        <span className="text-text-muted text-[11px] font-medium italic">No Discount</span>
+                      )}
+                    </td>
                     <td className="px-3 py-4">
                       <div className="flex items-center space-x-2">
                         <span className="font-bold text-text-primary">{category.totalStock || 0}</span>
@@ -389,6 +400,18 @@ const CategorySection = () => {
                   onChange={(e) => setCurrentCategory({ ...currentCategory, name: e.target.value })}
                   className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all"
                   placeholder="e.g. Main Course"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-text-secondary">Discount Percentage (%)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={currentCategory.discountPercentage === 0 ? '' : currentCategory.discountPercentage}
+                  onChange={(e) => setCurrentCategory({ ...currentCategory, discountPercentage: e.target.value === '' ? 0 : Math.min(100, Math.max(0, parseInt(e.target.value) || 0)) })}
+                  className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold"
+                  placeholder="e.g. 10"
                 />
               </div>
               <div className="flex items-center space-x-3">

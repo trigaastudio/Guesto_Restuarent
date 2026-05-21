@@ -18,6 +18,18 @@ const AdminLogin = () => {
 
   React.useEffect(() => {
     fetchSettings();
+    const originalTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    document.documentElement.setAttribute('data-theme', 'dark');
+    document.documentElement.classList.add('dark');
+
+    return () => {
+      document.documentElement.setAttribute('data-theme', originalTheme);
+      if (originalTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    };
   }, []);
 
   const fetchSettings = async () => {
@@ -63,19 +75,10 @@ const AdminLogin = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative transition-colors duration-300">
-      <button
-        onClick={toggleTheme}
-        className="absolute top-8 right-8 p-3 bg-background-card rounded-full border border-border-light text-text-secondary hover:text-primary transition-all shadow-sm"
-      >
-        {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-      </button>
-
       {/* Logo Section */}
       <div className="mb-12 text-center flex flex-col items-center animate-in fade-in slide-in-from-top-4 duration-700">
         <img
-          src={isDarkMode
-            ? (settings?.branding?.logoGold || "/logo-golden.png")
-            : (settings?.branding?.logoDark || "/logo-dark.png")}
+          src={settings?.branding?.logoGold || "/logo-golden.png"}
           alt="Restaurant Logo"
           className="h-16 w-auto mb-2"
         />

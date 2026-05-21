@@ -13,7 +13,6 @@ const LandingPage = lazy(() => import('./pages/Landing/LandingPage'));
 const CartPage = lazy(() => import('./pages/Cart/CartPage'));
 const PaymentPage = lazy(() => import('./pages/Payment/PaymentPage'));
 const ProfilePage = lazy(() => import('./pages/Profile/ProfilePage'));
-const ReturnsRefundsPage = lazy(() => import('./pages/Profile/ReturnsRefundsPage'));
 const OrdersPage = lazy(() => import('./pages/Orders/OrdersPage'));
 const TrackOrderPage = lazy(() => import('./pages/Orders/TrackOrderPage'));
 const MenuDetailPage = lazy(() => import('./pages/Menu/MenuDetailPage'));
@@ -81,11 +80,6 @@ function App() {
                 <Route path="/profile" element={
                   <ProtectedRoute>
                     <ProfilePage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/returns-refunds" element={
-                  <ProtectedRoute>
-                    <ReturnsRefundsPage />
                   </ProtectedRoute>
                 } />
                 <Route path="/my-orders" element={

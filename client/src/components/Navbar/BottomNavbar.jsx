@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Utensils, ShoppingCart, User, MapPin, Wallet, Package, X } from 'lucide-react';
+import { Home, Utensils, ShoppingCart, User, MapPin, LogOut, Package, X } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 
 const BottomNavbar = () => {
@@ -51,7 +51,7 @@ const BottomNavbar = () => {
       if (item.isMenu) return activeSection === 'menu' && !showProfileOptions;
     }
     if (item?.isProfile) {
-      return ['/profile', '/my-orders', '/returns-refunds'].includes(location.pathname);
+      return ['/profile', '/my-orders'].includes(location.pathname);
     }
     return location.pathname === path;
   };
@@ -90,6 +90,13 @@ const BottomNavbar = () => {
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login', { replace: true });
+    setShowProfileOptions(false);
+  };
+
   return (
     <>
       {/* Radial Profile Menu */}
@@ -112,13 +119,13 @@ const BottomNavbar = () => {
           <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-background-card/90 backdrop-blur-sm text-orange-500 text-[9px] font-black px-3 py-2 rounded-xl shadow-xl border border-orange-500/20 uppercase tracking-widest whitespace-nowrap">Orders</div>
         </button>
 
-        {/* Wallet Option - Left */}
+        {/* Sign Out Option - Left */}
         <button
-          onClick={() => { navigate('/returns-refunds'); setShowProfileOptions(false); }}
-          className={`absolute bottom-0 right-0 w-14 h-14 md:w-16 md:h-16 bg-green-500 text-white rounded-2xl flex items-center justify-center shadow-[0_20px_50px_rgba(34,197,94,0.3)] transition-all duration-500 delay-150 transform hover:scale-110 active:scale-90 ${showProfileOptions ? '-translate-x-36 md:-translate-x-44 scale-100 rotate-0' : 'translate-x-0 scale-0 rotate-45'}`}
+          onClick={handleLogout}
+          className={`absolute bottom-0 right-0 w-14 h-14 md:w-16 md:h-16 bg-red-500 text-white rounded-2xl flex items-center justify-center shadow-[0_20px_50px_rgba(239,68,68,0.3)] transition-all duration-500 delay-150 transform hover:scale-110 active:scale-90 ${showProfileOptions ? '-translate-x-36 md:-translate-x-44 scale-100 rotate-0' : 'translate-x-0 scale-0 rotate-45'}`}
         >
-          <Wallet size={24} className="md:size-7" strokeWidth={2.5} />
-          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-background-card/90 backdrop-blur-sm text-green-500 text-[9px] font-black px-3 py-2 rounded-xl shadow-xl border border-green-500/20 uppercase tracking-widest whitespace-nowrap">Wallet</div>
+          <LogOut size={24} className="md:size-7" strokeWidth={2.5} />
+          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-background-card/90 backdrop-blur-sm text-red-500 text-[9px] font-black px-3 py-2 rounded-xl shadow-xl border border-red-500/20 uppercase tracking-widest whitespace-nowrap">Sign Out</div>
         </button>
       </div>
 

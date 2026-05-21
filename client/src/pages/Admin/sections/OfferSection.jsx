@@ -1,27 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Plus,
-  Search,
   Edit2,
   Trash2,
   ToggleLeft,
   ToggleRight,
-  Image as ImageIcon,
-  Calendar,
-  Ticket,
-  Percent,
-  Layers,
-  ChevronRight,
-  MoreVertical,
-  Gift,
   Upload,
   X as CloseIcon,
-  Package,
-  Check,
-  Minus,
-  Sparkles,
-  Info,
-  ChevronLeft
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import api from '../../../api/axiosInstance';
 import { showToast } from '../../../utils/sweetAlert';
@@ -55,6 +42,8 @@ const OfferSection = () => {
     priority: 0,
     isActive: true
   });
+  const [selectionMode, setSelectionMode] = useState('category'); // 'category' or 'item'
+  const [itemCategoryFilter, setItemCategoryFilter] = useState('all');
 
   useEffect(() => {
     fetchOffers();
@@ -105,11 +94,19 @@ const OfferSection = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const data = new FormData();
-    Object.keys(formData).forEach(key => {
+    
+    // Clear unused fields based on selected scope
+    const finalFormData = {
+      ...formData,
+      applicableItems: formData.applicableItems,
+      applicableCategories: []
+    };
+
+    Object.keys(finalFormData).forEach(key => {
       if (['specificDays', 'applicableCategories', 'applicableItems'].includes(key)) {
-        data.append(key, JSON.stringify(formData[key]));
+        data.append(key, JSON.stringify(finalFormData[key]));
       } else {
-        data.append(key, formData[key]);
+        data.append(key, finalFormData[key]);
       }
     });
 
@@ -151,10 +148,15 @@ const OfferSection = () => {
     setEditingOffer(null);
     setSelectedFile(null);
     setPreviewUrl('');
+    setSelectionMode('category');
+    setItemCategoryFilter('all');
   };
 
   const handleEdit = (offer) => {
     setEditingOffer(offer);
+    const hasItems = offer.applicableItems && offer.applicableItems.length > 0;
+    setSelectionMode(hasItems ? 'item' : 'category');
+    setItemCategoryFilter('all');
     setFormData({
       title: offer.title,
       description: offer.description,
@@ -336,115 +338,10 @@ const OfferSection = () => {
                 </div>
               </div>
 
-              {/* Offer Value — discount & combo */}
-              {(formData.offerType === 'discount' || formData.offerType === 'combo') && (
-                <div className="space-y-2 animate-in slide-in-from-top-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-text-muted ml-1">
-                    {formData.offerType === 'discount' ? 'Discount Percentage' : 'Bundle Discount Percentage'}
-                  </label>
-                  <div className="relative">
-                    <input type="number" value={formData.offerValue} onChange={(e) => setFormData({ ...formData, offerValue: e.target.value })} className="w-full p-4 bg-background border border-border/40 rounded-2xl focus:border-primary outline-none transition-all font-bold pr-12" placeholder="e.g. 20 for 20% OFF" />
-                    <Percent className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted" size={20} />
-                  </div>
-                </div>
-              )}
-
-              {/* BOGO — bundle size + min qty */}
-              {formData.offerType === 'bogo' && (
-                <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted ml-1">Bundle Size</label>
-                    <input type="number" min="2" max="10" value={formData.offerValue || 2} onChange={(e) => setFormData({ ...formData, offerValue: e.target.value })} className="w-full p-4 bg-background border border-border/40 rounded-2xl focus:border-primary outline-none font-bold" placeholder="2 = Buy 1 Get 1" />
-                    <p className="text-[9px] text-text-muted ml-1">2 = classic Buy 1 Get 1 Free</p>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted ml-1">Min Qty to Trigger</label>
-                    <input type="number" min="1" value={formData.minQuantity} onChange={(e) => setFormData({ ...formData, minQuantity: e.target.value })} className="w-full p-4 bg-background border border-border/40 rounded-2xl focus:border-primary outline-none font-bold" />
-                  </div>
-                </div>
-              )}
-
-              {/* Discount — min qty */}
-              {formData.offerType === 'discount' && (
-                <div className="space-y-2 animate-in slide-in-from-top-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-text-muted ml-1">Min Qty to Unlock Discount</label>
-                  <input type="number" min="1" value={formData.minQuantity} onChange={(e) => setFormData({ ...formData, minQuantity: e.target.value })} className="w-full p-4 bg-background border border-border/40 rounded-2xl focus:border-primary outline-none font-bold" />
-                </div>
-              )}
-
               <div className="space-y-2 relative">
-                <div className="flex justify-between items-center mb-1">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-text-muted ml-1">Description</label>
-                  <button type="button" onClick={generateDescription} className="text-[8px] font-black text-primary flex items-center gap-1 hover:underline"><Sparkles size={10} /> Auto-Generate</button>
-                </div>
-                <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full p-4 bg-background border border-border/40 rounded-2xl focus:border-primary outline-none transition-all font-bold min-h-[80px]" />
+                <label className="text-[10px] font-black uppercase tracking-widest text-text-muted ml-1">Description</label>
+                <textarea required value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full p-4 bg-background border border-border/40 rounded-2xl focus:border-primary outline-none transition-all font-bold min-h-[80px]" placeholder="Describe the offer..." />
               </div>
-
-              {formData.offerType !== 'combo' ? (
-                <div className="space-y-6 animate-in slide-in-from-top-2">
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted ml-1">Applicable Categories</label>
-                    <div className="flex flex-wrap gap-2">
-                      {categories.map(cat => (
-                        <button key={cat._id} type="button" onClick={() => setFormData({ ...formData, applicableCategories: formData.applicableCategories.includes(cat._id) ? formData.applicableCategories.filter(id => id !== cat._id) : [...formData.applicableCategories, cat._id] })} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase border-2 transition-all ${formData.applicableCategories.includes(cat._id) ? 'bg-primary border-primary text-white' : 'bg-background border-border/40 text-text-muted'}`}>{cat.name}</button>
-                      ))}
-                    </div>
-                  </div>
-                  {/* BOGO — also target specific items */}
-                  {formData.offerType === 'bogo' && (
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-text-muted ml-1">Or Specific Items <span className="opacity-50 normal-case font-medium">(leave empty = all in category)</span></label>
-                      <div className="bg-background border border-border/40 rounded-3xl p-3 max-h-[160px] overflow-y-auto no-scrollbar space-y-1">
-                        {menus.map(item => {
-                          const sel = formData.applicableItems.find(i => i.menuItem === item._id);
-                          return (
-                            <div key={item._id} onClick={() => toggleSelection(item._id)} className={`flex items-center gap-3 p-2.5 rounded-xl cursor-pointer border transition-all ${sel ? 'bg-primary/10 border-primary/30' : 'border-transparent hover:bg-background-card/60'}`}>
-                              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${sel ? 'bg-primary border-primary text-white' : 'border-border/60'}`}>{sel && <Check size={12} strokeWidth={4} />}</div>
-                              <span className="text-[11px] font-black text-text-primary uppercase truncate">{item.name}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-4 animate-in slide-in-from-top-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-text-muted ml-1">Bundle Items & Quantities</label>
-                  <div className="space-y-2 bg-background border border-border/40 rounded-3xl p-4 max-h-[250px] overflow-y-auto no-scrollbar">
-                    {menus.map(item => {
-                      const selected = formData.applicableItems.find(i => i.menuItem === item._id);
-                      return (
-                        <div key={item._id} className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${selected ? 'border-primary bg-primary/5' : 'border-transparent bg-background-card/50'}`}>
-                          <div className="flex items-center gap-3"><button type="button" onClick={() => toggleSelection(item._id)} className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${selected ? 'bg-primary border-primary text-white' : 'border-border/60 bg-background'}`}>{selected && <Check size={14} strokeWidth={4} />}</button><span className="text-[11px] font-black text-text-primary uppercase truncate">{item.name}</span></div>
-                          {selected && (
-                            <div className="flex items-center gap-3">
-                              {/* SIZE DROPDOWN */}
-                              {(item.variants?.length > 0 || item.sizes?.length > 0) && (
-                                <select 
-                                  value={selected.selectedSize} 
-                                  onChange={(e) => updateItemSize(item._id, e.target.value)}
-                                  className="bg-background text-text-primary border border-border/40 rounded-xl px-2 py-1 text-[9px] font-black uppercase outline-none focus:border-primary transition-all cursor-pointer"
-                                >
-                                  {(item.variants || item.sizes).map(v => (
-                                    <option key={v.size} value={v.size} className="bg-background text-text-primary">{v.size}</option>
-                                  ))}
-                                </select>
-                              )}
-                              
-                              <div className="flex items-center bg-background rounded-xl border border-border/40 p-0.5 shadow-sm">
-                                <button type="button" onClick={() => updateItemQuantity(item._id, selected.quantity - 1)} className="w-7 h-7 flex items-center justify-center text-text-primary hover:text-primary transition-all"><Minus size={14} /></button>
-                                <span className="w-7 text-center text-[11px] font-black text-text-primary">{selected.quantity}</span>
-                                <button type="button" onClick={() => updateItemQuantity(item._id, selected.quantity + 1)} className="w-7 h-7 flex items-center justify-center text-text-primary hover:text-primary transition-all"><Plus size={14} /></button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
 
               {/* Scheduling */}
               <div className="space-y-4 pt-2 border-t border-border/20">
@@ -452,7 +349,7 @@ const OfferSection = () => {
                 <div className="flex items-center justify-between p-4 bg-background rounded-2xl border border-border/40">
                   <div>
                     <p className="text-[11px] font-black text-text-primary uppercase">Weekend Only</p>
-                    <p className="text-[9px] text-text-muted mt-0.5">Active only on Sat &amp; Sun</p>
+                    <p className="text-[9px] text-text-muted mt-0.5">Active only on Sat & Sun</p>
                   </div>
                   <button type="button" onClick={() => setFormData({ ...formData, isWeekendOnly: !formData.isWeekendOnly, specificDays: [] })} className="transition-all">
                     {formData.isWeekendOnly ? <ToggleRight size={32} className="text-primary" /> : <ToggleLeft size={32} className="text-text-muted/40" />}
@@ -470,11 +367,7 @@ const OfferSection = () => {
                 )}
               </div>
 
-              {/* Priority */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-text-muted ml-1">Priority <span className="opacity-50 normal-case font-medium">(higher number = applied first)</span></label>
-                <input type="number" min="0" max="10" value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })} className="w-full p-4 bg-background border border-border/40 rounded-2xl focus:border-primary outline-none font-bold" placeholder="0 = lowest" />
-              </div>
+
 
               <div className="flex gap-4 pt-4">
                 <button type="button" onClick={() => setShowModal(false)} className="flex-1 p-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-background-muted transition-all">Cancel</button>

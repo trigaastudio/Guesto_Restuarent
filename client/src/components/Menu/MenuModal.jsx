@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Plus } from 'lucide-react';
+import { X, Check, Plus, Minus } from 'lucide-react';
+import { useCart } from '../../context/CartContext';
 
 const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
+  const { checkStoreStatus } = useCart();
+  const storeStatus = checkStoreStatus ? checkStoreStatus() : { isOpen: true };
+  const isClosed = !storeStatus.isOpen;
   const [selectedSize, setSelectedSize] = useState(null);
+  const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
     const variants = menu?.variants || menu?.sizes || [];
@@ -12,6 +17,7 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
     } else {
       setSelectedSize(null);
     }
+    setQuantity(1);
   }, [menu]);
 
   useEffect(() => {
@@ -33,6 +39,12 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
   const variants = menu.variants || menu.sizes || [];
   const selectedVariant = variants.find(v => v.size === selectedSize);
   const currentPrice = menu.isCombo ? menu.price : (selectedVariant ? selectedVariant.price : (menu.offerPrice || 0));
+
+  const isComboOutOfStock = menu.isCombo && menu.comboItems?.length > 0 && menu.comboItems.some(ci => {
+    const item = ci.menuItem;
+    return !item || item.isBlocked || item.totalStock <= 0;
+  });
+  const isOutOfStock = menu.totalStock <= 0 || menu.isBlocked || !!isComboOutOfStock || isClosed;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -163,25 +175,53 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
             </div>
           )}
 
+          {/* Quantity Selector */}
+          {!isOutOfStock && !viewOnly && (
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-3 bg-primary rounded-full"></div>
+                <h4 className="text-[9px] font-black tracking-wider text-text-primary uppercase">Select Quantity</h4>
+              </div>
+              <div className="flex items-center bg-background border border-border/40 rounded-xl overflow-hidden h-10 w-fit shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
+                  disabled={quantity <= 1}
+                  className="w-10 flex items-center justify-center hover:bg-background-muted transition-colors text-text-muted disabled:opacity-20"
+                >
+                  <Minus size={14} strokeWidth={3} />
+                </button>
+                <span className="w-8 text-center text-sm font-black text-text-primary">{quantity}</span>
+                <button
+                  type="button"
+                  onClick={() => setQuantity(prev => prev + 1)}
+                  className="w-10 flex items-center justify-center hover:bg-background-muted transition-colors text-text-muted"
+                >
+                  <Plus size={14} strokeWidth={3} />
+                </button>
+              </div>
+            </div>
+          )}
+
         </div>
 
         <div className="p-4 md:p-5 pt-0 flex items-center justify-between border-t border-border/10 bg-background-card/50 backdrop-blur-sm relative z-20">
           <div className="flex flex-col">
             <span className="text-[8px] font-black tracking-widest text-text-muted opacity-40 mb-1 uppercase">Price</span>
-            <span className="text-2xl font-black text-text-primary tracking-tighter leading-none">₹{currentPrice}</span>
+            <span className="text-2xl font-black text-text-primary tracking-tighter leading-none">₹{currentPrice * quantity}</span>
           </div>
           {!viewOnly ? (
             <button
-              onClick={() => { if (menu.totalStock > 0) { onAction(menu, 1, selectedSize); onClose(); } }}
-              disabled={menu.totalStock <= 0}
+              onClick={() => { if (!isOutOfStock) { onAction(menu, quantity, selectedSize); onClose(); } }}
+              disabled={isOutOfStock}
               className={`${
-                menu.totalStock <= 0 
+                isOutOfStock 
                 ? 'bg-background-muted text-text-muted cursor-not-allowed grayscale' 
                 : 'bg-primary-light hover:bg-primary-light/90 text-white shadow-primary-light/20'
               } px-6 py-2.5 rounded-xl font-black text-[9px] tracking-wider transition-all shadow-xl active:scale-95 flex items-center gap-2 uppercase`}
             >
-              {menu.totalStock <= 0 ? 'Out of Stock' : 'Add to cart'}
-              {menu.totalStock > 0 && <Plus size={14} strokeWidth={3} />}
+              {isClosed ? 'Closed' : isOutOfStock ? 'Out of Stock' : 'Add to cart'}
+              {!isOutOfStock && <Plus size={14} strokeWidth={3} />}
             </button>
           ) : (
             <div className="px-6 py-2.5 bg-primary/10 text-primary rounded-xl font-black text-[9px] tracking-wider uppercase">

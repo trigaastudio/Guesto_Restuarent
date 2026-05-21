@@ -35,6 +35,8 @@ const DigitalMenu = () => {
   const [restaurantSettings, setRestaurantSettings] = useState(null);
   const [trendingItems, setTrendingItems] = useState([]);
   const [isOffersModalOpen, setIsOffersModalOpen] = useState(false);
+  const [offerFilter, setOfferFilter] = useState(null);
+  const [offerName, setOfferName] = useState('');
 
   const observerTarget = useRef(null);
   const scrollContainerRef = useRef(null);
@@ -96,7 +98,13 @@ const DigitalMenu = () => {
           category: selectedCategory !== 'all' ? selectedCategory : undefined,
           search: debouncedSearchQuery || undefined,
           foodType: dietaryFilter !== 'all' ? dietaryFilter : undefined,
-          sort: sortBy !== 'default' ? sortBy : undefined
+          sortBy: sortBy !== 'default' ? sortBy : undefined,
+          // If offerFilter is a MongoDB ObjectId (24 hex chars), use offerId param
+          // If it's a type string like 'bogo', 'combo', 'discount', use direct type params
+          offerId: offerFilter && offerFilter.length === 24 ? offerFilter : undefined,
+          bogo: offerFilter === 'bogo' ? 'true' : undefined,
+          combo: offerFilter === 'combo' ? 'true' : undefined,
+          discount: offerFilter === 'discount' ? 'true' : undefined,
         }
       });
 
@@ -114,11 +122,11 @@ const DigitalMenu = () => {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [selectedCategory, debouncedSearchQuery, dietaryFilter, sortBy]);
+  }, [selectedCategory, debouncedSearchQuery, dietaryFilter, sortBy, offerFilter]);
 
   useEffect(() => {
     fetchMenus(1, true);
-  }, [selectedCategory, debouncedSearchQuery, dietaryFilter, sortBy]);
+  }, [selectedCategory, debouncedSearchQuery, dietaryFilter, sortBy, offerFilter]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -139,6 +147,30 @@ const DigitalMenu = () => {
 
   const handleCategoryChange = (categoryId) => {
     setSelectedCategory(categoryId);
+    setPage(1);
+    setHasMore(true);
+  };
+
+  const handleClearAll = () => {
+    setSelectedCategory('all');
+    setSearchQuery('');
+    setSortBy('default');
+    setDietaryFilter('all');
+    setOfferFilter(null);
+    setOfferName('');
+    setPage(1);
+    setHasMore(true);
+  };
+
+  const handlePromoFilterToggle = (type, label) => {
+    if (offerFilter === type) {
+      setOfferFilter(null);
+      setOfferName('');
+    } else {
+      setSelectedCategory('all');
+      setOfferFilter(type);
+      setOfferName(label);
+    }
     setPage(1);
     setHasMore(true);
   };
@@ -238,6 +270,21 @@ const DigitalMenu = () => {
 
       <div className="relative z-30 bg-background rounded-t-[5rem] -mt-20 shadow-[0_-40px_100px_rgba(0,0,0,0.2)]">
         <main className="max-w-7xl mx-auto px-4 md:px-6 pt-20 pb-32">
+          <div className="mb-16">
+            <OffersCarousel
+              onOfferClick={(offer) => {
+                setSelectedCategory('all');
+                setOfferFilter(offer._id);
+                setOfferName(offer.title);
+                setPage(1);
+                setHasMore(true);
+                const menuElement = document.getElementById('menu');
+                if (menuElement) {
+                  menuElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+              }}
+            />
+          </div>
           
           {/* Trending Slider with Controls */}
           {trendingItems.length > 0 && (
@@ -249,7 +296,7 @@ const DigitalMenu = () => {
                             <Flame size={28} className="text-primary animate-pulse" />
                          </div>
                          <h2 className="text-4xl font-black text-text-primary tracking-tighter">
-                            Chef's <span className="text-primary italic">Specials</span>
+                            Most Loved <span className="text-primary italic">Dishes</span>
                          </h2>
                       </div>
                       <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest opacity-60 ml-16">Most loved by our community</p>
@@ -301,21 +348,45 @@ const DigitalMenu = () => {
                             )}
 
                             {!isClosed && (
-                              <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-2xl flex items-center gap-1 shadow-lg">
-                                 <Star size={12} className="text-amber-500 fill-amber-500" />
-                                 <span className="text-[10px] font-black text-text-primary">{item.rating || '4.9'}</span>
-                              </div>
+                              <>
+                                 {(() => {
+                                   const menuDiscount = item.discountPercentage || 0;
+                                   const cat = categories.find(c => c._id === item.category);
+                                   const categoryDiscount = cat?.discountPercentage || 0;
+                                   const maxDiscountPercent = Math.max(menuDiscount, categoryDiscount);
+                                   return maxDiscountPercent > 0 && !item.isCombo ? (
+                                      <div className="absolute top-4 left-4 bg-primary text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-lg z-10">
+                                         {`${maxDiscountPercent}% OFF`}
+                                      </div>
+                                   ) : null;
+                                })()}
+                              </>
                             )}
                          </div>
                          <div className="px-1">
-                            <h3 className="text-lg font-black text-text-primary mb-3 group-hover:text-primary transition-colors">{item.name}</h3>
+                            <h3 className="text-lg font-black text-text-primary mb-3 group-hover:text-primary transition-colors truncate">{item.name}</h3>
                             <div className="flex items-center justify-between border-t border-border/10 pt-4">
-                               <span className="text-xl font-black text-text-primary">
-                                 ₹{item.offerPrice || item.price || (item.variants && item.variants.length > 0 ? Math.min(...item.variants.map(v => v.price)) : 0)}
-                               </span>
-                               <div className="px-3 py-1 bg-background-muted rounded-xl text-[9px] font-black text-text-muted uppercase tracking-wider">
-                                  15 Min
-                               </div>
+                               {(() => {
+                                  const originalPrice = item.offerPrice || item.price || (item.variants && item.variants.length > 0 ? Math.min(...item.variants.map(v => v.price)) : 0);
+                                  const menuDiscount = item.discountPercentage || 0;
+                                  const cat = categories.find(c => c._id === item.category);
+                                  const categoryDiscount = cat?.discountPercentage || 0;
+                                  const maxDiscountPercent = Math.max(menuDiscount, categoryDiscount);
+                                  const discountedPrice = maxDiscountPercent > 0 && !item.isCombo ? originalPrice * (1 - maxDiscountPercent / 100) : originalPrice;
+                                  
+                                  return (
+                                     <div className="flex flex-col">
+                                        {maxDiscountPercent > 0 && !item.isCombo && (
+                                           <span className="text-[10px] text-text-muted line-through opacity-60">
+                                             ₹{Math.round(originalPrice)}
+                                           </span>
+                                        )}
+                                        <span className="text-xl font-black text-text-primary">
+                                          ₹{Math.round(discountedPrice)}
+                                        </span>
+                                     </div>
+                                  );
+                               })()}
                             </div>
                          </div>
                       </div>
@@ -347,24 +418,46 @@ const DigitalMenu = () => {
             handleCategoryChange={handleCategoryChange}
           />
 
-          <div className="pb-32">
-            <MenuSection
-              loading={loading}
-              filteredMenus={menus}
-              sortBy={sortBy}
-              setSortBy={setSortBy}
-              dietaryFilter={dietaryFilter}
-              setDietaryFilter={setDietaryFilter}
-              setSearchQuery={setSearchQuery}
-              observerTarget={observerTarget}
-              hasMore={hasMore}
-              loadingMore={loadingMore}
-              onAddClick={(menu) => {
-                setSelectedMenu(menu);
-                setIsModalOpen(true);
-              }}
-              viewOnly={true}
-            />
+          {offerFilter && (
+             <div className="max-w-3xl mx-auto mb-8 px-4 flex items-center justify-between bg-primary/10 border border-primary/20 p-4 rounded-2xl animate-fade-in" id="menu">
+                <div className="flex items-center gap-2">
+                   <Sparkles size={18} className="text-primary" />
+                   <span className="text-sm font-bold text-primary">
+                      Showing: {offerName || 'Special Offer'}
+                   </span>
+                </div>
+                <button 
+                  onClick={() => { setOfferFilter(null); setOfferName(''); setPage(1); setHasMore(true); }}
+                  className="text-xs font-bold text-text-muted hover:text-primary transition-colors flex items-center gap-1"
+                >
+                  <X size={14} /> Clear Filter
+                </button>
+             </div>
+          )}
+
+          <div className="pb-32" id={!offerFilter ? "menu" : undefined}>
+             <MenuSection
+               loading={loading}
+               filteredMenus={menus}
+               sortBy={sortBy}
+               setSortBy={setSortBy}
+               dietaryFilter={dietaryFilter}
+               setDietaryFilter={setDietaryFilter}
+               setSearchQuery={setSearchQuery}
+               observerTarget={observerTarget}
+               hasMore={hasMore}
+               loadingMore={loadingMore}
+               onAddClick={(menu) => {
+                 setSelectedMenu(menu);
+                 setIsModalOpen(true);
+               }}
+               viewOnly={true}
+               selectedCategory={selectedCategory}
+               searchQuery={searchQuery}
+               offerFilter={offerFilter}
+               handlePromoFilterToggle={handlePromoFilterToggle}
+               onClearAll={handleClearAll}
+             />
           </div>
         </main>
       </div>
@@ -434,10 +527,16 @@ const DigitalMenu = () => {
             <h2 className="text-2xl font-black text-text-primary mb-4 tracking-tighter">Current Offers</h2>
             <div className="max-h-[60vh] overflow-y-auto no-scrollbar">
               <OffersCarousel onOfferClick={(offer) => {
-                 // Close the modal when an offer is clicked and scroll to menu
+                 setSelectedCategory('all');
+                 setOfferFilter(offer._id);
+                 setOfferName(offer.title);
                  setIsOffersModalOpen(false);
-                 const menuElement = document.getElementById('menu');
-                 if (menuElement) menuElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                 setPage(1);
+                 setHasMore(true);
+                 setTimeout(() => {
+                    const menuElement = document.getElementById('menu');
+                    if (menuElement) menuElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                 }, 100);
               }} />
             </div>
           </div>
