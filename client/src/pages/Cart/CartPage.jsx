@@ -71,7 +71,7 @@ const AddressListModal = ({ isOpen, onClose, addresses, onSelect, onAddAddress }
 const CartPage = () => {
   const navigate = useNavigate();
   const { theme } = useTheme();
-  const { cartItems, updateQuantity, removeFromCart, offers, settings, loading: cartLoading, subtotal } = useCart();
+  const { cartItems, updateQuantity, removeFromCart, offers, settings, loading: cartLoading, subtotal, checkStoreStatus } = useCart();
 
 
   const [deliveryAddress, setDeliveryAddress] = useState(null);
@@ -272,6 +272,27 @@ const CartPage = () => {
   }, [cartItems, getStock]);
 
   const handleCheckout = () => {
+    const storeStatus = checkStoreStatus ? checkStoreStatus() : { isOpen: true };
+    if (!storeStatus.isOpen) {
+      let message = 'Store is currently closed.';
+      if (storeStatus.reason === 'holiday') {
+        message = 'We are closed for holidays. Please order again when we reopen.';
+      } else if (storeStatus.reason === 'closed_day') {
+        message = 'We are closed today. Please order again tomorrow.';
+      } else if (storeStatus.reason === 'manual_close') {
+        message = 'The store is currently closed. Please check back later.';
+      } else if (storeStatus.reason) {
+        message = `The store is currently closed (${storeStatus.reason}).`;
+      }
+      Swal.fire({
+        title: 'Store Closed',
+        text: message,
+        icon: 'warning',
+        confirmButtonColor: '#B91C1C',
+        customClass: { popup: 'rounded-[2rem] bg-background text-text-primary' }
+      });
+      return;
+    }
     if (subtotal < 140) {
       Swal.fire({
         title: 'Minimum Order Amount Required',

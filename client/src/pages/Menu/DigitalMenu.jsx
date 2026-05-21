@@ -387,9 +387,6 @@ const DigitalMenu = () => {
                                      </div>
                                   );
                                })()}
-                               <div className="px-3 py-1 bg-background-muted rounded-xl text-[9px] font-black text-text-muted uppercase tracking-wider">
-                                  15 Min
-                               </div>
                             </div>
                          </div>
                       </div>

@@ -4,7 +4,18 @@ import { Search, ArrowRight, X } from 'lucide-react';
 const HeroSection = React.memo(({ searchQuery, setSearchQuery, heroImages, trendingItems }) => {
   const [localQuery, setLocalQuery] = useState(searchQuery);
   const [heroIndex, setHeroIndex] = useState(0);
+  const [loadedImages, setLoadedImages] = useState({});
   const directionRef = useRef(1);
+
+  // Preload all hero images on mount to prevent loading flashes
+  useEffect(() => {
+    if (heroImages && heroImages.length > 0) {
+      heroImages.forEach((src) => {
+        const img = new Image();
+        img.src = src;
+      });
+    }
+  }, [heroImages]);
 
   useEffect(() => {
     setLocalQuery(searchQuery);
@@ -50,10 +61,18 @@ const HeroSection = React.memo(({ searchQuery, setSearchQuery, heroImages, trend
                   className={`absolute inset-0 w-full h-full flex justify-center items-center transition-all duration-[2s] cubic-bezier(0.4, 0, 0.2, 1) ${idx === heroIndex ? 'opacity-100 scale-100 rotate-0' : 'opacity-0 scale-90 rotate-12 pointer-events-none'
                     }`}
                 >
+                  {!loadedImages[idx] && (
+                    <div className="absolute w-[80%] h-[80%] bg-white/5 rounded-full blur-[80px] sm:blur-[100px] animate-pulse"></div>
+                  )}
                   <img
                     src={img}
                     alt={`Hero ${idx + 1}`}
-                    className="w-full h-full object-contain drop-shadow-[0_30px_50px_rgba(0,0,0,0.4)] animate-float"
+                    fetchpriority={idx === 0 ? "high" : "low"}
+                    loading={idx === 0 ? "eager" : "lazy"}
+                    onLoad={() => setLoadedImages(prev => ({ ...prev, [idx]: true }))}
+                    className={`w-full h-full object-contain drop-shadow-[0_30px_50px_rgba(0,0,0,0.4)] animate-float transition-opacity duration-700 ${
+                      loadedImages[idx] ? 'opacity-100' : 'opacity-0'
+                    }`}
                   />
                 </div>
               ))}

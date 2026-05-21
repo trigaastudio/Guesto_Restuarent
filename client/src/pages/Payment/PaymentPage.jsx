@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
-import { ArrowLeft, CreditCard, Banknote, MapPin, ChevronRight, CheckCircle2, ShieldCheck, Info, Clock } from 'lucide-react';
+import { ArrowLeft, CreditCard, Banknote, MapPin, ChevronRight, CheckCircle2, ShieldCheck, Info, Clock, UtensilsCrossed } from 'lucide-react';
 import api from '../../api/axiosInstance';
 import Swal from 'sweetalert2';
 import Navbar from '../../components/Navbar/Navbar';
@@ -10,7 +10,7 @@ import Footer from '../../components/Footer/Footer';
 const PaymentPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { cartItems, subtotal, clearCart, settings } = useCart();
+  const { cartItems, subtotal, clearCart, settings, checkStoreStatus } = useCart();
   const [paymentMethod, setPaymentMethod] = useState('online'); // 'online', 'cod'
   const [loading, setLoading] = useState(false);
   const [isOrderSuccess, setIsOrderSuccess] = useState(false);
@@ -43,6 +43,32 @@ const PaymentPage = () => {
     script.async = true;
     document.body.appendChild(script);
 
+    // Check store status
+    const storeStatus = checkStoreStatus ? checkStoreStatus() : { isOpen: true };
+    if (!isOrderSuccess && !storeStatus.isOpen) {
+      let message = 'Store is currently closed.';
+      if (storeStatus.reason === 'holiday') {
+        message = 'We are closed for holidays. Please order again when we reopen.';
+      } else if (storeStatus.reason === 'closed_day') {
+        message = 'We are closed today. Please order again tomorrow.';
+      } else if (storeStatus.reason === 'manual_close') {
+        message = 'The store is currently closed. Please check back later.';
+      } else if (storeStatus.reason) {
+        message = `The store is currently closed (${storeStatus.reason}).`;
+      }
+      
+      Swal.fire({
+        title: 'Store Closed',
+        text: message,
+        icon: 'warning',
+        confirmButtonColor: '#B91C1C',
+        customClass: { popup: 'rounded-[2rem] bg-background text-text-primary' }
+      }).then(() => {
+        navigate('/cart');
+      });
+      return;
+    }
+
     // If no address/table, no items, or subtotal is under ₹140, redirect back to cart
     if (!isOrderSuccess && (!(deliveryAddress || dineInTableId) || cartItems.length === 0 || subtotal < 140)) {
       navigate('/cart');
@@ -64,6 +90,30 @@ const PaymentPage = () => {
   }, [deliveryAddress, dineInTableId, cartItems, navigate, isOrderSuccess, subtotal]);
 
   const handlePlaceOrder = async () => {
+    const storeStatus = checkStoreStatus ? checkStoreStatus() : { isOpen: true };
+    if (!storeStatus.isOpen) {
+      let message = 'Store is currently closed.';
+      if (storeStatus.reason === 'holiday') {
+        message = 'We are closed for holidays. Please order again when we reopen.';
+      } else if (storeStatus.reason === 'closed_day') {
+        message = 'We are closed today. Please order again tomorrow.';
+      } else if (storeStatus.reason === 'manual_close') {
+        message = 'The store is currently closed. Please check back later.';
+      } else if (storeStatus.reason) {
+        message = `The store is currently closed (${storeStatus.reason}).`;
+      }
+      Swal.fire({
+        title: 'Store Closed',
+        text: message,
+        icon: 'warning',
+        confirmButtonColor: '#B91C1C',
+        customClass: { popup: 'rounded-[2rem] bg-background text-text-primary' }
+      }).then(() => {
+        navigate('/cart');
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const orderItems = cartItems.map(item => {
@@ -98,16 +148,12 @@ const PaymentPage = () => {
         })
       };
 
-      // 1. Always create the order in DB first (it will be 'pending' by default)
-      const response = await api.post('/api/orders', orderData);
-      const createdOrder = response.data.data;
-
       if (paymentMethod === 'online') {
-        // 2. Create Razorpay Order
+        // 1. Create Razorpay Order
         const { data: { data: razorpayOrder } } = await api.post('/api/payments/create-order', {
           amount: total,
           currency: 'INR',
-          receipt: `receipt_${createdOrder.orderNumber}`
+          receipt: `receipt_temp_${Date.now()}`
         });
 
         const options = {
@@ -119,32 +165,45 @@ const PaymentPage = () => {
           image: `${window.location.origin}${settings?.branding?.logoGold || '/logo-golden.png'}`,
           order_id: razorpayOrder.id,
           handler: async function (paymentResponse) {
-            // 3. Verify Payment and Update Order
+            // 2. Verify Payment and Place Order
             try {
-              const verificationData = {
-                razorpay_order_id: paymentResponse.razorpay_order_id,
-                razorpay_payment_id: paymentResponse.razorpay_payment_id,
-                razorpay_signature: paymentResponse.razorpay_signature,
-                orderId: createdOrder._id
+              const orderDataWithPayment = {
+                ...orderData,
+                razorpayOrderId: paymentResponse.razorpay_order_id,
+                razorpayPaymentId: paymentResponse.razorpay_payment_id,
+                razorpaySignature: paymentResponse.razorpay_signature
               };
 
-              const { data: verificationResult } = await api.post('/api/payments/verify', verificationData);
+              const response = await api.post('/api/orders', orderDataWithPayment);
+              const createdOrder = response.data.data;
 
-              if (verificationResult.success) {
-                clearCart();
-                localStorage.removeItem('dineInTableId');
-                localStorage.removeItem('dineInTableNumber');
-                setIsOrderSuccess(true);
-                showSuccessPopup(createdOrder);
-              }
+              clearCart();
+              localStorage.removeItem('dineInTableId');
+              localStorage.removeItem('dineInTableNumber');
+              setIsOrderSuccess(true);
+              showSuccessPopup(createdOrder);
             } catch (err) {
-              console.error('Payment Verification Failed:', err);
-              handlePaymentFailure(createdOrder._id);
+              console.error('Order Placement or Payment Verification Failed:', err);
+              setLoading(false);
+              Swal.fire({
+                title: 'Order Placement Failed',
+                text: err.response?.data?.message || 'Payment verification or order placement failed. Please contact support.',
+                icon: 'error',
+                confirmButtonColor: '#B91C1C',
+                customClass: { popup: 'rounded-[2rem] bg-background text-text-primary' }
+              });
             }
           },
           modal: {
             ondismiss: function () {
-              handlePaymentFailure(createdOrder._id, 'Payment cancelled by user');
+              setLoading(false);
+              Swal.fire({
+                title: 'Payment Cancelled',
+                text: 'Your payment was cancelled. You can choose Cash on Delivery or try paying again.',
+                icon: 'info',
+                confirmButtonColor: '#B91C1C',
+                customClass: { popup: 'rounded-[2rem] bg-background text-text-primary' }
+              });
             }
           },
           prefill: {
@@ -159,9 +218,11 @@ const PaymentPage = () => {
 
         const rzp = new window.Razorpay(options);
         rzp.open();
-        setLoading(false);
       } else {
-        // COD Flow Success
+        // COD Flow Success - Directly place order
+        const response = await api.post('/api/orders', orderData);
+        const createdOrder = response.data.data;
+
         clearCart();
         localStorage.removeItem('dineInTableId');
         localStorage.removeItem('dineInTableNumber');

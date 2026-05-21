@@ -48,6 +48,8 @@ const OrderSection = () => {
         : `\n📍 *Location:* https://www.google.com/maps?q=${encodeURIComponent(locToUse)}`;
     }
 
+
+
     const text = `*ORDER: ${order.orderNumber}*\n` +
       `--------------------------\n` +
       `👤 *Customer:* ${name}\n` +
@@ -1849,6 +1851,21 @@ const OrderSection = () => {
                       );
                       return null;
                     })()}
+                  </div>
+                </div>
+              )}
+
+              {/* Section 4: Special Instructions */}
+              {selectedOrder.remarks && (
+                <div className="p-4 bg-amber-500/5 rounded-3xl border border-amber-500/20">
+                  <div className="flex items-start gap-3">
+                    <div className="w-7 h-7 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="text-amber-500 text-sm">📝</span>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest">Special Instructions</p>
+                      <p className="text-xs font-bold text-text-primary leading-relaxed">{selectedOrder.remarks}</p>
+                    </div>
                   </div>
                 </div>
               )}

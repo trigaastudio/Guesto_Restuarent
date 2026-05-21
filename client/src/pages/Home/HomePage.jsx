@@ -50,7 +50,9 @@ const HomePage = () => {
     }
   };
 
-  const { addToCart, cartItems } = useCart();
+  const { addToCart, cartItems, checkStoreStatus } = useCart();
+  const storeStatus = checkStoreStatus ? checkStoreStatus() : { isOpen: true };
+  const isClosed = !storeStatus.isOpen;
   const { theme } = useTheme();
   const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('user') || '{}'));
 
@@ -358,61 +360,72 @@ const HomePage = () => {
                 ref={scrollContainerRef}
                 className="flex overflow-x-auto no-scrollbar gap-6 px-6 pb-6 snap-x"
               >
-                  {trendingItems.map((item, idx) => (
-                    <div 
-                      key={idx} 
-                      onClick={() => { setSelectedMenuForModal(item); setIsModalOpen(true); }}
-                      className="flex-shrink-0 w-[200px] md:w-[260px] bg-background-muted rounded-[2rem] p-4 border border-border/5 shadow-xl transition-all duration-500 group snap-center relative overflow-hidden hover:shadow-[0_20px_50px_rgba(185,28,28,0.1)] cursor-pointer"
-                    >
-                       <div className="relative h-40 md:h-48 rounded-[1.5rem] overflow-hidden mb-4">
-                          <img 
-                            src={item.image || '/placeholder-food.jpg'} 
-                            alt={item.name} 
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" 
-                          />
-                          {(() => {
-                             const menuDiscount = item.discountPercentage || 0;
-                             const cat = categories.find(c => c._id === item.category);
-                             const categoryDiscount = cat?.discountPercentage || 0;
-                             const maxDiscountPercent = Math.max(menuDiscount, categoryDiscount);
-                             return maxDiscountPercent > 0 && !item.isCombo ? (
-                                <div className="absolute top-3 left-3 bg-primary text-white text-[9px] font-black px-2 py-1 rounded-lg shadow-lg z-10">
-                                   {`${maxDiscountPercent}% OFF`}
-                                </div>
-                             ) : null;
-                          })()}
-                       </div>
-                       <div className="px-1">
-                          <h3 className="text-base font-black text-text-primary mb-2 group-hover:text-primary transition-colors truncate">{item.name}</h3>
-                          <div className="flex items-center justify-between border-t border-border/10 pt-3">
-                             {(() => {
-                                const originalPrice = item.offerPrice || item.price || (item.variants && item.variants.length > 0 ? Math.min(...item.variants.map(v => v.price)) : 0);
-                                const menuDiscount = item.discountPercentage || 0;
-                                const cat = categories.find(c => c._id === item.category);
-                                const categoryDiscount = cat?.discountPercentage || 0;
-                                const maxDiscountPercent = Math.max(menuDiscount, categoryDiscount);
-                                const discountedPrice = maxDiscountPercent > 0 && !item.isCombo ? originalPrice * (1 - maxDiscountPercent / 100) : originalPrice;
-                                
-                                return (
-                                   <div className="flex flex-col">
-                                      {maxDiscountPercent > 0 && !item.isCombo && (
-                                         <span className="text-[9px] text-text-muted line-through opacity-60">
-                                           ₹{Math.round(originalPrice)}
-                                         </span>
-                                      )}
-                                      <span className="text-lg font-black text-text-primary">
-                                        ₹{Math.round(discountedPrice)}
-                                      </span>
-                                   </div>
-                                );
-                             })()}
-                             <div className="px-3 py-1 bg-background-card rounded-xl text-[9px] font-black text-text-muted uppercase tracking-wider">
-                                15 Min
-                             </div>
-                          </div>
-                       </div>
-                    </div>
-                  ))}
+                  {trendingItems.map((item, idx) => {
+                    const isItemOutOfStock = item.totalStock <= 0 || isClosed;
+                    return (
+                      <div 
+                        key={idx} 
+                        onClick={() => { if (!isItemOutOfStock) { setSelectedMenuForModal(item); setIsModalOpen(true); } }}
+                        className={`flex-shrink-0 w-[200px] md:w-[260px] bg-background-muted rounded-[2rem] p-4 border border-border/5 shadow-xl transition-all duration-500 group snap-center relative overflow-hidden ${
+                          isItemOutOfStock 
+                          ? 'grayscale opacity-60 pointer-events-none' 
+                          : 'hover:shadow-[0_20px_50px_rgba(185,28,28,0.1)] cursor-pointer'
+                        }`}
+                      >
+                         <div className="relative h-40 md:h-48 rounded-[1.5rem] overflow-hidden mb-4">
+                            <img 
+                              src={item.image || '/placeholder-food.jpg'} 
+                              alt={item.name} 
+                              className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 ${isClosed ? 'grayscale brightness-50' : ''}`} 
+                            />
+                            {isItemOutOfStock && (
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px] z-20">
+                                <span className="bg-white text-black text-[9px] font-black px-3 py-1.5 rounded-lg uppercase tracking-widest shadow-xl border border-black/10">
+                                  {isClosed ? 'Closed' : 'Out of Stock'}
+                                </span>
+                              </div>
+                            )}
+                            {(() => {
+                               const menuDiscount = item.discountPercentage || 0;
+                               const cat = categories.find(c => c._id === item.category);
+                               const categoryDiscount = cat?.discountPercentage || 0;
+                               const maxDiscountPercent = Math.max(menuDiscount, categoryDiscount);
+                               return maxDiscountPercent > 0 && !item.isCombo && !isItemOutOfStock ? (
+                                  <div className="absolute top-3 left-3 bg-primary text-white text-[9px] font-black px-2 py-1 rounded-lg shadow-lg z-10">
+                                     {`${maxDiscountPercent}% OFF`}
+                                  </div>
+                               ) : null;
+                            })()}
+                         </div>
+                         <div className="px-1">
+                            <h3 className="text-base font-black text-text-primary mb-2 group-hover:text-primary transition-colors truncate">{item.name}</h3>
+                            <div className="flex items-center justify-between border-t border-border/10 pt-3">
+                               {(() => {
+                                  const originalPrice = item.offerPrice || item.price || (item.variants && item.variants.length > 0 ? Math.min(...item.variants.map(v => v.price)) : 0);
+                                  const menuDiscount = item.discountPercentage || 0;
+                                  const cat = categories.find(c => c._id === item.category);
+                                  const categoryDiscount = cat?.discountPercentage || 0;
+                                  const maxDiscountPercent = Math.max(menuDiscount, categoryDiscount);
+                                  const discountedPrice = maxDiscountPercent > 0 && !item.isCombo ? originalPrice * (1 - maxDiscountPercent / 100) : originalPrice;
+                                  
+                                  return (
+                                     <div className="flex flex-col">
+                                        {maxDiscountPercent > 0 && !item.isCombo && (
+                                           <span className="text-[9px] text-text-muted line-through opacity-60">
+                                             ₹{Math.round(originalPrice)}
+                                           </span>
+                                        )}
+                                        <span className="text-lg font-black text-text-primary">
+                                          ₹{Math.round(discountedPrice)}
+                                        </span>
+                                     </div>
+                                  );
+                               })()}
+                            </div>
+                         </div>
+                      </div>
+                    );
+                  })}
               </div>
            </div>
         )}

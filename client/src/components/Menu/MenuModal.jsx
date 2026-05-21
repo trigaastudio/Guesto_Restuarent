@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check, Plus, Minus } from 'lucide-react';
+import { useCart } from '../../context/CartContext';
 
 const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
+  const { checkStoreStatus } = useCart();
+  const storeStatus = checkStoreStatus ? checkStoreStatus() : { isOpen: true };
+  const isClosed = !storeStatus.isOpen;
   const [selectedSize, setSelectedSize] = useState(null);
   const [quantity, setQuantity] = useState(1);
 
@@ -40,7 +44,7 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
     const item = ci.menuItem;
     return !item || item.isBlocked || item.totalStock <= 0;
   });
-  const isOutOfStock = menu.totalStock <= 0 || menu.isBlocked || !!isComboOutOfStock;
+  const isOutOfStock = menu.totalStock <= 0 || menu.isBlocked || !!isComboOutOfStock || isClosed;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -216,7 +220,7 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
                 : 'bg-primary-light hover:bg-primary-light/90 text-white shadow-primary-light/20'
               } px-6 py-2.5 rounded-xl font-black text-[9px] tracking-wider transition-all shadow-xl active:scale-95 flex items-center gap-2 uppercase`}
             >
-              {isOutOfStock ? 'Out of Stock' : 'Add to cart'}
+              {isClosed ? 'Closed' : isOutOfStock ? 'Out of Stock' : 'Add to cart'}
               {!isOutOfStock && <Plus size={14} strokeWidth={3} />}
             </button>
           ) : (
