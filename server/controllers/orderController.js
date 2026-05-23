@@ -98,6 +98,17 @@ const checkStockAvailability = async (items) => {
         }
       }
     }
+
+    if (menuDoc.isCombo && menuDoc.comboItems && menuDoc.comboItems.length > 0) {
+      for (const comboItem of menuDoc.comboItems) {
+        const comboDoc = await Menu.findById(comboItem.menuItem);
+        if (!comboDoc) continue;
+        const totalNeeded = item.quantity * comboItem.quantity;
+        if (comboDoc.totalStock < totalNeeded) {
+          return { available: false, itemName: `${comboDoc.name} (combo item)` };
+        }
+      }
+    }
   }
   return { available: true };
 };
@@ -183,6 +194,46 @@ const handleStock = async (items, type = 'reduce') => {
                 itemId: updatedIncluded._id,
                 name: updatedIncluded.name,
                 message: `ALERT: ${updatedIncluded.name} (ingredient) is running low (${updatedIncluded.totalStock} left)`
+              });
+            }
+          }
+        }
+      }
+
+      // Update combo items stock
+      if (menuDoc.isCombo && menuDoc.comboItems && menuDoc.comboItems.length > 0) {
+        for (const comboItem of menuDoc.comboItems) {
+          const comboReduction = item.quantity * comboItem.quantity;
+          const updatedComboItem = await Menu.findByIdAndUpdate(
+            comboItem.menuItem,
+            { $inc: { totalStock: factor * comboReduction } },
+            { returnDocument: 'after' }
+          );
+
+          if (updatedComboItem && updatedComboItem.totalStock < 0) {
+            await Menu.findByIdAndUpdate(comboItem.menuItem, { totalStock: 0 });
+            updatedComboItem.totalStock = 0;
+          }
+
+          if (updatedComboItem) {
+            emitStockUpdate(updatedComboItem._id, updatedComboItem.totalStock);
+          }
+
+          // Stock Alerts for combo items
+          if (type === 'reduce' && updatedComboItem) {
+            if (updatedComboItem.totalStock <= 0) {
+              getIO().emit('stockAlert', {
+                type: 'outOfStock',
+                itemId: updatedComboItem._id,
+                name: updatedComboItem.name,
+                message: `CRITICAL: ${updatedComboItem.name} (combo item) is now OUT OF STOCK!`
+              });
+            } else if (updatedComboItem.totalStock <= 5) {
+              getIO().emit('stockAlert', {
+                type: 'lowStock',
+                itemId: updatedComboItem._id,
+                name: updatedComboItem.name,
+                message: `ALERT: ${updatedComboItem.name} (combo item) is running low (${updatedComboItem.totalStock} left)`
               });
             }
           }
@@ -312,7 +363,7 @@ class OrderController {
       }
 
       // Check Minimum Order Amount
-      if (subtotal < 140) {
+      if (totalAmount < 140) {
         return res.status(400).json({ success: false, message: 'Minimum order amount is ₹140 to proceed to payment.' });
       }
 
@@ -375,6 +426,23 @@ class OrderController {
         items: await Promise.all(items.map(async item => {
           const menuDoc = await Menu.findById(item.menuItem);
           const variant = menuDoc?.variants?.find(v => v.size === item.size);
+          
+          let comboItems = [];
+          if (menuDoc?.isCombo && menuDoc.comboItems) {
+            comboItems = await Promise.all(menuDoc.comboItems.map(async ci => {
+              const subDoc = await Menu.findById(ci.menuItem);
+              return { name: subDoc?.name || 'Combo Item', quantity: ci.quantity, price: ci.price };
+            }));
+          }
+
+          let includedItems = [];
+          if (variant?.includedItems) {
+            includedItems = await Promise.all(variant.includedItems.map(async ii => {
+              const incDoc = await Menu.findById(ii.menuItem);
+              return { name: incDoc?.name || 'Add-on Item', quantity: ii.quantity };
+            }));
+          }
+
           return {
             menuItem: item.menuItem,
             name: menuDoc?.name || item.name || 'Unknown Item',
@@ -386,7 +454,9 @@ class OrderController {
             costPrice: variant?.costPrice || 0,
             totalPrice: item.price * item.quantity,
             kitchenStatus: 'placed',
-            bogoItem: item.bogoItem || null
+            bogoItem: item.bogoItem || null,
+            comboItems,
+            includedItems
           };
         })),
         customerDetails: {
@@ -408,7 +478,7 @@ class OrderController {
         platformFee: req.body.platformFee || 0,
         discount: discount || 0,
         tax: tax || 0,
-        totalAmount: subtotal + (deliveryFee || req.body.deliveryFee || 0) + (req.body.platformFee || 0) - (discount || 0) + (tax || 0),
+        totalAmount: subtotal + (deliveryFee || req.body.deliveryFee || 0) + (req.body.platformFee || 0) + (tax || 0),
         orderStatus: 'placed',
         kitchenStatus: 'placed',
         paymentStatus: paymentMethod === 'online' ? 'paid' : 'unpaid',
@@ -558,13 +628,32 @@ class OrderController {
         items: await Promise.all(items.map(async item => {
           const menuDoc = await Menu.findById(item.menuItem);
           const variant = menuDoc?.variants?.find(v => v.size === item.size);
+          
+          let comboItems = [];
+          if (menuDoc?.isCombo && menuDoc.comboItems) {
+            comboItems = await Promise.all(menuDoc.comboItems.map(async ci => {
+              const subDoc = await Menu.findById(ci.menuItem);
+              return { name: subDoc?.name || 'Combo Item', quantity: ci.quantity, price: ci.price };
+            }));
+          }
+
+          let includedItems = [];
+          if (variant?.includedItems) {
+            includedItems = await Promise.all(variant.includedItems.map(async ii => {
+              const incDoc = await Menu.findById(ii.menuItem);
+              return { name: incDoc?.name || 'Add-on Item', quantity: ii.quantity };
+            }));
+          }
+
           return {
             ...item,
             name: menuDoc?.name || item.name,
             image: menuDoc?.image || item.image,
             costPrice: variant?.costPrice || 0,
             kitchenStatus: 'placed',
-            bogoItem: item.bogoItem || null
+            bogoItem: item.bogoItem || null,
+            comboItems,
+            includedItems
           };
         })),
         subtotal,
@@ -608,7 +697,8 @@ class OrderController {
         { paymentStatus: 'paid' },
         { paymentMethod: { $in: ['cod', 'cash'] } },
         { orderType: 'dine-in' },
-        { orderType: 'takeaway' }
+        { orderType: 'takeaway' },
+        { orderSource: 'admin' }
       ];
 
       const orders = await Order.find(query)
@@ -961,7 +1051,7 @@ class OrderController {
 
       const subtotal = order.items.reduce((acc, item) => acc + (item.totalPrice || ((item.unitPrice || item.price || 0) * item.quantity)), 0);
       order.subtotal = subtotal;
-      order.totalAmount = subtotal + (order.deliveryFee || 0) + (order.platformFee || 0) - (order.discount || 0) + (order.tax || 0);
+      order.totalAmount = subtotal + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0);
 
       if (!["cash", "upi/card", "online", "cod", "Not Specified"].includes(order.paymentMethod)) {
         order.paymentMethod = 'Not Specified';

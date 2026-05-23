@@ -339,7 +339,7 @@ export const CartProvider = ({ children }) => {
         });
 
         const discountPercent = Math.min(100, Math.max(0, parseFloat(offer.offerValue || 0)));
-        const discountedBundlePrice = bundleBasePrice * (1 - discountPercent / 100);
+        const discountedBundlePrice = Math.round(bundleBasePrice * (1 - discountPercent / 100));
 
         totalSubtotal += possibleCombos * discountedBundlePrice;
 
@@ -394,7 +394,7 @@ export const CartProvider = ({ children }) => {
       const maxDiscountPercent = Math.max(menuDiscount, categoryDiscount);
 
       if (maxDiscountPercent > 0) {
-        const discountedPrice = (item.originalPrice || 0) * (1 - maxDiscountPercent / 100);
+        const discountedPrice = Math.round((item.originalPrice || 0) * (1 - maxDiscountPercent / 100));
         totalSubtotal += item.remainingQty * discountedPrice;
       } else {
         totalSubtotal += item.remainingQty * (item.originalPrice || 0);
@@ -403,7 +403,7 @@ export const CartProvider = ({ children }) => {
     });
 
     return Math.round(totalSubtotal);
-  }, [cartItems]);
+  }, [cartItems, offers]);
 
   return (
     <CartContext.Provider value={{

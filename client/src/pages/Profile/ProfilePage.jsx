@@ -4,6 +4,7 @@ import api from '../../api/axiosInstance';
 import { ArrowLeft, User, Mail, Phone, MapPin, Plus, Trash2, Home, Briefcase, Users, CheckCircle2, Shield, Settings, LogOut, PenLine, Trash, ShieldCheck, Lock, Camera } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { showToast } from '../../utils/sweetAlert';
+import { logoutToLanding } from '../../utils/auth';
 import AddressModal from '../../components/AddressModal/AddressModal';
 import Footer from '../../components/Footer/Footer';
 import Navbar from '../../components/Navbar/Navbar';
@@ -88,21 +89,8 @@ const ProfilePage = () => {
     }
   };
 
-    const handleLogout = () => {
-    const currentUser = JSON.parse(localStorage.getItem('user') || localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || '{}');
-    if (currentUser.role === 'admin') {
-      localStorage.removeItem('admin_token');
-      localStorage.removeItem('admin_user');
-      navigate('/admin/login', { replace: true });
-    } else if (currentUser.role === 'kitchen' || currentUser.role === 'waiter') {
-      localStorage.removeItem('staff_token');
-      localStorage.removeItem('staff_user');
-      navigate('/staff/login', { replace: true });
-    } else {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      navigate('/login', { replace: true });
-    }
+  const handleLogout = () => {
+    logoutToLanding(navigate);
   };
 
   const handleDeleteAddress = async (addressId) => {

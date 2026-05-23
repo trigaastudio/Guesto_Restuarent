@@ -90,6 +90,20 @@ const CartPage = () => {
   const [calculatedDistance, setCalculatedDistance] = useState(null);
   const [isCalculatingFee, setIsCalculatingFee] = useState(false);
   const platformFee = settings?.operationalSettings?.platformFee || 0;
+  const originalTotal = React.useMemo(() => {
+    return cartItems.reduce((sum, item) => {
+      let basePrice = 0;
+      if (item.isCombo) {
+        basePrice = item.comboItems?.reduce((s, ci) => s + (ci.price || 0), 0) || item.price || 0;
+      } else {
+        const variants = item.variants || item.sizes || [];
+        basePrice = variants.find(v => v.size === item.selectedSize)?.price || item.offerPrice || item.price || 0;
+      }
+      return sum + (basePrice * item.quantity);
+    }, 0);
+  }, [cartItems]);
+
+  const discount = Math.max(0, Math.round(originalTotal - subtotal));
   const total = Math.round(subtotal + deliveryFee + platformFee);
 
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -308,7 +322,7 @@ const CartPage = () => {
       });
       return;
     }
-    if (subtotal < 140) {
+    if (total < 140) {
       Swal.fire({
         title: 'Minimum Order Amount Required',
         text: 'The minimum order amount is ₹140 to proceed to payment. Please add more items to your cart.',
@@ -328,7 +342,7 @@ const CartPage = () => {
       return;
     }
     if (!dineInTableId && !deliveryAddress) { Swal.fire({ title: 'Missing Address', text: 'Please select a delivery address.', icon: 'warning', confirmButtonColor: '#B91C1C' }); return; }
-    navigate('/payment', { state: { deliveryAddress, additionalNote, deliveryFee, platformFee, dineInTableId, dineInTableNumber } });
+    navigate('/payment', { state: { deliveryAddress, additionalNote, deliveryFee, platformFee, discount, dineInTableId, dineInTableNumber } });
   };
 
   if (cartLoading && cartItems.length === 0) return <Loader fullPage={true} />;
@@ -437,8 +451,16 @@ const CartPage = () => {
                     };
 
                     const basePrice = getBasePrice();
-                    const finalPrice = basePrice;
-                    const discountPercent = basePrice > finalPrice ? Math.round(((basePrice - finalPrice) / basePrice) * 100) : 0;
+                    
+                    const menuDiscount = item.discountPercentage || 0;
+                    const categoryDiscount = item.category?.discountPercentage || 0;
+                    const computedDiscountPercent = Math.max(menuDiscount, categoryDiscount);
+                    
+                    const finalPrice = item.isCombo 
+                      ? (item.price || basePrice)
+                      : Math.round(computedDiscountPercent > 0 ? basePrice * (1 - computedDiscountPercent / 100) : basePrice);
+                      
+                    const discountPercent = computedDiscountPercent;
 
                     return (
                       <div key={`${item._id}-${item.selectedSize}`} className={`p-4 md:p-6 transition-all hover:bg-primary/[0.01] group relative border-b border-border/5 last:border-0 ${item.isBlocked || getStock(item) < item.quantity ? 'opacity-60' : ''}`}>
@@ -459,6 +481,7 @@ const CartPage = () => {
                                   {item.selectedSize ? `size: ${item.selectedSize}` : (item.category?.name || 'Main Course')}
                                 </p>
 
+                                {/* Combo Items */}
                                 {item.isCombo && item.comboItems?.length > 0 && (
                                   <div className="mt-2 space-y-1 pl-2 border-l border-primary/30">
                                     <span className="text-[8px] font-black text-primary uppercase tracking-wider block">Combo includes:</span>
@@ -466,6 +489,20 @@ const CartPage = () => {
                                       {item.comboItems.map((ci, idx) => (
                                         <span key={idx} className="inline-flex items-center bg-primary/5 text-primary text-[9px] font-bold px-2 py-0.5 rounded-lg border border-primary/10">
                                           {ci.quantity || 1}x {ci.menuItem?.name || 'Item'}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Included Items (Add-ons) */}
+                                {!item.isCombo && item.variants?.find(v => v.size === item.selectedSize)?.includedItems?.length > 0 && (
+                                  <div className="mt-2 space-y-1 pl-2 border-l border-primary/30">
+                                    <span className="text-[8px] font-black text-primary uppercase tracking-wider block">Includes Add-ons:</span>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {item.variants.find(v => v.size === item.selectedSize).includedItems.map((ii, idx) => (
+                                        <span key={idx} className="inline-flex items-center bg-primary/5 text-primary text-[9px] font-bold px-2 py-0.5 rounded-lg border border-primary/10">
+                                          {ii.quantity || 1}x {ii.menuItem?.name || 'Item'}
                                         </span>
                                       ))}
                                     </div>
@@ -504,13 +541,11 @@ const CartPage = () => {
                                 </button>
                               </div>
 
-                              <div className="flex items-baseline gap-2">
+                              <div className="flex flex-col items-end gap-1">
+                                <span className="text-base font-black text-text-primary">₹{(finalPrice * item.quantity).toFixed(0)}</span>
                                 {basePrice > finalPrice && (
-                                  <span className="text-[10px] font-bold text-text-muted line-through opacity-40">₹{Math.round(basePrice * item.quantity)}</span>
+                                  <span className="text-xs font-bold text-text-muted line-through opacity-50">₹{(basePrice * item.quantity).toFixed(0)}</span>
                                 )}
-                                <span className="text-lg md:text-xl font-black text-text-primary tracking-tighter">
-                                  ₹{finalPrice * item.quantity}
-                                </span>
                               </div>
                             </div>
 
@@ -557,38 +592,20 @@ const CartPage = () => {
                   Bill Summary
                 </h2>
                 <div className="space-y-5">
-                  {(() => {
-                    const originalTotal = cartItems.reduce((sum, item) => {
-                      let basePrice = 0;
-                      if (item.isCombo) {
-                        basePrice = item.comboItems?.reduce((s, ci) => s + (ci.price || 0), 0) || item.price || 0;
-                      } else {
-                        const variants = item.variants || item.sizes || [];
-                        basePrice = variants.find(v => v.size === item.selectedSize)?.price || item.offerPrice || item.price || 0;
-                      }
-                      return sum + (basePrice * item.quantity);
-                    }, 0);
-                    const totalSavings = Math.round(originalTotal - subtotal);
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] font-black text-text-muted uppercase">Actual Price</span>
+                    <span className="text-sm font-black text-text-primary">₹{Math.round(originalTotal)}</span>
+                  </div>
 
-                    return (
-                      <>
-                        <div className="flex justify-between items-center">
-                          <span className="text-[11px] font-black text-text-muted uppercase">Actual Price</span>
-                          <span className="text-sm font-black text-text-primary">₹{Math.round(originalTotal)}</span>
-                        </div>
+                  <div className="flex justify-between items-center text-green-500">
+                    <span className="text-[11px] font-black uppercase tracking-widest opacity-80">Total Savings</span>
+                    <span className="text-sm font-black">-₹{discount}</span>
+                  </div>
 
-                        <div className="flex justify-between items-center text-green-500">
-                          <span className="text-[11px] font-black uppercase tracking-widest opacity-80">Total Savings</span>
-                          <span className="text-sm font-black">-₹{totalSavings > 0 ? totalSavings : 0}</span>
-                        </div>
-
-                        <div className="flex justify-between items-center bg-primary/5 -mx-4 px-4 py-2 rounded-xl">
-                          <span className="text-[11px] font-black text-primary uppercase">Final Price (Items)</span>
-                          <span className="text-sm font-black text-primary">₹{subtotal}</span>
-                        </div>
-                      </>
-                    );
-                  })()}
+                  <div className="flex justify-between items-center bg-primary/5 -mx-4 px-4 py-2 rounded-xl">
+                    <span className="text-[11px] font-black text-primary uppercase">Final Price (Items)</span>
+                    <span className="text-sm font-black text-primary">₹{subtotal}</span>
+                  </div>
 
                   <div className="flex justify-between items-center pt-2">
                     <div className="flex flex-col">
@@ -622,11 +639,11 @@ const CartPage = () => {
                     </p>
                   </div>
 
-                  {subtotal < 140 && (
+                  {total < 140 && (
                     <div className="flex items-center gap-2 p-3 bg-status-off/10 text-status-unavailable rounded-xl border border-status-unavailable/20 mt-3 animate-pulse">
                       <Info size={14} className="flex-shrink-0 text-status-unavailable" />
                       <p className="text-[10px] font-bold leading-snug text-status-unavailable">
-                        Add ₹{140 - subtotal} more to reach the minimum order amount of ₹140.
+                        Add ₹{140 - total} more to reach the minimum order amount of ₹140.
                       </p>
                     </div>
                   )}

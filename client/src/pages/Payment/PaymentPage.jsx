@@ -41,6 +41,7 @@ const PaymentPage = () => {
   const additionalNote = location.state?.additionalNote || '';
   const deliveryFee = location.state?.deliveryFee || 0;
   const platformFee = location.state?.platformFee || 0;
+  const discount = location.state?.discount || 0;
   const dineInTableId = location.state?.dineInTableId;
   const dineInTableNumber = location.state?.dineInTableNumber;
   const total = subtotal + deliveryFee + platformFee;
@@ -80,8 +81,8 @@ const PaymentPage = () => {
       return;
     }
 
-    // If no address/table, no items, or subtotal is under ₹140, redirect back to cart
-    if (!isOrderSuccess && (!(deliveryAddress || dineInTableId) || cartItems.length === 0 || subtotal < 140)) {
+    // If no address/table, no items, or total is under ₹140, redirect back to cart
+    if (!isOrderSuccess && (!(deliveryAddress || dineInTableId) || cartItems.length === 0 || total < 140)) {
       navigate('/cart');
     }
 
@@ -130,7 +131,15 @@ const PaymentPage = () => {
       const orderItems = cartItems.map(item => {
         const variants = item.variants || item.sizes || [];
         const sizeData = variants.find(v => v.size === item.selectedSize);
-        const price = sizeData ? sizeData.price : (item.offerPrice || item.price || 0);
+        const basePrice = sizeData ? sizeData.price : (item.offerPrice || item.price || 0);
+
+        // Apply item/category discount so DB stores the correct discounted totalPrice
+        const menuDiscount = item.discountPercentage || 0;
+        const categoryDiscount = item.category?.discountPercentage || 0;
+        const maxDiscount = Math.max(menuDiscount, categoryDiscount);
+        const discountedPrice = item.isCombo
+          ? basePrice
+          : Math.round(maxDiscount > 0 ? basePrice * (1 - maxDiscount / 100) : basePrice);
 
         return {
           menuItem: item.menuItemId || item._id, // Use menuItemId if available, fallback to _id
@@ -138,7 +147,7 @@ const PaymentPage = () => {
           image: item.image || '',
           size: item.selectedSize,
           quantity: item.quantity,
-          price: price,
+          price: discountedPrice,
           bogoItem: item.bogoItem || null
         };
       });
@@ -149,6 +158,7 @@ const PaymentPage = () => {
         paymentMethod,
         totalAmount: total,
         subtotal,
+        discount,
         deliveryFee,
         platformFee,
         remarks: additionalNote,
@@ -505,13 +515,48 @@ const PaymentPage = () => {
                             </span>
                           )}
                         </div>
+
+                        {/* Combo Items */}
+                        {item.isCombo && item.comboItems?.length > 0 && (
+                          <div className="mt-2 space-y-1 pl-2 border-l border-primary/30">
+                            <span className="text-[8px] font-black text-primary uppercase tracking-wider block">Combo includes:</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {item.comboItems.map((ci, idx) => (
+                                <span key={idx} className="inline-flex items-center bg-primary/5 text-primary text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-primary/10">
+                                  {ci.quantity || 1}x {ci.menuItem?.name || 'Item'}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Included Items (Add-ons) */}
+                        {!item.isCombo && item.variants?.find(v => v.size === item.selectedSize)?.includedItems?.length > 0 && (
+                          <div className="mt-2 space-y-1 pl-2 border-l border-primary/30">
+                            <span className="text-[8px] font-black text-primary uppercase tracking-wider block">Includes Add-ons:</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {item.variants.find(v => v.size === item.selectedSize).includedItems.map((ii, idx) => (
+                                <span key={idx} className="inline-flex items-center bg-primary/5 text-primary text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-primary/10">
+                                  {ii.quantity || 1}x {ii.menuItem?.name || 'Item'}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                       <div className="text-lg font-black text-text-primary tracking-tighter pr-2">
                         ₹{(() => {
                           const variants = item.variants || item.sizes || [];
                           const sizeData = variants.find(v => v.size === item.selectedSize);
-                          const price = sizeData ? sizeData.price : (item.offerPrice || item.price || 0);
-                          return price * item.quantity;
+                          const basePrice = sizeData ? sizeData.price : (item.offerPrice || item.price || 0);
+                          // Apply item/category discount to match cart page calculation
+                          const menuDiscount = item.discountPercentage || 0;
+                          const categoryDiscount = item.category?.discountPercentage || 0;
+                          const maxDiscount = Math.max(menuDiscount, categoryDiscount);
+                          const discountedPrice = item.isCombo
+                            ? basePrice
+                            : Math.round(maxDiscount > 0 ? basePrice * (1 - maxDiscount / 100) : basePrice);
+                          return discountedPrice * item.quantity;
                         })()}
                       </div>
                     </div>

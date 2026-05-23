@@ -211,7 +211,6 @@ const LoginPage = () => {
               {/* API Error */}
               {apiError && (
                 <div className="bg-primary/10 border border-primary/25 text-primary px-4 py-3 rounded-xl text-xs font-bold text-center animate-shake flex items-center justify-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse flex-shrink-0" />
                   {apiError}
                 </div>
               )}

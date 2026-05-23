@@ -38,7 +38,20 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
 
   const variants = menu.variants || menu.sizes || [];
   const selectedVariant = variants.find(v => v.size === selectedSize);
-  const currentPrice = menu.isCombo ? menu.price : (selectedVariant ? selectedVariant.price : (menu.offerPrice || 0));
+  
+  const menuDiscount = menu.discountPercentage || 0;
+  const categoryDiscount = menu.category?.discountPercentage || 0;
+  const discountPercent = Math.max(menuDiscount, categoryDiscount);
+
+  const basePrice = selectedVariant ? selectedVariant.price : (menu.offerPrice || menu.price || 0);
+  
+  const currentPrice = menu.isCombo 
+    ? (menu.price || basePrice) 
+    : Math.round(discountPercent > 0 ? basePrice * (1 - discountPercent / 100) : basePrice);
+
+  const originalPrice = menu.isCombo 
+    ? menu.comboItems?.reduce((sum, item) => sum + (item.price || 0), 0) || 0
+    : basePrice;
 
   const isComboOutOfStock = menu.isCombo && menu.comboItems?.length > 0 && menu.comboItems.some(ci => {
     const item = ci.menuItem;
@@ -142,7 +155,14 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
                         <span className="px-1 py-0.5 bg-emerald-500 text-white text-[6px] font-black rounded uppercase animate-pulse">BOGO</span>
                       )}
                     </div>
-                    <span className="text-base font-black text-text-primary tracking-tighter">₹{v.price}</span>
+                    <div className="flex flex-col items-start">
+                      {discountPercent > 0 && !menu.isCombo && (
+                        <span className="text-[10px] font-bold text-text-muted line-through opacity-50">₹{v.price}</span>
+                      )}
+                      <span className="text-base font-black text-text-primary tracking-tighter">
+                        ₹{Math.round(discountPercent > 0 && !menu.isCombo ? v.price * (1 - discountPercent / 100) : v.price)}
+                      </span>
+                    </div>
                   </button>
                 ))}
               </div>
@@ -208,7 +228,12 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
         <div className="p-4 md:p-5 pt-0 flex items-center justify-between border-t border-border/10 bg-background-card/50 backdrop-blur-sm relative z-20">
           <div className="flex flex-col">
             <span className="text-[8px] font-black tracking-widest text-text-muted opacity-40 mb-1 uppercase">Price</span>
-            <span className="text-2xl font-black text-text-primary tracking-tighter leading-none">₹{currentPrice * quantity}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-black text-text-primary tracking-tighter leading-none">₹{currentPrice * quantity}</span>
+              {originalPrice > currentPrice && (
+                <span className="text-sm font-bold text-text-muted line-through opacity-50">₹{originalPrice * quantity}</span>
+              )}
+            </div>
           </div>
           {!viewOnly ? (
             <button

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { logoutToLanding } from '../../utils/auth';
 import { Home, Utensils, ShoppingCart, User, MapPin, LogOut, Package, X } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 
@@ -91,9 +92,7 @@ const BottomNavbar = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/login', { replace: true });
+    logoutToLanding(navigate);
     setShowProfileOptions(false);
   };
 

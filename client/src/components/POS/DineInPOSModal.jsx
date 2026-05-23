@@ -91,7 +91,22 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
   };
 
   const addToCart = (item, variant) => {
-    if (item.totalStock !== undefined && !canAddVariant(item, variant)) {
+    if (item.isCombo && item.comboItems?.length > 0) {
+      const outOfStockItems = [];
+      for (const ci of item.comboItems) {
+        const underlyingItem = menuItems.find(m => m._id === (ci.menuItem?._id || ci.menuItem));
+        if (underlyingItem && underlyingItem.totalStock !== undefined) {
+          const rawStock = getDynamicRawStock(underlyingItem);
+          if (rawStock <= 0) {
+            outOfStockItems.push(ci.menuItem?.name || ci.name || 'Item');
+          }
+        }
+      }
+      if (outOfStockItems.length > 0) {
+        showToast('error', `Cannot add ${item.name}: ${outOfStockItems.join(', ')} is out of stock`);
+        return;
+      }
+    } else if (item.totalStock !== undefined && !canAddVariant(item, variant)) {
       showToast('error', `Not enough stock for: ${item.name} (${variant?.size || 'Standard'})`);
       return;
     }

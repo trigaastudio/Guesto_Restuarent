@@ -5,6 +5,7 @@ import Footer from '../../components/Footer/Footer';
 import { useCart } from '../../context/CartContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
+import { logoutToLanding } from '../../utils/auth';
 
 const AboutPage = () => {
   const { settings, cartItems } = useCart();
@@ -29,20 +30,7 @@ const AboutPage = () => {
   }, []);
 
   const handleLogout = () => {
-    const currentUser = JSON.parse(localStorage.getItem('user') || localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || '{}');
-    if (currentUser.role === 'admin') {
-      localStorage.removeItem('admin_token');
-      localStorage.removeItem('admin_user');
-      navigate('/admin/login', { replace: true });
-    } else if (currentUser.role === 'kitchen' || currentUser.role === 'waiter') {
-      localStorage.removeItem('staff_token');
-      localStorage.removeItem('staff_user');
-      navigate('/staff/login', { replace: true });
-    } else {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      navigate('/login', { replace: true });
-    }
+    logoutToLanding(navigate);
   };
 
   const stats = [

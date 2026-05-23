@@ -8,6 +8,7 @@ import { useCart } from '../../context/CartContext';
 import { useTheme } from '../../context/ThemeContext';
 import Swal from 'sweetalert2';
 import Loader from '../../components/Loader/Loader';
+import { logoutToLanding } from '../../utils/auth';
 
 const OrdersPage = () => {
   const navigate = useNavigate();
@@ -53,21 +54,8 @@ const OrdersPage = () => {
     }
   };
 
-    const handleLogout = () => {
-    const currentUser = JSON.parse(localStorage.getItem('user') || localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || '{}');
-    if (currentUser.role === 'admin') {
-      localStorage.removeItem('admin_token');
-      localStorage.removeItem('admin_user');
-      navigate('/admin/login', { replace: true });
-    } else if (currentUser.role === 'kitchen' || currentUser.role === 'waiter') {
-      localStorage.removeItem('staff_token');
-      localStorage.removeItem('staff_user');
-      navigate('/staff/login', { replace: true });
-    } else {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      navigate('/login', { replace: true });
-    }
+  const handleLogout = () => {
+    logoutToLanding(navigate);
   };
 
   useEffect(() => {
@@ -328,8 +316,8 @@ const OrdersPage = () => {
 
                   <div className="space-y-4 relative z-10">
                     {orders.map((order) => (
-                      <div 
-                        key={order._id} 
+                      <div
+                        key={order._id}
                         onClick={() => {
                           setSelectedOrder(order);
                           setShowDetailsModal(true);
@@ -338,13 +326,13 @@ const OrdersPage = () => {
                       >
                         {/* Each order is a clean row on desktop */}
                         <div className="p-5 md:p-6 flex flex-col md:flex-row items-start md:items-center gap-6">
-                          
+
                           {/* 1. Item Image (First item) */}
                           <div className="w-20 h-20 md:w-24 md:h-24 bg-background-muted/30 rounded-lg p-2 border border-border/20 flex-shrink-0 flex items-center justify-center relative">
-                            <img 
-                              src={order.items[0]?.image || order.items[0]?.menuItem?.image || '/placeholder-food.jpg'} 
-                              alt="order item" 
-                              className="w-full h-full object-contain" 
+                            <img
+                              src={order.items[0]?.image || order.items[0]?.menuItem?.image || '/placeholder-food.jpg'}
+                              alt="order item"
+                              className="w-full h-full object-contain"
                             />
                             {order.items.length > 1 && (
                               <div className="absolute -bottom-2 -right-2 bg-primary text-white text-[8px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
@@ -378,7 +366,7 @@ const OrdersPage = () => {
 
                           {/* 3. Price Section */}
                           <div className="w-full md:w-auto md:min-w-[120px] md:text-center">
-                            <p className="text-lg font-black text-text-primary tracking-tighter">₹{order.totalAmount}</p>
+                            <p className="text-lg font-black text-text-primary tracking-tighter">₹{(order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0)}</p>
                             <div className="flex items-center gap-1.5 md:justify-center mt-0.5">
                               {order.orderStatus !== 'cancelled' && (
                                 <span className={`text-[9px] font-bold uppercase tracking-wider ${order.paymentStatus === 'paid' ? 'text-emerald-600' : 'text-orange-600 animate-pulse'}`}>
@@ -391,20 +379,19 @@ const OrdersPage = () => {
                           {/* 4. Status Section */}
                           <div className="w-full md:w-auto md:min-w-[200px] space-y-1.5">
                             <div className="flex items-center gap-2">
-                              <div className={`w-2.5 h-2.5 rounded-full ${
-                                order.orderStatus === 'delivered' ? 'bg-emerald-500' : 
-                                order.orderStatus === 'cancelled' ? 'bg-red-500' : 
-                                'bg-primary animate-pulse'
-                              }`}></div>
+                              <div className={`w-2.5 h-2.5 rounded-full ${order.orderStatus === 'delivered' ? 'bg-emerald-500' :
+                                  order.orderStatus === 'cancelled' ? 'bg-red-500' :
+                                    'bg-primary animate-pulse'
+                                }`}></div>
                               <span className="text-sm font-black text-text-primary tracking-tight">
                                 {getStatusLabel(order.orderStatus)}
                               </span>
                             </div>
                             <p className="text-[11px] font-medium text-text-muted leading-tight">
-                              {order.orderStatus === 'delivered' ? 'Your meal has been delivered' : 
-                               order.orderStatus === 'cancelled' ? 'This order was cancelled' : 
-                               order.orderStatus === 'processing' ? 'Your feast is being prepared by our chef' :
-                               'Your order is being processed'}
+                              {order.orderStatus === 'delivered' ? 'Your meal has been delivered' :
+                                order.orderStatus === 'cancelled' ? 'This order was cancelled' :
+                                  order.orderStatus === 'processing' ? 'Your feast is being prepared by our chef' :
+                                    'Your order is being processed'}
                             </p>
                           </div>
 
@@ -412,8 +399,8 @@ const OrdersPage = () => {
                           <div className="w-full md:w-auto flex items-center justify-end gap-4 min-w-[150px]">
                             {order.orderStatus !== 'cancelled' && (
                               <div className="flex items-center gap-3 w-full justify-end">
-                                 {/* Cancel button removed */}
-                                
+                                {/* Cancel button removed */}
+
                                 <button
                                   onClick={(e) => { e.stopPropagation(); navigate(`/track-order/${order._id}`); }}
                                   className="flex-1 md:flex-none px-6 py-3 bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all active:scale-95 flex items-center justify-center gap-2"
@@ -423,8 +410,8 @@ const OrdersPage = () => {
                                 </button>
                               </div>
                             )}
-                            
-                             {/* Try Again button removed as per user request */}
+
+                            {/* Try Again button removed as per user request */}
                           </div>
                         </div>
                       </div>
@@ -439,8 +426,8 @@ const OrdersPage = () => {
       {/* Order Details Modal */}
       {showDetailsModal && selectedOrder && (
         <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 md:p-6 animate-in fade-in duration-300">
-          <div 
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
             onClick={() => setShowDetailsModal(false)}
           />
           <div className="relative w-full max-w-xl bg-white dark:bg-background-card rounded-[2.5rem] shadow-[0_30px_100px_rgba(0,0,0,0.4)] overflow-hidden animate-in zoom-in-95 duration-300">
@@ -450,7 +437,7 @@ const OrdersPage = () => {
                 <p className="text-[10px] font-black text-primary uppercase tracking-widest">Order Details</p>
                 <h3 className="text-xl font-black text-text-primary tracking-tight">#{selectedOrder.orderNumber || selectedOrder._id.slice(-8).toUpperCase()}</h3>
               </div>
-              <button 
+              <button
                 onClick={() => setShowDetailsModal(false)}
                 className="w-10 h-10 rounded-full bg-background-muted/50 flex items-center justify-center text-text-muted hover:text-primary transition-colors active:scale-90"
               >
@@ -465,10 +452,10 @@ const OrdersPage = () => {
                   <div key={idx} className="flex items-center justify-between p-4 rounded-2xl bg-background-muted/20 border border-border/5">
                     <div className="flex items-center gap-4">
                       <div className="w-16 h-16 rounded-xl bg-background border border-border/10 p-2 flex-shrink-0">
-                        <img 
-                          src={item.image || item.menuItem?.image || '/placeholder-food.jpg'} 
-                          alt={item.name} 
-                          className="w-full h-full object-contain" 
+                        <img
+                          src={item.image || item.menuItem?.image || '/placeholder-food.jpg'}
+                          alt={item.name}
+                          className="w-full h-full object-contain"
                         />
                       </div>
                       <div className="space-y-1">

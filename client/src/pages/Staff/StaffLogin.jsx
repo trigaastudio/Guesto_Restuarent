@@ -64,6 +64,10 @@ const StaffLogin = () => {
 
         localStorage.setItem('staff_token', staffData.token);
         localStorage.setItem('staff_user', JSON.stringify(staffData));
+        // Enforce mutual exclusivity: log out of admin if logging into staff
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_user');
+        localStorage.removeItem('admin_notifications');
 
         if (staffData.role === 'kitchen') {
           navigate('/kitchen/dashboard', { replace: true });
@@ -73,8 +77,8 @@ const StaffLogin = () => {
           setErrorMsg('Unrecognized role. Please contact admin.');
         }
       }
-    } catch (error) {
-      setErrorMsg('Invalid credentials');
+    } catch (err) {
+      setErrorMsg(err.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }
@@ -102,7 +106,7 @@ const StaffLogin = () => {
         </h2>
 
         {errorMsg && (
-          <div className="bg-red-500/10 border border-red-500/50 text-red-500 text-sm p-3 rounded-xl mb-6 text-center font-medium">
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 text-red-500 text-sm rounded-xl text-center animate-in fade-in slide-in-from-top-2 font-medium">
             {errorMsg}
           </div>
         )}

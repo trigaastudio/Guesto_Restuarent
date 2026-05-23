@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, CheckCircle, XCircle, Search, Loader2, ArrowUpDown, Filter, Image as ImageIcon, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle, XCircle, Search, Loader2, ArrowUpDown, Filter, Image as ImageIcon, RotateCcw, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { io } from 'socket.io-client';
 import api from '../../../api/axiosInstance';
+const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 import ImageCropper from '../../../components/ImageCropper/ImageCropper';
 import Loader from '../../../components/Loader/Loader';
@@ -20,12 +22,25 @@ const CategorySection = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
+  const [editingDiscountId, setEditingDiscountId] = useState(null);
+  const [discountValue, setDiscountValue] = useState('');
+  const socketRef = React.useRef();
+
   // Crop State
   const [showCropper, setShowCropper] = useState(false);
   const [imageToCrop, setImageToCrop] = useState(null);
 
   useEffect(() => {
     fetchCategories();
+
+    socketRef.current = io(SOCKET_URL);
+    socketRef.current.on('categoryUpdate', () => {
+      fetchCategories(true);
+    });
+
+    return () => {
+      if (socketRef.current) socketRef.current.disconnect();
+    };
   }, []);
 
   useEffect(() => {
@@ -154,13 +169,35 @@ const CategorySection = () => {
 
   const handleToggleStatus = async (category) => {
     try {
+      // Optimistic update
+      setCategories(prev => prev.map(c => c._id === category._id ? { ...c, isActive: !c.isActive } : c));
       const updatedCategory = { ...category, isActive: !category.isActive };
       await api.put(`/api/categories/${category._id}`, updatedCategory);
-      fetchCategories(true);
       showToast('success', `Category marked as ${updatedCategory.isActive ? 'active' : 'inactive'}`);
     } catch (error) {
       console.error('Error toggling category status:', error);
       showToast('error', 'Failed to update category status');
+      fetchCategories(true); // Revert on error
+    }
+  };
+
+  const handleSaveDiscount = async (category) => {
+    if (discountValue === '' || isNaN(discountValue)) {
+      setEditingDiscountId(null);
+      return;
+    }
+    const numValue = Math.min(100, Math.max(0, Number(discountValue)));
+    try {
+      // Optimistic update
+      setCategories(prev => prev.map(c => c._id === category._id ? { ...c, discountPercentage: numValue } : c));
+      await api.put(`/api/categories/${category._id}`, { ...category, discountPercentage: numValue });
+      showToast('success', 'Discount updated successfully');
+    } catch (error) {
+      console.error('Error updating discount:', error);
+      showToast('error', 'Failed to update discount');
+      fetchCategories(true); // Revert on error
+    } finally {
+      setEditingDiscountId(null);
     }
   };
 
@@ -323,13 +360,39 @@ const CategorySection = () => {
                       </span>
                     </td>
                     <td className="px-3 py-4 font-medium text-text-secondary">{category.itemCount || 0} Items</td>
-                    <td className="px-3 py-4">
-                      {category.discountPercentage > 0 ? (
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-status-on/10 text-status-available border border-status-on/20">
-                          {category.discountPercentage}% Off
-                        </span>
+                    <td className="px-3 py-4" onDoubleClick={() => { setEditingDiscountId(category._id); setDiscountValue(category.discountPercentage || 0); }}>
+                      {editingDiscountId === category._id ? (
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            autoFocus
+                            value={discountValue}
+                            onChange={(e) => setDiscountValue(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSaveDiscount(category)}
+                            onBlur={() => handleSaveDiscount(category)}
+                            className="w-16 px-2 py-1 bg-background-card rounded border border-primary focus:outline-none text-xs text-center"
+                          />
+                          <span className="text-xs text-text-muted">%</span>
+                        </div>
                       ) : (
-                        <span className="text-text-muted text-[11px] font-medium italic">No Discount</span>
+                        <div 
+                          className="cursor-pointer group flex items-center space-x-2"
+                          onClick={() => { setEditingDiscountId(category._id); setDiscountValue(category.discountPercentage || 0); }}
+                          title="Click to edit discount"
+                        >
+                          {category.discountPercentage > 0 ? (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-status-on/10 text-status-available border border-status-on/20 group-hover:bg-status-on/20 transition-colors">
+                              {category.discountPercentage}% Off
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-background-muted text-text-muted border border-border-main group-hover:border-primary group-hover:text-primary transition-colors">
+                              0% Off
+                            </span>
+                          )}
+                          <Edit2 size={12} className="opacity-0 group-hover:opacity-100 text-text-muted transition-opacity" />
+                        </div>
                       )}
                     </td>
                     <td className="px-3 py-4">
@@ -402,32 +465,22 @@ const CategorySection = () => {
                   placeholder="e.g. Main Course"
                 />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-text-secondary">Discount Percentage (%)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={currentCategory.discountPercentage === 0 ? '' : currentCategory.discountPercentage}
-                  onChange={(e) => setCurrentCategory({ ...currentCategory, discountPercentage: e.target.value === '' ? 0 : Math.min(100, Math.max(0, parseInt(e.target.value) || 0)) })}
-                  className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold"
-                  placeholder="e.g. 10"
-                />
-              </div>
-              <div className="flex items-center space-x-3">
-                <label className="text-sm font-semibold text-text-secondary">Status</label>
-                <button
-                  onClick={() => setCurrentCategory({ ...currentCategory, isActive: !currentCategory.isActive })}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${currentCategory.isActive ? 'bg-primary' : 'bg-text-muted'
-                    }`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${currentCategory.isActive ? 'translate-x-6' : 'translate-x-1'
-                    }`} />
-                </button>
-                <span className="text-sm text-text-primary font-medium">
-                  {currentCategory.isActive ? 'Active' : 'Inactive'}
-                </span>
-              </div>
+              {!isEditing && (
+                <div className="flex items-center space-x-3">
+                  <label className="text-sm font-semibold text-text-secondary">Status</label>
+                  <button
+                    onClick={() => setCurrentCategory({ ...currentCategory, isActive: !currentCategory.isActive })}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${currentCategory.isActive ? 'bg-primary' : 'bg-text-muted'
+                      }`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${currentCategory.isActive ? 'translate-x-6' : 'translate-x-1'
+                      }`} />
+                  </button>
+                  <span className="text-sm text-text-primary font-medium">
+                    {currentCategory.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+              )}
 
               <div className="space-y-3 pt-2">
                 <label className="text-sm font-semibold text-text-secondary">Category Image</label>
