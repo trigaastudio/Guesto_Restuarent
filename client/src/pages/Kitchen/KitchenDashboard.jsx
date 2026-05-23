@@ -12,6 +12,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useCart } from '../../context/CartContext';
 import { showToast, showAlert } from '../../utils/sweetAlert';
 import Loader from '../../components/Loader/Loader';
+import { logoutStaff } from '../../utils/auth';
 
 const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:5000/api`;
 const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
@@ -343,10 +344,7 @@ const KitchenDashboard = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('staff_token');
-    localStorage.removeItem('staff_user');
-    localStorage.removeItem('kitchenActiveTab');
-    navigate('/staff/login', { replace: true });
+    logoutStaff(navigate);
   };
 
   const filteredOrders = orders.filter(o => {
@@ -747,6 +745,34 @@ const KitchenDashboard = () => {
                                 <span className="text-[8px] bg-background-card px-1.5 py-0.5 rounded-md border border-border-light text-text-muted font-black uppercase tracking-widest truncate max-w-[50px]">{item.size}</span>
                                 <span className="text-[9px] text-primary font-black uppercase tracking-widest shrink-0">x {item.quantity}</span>
                               </div>
+
+                              {/* Combo Items */}
+                              {item.comboItems?.length > 0 && (
+                                <div className="mt-2 bg-background-muted/30 p-2 rounded-lg border border-border-light/40">
+                                  <span className="text-[8px] font-black text-status-available uppercase tracking-widest block mb-1.5 opacity-80">Combo Includes:</span>
+                                  <div className="flex flex-col gap-1 pl-1.5 border-l-[1.5px] border-status-available/30">
+                                    {item.comboItems.map((ci, idx) => (
+                                      <span key={idx} className="text-text-muted text-[9px] font-bold flex items-center gap-1.5">
+                                        <span className="text-text-primary/40 text-[7px]">▶</span> {ci.quantity || 1}x {ci.name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Included Items (Add-ons) */}
+                              {item.includedItems?.length > 0 && (
+                                <div className="mt-2 bg-background-muted/30 p-2 rounded-lg border border-border-light/40">
+                                  <span className="text-[8px] font-black text-primary uppercase tracking-widest block mb-1.5 opacity-80">Includes Add-ons:</span>
+                                  <div className="flex flex-col gap-1 pl-1.5 border-l-[1.5px] border-primary/30">
+                                    {item.includedItems.map((ii, idx) => (
+                                      <span key={idx} className="text-text-muted text-[9px] font-bold flex items-center gap-1.5">
+                                        <span className="text-text-primary/40 text-[7px]">▶</span> {ii.quantity || 1}x {ii.name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
 
                             {/* Column 3: Status (Hidden in 'new' view) */}

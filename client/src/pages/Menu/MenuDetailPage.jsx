@@ -87,6 +87,34 @@ const MenuDetailPage = () => {
   const handleAddToCart = () => {
     if (!menu) return;
 
+    if (menu.isCombo && menu.comboItems?.length > 0) {
+      const outOfStockItems = [];
+      for (const ci of menu.comboItems) {
+        if (ci.menuItem?.totalStock !== undefined && ci.menuItem.totalStock <= 0) {
+          outOfStockItems.push(ci.menuItem.name);
+        }
+      }
+      if (outOfStockItems.length > 0) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Out of Stock',
+          text: `Cannot add ${menu.name}. ${outOfStockItems.join(', ')} is currently out of stock.`,
+          confirmButtonColor: '#B91C1C'
+        });
+        return;
+      }
+    } else {
+      if (menu.totalStock !== undefined && menu.totalStock <= 0) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Out of Stock',
+          text: `${menu.name} is currently out of stock.`,
+          confirmButtonColor: '#B91C1C'
+        });
+        return;
+      }
+    }
+
     // Add item to cart with proper quantity and selected size
     addToCart(menu, quantity, selectedSize?.size || null);
 
@@ -137,7 +165,17 @@ const MenuDetailPage = () => {
     );
   }
 
-  const currentPrice = selectedSize?.price || menu.offerPrice;
+  const menuDiscount = menu.discountPercentage || 0;
+  const categoryDiscount = menu.category?.discountPercentage || 0;
+  const discountPercent = Math.max(menuDiscount, categoryDiscount);
+
+  const basePrice = selectedSize?.price || menu.offerPrice || menu.price || 0;
+  
+  const currentPrice = menu.isCombo 
+    ? (menu.price || basePrice)
+    : Math.round(discountPercent > 0 ? basePrice * (1 - discountPercent / 100) : basePrice);
+
+  const hasSavings = discountPercent > 0 && !menu.isCombo;
 
   return (
     <div className={`min-h-screen bg-background font-sans ${theme}`}>
@@ -253,9 +291,16 @@ const MenuDetailPage = () => {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 pt-8 border-t border-gray-100">
               <div className="space-y-1">
                 <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Total Price</p>
-                <p className="text-4xl font-black text-text-primary tracking-tighter">
-                  ₹{currentPrice * quantity}
-                </p>
+                <div className="flex flex-col">
+                  {hasSavings && (
+                    <span className="text-sm font-black text-text-muted line-through opacity-60">
+                      ₹{Math.round(basePrice * quantity)}
+                    </span>
+                  )}
+                  <p className="text-4xl font-black text-text-primary tracking-tighter">
+                    ₹{Math.round(currentPrice * quantity)}
+                  </p>
+                </div>
               </div>
 
               <div className="flex items-center gap-6">

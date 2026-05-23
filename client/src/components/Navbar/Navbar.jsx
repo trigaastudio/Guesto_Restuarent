@@ -11,6 +11,23 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [localUser, setLocalUser] = useState(user);
+  // Detect admin token independently so admin can navigate back to dashboard
+  const [isAdminSession, setIsAdminSession] = useState(() => !!localStorage.getItem('admin_token'));
+
+  // Define a guaranteed logout function directly in the Navbar
+  // This bypasses any outdated handleLogout props passed from parent pages
+  const handleWebsiteLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_user');
+    localStorage.removeItem('admin_notifications');
+    localStorage.removeItem('dineInTableId');
+    localStorage.removeItem('dineInTableNumber');
+    
+    // Hard refresh to landing page
+    window.location.href = '/';
+  };
 
   useEffect(() => {
     setLocalUser(user);
@@ -19,8 +36,15 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     const handleStorageChange = () => {
-      const updatedUser = JSON.parse(localStorage.getItem('user') || localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || 'null');
-      if (updatedUser) setLocalUser(updatedUser);
+      // Sync active user session (customer or admin) so profile dropdown updates across tabs
+      // Staff sessions are explicitly ignored on the website to maintain total separation
+      const activeUser = JSON.parse(
+        localStorage.getItem('user') || 
+        localStorage.getItem('admin_user') || 
+        'null'
+      );
+      setLocalUser(activeUser);
+      setIsAdminSession(!!localStorage.getItem('admin_token'));
     };
 
     window.addEventListener('scroll', handleScroll);
@@ -30,7 +54,7 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, []);
+  }, [user]);
 
   const navLinks = [
     { name: 'Home', icon: Home, path: '/home' },
@@ -204,6 +228,8 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
                           setShowUserDropdown(false); 
                           if (localUser.role === 'admin') {
                             navigate('/admin/dashboard');
+                          } else if (localUser.role === 'waiter') {
+                            navigate('/waiter/dashboard');
                           } else {
                             navigate('/kitchen/dashboard');
                           }
@@ -231,7 +257,7 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
                       </div>
                     </button>
                     <div className="h-px bg-border my-2 mx-4"></div>
-                    <button onClick={handleLogout} className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl hover:bg-red-50 dark:hover:bg-red-500/10 transition-all group">
+                    <button onClick={handleWebsiteLogout} className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl hover:bg-red-50 dark:hover:bg-red-500/10 transition-all group">
                       <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-500/10 flex items-center justify-center group-hover:bg-red-500 group-hover:text-white transition-all text-red-500">
                         <LogOut size={18} />
                       </div>
@@ -243,6 +269,19 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
                   </div>
                 </div>
               </div>
+            ) : isAdminSession ? (
+              // Admin is logged in but viewing website as guest — show back-to-dashboard button
+              <button
+                onClick={() => navigate('/admin/dashboard')}
+                className={`flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 rounded-full font-black text-[9px] md:text-[10px] uppercase tracking-[0.2em] transition-all duration-300 active:scale-95 border ${
+                  isScrolled
+                  ? 'bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white'
+                  : 'bg-white/10 text-white border-white/20 hover:bg-white/20'
+                }`}
+              >
+                <LayoutDashboard size={14} />
+                <span className="hidden md:inline">Admin Panel</span>
+              </button>
             ) : (
               <button
                 onClick={() => navigate('/login')}

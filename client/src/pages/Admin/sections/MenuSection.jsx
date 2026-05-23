@@ -40,6 +40,9 @@ const MenuSection = () => {
 
   const [isUploading, setIsUploading] = useState(false);
 
+  const [editingDiscountId, setEditingDiscountId] = useState(null);
+  const [discountValue, setDiscountValue] = useState('');
+
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -217,12 +220,34 @@ const MenuSection = () => {
   const handleToggleStatus = async (menu) => {
     try {
       const updatedMenu = { ...menu, isBlocked: !menu.isBlocked };
+      // Optimistic update
+      setMenus(prev => prev.map(m => m._id === menu._id ? { ...m, isBlocked: !m.isBlocked } : m));
       await api.put(`/api/menus/${menu._id}`, updatedMenu);
-      fetchData(true);
       showToast('success', `Item ${updatedMenu.isBlocked ? 'blocked' : 'unblocked'} successfully`);
     } catch (error) {
       console.error('Error toggling menu status:', error);
       showToast('error', 'Failed to update menu status');
+      fetchData(true); // Revert on error
+    }
+  };
+
+  const handleSaveDiscount = async (menu) => {
+    if (discountValue === '' || isNaN(discountValue)) {
+      setEditingDiscountId(null);
+      return;
+    }
+    const numValue = Math.min(100, Math.max(0, Number(discountValue)));
+    try {
+      // Optimistic update
+      setMenus(prev => prev.map(m => m._id === menu._id ? { ...m, discountPercentage: numValue } : m));
+      await api.put(`/api/menus/${menu._id}`, { ...menu, discountPercentage: numValue });
+      showToast('success', 'Discount updated successfully');
+    } catch (error) {
+      console.error('Error updating discount:', error);
+      showToast('error', 'Failed to update discount');
+      fetchData(true); // Revert on error
+    } finally {
+      setEditingDiscountId(null);
     }
   };
 
@@ -421,15 +446,7 @@ const MenuSection = () => {
                   ))}
                 </select>
               </div>
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="bg-background-card text-text-primary border border-border-main rounded-lg px-3 py-1.5 text-xs outline-none cursor-pointer"
-              >
-                <option value="all" className="bg-background-card text-text-primary">All Types</option>
-                <option value="veg" className="bg-background-card text-text-primary">Veg</option>
-                <option value="non-veg" className="bg-background-card text-text-primary">Non-Veg</option>
-              </select>
+
               <select
                 value={stockFilter}
                 onChange={(e) => setStockFilter(e.target.value)}
@@ -473,13 +490,8 @@ const MenuSection = () => {
                     <ArrowUpDown size={12} className={`opacity-0 group-hover:opacity-100 transition-opacity ${sortConfig.key === 'name' ? 'opacity-100 text-primary' : ''}`} />
                   </div>
                 </th>
-                <th className="px-3 py-4 cursor-pointer hover:text-primary transition-colors group" onClick={() => handleSort('category')}>
-                  <div className="flex items-center space-x-1">
-                    <span>Category</span>
-                    <ArrowUpDown size={12} className={`opacity-0 group-hover:opacity-100 transition-opacity ${sortConfig.key === 'category' ? 'opacity-100 text-primary' : ''}`} />
-                  </div>
-                </th>
-                <th className="px-3 py-4 text-center">Type</th>
+
+
                  <th className="px-3 py-4 cursor-pointer hover:text-primary transition-colors group min-w-[120px]" onClick={() => handleSort('price')}>
                   <div className="flex items-center space-x-1">
                     <span>Pricing</span>
@@ -523,27 +535,18 @@ const MenuSection = () => {
                             </div>
                           )}
                         </div>
-                        <div className="flex flex-col">
-                          <p className="font-bold text-text-primary leading-tight">{menu.name}</p>
-                          <p className="text-[10px] text-text-muted mt-0.5 line-clamp-1 max-w-[180px]">{menu.description}</p>
+                        <div className="flex flex-col space-y-1.5">
+                          <p className="font-bold text-text-primary text-sm leading-tight">{menu.name}</p>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary bg-background-muted/80 px-2 py-0.5 rounded border border-border-light">
+                              {menu.category?.name || 'Uncategorized'}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-text-muted line-clamp-1 max-w-[200px]">{menu.description}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 py-4">
-                      <span className="text-[11px] font-bold text-text-secondary bg-background-muted/50 px-2.5 py-1 rounded-full border border-border-light">
-                        {menu.category?.name || 'Uncategorized'}
-                      </span>
-                    </td>
-                    <td className="px-3 py-4 text-center">
-                      <div className="flex justify-center">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border ${menu.foodType === 'veg'
-                            ? 'bg-status-on/5 text-status-available border-status-on/20'
-                            : 'bg-status-off/5 text-status-unavailable border-status-off/20'
-                          }`}>
-                          {menu.foodType}
-                        </span>
-                      </div>
-                    </td>
+
                     <td className="px-3 py-4">
                       <div className="flex flex-col space-y-2">
                         {menu.isCombo ? (
@@ -597,18 +600,48 @@ const MenuSection = () => {
                         })()}
                       </div>
                     </td>
-                    <td className="px-3 py-4 text-center">
-                      {menu.discountPercentage > 0 ? (
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-status-on/10 text-status-available border border-status-on/20">
-                          {menu.discountPercentage}% Off
-                        </span>
+                    <td className="px-3 py-4 text-center" onDoubleClick={() => { setEditingDiscountId(menu._id); setDiscountValue(menu.discountPercentage || 0); }}>
+                      {editingDiscountId === menu._id ? (
+                        <div className="flex justify-center items-center space-x-2">
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            autoFocus
+                            value={discountValue}
+                            onChange={(e) => setDiscountValue(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSaveDiscount(menu)}
+                            onBlur={() => handleSaveDiscount(menu)}
+                            className="w-16 px-2 py-1 bg-background-card rounded border border-primary focus:outline-none text-xs text-center"
+                          />
+                          <span className="text-xs text-text-muted">%</span>
+                        </div>
                       ) : (
-                        <span className="text-text-muted text-[11px] font-medium italic">No Discount</span>
+                        <div 
+                          className="cursor-pointer group flex justify-center items-center space-x-2"
+                          onClick={() => { setEditingDiscountId(menu._id); setDiscountValue(menu.discountPercentage || 0); }}
+                          title="Click to edit discount"
+                        >
+                          {menu.discountPercentage > 0 ? (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-status-on/10 text-status-available border border-status-on/20 group-hover:bg-status-on/20 transition-colors">
+                              {menu.discountPercentage}% Off
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-background-muted text-text-muted border border-border-main group-hover:border-primary group-hover:text-primary transition-colors">
+                              0% Off
+                            </span>
+                          )}
+                          <Edit2 size={12} className="opacity-0 group-hover:opacity-100 text-text-muted transition-opacity" />
+                        </div>
                       )}
                     </td>
                     <td className="px-3 py-4 text-center">
                       <div className="flex flex-col items-center">
-                        {menu.totalStock > 0 ? (
+                        {menu.isCombo ? (
+                          <span className="text-[9px] font-black text-primary uppercase bg-primary/10 px-2 py-1 rounded border border-primary/20">
+                            Combo Item
+                          </span>
+                        ) : menu.totalStock > 0 ? (
                           <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300">
                             <span className={`text-sm font-black ${menu.totalStock <= 10 ? 'text-amber-600' : 'text-text-primary'}`}>
                               {getCalculatedStock(menu)}
@@ -731,62 +764,23 @@ const MenuSection = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <label className="text-sm font-semibold text-text-secondary">Food Type</label>
-                  <div className="flex space-x-4">
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="foodType"
-                        value="veg"
-                        checked={currentMenu.foodType === 'veg'}
-                        onChange={(e) => setCurrentMenu({ ...currentMenu, foodType: e.target.value })}
-                        className="text-primary focus:ring-primary"
-                      />
-                      <span className="text-sm text-text-primary">Veg</span>
-                    </label>
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="foodType"
-                        value="non-veg"
-                        checked={currentMenu.foodType === 'non-veg'}
-                        onChange={(e) => setCurrentMenu({ ...currentMenu, foodType: e.target.value })}
-                        className="text-primary focus:ring-primary"
-                      />
-                      <span className="text-sm text-text-primary">Non-Veg</span>
-                    </label>
-                  </div>
-                </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-text-secondary">Discount Percentage (%)</label>
+              {categories.find(c => c._id === currentMenu.category)?.name.toLowerCase() !== 'combo' && (
+                <div className="bg-background-muted/30 p-4 rounded-2xl border border-border-light space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-semibold text-text-secondary">Total Stock</label>
+                    <p className="text-[10px] text-text-muted uppercase">Base Stock (e.g. Total Pieces)</p>
+                  </div>
                   <input
                     type="number"
-                    min="0"
-                    max="100"
-                    value={currentMenu.discountPercentage === 0 ? '' : currentMenu.discountPercentage}
-                    onChange={(e) => setCurrentMenu({ ...currentMenu, discountPercentage: e.target.value === '' ? 0 : Math.min(100, Math.max(0, parseInt(e.target.value) || 0)) })}
-                    className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold"
-                    placeholder="e.g. 15"
+                    value={currentMenu.totalStock === 0 ? '' : currentMenu.totalStock}
+                    onChange={(e) => setCurrentMenu({ ...currentMenu, totalStock: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                    className="w-full px-4 py-2 bg-background-card rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm"
+                    placeholder="Total base units (e.g. total pieces)"
                   />
+                  <p className="text-[10px] text-text-muted italic">* Stock is tracked in base units (e.g. pieces)</p>
                 </div>
-              </div>
-              <div className="bg-background-muted/30 p-4 rounded-2xl border border-border-light space-y-4">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-semibold text-text-secondary">Total Stock</label>
-                  <p className="text-[10px] text-text-muted uppercase">Base Stock (e.g. Total Pieces)</p>
-                </div>
-                <input
-                  type="number"
-                  value={currentMenu.totalStock === 0 ? '' : currentMenu.totalStock}
-                  onChange={(e) => setCurrentMenu({ ...currentMenu, totalStock: e.target.value === '' ? 0 : parseInt(e.target.value) })}
-                  className="w-full px-4 py-2 bg-background-card rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm"
-                  placeholder="Total base units (e.g. total pieces)"
-                />
-                <p className="text-[10px] text-text-muted italic">* Stock is tracked in base units (e.g. pieces)</p>
-              </div>
+              )}
 
               {categories.find(c => c._id === currentMenu.category)?.name.toLowerCase() !== 'combo' ? (
                 <div className="space-y-3">
@@ -1013,6 +1007,14 @@ const MenuSection = () => {
                   </div>
 
                   <div className="space-y-3">
+                    {currentMenu.comboItems.length > 0 && (
+                      <div className="flex items-center space-x-3 px-3 py-1">
+                        <span className="flex-1 text-[10px] font-black uppercase tracking-widest text-text-muted">Item</span>
+                        <span className="w-24 text-[10px] font-black uppercase tracking-widest text-text-muted text-center">Price</span>
+                        <span className="w-20 text-[10px] font-black uppercase tracking-widest text-text-muted text-center">Quantity</span>
+                        <div className="w-8"></div>
+                      </div>
+                    )}
                     {currentMenu.comboItems.map((item, idx) => (
                       <div key={idx} className="flex items-center space-x-3 bg-background-muted/30 p-3 rounded-xl border border-border-light">
                         <select
@@ -1117,23 +1119,7 @@ const MenuSection = () => {
               )}
 
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-3">
-                    <label className="text-sm font-semibold text-text-secondary">Block Item?</label>
-                    <button
-                      type="button"
-                      onClick={() => setCurrentMenu({ ...currentMenu, isBlocked: !currentMenu.isBlocked })}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${currentMenu.isBlocked ? 'bg-status-off' : 'bg-text-muted'
-                        }`}
-                    >
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${currentMenu.isBlocked ? 'translate-x-6' : 'translate-x-1'
-                        }`} />
-                    </button>
-                    <span className="text-xs text-text-muted">Temporarily hide from menu</span>
-                  </div>
-                </div>
-              </div>
+
 
               <div className="space-y-3">
                 <label className="text-sm font-semibold text-text-secondary">Item Image</label>

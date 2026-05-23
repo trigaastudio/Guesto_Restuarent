@@ -24,6 +24,7 @@ class CategoryRepository {
           name: 1,
           image: 1,
           isActive: 1,
+          discountPercentage: 1,
           createdAt: 1,
           itemCount: { $size: "$menus" },
           totalStock: { $sum: "$menus.totalStock" }

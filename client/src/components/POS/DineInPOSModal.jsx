@@ -76,10 +76,27 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
   };
 
   const addToCart = (item, variant) => {
-    const dynamicStock = getDynamicStock(item);
-    if (item.totalStock !== undefined && dynamicStock <= 0) {
-      showToast('error', `Out of stock: ${item.name}`);
-      return;
+    if (item.isCombo && item.comboItems?.length > 0) {
+      const outOfStockItems = [];
+      for (const ci of item.comboItems) {
+        const underlyingItem = menuItems.find(m => m._id === (ci.menuItem?._id || ci.menuItem));
+        if (underlyingItem && underlyingItem.totalStock !== undefined) {
+          const dynamicStock = getDynamicStock(underlyingItem);
+          if (dynamicStock <= 0) {
+            outOfStockItems.push(ci.menuItem?.name || ci.name || 'Item');
+          }
+        }
+      }
+      if (outOfStockItems.length > 0) {
+        showToast('error', `Cannot add ${item.name}: ${outOfStockItems.join(', ')} is out of stock`);
+        return;
+      }
+    } else {
+      const dynamicStock = getDynamicStock(item);
+      if (item.totalStock !== undefined && dynamicStock <= 0) {
+        showToast('error', `Out of stock: ${item.name}`);
+        return;
+      }
     }
 
     const sizeName = variant.size || 'Standard';

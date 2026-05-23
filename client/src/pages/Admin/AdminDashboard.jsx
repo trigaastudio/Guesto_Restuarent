@@ -3,6 +3,7 @@ import { io } from 'socket.io-client';
 import { showToast } from '../../utils/sweetAlert';
 import api from '../../api/axiosInstance';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { logoutAdmin } from '../../utils/auth';
 import {
   LayoutDashboard,
   Users,
@@ -189,9 +190,7 @@ const AdminDashboard = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_user');
-    navigate('/admin/login', { replace: true });
+    logoutAdmin(navigate);
   };
 
   const metrics = stats ? [
@@ -346,7 +345,7 @@ const AdminDashboard = () => {
 
           <div className="p-4 border-t border-border/40 space-y-1">
             <button
-              onClick={() => navigate('/home')}
+              onClick={() => navigate('/')}
               className={`w-full flex items-center rounded-2xl transition-all duration-300 p-3 text-primary hover:bg-primary/5 group ${(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'}`}
             >
               <ExternalLink size={20} className="shrink-0 group-hover:scale-110 transition-transform" />
@@ -392,7 +391,7 @@ const AdminDashboard = () => {
 
           <div className="flex items-center space-x-2 sm:space-x-6">
             <button
-              onClick={() => navigate('/home')}
+              onClick={() => navigate('/')}
               className="p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all flex items-center space-x-2 group"
               title="Go to Customer View"
             >

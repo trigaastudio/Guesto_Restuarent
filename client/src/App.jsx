@@ -53,8 +53,16 @@ function App() {
 
                 {/* Staff Routes */}
                 <Route path="/staff/login" element={<StaffLogin />} />
-                <Route path="/kitchen/dashboard" element={<KitchenDashboard />} />
-                <Route path="/waiter/dashboard" element={<WaiterDashboard />} />
+                <Route path="/kitchen/dashboard" element={
+                  <ProtectedRoute allowedRoles={['kitchen']}>
+                    <KitchenDashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/waiter/dashboard" element={
+                  <ProtectedRoute allowedRoles={['waiter']}>
+                    <WaiterDashboard />
+                  </ProtectedRoute>
+                } />
 
                 {/* General Routes */}
                 <Route path="/" element={<LandingPage />} />

@@ -60,7 +60,16 @@ const orderSchema = new mongoose.Schema({
       name: String,
       size: String,
       quantity: { type: Number, default: 1 }
-    }
+    },
+    comboItems: [{
+      name: String,
+      quantity: { type: Number, default: 1 },
+      price: Number
+    }],
+    includedItems: [{
+      name: String,
+      quantity: { type: Number, default: 1 }
+    }]
   }],
 
   // Customer & Delivery Info
@@ -114,6 +123,7 @@ const orderSchema = new mongoose.Schema({
   razorpayOrderId: { type: String },
   razorpayPaymentId: { type: String },
   remarks: { type: String, trim: true },
+  rejectionReason: { type: String, default: '' },
   isLocked: { type: Boolean, default: false },
 }, { timestamps: true, strict: true });
 
@@ -124,7 +134,7 @@ orderSchema.pre('validate', async function () {
     this.subtotal = this.items.reduce((acc, item) =>
       acc + (item.totalPrice || (item.price * item.quantity) || 0), 0
     );
-    this.totalAmount = Math.max(0, this.subtotal + (this.tax || 0) + (this.deliveryFee || 0) + (this.platformFee || 0) - (this.discount || 0));
+    this.totalAmount = Math.max(0, this.subtotal + (this.tax || 0) + (this.deliveryFee || 0) + (this.platformFee || 0));
   }
 
   // 2. Cash Balance Calculation

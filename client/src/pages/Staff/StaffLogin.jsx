@@ -13,6 +13,7 @@ const StaffLogin = () => {
   const [employeeId, setEmployeeId] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { settings } = useCart();
@@ -43,8 +44,9 @@ const StaffLogin = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setError('');
     if (!employeeId || !password) {
-      showToast('warning', 'Please enter both Employee ID and Password');
+      setError('Please enter both Employee ID and Password');
       return;
     }
 
@@ -56,6 +58,12 @@ const StaffLogin = () => {
         const staffData = response.data.data;
         localStorage.setItem('staff_token', staffData.token);
         localStorage.setItem('staff_user', JSON.stringify(staffData));
+        
+        // Enforce mutual exclusivity: log out of admin if logging into staff
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_user');
+        localStorage.removeItem('admin_notifications');
+        
         showToast('success', `Welcome back, ${staffData.name}!`);
 
         if (staffData.role === 'kitchen') {
@@ -66,8 +74,8 @@ const StaffLogin = () => {
           showToast('error', 'Unrecognized role. Please contact admin.');
         }
       }
-    } catch (error) {
-      showToast('error', error.response?.data?.message || 'Login failed. Please check your credentials.');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }
@@ -93,6 +101,12 @@ const StaffLogin = () => {
         <h2 className="text-xl font-medium text-text-primary text-center mb-8 italic opacity-70 border-b border-border-light pb-6">
           Kitchen &amp; Waiter Access
         </h2>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 text-red-500 text-sm rounded-xl text-center animate-in fade-in slide-in-from-top-2">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleLogin} className="space-y-6">
           <div className="space-y-2">

@@ -80,7 +80,7 @@ const DigitalMenu = () => {
   const fetchCategories = useCallback(async () => {
     try {
       const response = await api.get('/api/categories');
-      setCategories(response.data);
+      setCategories(response.data.filter(cat => cat.isActive !== false));
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
@@ -322,7 +322,7 @@ const DigitalMenu = () => {
                   ref={scrollContainerRef}
                   className="flex overflow-x-auto no-scrollbar gap-8 px-6 pb-8 snap-x"
                 >
-                    {trendingItems.map((item, idx) => (
+                    {trendingItems.filter(item => !item.isBlocked).map((item, idx) => (
                       <div 
                         key={idx} 
                         onClick={() => { if (!isClosed) { setSelectedMenu(item); setIsModalOpen(true); } }}
@@ -438,7 +438,7 @@ const DigitalMenu = () => {
           <div className="pb-32" id={!offerFilter ? "menu" : undefined}>
              <MenuSection
                loading={loading}
-               filteredMenus={menus}
+               filteredMenus={menus.filter(menu => !menu.isBlocked)}
                sortBy={sortBy}
                setSortBy={setSortBy}
                dietaryFilter={dietaryFilter}

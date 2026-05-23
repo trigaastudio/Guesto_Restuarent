@@ -12,6 +12,7 @@ import { showToast } from '../../utils/sweetAlert';
 import Swal from 'sweetalert2';
 import Loader from '../../components/Loader/Loader';
 import DineInPOSModal from '../../components/POS/DineInPOSModal';
+import { logoutStaff } from '../../utils/auth';
 
 const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
 
@@ -67,9 +68,7 @@ const WaiterDashboard = () => {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('staff_token');
-    localStorage.removeItem('staff_user');
-    navigate('/staff/login', { replace: true });
+    logoutStaff(navigate);
   };
 
   const handleTakeOrder = async (table) => {
@@ -1122,6 +1121,34 @@ const WaiterDashboard = () => {
                           <p className="text-xs font-bold text-text-muted mt-1 uppercase tracking-wider">
                             Quantity: {item.quantity}
                           </p>
+                          
+                          {/* Combo Items */}
+                          {item.comboItems?.length > 0 && (
+                            <div className="mt-1.5 pl-2 border-l border-primary/30">
+                              <span className="text-[9px] font-black text-primary uppercase tracking-wider block mb-0.5">Combo includes:</span>
+                              <div className="flex flex-wrap gap-1">
+                                {item.comboItems.map((ci, cIdx) => (
+                                  <span key={cIdx} className="inline-flex items-center text-text-muted text-[10px] font-bold">
+                                    {ci.quantity || 1}x {ci.name}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Included Items (Add-ons) */}
+                          {item.includedItems?.length > 0 && (
+                            <div className="mt-1.5 pl-2 border-l border-primary/30">
+                              <span className="text-[9px] font-black text-primary uppercase tracking-wider block mb-0.5">Includes Add-ons:</span>
+                              <div className="flex flex-wrap gap-1">
+                                {item.includedItems.map((ii, iIdx) => (
+                                  <span key={iIdx} className="inline-flex items-center text-text-muted text-[10px] font-bold">
+                                    {ii.quantity || 1}x {ii.name}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                         <div className={`flex items-center space-x-1.5 px-3 py-1 rounded-xl border ${ksColor}`}>
                           <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${ksBg}`} />

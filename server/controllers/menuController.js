@@ -22,8 +22,23 @@ export const getMenus = async (req, res) => {
     }
 
     let filter = {};
+    
+    // Fetch active categories
+    const Category = mongoose.model('Category');
+    const activeCategories = await Category.find({ isActive: { $ne: false } }).select('_id');
+    const activeCategoryIds = activeCategories.map(c => c._id);
+
     if (category && category !== 'all') {
-      filter.category = category;
+      // Ensure specific category is active
+      if (activeCategoryIds.some(id => id.toString() === category)) {
+        filter.category = category;
+      } else {
+        // Force no results if requested category is inactive
+        filter.category = null;
+      }
+    } else {
+      // Only include items from active categories by default
+      filter.category = { $in: activeCategoryIds };
     }
 
     if (req.query.offerId) {

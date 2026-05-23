@@ -20,7 +20,8 @@ api.interceptors.request.use((config) => {
     token = localStorage.getItem('staff_token');
   } else {
     // Fallback for other paths (like home or general user pages)
-    token = localStorage.getItem('token') || localStorage.getItem('admin_token') || localStorage.getItem('staff_token');
+    // Staff token is explicitly ignored here so they cannot access user endpoints
+    token = localStorage.getItem('token') || localStorage.getItem('admin_token');
   }
 
   if (token) {

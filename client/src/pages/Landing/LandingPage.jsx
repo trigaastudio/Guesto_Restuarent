@@ -14,6 +14,7 @@ import Loader from '../../components/Loader/Loader';
 import OffersCarousel from '../../components/Offers/OffersCarousel';
 import StoreStatusBanner from '../../components/StoreStatus/StoreStatusBanner';
 import { Sparkles, X, Flame, ChevronLeft, ChevronRight } from 'lucide-react';
+import { logoutAdmin, logoutStaff, logoutToLanding } from '../../utils/auth';
 
 const heroImages = ['/heroSection/hero1.png', '/heroSection/hero2.png', '/heroSection/hero3.png', '/heroSection/hero4.png', '/heroSection/hero5.png'];
 
@@ -84,7 +85,7 @@ const LandingPage = () => {
   const fetchCategories = useCallback(async () => {
     try {
       const response = await api.get('/api/categories');
-      setCategories(response.data);
+      setCategories(response.data.filter(cat => cat.isActive !== false));
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
@@ -188,17 +189,30 @@ const LandingPage = () => {
   }, []);
 
   const filteredMenus = useMemo(() => {
-    return menus;
+    // We moved most filtering to the backend, but we filter blocked items locally
+    // so that websocket updates can instantly hide them without a refresh.
+    return menus.filter(menu => !menu.isBlocked);
   }, [menus]);
 
-  // Action for public users: Redirect to login
+  // Action for public users: Redirect to login. If admin is previewing, redirect to home.
   const handlePublicAction = () => {
-    navigate('/login');
+    const adminToken = localStorage.getItem('admin_token');
+    if (adminToken) {
+      navigate('/home');
+    } else {
+      navigate('/login');
+    }
   };
 
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const dropdownRef = useRef(null);
-  const user = JSON.parse(localStorage.getItem('user') || localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || 'null');
+  // Pass active user so Navbar can display their profile avatar instead of falling back to 'Admin Panel'
+  // Staff are intentionally excluded from the customer website context
+  const user = JSON.parse(
+    localStorage.getItem('user') || 
+    localStorage.getItem('admin_user') || 
+    'null'
+  );
   const { cartItems, checkStoreStatus } = useCart();
   const storeStatus = checkStoreStatus ? checkStoreStatus() : { isOpen: true };
   const isClosed = !storeStatus.isOpen;
@@ -214,20 +228,19 @@ const LandingPage = () => {
   }, []);
 
   const handleLogout = () => {
-    const currentUser = JSON.parse(localStorage.getItem('user') || localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || '{}');
-    if (currentUser.role === 'admin') {
-      localStorage.removeItem('admin_token');
-      localStorage.removeItem('admin_user');
-      navigate('/admin/login', { replace: true });
-    } else if (currentUser.role === 'kitchen' || currentUser.role === 'waiter') {
-      localStorage.removeItem('staff_token');
-      localStorage.removeItem('staff_user');
-      navigate('/staff/login', { replace: true });
-    } else {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      navigate('/login', { replace: true });
-    }
+    // Completely clear all sessions related to the website (Customer & Admin Preview)
+    // We do NOT use logoutAdmin() here because logoutAdmin redirects to /admin/login, 
+    // and the user expects to stay on the Landing Page when logging out from the website Navbar.
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_user');
+    localStorage.removeItem('admin_notifications');
+    localStorage.removeItem('dineInTableId');
+    localStorage.removeItem('dineInTableNumber');
+    
+    // Force a hard reload to the landing page to guarantee all React state is wiped
+    window.location.href = '/';
   };
 
   if (loading && menus.length === 0 && categories.length === 0) {
@@ -311,7 +324,7 @@ const LandingPage = () => {
                   ref={scrollContainerRef}
                   className="flex overflow-x-auto no-scrollbar gap-6 px-6 pb-6 snap-x"
                 >
-                    {trendingItems.map((item, idx) => {
+                    {trendingItems.filter(item => !item.isBlocked).map((item, idx) => {
                       const isItemOutOfStock = item.totalStock <= 0 || isClosed;
                       return (
                         <div 

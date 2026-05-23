@@ -56,6 +56,59 @@ const GlobalSocketListener = () => {
     });
   };
 
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      const path = window.location.pathname;
+      let shouldLogout = false;
+      let redirectPath = '/';
+
+      if (e.key === 'admin_token' && !e.newValue) {
+        if (path.startsWith('/admin')) {
+          shouldLogout = true;
+          redirectPath = '/admin/login';
+        } else if (!path.startsWith('/kitchen') && !path.startsWith('/waiter') && !path.startsWith('/staff')) {
+          // We are on the website. If there is no customer token, we were relying on the admin_token.
+          const hasCustomerToken = !!localStorage.getItem('token');
+          if (!hasCustomerToken) {
+            shouldLogout = true;
+            redirectPath = '/';
+          }
+        }
+      } else if (e.key === 'staff_token' && !e.newValue) {
+        if (path.startsWith('/kitchen') || path.startsWith('/waiter') || path.startsWith('/staff')) {
+          shouldLogout = true;
+          redirectPath = '/staff/login';
+        }
+      } else if (e.key === 'token' && !e.newValue) {
+        const publicPaths = ['/home', '/', '/about', '/contact', '/login', '/register'];
+        if (!publicPaths.includes(path) && !path.startsWith('/admin') && !path.startsWith('/kitchen') && !path.startsWith('/waiter')) {
+          shouldLogout = true;
+          redirectPath = '/login';
+        }
+      } else if (e.key === null) {
+        // localStorage.clear() was called
+        shouldLogout = true;
+      }
+
+      if (shouldLogout) {
+        if (socket.connected) {
+          socket.disconnect();
+        }
+        showAlert({
+          icon: 'info',
+          title: 'Session Ended',
+          text: 'You have been logged out in another tab.',
+          confirmButtonText: 'OK'
+        }).then(() => {
+          window.location.href = redirectPath;
+        });
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [navigate]);
+
   return null;
 };
 

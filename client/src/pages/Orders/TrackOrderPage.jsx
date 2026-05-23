@@ -59,7 +59,7 @@ const TrackOrderPage = () => {
     };
   }, [orderId]);
 
-    const handleLogout = () => {
+  const handleLogout = () => {
     const currentUser = JSON.parse(localStorage.getItem('user') || localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || '{}');
     if (currentUser.role === 'admin') {
       localStorage.removeItem('admin_token');
@@ -174,7 +174,7 @@ const TrackOrderPage = () => {
   // Logic to determine current tracking step
   let activeStepIndex = 0;
   if (order.orderStatus === 'cancelled') {
-    const cancelStep = { id: 'cancelled', label: 'Order cancelled', color: 'text-red-600', bg: 'bg-red-500/10', dot: 'bg-red-600', description: 'This order has been cancelled' };
+    const cancelStep = { id: 'cancelled', label: 'Order cancelled', color: 'text-red-600', bg: 'bg-red-500/10', dot: 'bg-red-600', description: order.rejectionReason ? `Reason: ${order.rejectionReason}` : 'This order has been cancelled' };
 
     // Determine where the order was before cancellation to place the 'Cancelled' step correctly
     if (order.kitchenStatus !== 'placed') {
@@ -258,7 +258,7 @@ const TrackOrderPage = () => {
                   </h1>
                   <p className="text-xs text-text-muted mb-2 font-medium">Order ID: <span className="font-bold text-text-primary">#{order.orderNumber || order._id.slice(-8).toUpperCase()}</span></p>
                   <div className="flex items-center gap-2">
-                    <span className="text-lg font-black text-text-primary">₹{order.totalAmount}</span>
+                    <span className="text-lg font-black text-text-primary">₹{(order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0)}</span>
                     {order.orderStatus !== 'cancelled' && (
                       <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${order.paymentStatus === 'paid' ? 'text-emerald-500 bg-emerald-500/10' : 'text-primary bg-primary/10'}`}>
                         {order.paymentStatus === 'paid' ? 'Paid' : 'Payment pending'}
@@ -386,6 +386,61 @@ const TrackOrderPage = () => {
               </div>
             </div>
 
+            {/* Items Ordered Card */}
+            <div className="bg-background-card rounded-2xl border border-border/60 shadow-sm p-6 relative overflow-hidden">
+              <h2 className="text-sm font-bold text-text-primary mb-4 relative z-10">Items Ordered</h2>
+              <div className="space-y-4 relative z-10 divide-y divide-border/20">
+                {order.items.map((item, idx) => (
+                  <div key={idx} className={`${idx !== 0 ? 'pt-4' : ''}`}>
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-[12px] font-bold text-text-primary capitalize truncate">{item.name}</h4>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px] font-semibold text-text-muted opacity-80">qty: {item.quantity}</span>
+                          {item.size && (
+                            <span className="text-[9px] font-bold text-primary bg-primary/5 px-1.5 py-0.5 rounded-md uppercase border border-primary/10">
+                              {item.size}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Combo Items */}
+                        {item.comboItems?.length > 0 && (
+                          <div className="mt-1.5 space-y-1 pl-2 border-l-2 border-primary/20">
+                            <span className="text-[8px] font-bold text-primary uppercase tracking-wider block">Combo includes:</span>
+                            <div className="flex flex-wrap gap-1">
+                              {item.comboItems.map((ci, cIdx) => (
+                                <span key={cIdx} className="inline-flex items-center text-text-muted text-[9px] font-semibold">
+                                  {ci.quantity || 1}x {ci.name}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Included Items (Add-ons) */}
+                        {item.includedItems?.length > 0 && (
+                          <div className="mt-1.5 space-y-1 pl-2 border-l-2 border-primary/20">
+                            <span className="text-[8px] font-bold text-primary uppercase tracking-wider block">Includes Add-ons:</span>
+                            <div className="flex flex-wrap gap-1">
+                              {item.includedItems.map((ii, iIdx) => (
+                                <span key={iIdx} className="inline-flex items-center text-text-muted text-[9px] font-semibold">
+                                  {ii.quantity || 1}x {ii.name}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-sm font-bold text-text-primary">
+                        ₹{item.totalPrice}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Price Details Card */}
             <div className="bg-background-card rounded-2xl border border-border/60 shadow-sm p-6 relative overflow-hidden">
               <div className="absolute bottom-0 left-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
@@ -394,7 +449,7 @@ const TrackOrderPage = () => {
               <div className="space-y-4 relative z-10">
                 <div className="flex justify-between items-center text-xs font-semibold text-text-muted">
                   <span>Listing price</span>
-                  <span className="font-bold text-text-primary">₹{order.subtotal || (order.totalAmount - (order.deliveryFee || 0))}</span>
+                  <span className="font-bold text-text-primary">₹{(order.subtotal || 0) + (order.discount || 0)}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs font-semibold text-text-muted">
                   <span className="flex items-center gap-1.5">
@@ -416,7 +471,7 @@ const TrackOrderPage = () => {
                 <div className="pt-4 border-t border-border/40 border-dashed">
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-sm font-bold text-text-primary">Total amount</span>
-                    <span className="text-2xl font-bold text-text-primary tracking-tighter">₹{order.totalAmount}</span>
+                    <span className="text-2xl font-bold text-text-primary tracking-tighter">₹{(order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0)}</span>
                   </div>
                   <div className="flex items-center justify-between text-[10px] font-bold text-text-muted opacity-60">
                     <span>Paid by</span>

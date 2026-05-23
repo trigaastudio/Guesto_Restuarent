@@ -12,6 +12,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
     type: 'home'
   });
   const [isMapOpen, setIsMapOpen] = useState(false);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [errors, setErrors] = useState({});
   const mapRef = useRef(null);
   const markerRef = useRef(null);
@@ -117,6 +118,32 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
       if (errors.location) setErrors(prev => ({ ...prev, location: null }));
       setIsMapOpen(false);
     }
+  };
+
+  const handleGetCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+
+    setIsGettingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const mapsUrl = `https://www.google.com/maps?q=${latitude.toFixed(6)},${longitude.toFixed(6)}`;
+        setFormData({
+          ...formData,
+          location: `📍 Precise Location: ${mapsUrl}`
+        });
+        if (errors.location) setErrors(prev => ({ ...prev, location: null }));
+        setIsGettingLocation(false);
+      },
+      (error) => {
+        console.error("Error getting location", error);
+        alert("Unable to retrieve your location. Please check your browser permissions.");
+        setIsGettingLocation(false);
+      }
+    );
   };
 
   const validate = () => {
@@ -230,8 +257,25 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
 
           {/* Location Section */}
           <div className="space-y-1.5">
-            <div className="flex justify-between items-center ml-1">
-              <label className="text-[10px] font-black text-text-muted uppercase tracking-widest">Precise Location</label>
+            <div className="flex justify-between items-center ml-1 pr-1">
+              <label className="text-[10px] font-black text-text-muted uppercase tracking-widest">Delivery Location</label>
+              <button
+                type="button"
+                onClick={handleGetCurrentLocation}
+                disabled={isGettingLocation}
+                className="text-[10px] font-black text-primary hover:text-primary-dark transition-colors flex items-center gap-1 uppercase tracking-wider"
+              >
+                {isGettingLocation ? (
+                  <span className="flex items-center gap-1 opacity-70">
+                    <span className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></span>
+                    Locating...
+                  </span>
+                ) : (
+                  <>
+                    <MapPin size={12} /> Current Location
+                  </>
+                )}
+              </button>
             </div>
             <div className="relative">
               <MapPin size={16} className={`absolute left-5 top-1/2 -translate-y-1/2 ${formData.location ? 'text-green-500' : 'text-gray-300'}`} />
@@ -243,11 +287,11 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
                   if (errors.location) setErrors(prev => ({ ...prev, location: null }));
                 }}
                 className={`w-full pl-12 pr-5 py-3.5 bg-background-muted/50 border ${errors.location ? 'border-primary' : 'border-border/40'} rounded-2xl text-[10px] font-bold text-text-muted focus:outline-none transition-all`}
-                placeholder="Google Maps link or Pick on Map location"
+                placeholder="Paste the Google Maps link or click on the current location link"
               />
             </div>
             <p className="text-[8px] font-bold text-text-muted mt-1 ml-1 italic opacity-80">
-              Tip: Click "Pick on Map" to locate, or paste a Google Maps link directly here if you have one.
+              Tip: Click "Current location" to locate, or paste a Google Maps link directly here if you have one.
             </p>
           </div>
 
