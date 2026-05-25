@@ -34,9 +34,9 @@ export const showAlert = (options) => {
     title: options.title || '',
     text: options.text || '',
     confirmButtonColor: themeColors.primary,
-    iconColor: options.icon === 'error' ? themeColors.error : 
-               options.icon === 'success' ? themeColors.success : 
-               themeColors.primary,
+    iconColor: options.icon === 'error' ? themeColors.error :
+      options.icon === 'success' ? themeColors.success :
+        themeColors.primary,
     scrollbarPadding: false,
     heightAuto: false,
     customClass: {
@@ -54,9 +54,9 @@ export const showToast = (icon, title) => {
     icon,
     title,
     timer: 1200, // Consistent fast speed
-    iconColor: icon === 'error' ? themeColors.error : 
-               icon === 'success' ? themeColors.success : 
-               themeColors.primary,
+    iconColor: icon === 'error' ? themeColors.error :
+      icon === 'success' ? themeColors.success :
+        themeColors.primary,
     customClass: {
       popup: 'rounded-xl font-black text-[9px] tracking-widest uppercase px-6 bg-background-card text-text-primary shadow-xl border border-border/40'
     }
@@ -65,22 +65,23 @@ export const showToast = (icon, title) => {
 
 export const showCartToast = (item) => {
   return Toast.fire({
-    timer: 1800, // Slightly longer timer so they can appreciate the gorgeous large card
+    timer: 1500,
     width: 'auto',
+    padding: '0.5em',
     html: `
-      <div class="flex items-center gap-4 text-left whitespace-nowrap pr-2">
-        <div class="w-14 h-14 rounded-[12px] overflow-hidden flex-shrink-0 shadow-lg">
+      <div class="flex items-center gap-2.5 text-left whitespace-nowrap">
+        <div class="w-9 h-9 rounded-[8px] overflow-hidden flex-shrink-0 shadow-md">
           <img src="${item.image || '/placeholder-food.jpg'}" alt="${item.name}" class="w-full h-full object-cover" />
         </div>
         <div class="flex flex-col min-w-0 leading-tight">
-          <span class="text-[14px] font-black uppercase tracking-wider text-text-primary truncate max-w-[200px] block">${item.name}</span>
-          <span class="text-[10px] font-black text-primary uppercase tracking-[0.15em] mt-1 block">Added to Feast</span>
+          <span class="text-[10px] font-black uppercase tracking-wider text-text-primary truncate max-w-[140px] block">${item.name}</span>
+          <span class="text-[7px] font-black text-primary uppercase tracking-[0.1em] mt-0.5 block">Added to Feast</span>
         </div>
       </div>
     `,
     customClass: {
-      popup: 'rounded-2xl bg-background-card text-text-primary shadow-xl border border-border/40 px-3.5 py-2.5',
-      htmlContainer: 'm-0 p-0',
+      popup: 'rounded-xl bg-background-card text-text-primary shadow-lg border border-border/40 !p-2',
+      htmlContainer: '!m-0 !p-0',
       icon: 'hidden'
     }
   });

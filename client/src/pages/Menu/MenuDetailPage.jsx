@@ -46,8 +46,8 @@ const MenuDetailPage = () => {
     socket.on('stockUpdate', ({ itemId, totalStock, isBlocked }) => {
       const receivedId = (itemId?._id || itemId || '').toString();
       if (id === receivedId) {
-        setMenu(prev => prev ? { 
-          ...prev, 
+        setMenu(prev => prev ? {
+          ...prev,
           totalStock: totalStock !== undefined ? totalStock : prev.totalStock,
           isBlocked: isBlocked !== undefined ? isBlocked : prev.isBlocked
         } : prev);
@@ -205,8 +205,8 @@ const MenuDetailPage = () => {
   const discountPercent = Math.max(menuDiscount, categoryDiscount);
 
   const basePrice = selectedSize?.price || menu.offerPrice || menu.price || 0;
-  
-  const currentPrice = menu.isCombo 
+
+  const currentPrice = menu.isCombo
     ? (menu.price || basePrice)
     : Math.round(discountPercent > 0 ? basePrice * (1 - discountPercent / 100) : basePrice);
 
@@ -359,19 +359,19 @@ const MenuDetailPage = () => {
                         if (!isNaN(parsed) && parsed > 0) {
                           const availableStock = getEffectiveStock(menu);
                           if (!menu.isCombo && parsed > availableStock) {
-                             setQuantity(availableStock);
-                             Swal.fire({
-                               icon: 'warning',
-                               title: 'Stock Limit Reached',
-                               text: `Only ${availableStock} left in stock.`,
-                               confirmButtonColor: '#B91C1C',
-                               toast: true,
-                               position: 'top-end',
-                               timer: 2000,
-                               showConfirmButton: false
-                             });
+                            setQuantity(availableStock);
+                            Swal.fire({
+                              icon: 'warning',
+                              title: 'Stock Limit Reached',
+                              text: `Only ${availableStock} left in stock.`,
+                              confirmButtonColor: '#B91C1C',
+                              toast: true,
+                              position: 'top-end',
+                              timer: 2000,
+                              showConfirmButton: false
+                            });
                           } else {
-                             setQuantity(parsed);
+                            setQuantity(parsed);
                           }
                         }
                       }

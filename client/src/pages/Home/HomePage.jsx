@@ -16,7 +16,7 @@ import Loader from '../../components/Loader/Loader';
 import OffersCarousel from '../../components/Offers/OffersCarousel';
 import socket from '../../services/socket';
 import { getEffectiveStock } from '../../utils/stockHelpers';
-import { Sparkles, X, Flame, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Sparkles, X, Flame, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 
 const heroImages = ['/heroSection/hero1.png', '/heroSection/hero2.png', '/heroSection/hero3.png', '/heroSection/hero4.png', '/heroSection/hero5.png'];
 
@@ -58,8 +58,8 @@ const HomePage = () => {
   const { theme } = useTheme();
   // Staff are intentionally excluded from the customer website context
   const [user, setUser] = useState(() => JSON.parse(
-    localStorage.getItem('user') || 
-    localStorage.getItem('admin_user') || 
+    localStorage.getItem('user') ||
+    localStorage.getItem('admin_user') ||
     '{}'
   ));
 
@@ -67,8 +67,8 @@ const HomePage = () => {
   useEffect(() => {
     const handleStorageChange = () => {
       setUser(JSON.parse(
-        localStorage.getItem('user') || 
-        localStorage.getItem('admin_user') || 
+        localStorage.getItem('user') ||
+        localStorage.getItem('admin_user') ||
         '{}'
       ));
     };
@@ -156,12 +156,23 @@ const HomePage = () => {
       fetchMenus();
     });
 
+    const handleDbChange = (event) => {
+      const data = event.detail;
+      if (['menus', 'categories', 'offers', 'Menu', 'Category', 'Offer'].includes(data.collection)) {
+        fetchCategories();
+        fetchMenus();
+        fetchTrendingDishes();
+      }
+    };
+    window.addEventListener('db_change', handleDbChange);
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       socket.off('stockUpdate');
       socket.off('categoryStockUpdate');
       socket.off('categoryUpdate');
       socket.off('offerUpdate');
+      window.removeEventListener('db_change', handleDbChange);
     };
   }, []);
 
@@ -296,7 +307,7 @@ const HomePage = () => {
     localStorage.removeItem('admin_notifications');
     localStorage.removeItem('dineInTableId');
     localStorage.removeItem('dineInTableNumber');
-    
+
     window.location.href = '/';
   };
 
@@ -348,7 +359,7 @@ const HomePage = () => {
         />
       </div>
 
-      <main className="max-w-7xl mx-auto px-6 pt-16 pb-0">
+      <main className="relative z-10 max-w-7xl mx-auto px-6 -mt-6 sm:-mt-10 md:-mt-36 lg:-mt-40 pb-0">
         <div className="mb-12">
           <OffersCarousel
             onOfferClick={(offer) => {
@@ -367,7 +378,7 @@ const HomePage = () => {
 
         {/* Most Loved Dishes Slider */}
         {trendingItems.length > 0 && (
-          <div className="mb-20 relative group/slider mt-12">
+          <div className="mb-0 relative group/slider mt-12">
             <div className="flex items-center justify-between mb-8 px-6">
               <div className="space-y-1">
                 <div className="flex items-center gap-3">
@@ -411,17 +422,19 @@ const HomePage = () => {
                   <div
                     key={idx}
                     onClick={() => { if (!isItemOutOfStock) { setSelectedMenuForModal(item); setIsModalOpen(true); } }}
-                    className={`flex-shrink-0 w-[200px] md:w-[260px] bg-background-muted rounded-[2rem] p-4 border border-border/5 shadow-xl transition-all duration-500 group snap-center relative overflow-hidden ${isItemOutOfStock
-                        ? 'grayscale opacity-60 pointer-events-none'
-                        : 'hover:shadow-[0_20px_50px_rgba(185,28,28,0.1)] cursor-pointer'
+                    className={`flex-shrink-0 w-[150px] md:w-[190px] bg-background-card rounded-[1.5rem] p-2.5 border border-border/10 shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all duration-500 group snap-center relative overflow-hidden flex flex-col ${isItemOutOfStock
+                      ? 'grayscale opacity-60 pointer-events-none'
+                      : 'hover:shadow-[0_20px_50px_rgba(185,28,28,0.15)] hover:-translate-y-1 cursor-pointer'
                       }`}
                   >
-                    <div className="relative h-40 md:h-48 rounded-[1.5rem] overflow-hidden mb-4">
+                    <div className="relative h-28 md:h-36 rounded-xl overflow-hidden mb-3 bg-background-muted flex-shrink-0">
                       <img
                         src={item.image || '/placeholder-food.jpg'}
                         alt={item.name}
-                        className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 ${isClosed ? 'grayscale brightness-50' : ''}`}
+                        className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out ${isClosed ? 'grayscale brightness-50' : ''}`}
                       />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
                       {isItemOutOfStock && (
                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px] z-20">
                           <span className="bg-white text-black text-[9px] font-black px-3 py-1.5 rounded-lg uppercase tracking-widest shadow-xl border border-black/10">
@@ -429,43 +442,34 @@ const HomePage = () => {
                           </span>
                         </div>
                       )}
+
                       {(() => {
                         const menuDiscount = item.discountPercentage || 0;
                         const cat = categories.find(c => c._id === item.category);
                         const categoryDiscount = cat?.discountPercentage || 0;
                         const maxDiscountPercent = Math.max(menuDiscount, categoryDiscount);
-                        return maxDiscountPercent > 0 && !item.isCombo && !isItemOutOfStock ? (
-                          <div className="absolute top-3 left-3 bg-primary text-white text-[9px] font-black px-2 py-1 rounded-lg shadow-lg z-10">
-                            {`${maxDiscountPercent}% OFF`}
-                          </div>
-                        ) : null;
-                      })()}
-                    </div>
-                    <div className="px-1">
-                      <h3 className="text-base font-black text-text-primary mb-2 group-hover:text-primary transition-colors truncate">{item.name}</h3>
-                      <div className="flex items-center justify-between border-t border-border/10 pt-3">
-                        {(() => {
-                          const originalPrice = item.offerPrice || item.price || (item.variants && item.variants.length > 0 ? Math.min(...item.variants.map(v => v.price)) : 0);
-                          const menuDiscount = item.discountPercentage || 0;
-                          const cat = categories.find(c => c._id === item.category);
-                          const categoryDiscount = cat?.discountPercentage || 0;
-                          const maxDiscountPercent = Math.max(menuDiscount, categoryDiscount);
-                          const discountedPrice = maxDiscountPercent > 0 && !item.isCombo ? originalPrice * (1 - maxDiscountPercent / 100) : originalPrice;
 
+                        if (maxDiscountPercent > 0 && !item.isCombo && !isItemOutOfStock) {
                           return (
-                            <div className="flex flex-col">
-                              {maxDiscountPercent > 0 && !item.isCombo && (
-                                <span className="text-[9px] text-text-muted line-through opacity-60">
-                                  ₹{Math.round(originalPrice)}
-                                </span>
-                              )}
-                              <span className="text-lg font-black text-text-primary">
-                                ₹{Math.round(discountedPrice)}
-                              </span>
+                            <div className="absolute top-3 left-3 bg-primary text-white text-[10px] font-black px-2.5 py-1 rounded-lg shadow-lg z-10 animate-bounce-slow">
+                              {`${maxDiscountPercent}% OFF`}
                             </div>
                           );
-                        })()}
-                      </div>
+                        }
+                        if (item.isCombo && !isItemOutOfStock) {
+                          return (
+                            <div className="absolute top-3 left-3 bg-amber-500 text-white text-[10px] font-black px-2.5 py-1 rounded-lg shadow-lg z-10 uppercase tracking-wider">
+                              Combo Deal
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+
+                    <div className="px-1.5 flex flex-col flex-1 pb-1">
+                      <h3 className="text-xs md:text-sm font-black text-text-primary mb-0.5 group-hover:text-primary transition-colors truncate">{item.name}</h3>
+                      <p className="text-[9px] font-medium text-text-muted opacity-80 line-clamp-1 mb-0.5">{item.description || "A delicious favorite from our menu."}</p>
                     </div>
                   </div>
                 );
@@ -486,24 +490,7 @@ const HomePage = () => {
           }}
         />
 
-        {offerFilter && (
-          <div className="max-w-3xl mx-auto mb-8 px-4 flex items-center justify-between bg-primary/10 border border-primary/20 p-4 rounded-2xl animate-fade-in" id="menu">
-            <div className="flex items-center gap-2">
-              <Sparkles size={18} className="text-primary" />
-              <span className="text-sm font-bold text-primary">
-                Showing: {offerName || 'Special Offer'}
-              </span>
-            </div>
-            <button
-              onClick={() => { setOfferFilter(null); setOfferName(''); setPage(1); setHasMore(true); }}
-              className="text-xs font-bold text-text-muted hover:text-primary transition-colors flex items-center gap-1"
-            >
-              <X size={14} /> Clear Filter
-            </button>
-          </div>
-        )}
-
-        <div className="pb-32">
+        <div className="pb-32" id="menu">
           <MenuSection
             title={getCategoryName()}
             loading={loading}

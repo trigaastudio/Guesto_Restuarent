@@ -48,6 +48,7 @@ import UserManagement from './sections/UserManagement';
 import SettingsSection from './sections/SettingsSection';
 import OfferSection from './sections/OfferSection';
 import SalesSection from './sections/SalesSection';
+import StockSection from './sections/StockSection';
 import Loader from '../../components/Loader/Loader';
 
 const AdminDashboard = () => {
@@ -108,7 +109,15 @@ const AdminDashboard = () => {
     // Stock alerts are now excluded as requested
     socket.off('stockAlert');
 
-    return () => socket.disconnect();
+    const handleDbChange = () => {
+      setRefreshKey(prev => prev + 1);
+    };
+    window.addEventListener('db_change', handleDbChange);
+
+    return () => {
+      socket.disconnect();
+      window.removeEventListener('db_change', handleDbChange);
+    };
   }, []);
 
   const clearNotifications = () => {
@@ -291,6 +300,7 @@ const AdminDashboard = () => {
               {
                 group: 'Inventory',
                 items: [
+                  { name: 'Stock', icon: Package },
                   { name: 'Categories', icon: Filter },
                   { name: 'Menu', icon: UtensilsCrossed },
                   { name: 'Tables', icon: Layers },
@@ -885,9 +895,10 @@ const AdminDashboard = () => {
           )}
 
           {activeTab === 'Orders' && <OrderSection key={`order-${refreshKey}`} />}
-          {activeTab === 'Categories' && <CategorySection key={`cat-${refreshKey}`} />}
+          {activeTab === 'Categories' && <CategorySection refreshKey={refreshKey} />}
+          {activeTab === 'Stock' && <StockSection refreshKey={refreshKey} />}
           {activeTab === 'Menu' && <MenuSection key={`menu-${refreshKey}`} />}
-          {activeTab === 'Tables' && <TableSection key={`tables-${refreshKey}`} />}
+          {activeTab === 'Tables' && <TableSection refreshKey={refreshKey} />}
 
           {activeTab === 'Staff' && <StaffManagement key={`staff-${refreshKey}`} />}
           {activeTab === 'Users' && <UserManagement key={`users-${refreshKey}`} />}

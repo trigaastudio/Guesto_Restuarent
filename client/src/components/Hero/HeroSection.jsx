@@ -41,7 +41,7 @@ const HeroSection = React.memo(({ searchQuery, setSearchQuery, heroImages, trend
   }, [heroImages.length]);
 
   return (
-    <div className="relative pt-10 sm:pt-12 md:pt-14 lg:pt-16 pb-16 sm:pb-20 md:pb-24 lg:pb-12 overflow-hidden">
+    <div className="relative pt-10 sm:pt-12 md:pt-14 lg:pt-16 pb-16 sm:pb-20 md:pb-32 lg:pb-36 overflow-hidden">
       {/* Decorative Background Elements */}
       <div className="absolute top-0 right-0 w-[400px] sm:w-[600px] md:w-[800px] h-[400px] sm:h-[600px] md:h-[800px] bg-white/10 rounded-full -translate-y-1/2 translate-x-1/4 blur-[60px] sm:blur-[70px] md:blur-[80px] pointer-events-none"></div>
       <div className="absolute bottom-0 left-0 w-[300px] sm:w-[400px] md:w-[500px] h-[300px] sm:h-[400px] md:h-[500px] bg-black/10 rounded-full translate-y-1/2 -translate-x-1/4 blur-[40px] sm:blur-[50px] md:blur-[60px] pointer-events-none"></div>
@@ -50,8 +50,8 @@ const HeroSection = React.memo(({ searchQuery, setSearchQuery, heroImages, trend
         <div className="flex flex-col lg:flex-row items-center gap-6 sm:gap-8 md:gap-12 lg:gap-24">
 
           {/* Right Side: Hero Image Carousel - Top on Mobile/Tablet */}
-          <div className="w-full lg:flex-1 relative flex justify-center lg:justify-end order-1 lg:order-2 min-h-[350px] sm:min-h-[450px] md:min-h-[600px] lg:min-h-[650px]">
-            <div className="relative w-full max-w-[320px] sm:max-w-[420px] md:max-w-[580px] lg:max-w-[750px] aspect-square">
+          <div className="w-full lg:flex-1 relative flex justify-center lg:justify-end order-1 lg:order-2 min-h-[260px] sm:min-h-[450px] md:min-h-[600px] lg:min-h-[650px]">
+            <div className="relative w-full max-w-[260px] sm:max-w-[420px] md:max-w-[580px] lg:max-w-[750px] aspect-square">
               {/* Background Glow */}
               <div className="absolute inset-0 bg-white/20 rounded-full blur-[60px] sm:blur-[80px] md:blur-[100px] animate-pulse"></div>
 

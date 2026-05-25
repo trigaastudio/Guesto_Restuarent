@@ -85,7 +85,7 @@ const checkStockAvailability = async (items) => {
     const multiplier = variant && variant.stockValue ? variant.stockValue : 1;
     const amountNeeded = item.quantity * multiplier;
 
-    if (menuDoc.category && menuDoc.category.isSharedStock) {
+    if (menuDoc.category && menuDoc.category.stockactive) {
       if (menuDoc.category.totalStock < amountNeeded) {
         return { available: false, itemName: menuDoc.name };
       }
@@ -100,17 +100,6 @@ const checkStockAvailability = async (items) => {
         const totalNeeded = item.quantity * included.quantity;
         if (includedDoc.totalStock < totalNeeded) {
           return { available: false, itemName: `${includedDoc.name} (ingredient)` };
-        }
-      }
-    }
-
-    if (menuDoc.isCombo && menuDoc.comboItems && menuDoc.comboItems.length > 0) {
-      for (const comboItem of menuDoc.comboItems) {
-        const comboDoc = await Menu.findById(comboItem.menuItem);
-        if (!comboDoc) continue;
-        const totalNeeded = item.quantity * comboItem.quantity;
-        if (comboDoc.totalStock < totalNeeded) {
-          return { available: false, itemName: `${comboDoc.name} (combo item)` };
         }
       }
     }
@@ -129,7 +118,7 @@ const handleStock = async (items, type = 'reduce') => {
       const amount = item.quantity * multiplier;
       const factor = type === 'reduce' ? -1 : 1;
 
-      if (menuDoc.category && menuDoc.category.isSharedStock) {
+      if (menuDoc.category && menuDoc.category.stockactive) {
         // Update shared category stock
         const updatedCategory = await Category.findByIdAndUpdate(
           menuDoc.category._id,
@@ -241,45 +230,7 @@ const handleStock = async (items, type = 'reduce') => {
         }
       }
 
-      // Update combo items stock
-      if (menuDoc.isCombo && menuDoc.comboItems && menuDoc.comboItems.length > 0) {
-        for (const comboItem of menuDoc.comboItems) {
-          const comboReduction = item.quantity * comboItem.quantity;
-          const updatedComboItem = await Menu.findByIdAndUpdate(
-            comboItem.menuItem,
-            { $inc: { totalStock: factor * comboReduction } },
-            { returnDocument: 'after' }
-          );
 
-          if (updatedComboItem && updatedComboItem.totalStock < 0) {
-            await Menu.findByIdAndUpdate(comboItem.menuItem, { totalStock: 0 });
-            updatedComboItem.totalStock = 0;
-          }
-
-          if (updatedComboItem) {
-            emitStockUpdate(updatedComboItem._id, updatedComboItem.totalStock);
-          }
-
-          // Stock Alerts for combo items
-          if (type === 'reduce' && updatedComboItem) {
-            if (updatedComboItem.totalStock <= 0) {
-              getIO().emit('stockAlert', {
-                type: 'outOfStock',
-                itemId: updatedComboItem._id,
-                name: updatedComboItem.name,
-                message: `CRITICAL: ${updatedComboItem.name} (combo item) is now OUT OF STOCK!`
-              });
-            } else if (updatedComboItem.totalStock <= 5) {
-              getIO().emit('stockAlert', {
-                type: 'lowStock',
-                itemId: updatedComboItem._id,
-                name: updatedComboItem.name,
-                message: `ALERT: ${updatedComboItem.name} (combo item) is running low (${updatedComboItem.totalStock} left)`
-              });
-            }
-          }
-        }
-      }
     } catch (error) {
       console.error(`Error handling stock for item ${item.menuItem}:`, error);
     }
@@ -293,7 +244,7 @@ const restoreStock = async (items) => {
 const checkStoreStatusHelper = (settings) => {
   if (!settings?.operationalSettings) return { isOpen: true };
   const { isStoreOpen, isHolidayMode, businessHours } = settings.operationalSettings;
-  
+
   if (isHolidayMode) return { isOpen: false, reason: 'holiday' };
   if (isStoreOpen === false) return { isOpen: false, reason: 'manual_close' };
 
@@ -467,7 +418,7 @@ class OrderController {
         items: await Promise.all(items.map(async item => {
           const menuDoc = await Menu.findById(item.menuItem);
           const variant = menuDoc?.variants?.find(v => v.size === item.size);
-          
+
           let comboItems = [];
           if (menuDoc?.isCombo && menuDoc.comboItems) {
             comboItems = await Promise.all(menuDoc.comboItems.map(async ci => {
@@ -571,6 +522,7 @@ class OrderController {
     try {
       const orders = await Order.find({ customer: req.user._id })
         .populate('items.menuItem')
+        .populate('assignedDeliveryBoy', 'name phoneNumber')
         .sort({ createdAt: -1 });
 
       res.status(200).json({
@@ -669,7 +621,7 @@ class OrderController {
         items: await Promise.all(items.map(async item => {
           const menuDoc = await Menu.findById(item.menuItem);
           const variant = menuDoc?.variants?.find(v => v.size === item.size);
-          
+
           let comboItems = [];
           if (menuDoc?.isCombo && menuDoc.comboItems) {
             comboItems = await Promise.all(menuDoc.comboItems.map(async ci => {
@@ -745,6 +697,7 @@ class OrderController {
       const orders = await Order.find(query)
         .populate('items.menuItem', 'name image')
         .populate('table', 'tableNumber mergedGroup')
+        .populate('assignedDeliveryBoy', 'name phoneNumber')
         .sort({ createdAt: -1 });
       res.json({ success: true, data: orders });
     } catch (error) {
@@ -912,7 +865,7 @@ class OrderController {
         order.markModified('items');
         await order.save();
       }
-      
+
       await order.populate('items.menuItem', 'name image');
 
       getIO().emit('ordersUpdated');

@@ -355,18 +355,31 @@ const CartPage = () => {
           <div className="absolute top-0 left-0 w-full h-[120px] bg-primary z-0"></div>
           <main className="max-w-7xl mx-auto px-6 relative z-10">
             <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in zoom-in duration-1000">
-              <div className="relative mb-10">
-                <div className="w-48 h-48 bg-background-card rounded-[4rem] flex items-center justify-center text-text-muted/10 shadow-2xl border border-border/40">
-                  <ShoppingBag size={80} strokeWidth={1} className="text-primary opacity-10" />
+              <div className="relative mb-10 group">
+                <div className="absolute inset-0 bg-primary/10 rounded-[3rem] blur-2xl group-hover:bg-primary/20 transition-all duration-700"></div>
+                <div className="relative w-36 h-36 bg-background-card rounded-[3rem] flex items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.03)] border border-border/10 group-hover:scale-105 transition-transform duration-700">
+                  <div className="w-24 h-24 bg-primary/5 rounded-full flex items-center justify-center overflow-hidden relative">
+                     <ShoppingBag size={42} strokeWidth={1.5} className="text-primary/40" />
+                  </div>
                 </div>
-                <div className="absolute -bottom-4 -right-4 w-20 h-20 bg-primary rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-primary/40 animate-bounce">
-                  <ShoppingCart size={32} strokeWidth={2.5} />
+                <div className="absolute -bottom-4 -right-4 w-16 h-16 bg-primary rounded-[1.5rem] flex items-center justify-center text-white shadow-[0_15px_40px_rgba(185,28,28,0.4)] animate-bounce border-[3px] border-background z-10">
+                  <ShoppingCart size={24} strokeWidth={2.5} />
                 </div>
               </div>
-              <h2 className="text-4xl md:text-5xl font-black text-text-primary tracking-tighter mb-4 uppercase">Your Cart is <span className="text-primary">Empty</span></h2>
-              <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.3em] mb-12 opacity-50">Hungry? Your next great meal is just a click away!</p>
-              <button onClick={() => navigate('/home')} className="bg-primary hover:bg-primary-dark text-white px-12 py-5 rounded-2xl font-black text-[10px] tracking-widest uppercase transition-all shadow-2xl shadow-primary/20 active:scale-95 flex items-center gap-3">
-                <ArrowLeft size={18} strokeWidth={3} /> Browse Our Menu
+              <h2 className="text-3xl md:text-5xl font-black text-text-primary tracking-tighter mb-4 uppercase relative">
+                Your Cart is <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-red-500">Empty</span>
+              </h2>
+              <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.25em] mb-10 opacity-60">
+                Hungry? Your next great meal is just a click away!
+              </p>
+              <button 
+                onClick={() => navigate('/home')} 
+                className="group bg-primary hover:bg-primary-dark text-white px-10 py-4 rounded-full font-black text-[10px] tracking-[0.2em] uppercase transition-all shadow-[0_10px_30px_rgba(185,28,28,0.2)] hover:shadow-[0_15px_40px_rgba(185,28,28,0.3)] hover:-translate-y-1 active:scale-95 flex items-center gap-3"
+              >
+                <span className="bg-white/20 p-1.5 rounded-full group-hover:-translate-x-1 transition-transform">
+                  <ArrowLeft size={16} strokeWidth={3} /> 
+                </span>
+                Browse Our Menu
               </button>
             </div>
           </main>

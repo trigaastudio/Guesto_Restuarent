@@ -17,7 +17,8 @@ export const createTable = async (req, res) => {
 // Get all tables (with active orders populated)
 export const getTables = async (req, res) => {
   try {
-    const tables = await Table.find({ isActive: true }).sort({ tableNumber: 1 });
+    const filter = req.query.all === 'true' ? {} : { isActive: true };
+    const tables = await Table.find(filter).sort({ tableNumber: 1 });
 
     const activeOrders = await Order.find({
       orderType: 'dine-in',

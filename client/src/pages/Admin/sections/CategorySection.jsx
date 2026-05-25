@@ -4,11 +4,12 @@ import { io } from 'socket.io-client';
 import api from '../../../api/axiosInstance';
 const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
+import Swal from 'sweetalert2';
 import ImageCropper from '../../../components/ImageCropper/ImageCropper';
 import Loader from '../../../components/Loader/Loader';
 import Pagination from '../../../components/Pagination/Pagination';
 
-const CategorySection = () => {
+const CategorySection = ({ refreshKey }) => {
   const [categories, setCategories] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentCategory, setCurrentCategory] = useState({ name: '', isActive: true, image: '', discountPercentage: 0, isSharedStock: false, totalStock: 0 });
@@ -42,6 +43,12 @@ const CategorySection = () => {
       if (socketRef.current) socketRef.current.disconnect();
     };
   }, []);
+
+  useEffect(() => {
+    if (refreshKey) {
+      fetchCategories(true);
+    }
+  }, [refreshKey]);
 
   useEffect(() => {
     const scrollContainer = document.querySelector('main .overflow-y-auto');
@@ -203,6 +210,63 @@ const CategorySection = () => {
     }
   };
 
+  const handleRemoveDiscount = async (category) => {
+    try {
+      setCategories(prev => prev.map(c => c._id === category._id ? { ...c, discountPercentage: 0 } : c));
+      await api.put(`/api/categories/${category._id}`, { ...category, discountPercentage: 0 });
+      showToast('success', 'Discount removed successfully');
+    } catch (error) {
+      console.error('Error removing discount:', error);
+      showToast('error', 'Failed to remove discount');
+      fetchCategories(true);
+    }
+  };
+
+  const handleUpdateStock = async (category) => {
+    const { value: amount } = await Swal.fire({
+      title: 'Update Stock',
+      input: 'number',
+      inputLabel: `Set total stock for ${category.name}`,
+      inputPlaceholder: `Current: ${category.totalStock || 0}`,
+      showCancelButton: true,
+      confirmButtonText: 'Update',
+      confirmButtonColor: 'var(--color-primary)',
+      background: 'var(--color-background-card)',
+      color: 'var(--color-text-primary)',
+      inputValidator: (value) => {
+        if (value === '' || value === null || value === undefined || parseInt(value) < 0) {
+          return 'Please enter a valid amount (0 or more)';
+        }
+      }
+    });
+
+    if (amount) {
+      const newStock = parseInt(amount);
+      const isStockActive = newStock > 0;
+      try {
+        setCategories(prev => prev.map(c => c._id === category._id ? { ...c, totalStock: newStock, stockactive: isStockActive } : c));
+        await api.put(`/api/categories/${category._id}`, { ...category, totalStock: newStock, stockactive: isStockActive });
+        showToast('success', `Stock for ${category.name} updated to ${newStock}`);
+      } catch (error) {
+        console.error('Error updating stock:', error);
+        showToast('error', 'Failed to update stock');
+        fetchCategories(true);
+      }
+    }
+  };
+
+  const handleDeleteStock = async (category) => {
+    try {
+      setCategories(prev => prev.map(c => c._id === category._id ? { ...c, totalStock: 0, stockactive: false } : c));
+      await api.put(`/api/categories/${category._id}`, { ...category, totalStock: 0, stockactive: false });
+      showToast('success', `Stock for ${category.name} reset to 0`);
+    } catch (error) {
+      console.error('Error resetting stock:', error);
+      showToast('error', 'Failed to reset stock');
+      fetchCategories(true);
+    }
+  };
+
   const handleSort = (key) => {
     let direction = 'asc';
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
@@ -285,11 +349,10 @@ const CategorySection = () => {
             <button
               onClick={() => { setSearchTerm(''); setStatusFilter('all'); }}
               disabled={!searchTerm && statusFilter === 'all'}
-              className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${
-                !searchTerm && statusFilter === 'all'
-                  ? 'bg-background-muted/50 text-text-muted/30 border-border-light cursor-not-allowed'
-                  : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white'
-              }`}
+              className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${!searchTerm && statusFilter === 'all'
+                ? 'bg-background-muted/50 text-text-muted/30 border-border-light cursor-not-allowed'
+                : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white'
+                }`}
               title="Clear All Filters"
             >
               <RotateCcw size={12} />
@@ -379,53 +442,59 @@ const CategorySection = () => {
                           <span className="text-xs text-text-muted">%</span>
                         </div>
                       ) : (
-                        <div 
+                        <div
                           className="cursor-pointer group flex items-center space-x-2"
                           onClick={() => { setEditingDiscountId(category._id); setDiscountValue(category.discountPercentage || 0); }}
                           title="Click to edit discount"
                         >
                           {category.discountPercentage > 0 ? (
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-status-on/10 text-status-available border border-status-on/20 group-hover:bg-status-on/20 transition-colors">
-                              {category.discountPercentage}% Off
-                            </span>
+                            <>
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-status-on/10 text-status-available border border-status-on/20 group-hover:bg-status-on/20 transition-colors">
+                                {category.discountPercentage}% Off
+                              </span>
+                              <Trash2
+                                size={12}
+                                className="opacity-0 group-hover:opacity-100 text-status-unavailable transition-opacity hover:scale-110"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveDiscount(category);
+                                }}
+                                title="Remove discount"
+                              />
+                            </>
                           ) : (
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-background-muted text-text-muted border border-border-main group-hover:border-primary group-hover:text-primary transition-colors">
-                              0% Off
-                            </span>
+                            <>
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-background-muted text-text-muted border border-border-main group-hover:border-primary group-hover:text-primary transition-colors">
+                                0% Off
+                              </span>
+                              <Edit2 size={12} className="opacity-0 group-hover:opacity-100 text-text-muted transition-opacity" />
+                            </>
                           )}
-                          <Edit2 size={12} className="opacity-0 group-hover:opacity-100 text-text-muted transition-opacity" />
                         </div>
                       )}
                     </td>
                     <td className="px-3 py-4">
-                      <div className="flex items-center space-x-2">
-                        {category.isSharedStock ? (
-                           <>
-                             <span className="font-bold text-primary">{category.totalStock || 0}</span>
-                             <span className="text-[9px] text-primary uppercase font-bold tracking-tighter border border-primary/20 bg-primary/10 px-1.5 py-0.5 rounded">Shared</span>
-                           </>
-                        ) : (
-                           <>
-                             <span className="font-bold text-text-primary">{category.totalStock || 0}</span>
-                             <span className="text-[9px] text-text-muted uppercase font-bold tracking-tighter">Items Stock</span>
-                           </>
-                        )}
+                      <div className="flex items-center space-x-3">
+                        {category.totalStock > 0 ? (
+                          <div className="flex items-center justify-center w-full">
+                            <span className="font-bold text-text-primary">{category.totalStock}</span>
+                          </div>
+                        ) : null}
                       </div>
                     </td>
                     <td className="px-3 py-4 text-center">
                       <div className="flex items-center justify-center space-x-1">
-                        <button 
+                        <button
                           onClick={() => handleToggleStatus(category)}
-                          className={`p-2 rounded-xl transition-all duration-200 ${
-                            category.isActive 
-                              ? 'text-status-unavailable hover:bg-status-off/10' 
-                              : 'text-status-available hover:bg-status-on/10'
-                          }`}
+                          className={`p-2 rounded-xl transition-all duration-200 ${category.isActive
+                            ? 'text-status-unavailable hover:bg-status-off/10'
+                            : 'text-status-available hover:bg-status-on/10'
+                            }`}
                           title={category.isActive ? "Deactivate Category" : "Activate Category"}
                         >
                           {category.isActive ? <XCircle size={16} /> : <CheckCircle size={16} />}
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleOpenModal(category)}
                           className="p-2 text-text-secondary hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
                           title="Edit Category"
@@ -448,10 +517,10 @@ const CategorySection = () => {
           </table>
         </div>
 
-        <Pagination 
-          currentPage={currentPage} 
-          totalPages={totalPages} 
-          onPageChange={setCurrentPage} 
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
         />
       </div>
 
@@ -529,35 +598,7 @@ const CategorySection = () => {
                 </div>
               </div>
 
-              <div className="space-y-3 pt-4 border-t border-border-light">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <label className="text-sm font-semibold text-text-secondary block">Shared Category Stock</label>
-                    <p className="text-[10px] text-text-muted max-w-[280px]">Items in this category will draw from this central stock pool instead of their own.</p>
-                  </div>
-                  <button
-                    onClick={() => setCurrentCategory({ ...currentCategory, isSharedStock: !currentCategory.isSharedStock })}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${currentCategory.isSharedStock ? 'bg-primary' : 'bg-text-muted'
-                      }`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${currentCategory.isSharedStock ? 'translate-x-6' : 'translate-x-1'
-                      }`} />
-                  </button>
-                </div>
-                {currentCategory.isSharedStock && (
-                  <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-300">
-                    <label className="text-sm font-semibold text-text-secondary">Category Stock Quantity</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={currentCategory.totalStock}
-                      onChange={(e) => setCurrentCategory({ ...currentCategory, totalStock: parseInt(e.target.value) || 0 })}
-                      className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all"
-                      placeholder="e.g. 50"
-                    />
-                  </div>
-                )}
-              </div>
+
             </div>
             <div className="p-6 bg-background-muted/30 border-t border-border-light flex space-x-3">
               <button

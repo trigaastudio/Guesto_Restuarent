@@ -103,28 +103,28 @@ const BottomNavbar = () => {
         {/* Address Option - Top */}
         <button
           onClick={() => { navigate('/profile'); setShowProfileOptions(false); }}
-          className={`absolute bottom-0 right-0 w-14 h-14 md:w-16 md:h-16 bg-blue-500 text-white rounded-2xl flex items-center justify-center shadow-[0_20px_50px_rgba(59,130,246,0.3)] transition-all duration-500 transform hover:scale-110 active:scale-90 ${showProfileOptions ? '-translate-y-36 md:-translate-y-44 scale-100 rotate-0' : 'translate-y-0 scale-0 rotate-45'}`}
+          className={`absolute bottom-0 right-0 w-11 h-11 md:w-12 md:h-12 bg-blue-500 text-white rounded-2xl flex items-center justify-center shadow-[0_20px_50px_rgba(59,130,246,0.3)] transition-all duration-500 transform hover:scale-110 active:scale-90 ${showProfileOptions ? '-translate-y-28 md:-translate-y-32 scale-100 rotate-0' : 'translate-y-0 scale-0 rotate-45'}`}
         >
-          <MapPin size={24} className="md:size-7" strokeWidth={2.5} />
-          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-background-card/90 backdrop-blur-sm text-blue-500 text-[9px] font-black px-3 py-2 rounded-xl shadow-xl border border-blue-500/20 uppercase tracking-widest whitespace-nowrap">Address</div>
+          <MapPin size={18} className="md:size-5" strokeWidth={2.5} />
+          <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-background-card/90 backdrop-blur-sm text-blue-500 text-[8px] font-black px-2.5 py-1.5 rounded-xl shadow-xl border border-blue-500/20 uppercase tracking-widest whitespace-nowrap">Address</div>
         </button>
 
         {/* Orders Option - Diagonal */}
         <button
           onClick={() => { navigate('/my-orders'); setShowProfileOptions(false); }}
-          className={`absolute bottom-0 right-0 w-14 h-14 md:w-16 md:h-16 bg-orange-500 text-white rounded-2xl flex items-center justify-center shadow-[0_20px_50px_rgba(249,115,22,0.3)] transition-all duration-500 delay-75 transform hover:scale-110 active:scale-90 ${showProfileOptions ? '-translate-y-24 -translate-x-24 md:-translate-y-32 md:-translate-x-32 scale-100 rotate-0' : 'translate-y-0 scale-0 rotate-45'}`}
+          className={`absolute bottom-0 right-0 w-11 h-11 md:w-12 md:h-12 bg-orange-500 text-white rounded-2xl flex items-center justify-center shadow-[0_20px_50px_rgba(249,115,22,0.3)] transition-all duration-500 delay-75 transform hover:scale-110 active:scale-90 ${showProfileOptions ? '-translate-y-20 -translate-x-20 md:-translate-y-24 md:-translate-x-24 scale-100 rotate-0' : 'translate-y-0 scale-0 rotate-45'}`}
         >
-          <Package size={24} className="md:size-7" strokeWidth={2.5} />
-          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-background-card/90 backdrop-blur-sm text-orange-500 text-[9px] font-black px-3 py-2 rounded-xl shadow-xl border border-orange-500/20 uppercase tracking-widest whitespace-nowrap">Orders</div>
+          <Package size={18} className="md:size-5" strokeWidth={2.5} />
+          <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-background-card/90 backdrop-blur-sm text-orange-500 text-[8px] font-black px-2.5 py-1.5 rounded-xl shadow-xl border border-orange-500/20 uppercase tracking-widest whitespace-nowrap">Orders</div>
         </button>
 
         {/* Sign Out Option - Left */}
         <button
           onClick={handleLogout}
-          className={`absolute bottom-0 right-0 w-14 h-14 md:w-16 md:h-16 bg-red-500 text-white rounded-2xl flex items-center justify-center shadow-[0_20px_50px_rgba(239,68,68,0.3)] transition-all duration-500 delay-150 transform hover:scale-110 active:scale-90 ${showProfileOptions ? '-translate-x-36 md:-translate-x-44 scale-100 rotate-0' : 'translate-x-0 scale-0 rotate-45'}`}
+          className={`absolute bottom-0 right-0 w-11 h-11 md:w-12 md:h-12 bg-red-500 text-white rounded-2xl flex items-center justify-center shadow-[0_20px_50px_rgba(239,68,68,0.3)] transition-all duration-500 delay-150 transform hover:scale-110 active:scale-90 ${showProfileOptions ? '-translate-x-28 md:-translate-x-32 scale-100 rotate-0' : 'translate-x-0 scale-0 rotate-45'}`}
         >
-          <LogOut size={24} className="md:size-7" strokeWidth={2.5} />
-          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-background-card/90 backdrop-blur-sm text-red-500 text-[9px] font-black px-3 py-2 rounded-xl shadow-xl border border-red-500/20 uppercase tracking-widest whitespace-nowrap">Sign Out</div>
+          <LogOut size={18} className="md:size-5" strokeWidth={2.5} />
+          <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-background-card/90 backdrop-blur-sm text-red-500 text-[8px] font-black px-2.5 py-1.5 rounded-xl shadow-xl border border-red-500/20 uppercase tracking-widest whitespace-nowrap">Sign Out</div>
         </button>
       </div>
 

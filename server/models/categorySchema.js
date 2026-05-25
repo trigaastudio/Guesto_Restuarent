@@ -36,6 +36,11 @@ const categorySchema = new mongoose.Schema({
   totalStock: {
     type: Number,
     default: 0
+  },
+
+  stockactive: {
+    type: Boolean,
+    default: false
   }
 
 }, { timestamps: true });

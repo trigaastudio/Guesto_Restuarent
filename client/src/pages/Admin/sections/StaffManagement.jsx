@@ -75,9 +75,14 @@ const StaffManagement = () => {
   };
 
   const handleSave = async () => {
-    if (!currentStaff.name || !currentStaff.employeeId || (!isEditing && !currentStaff.password)) {
+    if (!currentStaff.name || !currentStaff.employeeId || (!isEditing && !currentStaff.password && currentStaff.role !== 'delivery')) {
       showToast('warning', 'Please fill all required fields');
       return;
+    }
+
+    const payload = { ...currentStaff };
+    if (!isEditing && payload.role === 'delivery' && !payload.password) {
+      payload.password = 'delivery123'; // Default password for delivery staff
     }
 
     try {
@@ -89,7 +94,7 @@ const StaffManagement = () => {
         await api.put(`/api/staff/${currentStaff._id}`, updateData);
         showToast('success', 'Staff updated successfully');
       } else {
-        await api.post('/api/staff', currentStaff);
+        await api.post('/api/staff', payload);
         showToast('success', 'Staff created successfully');
       }
       fetchStaff(true);
@@ -195,6 +200,7 @@ const StaffManagement = () => {
               <option value="kitchen">Kitchen</option>
               <option value="waiter">Waiter</option>
               <option value="cashier">Cashier</option>
+              <option value="delivery">Delivery Boy</option>
             </select>
             <button
               onClick={() => { setSearchTerm(''); setRoleFilter('all'); }}
@@ -261,6 +267,7 @@ const StaffManagement = () => {
                       <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
                         staff.role === 'kitchen' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
                         staff.role === 'waiter' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                        staff.role === 'delivery' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
                         'bg-purple-500/10 text-purple-500 border-purple-500/20'
                       }`}>
                         {staff.role}
@@ -351,9 +358,6 @@ const StaffManagement = () => {
                     </select>
                   </div>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Employee ID (Login ID)</label>
                   <input
@@ -365,19 +369,19 @@ const StaffManagement = () => {
                     disabled={isEditing}
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Password</label>
-                  <input
-                    type="password"
-                    value={currentStaff.password}
-                    onChange={(e) => setCurrentStaff({...currentStaff, password: e.target.value})}
-                    className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold"
-                    placeholder={isEditing ? "Leave blank to keep same" : "Min 6 chars"}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+                {currentStaff.role !== 'delivery' && (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Password</label>
+                    <input
+                      type="password"
+                      value={currentStaff.password}
+                      onChange={(e) => setCurrentStaff({...currentStaff, password: e.target.value})}
+                      className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold"
+                      placeholder={isEditing ? "Leave blank to keep same" : "Min 6 chars"}
+                    />
+                  </div>
+                )}
+                
                 <div className="space-y-1.5">
                   <label className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Phone Number</label>
                   <div className="relative">

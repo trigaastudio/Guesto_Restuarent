@@ -199,14 +199,14 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
     setCart(prevCart => {
       const targetItem = prevCart[index];
       if (!targetItem) return prevCart;
-      
+
       if (value === '') {
         return prevCart.map((item, idx) => idx === index ? { ...item, quantity: '' } : item);
       }
 
       const parsedQty = parseInt(value, 10);
       if (isNaN(parsedQty)) return prevCart;
-      
+
       const newQty = Math.max(1, parsedQty);
 
       if (newQty > targetItem.quantity) {
@@ -257,7 +257,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
     try {
       const response = await api.get('/api/menus');
       const latestMenu = response.data.filter(m => !m.isBlocked);
-      
+
       // Update local menuItems with the absolute latest stock from server
       setMenuItems(latestMenu);
 
