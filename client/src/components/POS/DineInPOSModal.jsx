@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Minus, X, ShoppingCart, User, Phone, CheckCircle2 } from 'lucide-react';
 import { io } from 'socket.io-client';
+import { getEffectiveStock } from '../../utils/stockHelpers';
 import api from '../../api/axiosInstance';
 import { showToast } from '../../utils/sweetAlert';
 
@@ -27,6 +28,21 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
             : item
         )
       );
+    });
+
+    socket.on('categoryStockUpdate', ({ categoryId, totalStock }) => {
+      setMenuItems(prev => prev.map(menu => {
+        if (menu.category && menu.category._id.toString() === categoryId.toString() && menu.category.isSharedStock) {
+          return {
+            ...menu,
+            category: {
+              ...menu.category,
+              totalStock: totalStock
+            }
+          };
+        }
+        return menu;
+      }));
     });
 
     return () => {
@@ -71,8 +87,9 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
   };
 
   const getDynamicStock = (item) => {
+    if (item.isCombo) return Infinity;
     const inCart = cart.reduce((acc, c) => c.menuItem === item._id ? acc + c.quantity : acc, 0);
-    return Math.max(0, (item.totalStock ?? 0) - inCart);
+    return Math.max(0, getEffectiveStock(item) - inCart);
   };
 
   const addToCart = (item, variant) => {
@@ -80,7 +97,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
       const outOfStockItems = [];
       for (const ci of item.comboItems) {
         const underlyingItem = menuItems.find(m => m._id === (ci.menuItem?._id || ci.menuItem));
-        if (underlyingItem && underlyingItem.totalStock !== undefined) {
+        if (underlyingItem) {
           const dynamicStock = getDynamicStock(underlyingItem);
           if (dynamicStock <= 0) {
             outOfStockItems.push(ci.menuItem?.name || ci.name || 'Item');
@@ -93,7 +110,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
       }
     } else {
       const dynamicStock = getDynamicStock(item);
-      if (item.totalStock !== undefined && dynamicStock <= 0) {
+      if (dynamicStock <= 0) {
         showToast('error', `Out of stock: ${item.name}`);
         return;
       }
@@ -136,10 +153,10 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
 
       if (delta > 0) {
         const menuItem = menuItems.find(m => m._id === targetItem.menuItem);
-        if (menuItem && menuItem.totalStock !== undefined) {
+        if (menuItem) {
           const currentTotalInCart = prevCart.reduce((acc, c) => c.menuItem === targetItem.menuItem ? acc + c.quantity : acc, 0);
-          if (currentTotalInCart + delta > menuItem.totalStock) {
-            showToast('error', `Cannot exceed available stock of ${menuItem.totalStock} for ${targetItem.name}`);
+          if (currentTotalInCart + delta > getEffectiveStock(menuItem)) {
+            showToast('error', `Cannot exceed available stock of ${getEffectiveStock(menuItem)} for ${targetItem.name}`);
             return prevCart;
           }
         }
@@ -152,6 +169,60 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
             ...item,
             quantity: newQty,
             totalPrice: newQty * item.unitPrice
+          };
+        }
+        return item;
+      });
+    });
+  };
+
+  const setCartQuantity = (index, value) => {
+    setCart(prevCart => {
+      const targetItem = prevCart[index];
+      if (!targetItem) return prevCart;
+      
+      if (value === '') {
+        return prevCart.map((item, idx) => idx === index ? { ...item, quantity: '' } : item);
+      }
+
+      const parsedQty = parseInt(value, 10);
+      if (isNaN(parsedQty)) return prevCart;
+      
+      const newQty = Math.max(1, parsedQty);
+
+      if (newQty > targetItem.quantity) {
+        const delta = newQty - targetItem.quantity;
+        const menuItem = menuItems.find(m => m._id === targetItem.menuItem);
+        if (menuItem && menuItem.totalStock !== undefined) {
+          const currentTotalInCart = prevCart.reduce((acc, c) => c.menuItem === targetItem.menuItem ? acc + (c.quantity || 1) : acc, 0);
+          if (currentTotalInCart + delta > menuItem.totalStock) {
+            showToast('error', `Cannot exceed available stock of ${menuItem.totalStock} for ${targetItem.name}`);
+            return prevCart;
+          }
+        }
+      }
+
+      return prevCart.map((item, idx) => {
+        if (idx === index) {
+          return {
+            ...item,
+            quantity: newQty,
+            totalPrice: newQty * item.unitPrice
+          };
+        }
+        return item;
+      });
+    });
+  };
+
+  const handleCartQuantityBlur = (index) => {
+    setCart(prevCart => {
+      return prevCart.map((item, idx) => {
+        if (idx === index && (item.quantity === '' || item.quantity < 1)) {
+          return {
+            ...item,
+            quantity: 1,
+            totalPrice: item.unitPrice
           };
         }
         return item;
@@ -435,7 +506,15 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                   </div>
                   <div className="flex items-center bg-background border border-border-light rounded-xl overflow-hidden shadow-inner">
                     <button onClick={() => updateCartQuantity(index, -1)} className="p-2.5 hover:bg-background-muted text-text-secondary transition-colors"><Minus size={16} /></button>
-                    <span className="w-8 text-center font-black text-sm md:text-base">{item.quantity}</span>
+                    <input
+                      type="number"
+                      min="1"
+                      value={item.quantity}
+                      onChange={(e) => setCartQuantity(index, e.target.value)}
+                      onBlur={() => handleCartQuantityBlur(index)}
+                      className="w-10 text-center font-black text-sm md:text-base bg-transparent border-none outline-none appearance-none"
+                      style={{ MozAppearance: 'textfield' }}
+                    />
                     <button onClick={() => updateCartQuantity(index, 1)} className="p-2.5 hover:bg-background-muted text-text-secondary transition-colors"><Plus size={16} /></button>
                   </div>
                   <button onClick={() => removeFromCart(index)} className="p-2.5 text-status-unavailable/50 hover:text-status-unavailable hover:bg-status-off/10 rounded-xl transition-all">

@@ -623,11 +623,14 @@ const SettingsSection = () => {
                       <div className="flex items-center space-x-2">
                         <input
                           type="number"
-                          value={settings.operationalSettings?.busyModeExtraTime || 15}
-                          onChange={(e) => setSettings({
-                            ...settings,
-                            operationalSettings: { ...settings.operationalSettings, busyModeExtraTime: parseInt(e.target.value) }
-                          })}
+                          value={settings.operationalSettings?.busyModeExtraTime === '' ? '' : (settings.operationalSettings?.busyModeExtraTime ?? 15)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSettings({
+                              ...settings,
+                              operationalSettings: { ...settings.operationalSettings, busyModeExtraTime: val === '' ? '' : parseInt(val) }
+                            });
+                          }}
                           className="w-16 px-3 py-2 bg-white rounded-xl border-none outline-none font-black text-xs text-amber-600 text-center"
                         />
                         <span className="text-[10px] font-black text-amber-500 uppercase">Min</span>
@@ -658,11 +661,14 @@ const SettingsSection = () => {
                       <span className="text-[10px] font-black text-primary uppercase">₹</span>
                       <input
                         type="number"
-                        value={settings.operationalSettings?.platformFee || 0}
-                        onChange={(e) => setSettings({
-                          ...settings,
-                          operationalSettings: { ...settings.operationalSettings, platformFee: parseFloat(e.target.value) }
-                        })}
+                        value={settings.operationalSettings?.platformFee === '' ? '' : (settings.operationalSettings?.platformFee ?? 0)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setSettings({
+                            ...settings,
+                            operationalSettings: { ...settings.operationalSettings, platformFee: val === '' ? '' : parseFloat(val) }
+                          });
+                        }}
                         className="w-20 px-3 py-2 bg-white rounded-xl border-none outline-none font-black text-xs text-primary text-center shadow-inner"
                         placeholder="0"
                       />
@@ -796,11 +802,14 @@ const SettingsSection = () => {
                 <div className="relative">
                   <input
                     type="number"
-                    value={settings.deliverySettings?.freeDistanceLimit}
-                    onChange={(e) => setSettings({
-                      ...settings,
-                      deliverySettings: { ...settings.deliverySettings, freeDistanceLimit: parseFloat(e.target.value) }
-                    })}
+                    value={settings.deliverySettings?.freeDistanceLimit === '' ? '' : (settings.deliverySettings?.freeDistanceLimit ?? '')}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSettings({
+                        ...settings,
+                        deliverySettings: { ...settings.deliverySettings, freeDistanceLimit: val === '' ? '' : parseFloat(val) }
+                      });
+                    }}
                     className="w-full px-4 py-3 bg-background-muted/50 rounded-2xl border border-transparent focus:border-primary/30 outline-none font-bold text-text-primary text-sm"
                   />
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-text-muted uppercase">KM</span>
@@ -813,11 +822,14 @@ const SettingsSection = () => {
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted text-sm">₹</span>
                   <input
                     type="number"
-                    value={settings.deliverySettings?.chargePerExtraKm}
-                    onChange={(e) => setSettings({
-                      ...settings,
-                      deliverySettings: { ...settings.deliverySettings, chargePerExtraKm: parseFloat(e.target.value) }
-                    })}
+                    value={settings.deliverySettings?.chargePerExtraKm === '' ? '' : (settings.deliverySettings?.chargePerExtraKm ?? '')}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSettings({
+                        ...settings,
+                        deliverySettings: { ...settings.deliverySettings, chargePerExtraKm: val === '' ? '' : parseFloat(val) }
+                      });
+                    }}
                     className="w-full pl-8 pr-4 py-3 bg-background-muted/50 rounded-2xl border border-transparent focus:border-primary/30 outline-none font-bold text-text-primary text-sm"
                   />
                 </div>

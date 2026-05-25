@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
+import { getEffectiveStock } from '../../../utils/stockHelpers';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 import Swal from 'sweetalert2';
 import Loader from '../../../components/Loader/Loader';
@@ -141,6 +142,29 @@ const OrderSection = () => {
     });
     socketRef.current.on('newOrder', () => {
       fetchOrders(true);
+    });
+
+    socketRef.current.on('stockUpdate', (data) => {
+      setMenuItems(prev => prev.map(item => item._id === data.menuItemId ? {
+        ...item,
+        totalStock: data.totalStock,
+        isBlocked: data.isBlocked
+      } : item));
+    });
+
+    socketRef.current.on('categoryStockUpdate', ({ categoryId, totalStock }) => {
+      setMenuItems(prev => prev.map(menu => {
+        if (menu.category && menu.category._id.toString() === categoryId.toString() && menu.category.isSharedStock) {
+          return {
+            ...menu,
+            category: {
+              ...menu.category,
+              totalStock: totalStock
+            }
+          };
+        }
+        return menu;
+      }));
     });
 
     // Polling fallback every 30 seconds
@@ -932,7 +956,7 @@ const OrderSection = () => {
       const outOfStockItems = [];
       for (const ci of item.comboItems) {
         const underlyingItem = menuItems.find(m => m._id === (ci.menuItem?._id || ci.menuItem));
-        if (underlyingItem && underlyingItem.totalStock !== undefined && underlyingItem.totalStock <= 0) {
+        if (underlyingItem && getEffectiveStock(underlyingItem) <= 0) {
           outOfStockItems.push(ci.menuItem?.name || ci.name || 'Item');
         }
       }
@@ -941,8 +965,8 @@ const OrderSection = () => {
         return;
       }
     } else {
-      const availableStock = item.totalStock;
-      if (availableStock !== undefined && availableStock <= 0) {
+      const availableStock = getEffectiveStock(item);
+      if (availableStock <= 0) {
         showToast('error', `Out of stock: ${item.name} is currently unavailable`);
         return;
       }
@@ -1228,7 +1252,7 @@ const OrderSection = () => {
       const matchesPayment = payment === 'all' || o.paymentStatus === payment;
       const matchesPaymentMethod = method === 'all' || o.paymentMethod === method;
 
-      const isHistoryOrder = o.orderStatus === 'delivered' || o.orderStatus === 'completed' || o.orderStatus === 'cancelled';
+      const isHistoryOrder = o.orderStatus === 'cancelled' || o.orderStatus === 'completed' || (o.orderType === 'dine-in' && o.orderStatus === 'billed' && o.paymentStatus === 'paid') || (o.orderType !== 'dine-in' && o.orderStatus === 'delivered' && o.paymentStatus === 'paid');
 
       let matchesType = false;
       if (tabId === 'history') {
@@ -2166,7 +2190,17 @@ const OrderSection = () => {
                     const searchLower = (posSearchTerm || '').toLowerCase();
                     return (item.name || '').toLowerCase().includes(searchLower);
                   })
-                  .map(item => (
+                  .map(item => {
+                    let isItemOutOfStock = false;
+                    if (item.isCombo && item.comboItems?.length > 0) {
+                      isItemOutOfStock = item.comboItems.some(ci => {
+                        const underlyingItem = menuItems.find(m => m._id === (ci.menuItem?._id || ci.menuItem));
+                        return !underlyingItem || underlyingItem.isBlocked || getEffectiveStock(underlyingItem) <= 0;
+                      });
+                    } else {
+                      isItemOutOfStock = getEffectiveStock(item) <= 0;
+                    }
+                    return (
                     <div
                       key={item._id}
                       onClick={() => {
@@ -2175,11 +2209,11 @@ const OrderSection = () => {
                           : { size: 'Standard', price: item.price || 0 };
                         addToCart(item, targetVariant);
                       }}
-                      className={`bg-background-muted/30 p-3 rounded-2xl border border-border-light hover:border-primary/30 transition-all group relative cursor-pointer active:scale-[0.98] ${item.totalStock <= 0 ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+                      className={`bg-background-muted/30 p-3 rounded-2xl border border-border-light hover:border-primary/30 transition-all group relative cursor-pointer active:scale-[0.98] ${isItemOutOfStock ? 'opacity-40 grayscale pointer-events-none' : ''}`}
                     >
                       <div className="w-full aspect-square bg-background-card rounded-xl mb-3 overflow-hidden border border-border-light relative">
-                        <img src={item.image || '/placeholder-dish.png'} alt={item.name} className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${item.totalStock <= 0 ? 'grayscale' : ''}`} />
-                        {item.totalStock <= 0 && (
+                        <img src={item.image || '/placeholder-dish.png'} alt={item.name} className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${isItemOutOfStock ? 'grayscale' : ''}`} />
+                        {isItemOutOfStock && (
                           <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px]">
                             <span className="bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest shadow-lg">Out of Stock</span>
                           </div>
@@ -2188,8 +2222,8 @@ const OrderSection = () => {
                       <div className="flex flex-col mb-2">
                         <div className="flex items-center justify-between mb-1">
                           <p className="font-bold text-text-primary text-xs line-clamp-1">{item.name}</p>
-                          <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${item.totalStock > 10 ? 'bg-primary/10 text-primary' : item.totalStock > 0 ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'}`}>
-                            {item.totalStock} Left
+                          <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${isItemOutOfStock ? 'bg-red-500/10 text-red-500' : (item.isCombo ? 'bg-primary/10 text-primary' : (getEffectiveStock(item) > 10 ? 'bg-primary/10 text-primary' : 'bg-amber-500/10 text-amber-500'))}`}>
+                            {item.isCombo ? (isItemOutOfStock ? 'Out of Stock' : 'Available') : `${getEffectiveStock(item)} Left`}
                           </span>
                         </div>
                         {item.isCombo && item.comboItems && item.comboItems.length > 0 && (
@@ -2217,7 +2251,7 @@ const OrderSection = () => {
                         ) : (
                           <div className="flex flex-wrap gap-1">
                             {item.variants && item.variants.map((v, idx) => {
-                              const isOutOfStock = item.totalStock !== undefined && item.totalStock <= 0;
+                              const isOutOfStock = isItemOutOfStock;
                               return (
                                 <button
                                   key={idx}
@@ -2239,7 +2273,8 @@ const OrderSection = () => {
                         )}
                       </div>
                     </div>
-                  ))}
+                  );
+                })}
               </div>
             </div>
 

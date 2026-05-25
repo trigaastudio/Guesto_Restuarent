@@ -1178,7 +1178,9 @@ const WaiterDashboard = () => {
                 <button
                   onClick={() => {
                     handlePrintKOT(selectedOrderForView);
-                    handleUpdateOrderStatus(selectedOrderForView._id, 'delivered', true);
+                    if (selectedOrderForView.orderStatus !== 'delivered') {
+                      handleUpdateOrderStatus(selectedOrderForView._id, 'billed', false);
+                    }
                     setIsDetailsModalOpen(false);
                   }}
                   className="px-4 py-3 bg-background border border-border-light text-text-secondary hover:text-primary hover:border-primary/50 hover:bg-primary/5 rounded-2xl font-black uppercase tracking-wider text-xs transition-all shadow-sm active:scale-95 flex items-center gap-2"

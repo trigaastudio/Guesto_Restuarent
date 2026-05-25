@@ -273,8 +273,11 @@ const SizeSection = () => {
                 <label className="text-sm font-semibold text-text-secondary">Multiplier Value</label>
                 <input
                   type="number"
-                  value={currentSize.value === 0 ? '' : currentSize.value}
-                  onChange={(e) => setCurrentSize({ ...currentSize, value: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
+                  value={currentSize.value === '' ? '' : currentSize.value}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCurrentSize({ ...currentSize, value: val === '' ? '' : parseFloat(val) });
+                  }}
                   className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all"
                   placeholder="e.g. 1, 2, 4, 10"
                 />

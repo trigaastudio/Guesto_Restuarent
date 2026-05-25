@@ -8,6 +8,7 @@ import { useTheme } from '../../context/ThemeContext';
 import api from '../../api/axiosInstance';
 import Swal from 'sweetalert2';
 import AddressModal from '../../components/AddressModal/AddressModal';
+import { getEffectiveStock } from '../../utils/stockHelpers';
 import {
   Trash2,
   Plus,
@@ -271,16 +272,15 @@ const CartPage = () => {
     if (!item) return 0;
 
     // Explicitly handle empty/null/undefined stock fields as 0
-    const rawStock = (item.totalStock === undefined || item.totalStock === null) ? 0 : item.totalStock;
+    const rawStock = getEffectiveStock(item);
 
-    // For combos, we check totalStock directly and also check if any combo item is out of stock/blocked
     if (item.isCombo) {
       const isAnyComboItemOutOfStock = item.comboItems?.some(ci => {
         const menuItem = ci.menuItem;
-        return !menuItem || menuItem.isBlocked || menuItem.totalStock <= 0;
+        return !menuItem || menuItem.isBlocked || getEffectiveStock(menuItem) <= 0;
       });
       if (isAnyComboItemOutOfStock) return 0;
-      return rawStock;
+      return Infinity; // Combos have unlimited stock as long as their ingredients are in stock
     }
 
     // For items with sizes, totalStock is divided by stockValue (multiplier)

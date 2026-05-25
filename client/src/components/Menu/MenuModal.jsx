@@ -53,11 +53,12 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
     ? menu.comboItems?.reduce((sum, item) => sum + (item.price || 0), 0) || 0
     : basePrice;
 
-  const isComboOutOfStock = menu.isCombo && menu.comboItems?.length > 0 && menu.comboItems.some(ci => {
+  const isComboOutOfStock = menu?.isCombo && menu?.comboItems?.length > 0 && menu.comboItems.some(ci => {
     const item = ci.menuItem;
     return !item || item.isBlocked || item.totalStock <= 0;
   });
-  const isOutOfStock = menu.totalStock <= 0 || menu.isBlocked || !!isComboOutOfStock || isClosed;
+
+  const isOutOfStock = (menu?.isCombo ? false : (menu?.totalStock <= 0 || menu?.isBlocked)) || isClosed || !!isComboOutOfStock;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -211,7 +212,22 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
                 >
                   <Minus size={14} strokeWidth={3} />
                 </button>
-                <span className="w-8 text-center text-sm font-black text-text-primary">{quantity}</span>
+                <input
+                  type="number"
+                  value={quantity === '' ? '' : quantity}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '') {
+                      setQuantity('');
+                    } else {
+                      setQuantity(Math.max(1, parseInt(val) || 1));
+                    }
+                  }}
+                  onBlur={() => {
+                    if (quantity === '' || quantity < 1) setQuantity(1);
+                  }}
+                  className="w-12 text-center text-sm font-black text-text-primary bg-transparent outline-none [-moz-appearance:_textfield] [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none"
+                />
                 <button
                   type="button"
                   onClick={() => setQuantity(prev => prev + 1)}

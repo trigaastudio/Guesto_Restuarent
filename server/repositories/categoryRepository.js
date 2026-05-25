@@ -25,9 +25,16 @@ class CategoryRepository {
           image: 1,
           isActive: 1,
           discountPercentage: 1,
+          isSharedStock: 1,
           createdAt: 1,
           itemCount: { $size: "$menus" },
-          totalStock: { $sum: "$menus.totalStock" }
+          totalStock: {
+            $cond: {
+              if: { $eq: ["$isSharedStock", true] },
+              then: "$totalStock",
+              else: { $sum: "$menus.totalStock" }
+            }
+          }
         }
       },
       { $sort: { createdAt: -1 } }

@@ -68,18 +68,18 @@ export const showCartToast = (item) => {
     timer: 1800, // Slightly longer timer so they can appreciate the gorgeous large card
     width: 'auto',
     html: `
-      <div class="flex items-center gap-5 text-left whitespace-nowrap pr-4">
-        <div class="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 shadow-2xl">
+      <div class="flex items-center gap-4 text-left whitespace-nowrap pr-2">
+        <div class="w-14 h-14 rounded-[12px] overflow-hidden flex-shrink-0 shadow-lg">
           <img src="${item.image || '/placeholder-food.jpg'}" alt="${item.name}" class="w-full h-full object-cover" />
         </div>
         <div class="flex flex-col min-w-0 leading-tight">
-          <span class="text-[16px] font-black uppercase tracking-wider text-text-primary truncate max-w-[210px] block">${item.name}</span>
-          <span class="text-[11px] font-black text-primary uppercase tracking-[0.15em] mt-1.5 block">Added to Feast</span>
+          <span class="text-[14px] font-black uppercase tracking-wider text-text-primary truncate max-w-[200px] block">${item.name}</span>
+          <span class="text-[10px] font-black text-primary uppercase tracking-[0.15em] mt-1 block">Added to Feast</span>
         </div>
       </div>
     `,
     customClass: {
-      popup: 'rounded-[1.75rem] bg-background-card text-text-primary shadow-2xl border border-border/40 px-4.5 py-3.5',
+      popup: 'rounded-2xl bg-background-card text-text-primary shadow-xl border border-border/40 px-3.5 py-2.5',
       htmlContainer: 'm-0 p-0',
       icon: 'hidden'
     }

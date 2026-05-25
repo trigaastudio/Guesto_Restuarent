@@ -15,6 +15,7 @@ import StoreStatusBanner from '../../components/StoreStatus/StoreStatusBanner';
 import Loader from '../../components/Loader/Loader';
 import OffersCarousel from '../../components/Offers/OffersCarousel';
 import socket from '../../services/socket';
+import { getEffectiveStock } from '../../utils/stockHelpers';
 import { Sparkles, X, Flame, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const heroImages = ['/heroSection/hero1.png', '/heroSection/hero2.png', '/heroSection/hero3.png', '/heroSection/hero4.png', '/heroSection/hero5.png'];
@@ -118,6 +119,34 @@ const HomePage = () => {
       });
     });
 
+    socket.on('categoryStockUpdate', ({ categoryId, totalStock }) => {
+      setMenus(prev => prev.map(menu => {
+        if (menu.category && menu.category._id.toString() === categoryId.toString() && menu.category.isSharedStock) {
+          return {
+            ...menu,
+            category: {
+              ...menu.category,
+              totalStock: totalStock
+            }
+          };
+        }
+        return menu;
+      }));
+
+      setSelectedMenuForModal(prev => {
+        if (prev && prev.category && prev.category._id.toString() === categoryId.toString() && prev.category.isSharedStock) {
+          return {
+            ...prev,
+            category: {
+              ...prev.category,
+              totalStock: totalStock
+            }
+          };
+        }
+        return prev;
+      });
+    });
+
     socket.on('categoryUpdate', () => {
       fetchCategories();
       fetchMenus();
@@ -130,6 +159,7 @@ const HomePage = () => {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       socket.off('stockUpdate');
+      socket.off('categoryStockUpdate');
       socket.off('categoryUpdate');
       socket.off('offerUpdate');
     };
@@ -372,7 +402,11 @@ const HomePage = () => {
               className="flex overflow-x-auto no-scrollbar gap-6 px-6 pb-6 snap-x"
             >
               {trendingItems.filter(item => !item.isBlocked).map((item, idx) => {
-                const isItemOutOfStock = item.totalStock <= 0 || isClosed;
+                const isComboOutOfStock = item.isCombo && item.comboItems?.length > 0 && item.comboItems.some(ci => {
+                  const subItem = ci.menuItem;
+                  return !subItem || subItem.isBlocked || getEffectiveStock(subItem) <= 0;
+                });
+                const isItemOutOfStock = (item.isCombo ? false : (getEffectiveStock(item) <= 0)) || isClosed || !!isComboOutOfStock;
                 return (
                   <div
                     key={idx}
