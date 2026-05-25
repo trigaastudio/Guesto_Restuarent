@@ -187,7 +187,11 @@ async function updateTableOccupancy(tableId) {
     const activeOrders = await Order.find({
       table: tableId,
       orderType: 'dine-in',
-      orderStatus: { $nin: ['cancelled', 'delivered'] }
+      orderStatus: { $nin: ['cancelled', 'completed'] },
+      $or: [
+        { orderStatus: { $nin: ['billed', 'delivered'] } },
+        { paymentStatus: { $ne: 'paid' } }
+      ]
     });
     const totalSeats = activeOrders.reduce((sum, o) => sum + (o.occupiedSeats || 0), 0);
     const status = totalSeats > 0 ? 'occupied' : 'available';

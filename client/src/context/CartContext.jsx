@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import api from '../api/axiosInstance';
 import { showToast, showCartToast } from '../utils/sweetAlert';
 import socket from '../services/socket';
+import { getEffectiveStock } from '../utils/stockHelpers';
 
 const CartContext = createContext();
 
@@ -101,6 +102,34 @@ export const CartProvider = ({ children }) => {
 
   const addToCart = async (menuItem, quantity, selectedSize) => {
     try {
+      if (menuItem.isCombo) {
+        // Validation for combos
+        let outOfStock = false;
+        if (menuItem.comboItems) {
+          for (const ci of menuItem.comboItems) {
+            const ciItem = ci.menuItem;
+            if (ciItem && getEffectiveStock(ciItem) <= 0) {
+              outOfStock = true;
+              break;
+            }
+          }
+        }
+        if (outOfStock) {
+          showToast('error', `Cannot add ${menuItem.name}: One or more combo items are out of stock.`);
+          return;
+        }
+      } else {
+        const availableStock = getEffectiveStock(menuItem);
+        const currentQtyInCart = cartItems
+          .filter(c => c.menuItemId === menuItem._id && c.selectedSize === selectedSize)
+          .reduce((acc, c) => acc + c.quantity, 0);
+          
+        if (currentQtyInCart + quantity > availableStock) {
+          showToast('error', `Cannot add ${quantity} more. Only ${availableStock} left in stock.`);
+          return;
+        }
+      }
+
       const response = await api.post('/api/cart', {
         menuItemId: menuItem._id,
         quantity,
@@ -133,6 +162,22 @@ export const CartProvider = ({ children }) => {
   const updateQuantity = useCallback(async (id, quantity) => {
     if (quantity < 1) {
       return removeFromCart(id);
+    }
+
+    const targetCartItem = cartItems.find(item => item._id === id);
+    if (targetCartItem && !targetCartItem.isCombo) {
+      const availableStock = getEffectiveStock(targetCartItem);
+      // We need to check the total quantity of this specific menu item across the whole cart
+      // if there are multiple sizes, but for simplicity we'll just check if the new quantity
+      // exceeds available stock. 
+      const otherVariationsQty = cartItems
+        .filter(c => c.menuItemId === targetCartItem.menuItemId && c._id !== id)
+        .reduce((acc, c) => acc + c.quantity, 0);
+
+      if (quantity + otherVariationsQty > availableStock) {
+        showToast('error', `Cannot increase quantity. Only ${availableStock} left in stock.`);
+        return; // Reject update
+      }
     }
 
     // Optimistically update the UI state immediately

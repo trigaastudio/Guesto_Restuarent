@@ -11,7 +11,7 @@ import Pagination from '../../../components/Pagination/Pagination';
 const CategorySection = () => {
   const [categories, setCategories] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentCategory, setCurrentCategory] = useState({ name: '', isActive: true, image: '', discountPercentage: 0 });
+  const [currentCategory, setCurrentCategory] = useState({ name: '', isActive: true, image: '', discountPercentage: 0, isSharedStock: false, totalStock: 0 });
   const [isEditing, setIsEditing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -69,11 +69,13 @@ const CategorySection = () => {
         name: category.name || '',
         isActive: category.isActive !== undefined ? category.isActive : true,
         image: category.image || '',
-        discountPercentage: category.discountPercentage || 0
+        discountPercentage: category.discountPercentage || 0,
+        isSharedStock: category.isSharedStock || false,
+        totalStock: category.totalStock || 0
       });
       setIsEditing(true);
     } else {
-      setCurrentCategory({ name: '', isActive: true, image: '', discountPercentage: 0 });
+      setCurrentCategory({ name: '', isActive: true, image: '', discountPercentage: 0, isSharedStock: false, totalStock: 0 });
       setIsEditing(false);
     }
     setIsModalOpen(true);
@@ -397,8 +399,17 @@ const CategorySection = () => {
                     </td>
                     <td className="px-3 py-4">
                       <div className="flex items-center space-x-2">
-                        <span className="font-bold text-text-primary">{category.totalStock || 0}</span>
-                        <span className="text-[10px] text-text-muted uppercase font-bold tracking-tighter">Units</span>
+                        {category.isSharedStock ? (
+                           <>
+                             <span className="font-bold text-primary">{category.totalStock || 0}</span>
+                             <span className="text-[9px] text-primary uppercase font-bold tracking-tighter border border-primary/20 bg-primary/10 px-1.5 py-0.5 rounded">Shared</span>
+                           </>
+                        ) : (
+                           <>
+                             <span className="font-bold text-text-primary">{category.totalStock || 0}</span>
+                             <span className="text-[9px] text-text-muted uppercase font-bold tracking-tighter">Items Stock</span>
+                           </>
+                        )}
                       </div>
                     </td>
                     <td className="px-3 py-4 text-center">
@@ -516,6 +527,36 @@ const CategorySection = () => {
                     />
                   </div>
                 </div>
+              </div>
+
+              <div className="space-y-3 pt-4 border-t border-border-light">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <label className="text-sm font-semibold text-text-secondary block">Shared Category Stock</label>
+                    <p className="text-[10px] text-text-muted max-w-[280px]">Items in this category will draw from this central stock pool instead of their own.</p>
+                  </div>
+                  <button
+                    onClick={() => setCurrentCategory({ ...currentCategory, isSharedStock: !currentCategory.isSharedStock })}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${currentCategory.isSharedStock ? 'bg-primary' : 'bg-text-muted'
+                      }`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${currentCategory.isSharedStock ? 'translate-x-6' : 'translate-x-1'
+                      }`} />
+                  </button>
+                </div>
+                {currentCategory.isSharedStock && (
+                  <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-300">
+                    <label className="text-sm font-semibold text-text-secondary">Category Stock Quantity</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={currentCategory.totalStock}
+                      onChange={(e) => setCurrentCategory({ ...currentCategory, totalStock: parseInt(e.target.value) || 0 })}
+                      className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all"
+                      placeholder="e.g. 50"
+                    />
+                  </div>
+                )}
               </div>
             </div>
             <div className="p-6 bg-background-muted/30 border-t border-border-light flex space-x-3">

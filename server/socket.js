@@ -62,6 +62,12 @@ export const emitCategoryUpdate = () => {
   }
 };
 
+export const emitCategoryStockUpdate = (categoryId, totalStock) => {
+  if (io) {
+    io.emit('categoryStockUpdate', { categoryId, totalStock });
+  }
+};
+
 export const emitOfferUpdate = () => {
   if (io) {
     io.emit('offerUpdate');

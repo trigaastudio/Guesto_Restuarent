@@ -21,7 +21,11 @@ export const getTables = async (req, res) => {
 
     const activeOrders = await Order.find({
       orderType: 'dine-in',
-      orderStatus: { $nin: ['cancelled', 'delivered'] }
+      orderStatus: { $nin: ['cancelled', 'completed'] },
+      $or: [
+        { orderStatus: { $nin: ['billed', 'delivered'] } },
+        { paymentStatus: { $ne: 'paid' } }
+      ]
     }).populate('items.menuItem', 'name image price');
 
     // Attach active orders to their respective tables and calculate dynamic status and seats
@@ -110,7 +114,11 @@ export const mergeTables = async (req, res) => {
     const activeOrders = await Order.find({
       table: sourceTableId,
       orderType: 'dine-in',
-      orderStatus: { $nin: ['cancelled', 'delivered'] }
+      orderStatus: { $nin: ['cancelled', 'completed'] },
+      $or: [
+        { orderStatus: { $nin: ['billed', 'delivered'] } },
+        { paymentStatus: { $ne: 'paid' } }
+      ]
     });
 
     if (activeOrders.length === 0) {

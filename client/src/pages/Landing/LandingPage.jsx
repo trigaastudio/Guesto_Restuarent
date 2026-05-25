@@ -15,6 +15,7 @@ import OffersCarousel from '../../components/Offers/OffersCarousel';
 import StoreStatusBanner from '../../components/StoreStatus/StoreStatusBanner';
 import { Sparkles, X, Flame, ChevronLeft, ChevronRight } from 'lucide-react';
 import { logoutAdmin, logoutStaff, logoutToLanding } from '../../utils/auth';
+import { getEffectiveStock } from '../../utils/stockHelpers';
 
 const heroImages = ['/heroSection/hero1.png', '/heroSection/hero2.png', '/heroSection/hero3.png', '/heroSection/hero4.png', '/heroSection/hero5.png'];
 
@@ -325,8 +326,12 @@ const LandingPage = () => {
                   className="flex overflow-x-auto no-scrollbar gap-6 px-6 pb-6 snap-x"
                 >
                     {trendingItems.filter(item => !item.isBlocked).map((item, idx) => {
-                      const isItemOutOfStock = item.totalStock <= 0 || isClosed;
-                      return (
+                const isComboOutOfStock = item.isCombo && item.comboItems?.length > 0 && item.comboItems.some(ci => {
+                  const subItem = ci.menuItem;
+                  return !subItem || subItem.isBlocked || getEffectiveStock(subItem) <= 0;
+                });
+                const isItemOutOfStock = (item.isCombo ? false : (getEffectiveStock(item) <= 0)) || isClosed || !!isComboOutOfStock;
+                return (
                         <div 
                           key={idx} 
                           onClick={() => { if (!isItemOutOfStock) { setSelectedMenu(item); setIsModalOpen(true); } }}

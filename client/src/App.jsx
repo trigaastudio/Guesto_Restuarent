@@ -26,6 +26,7 @@ import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 import { ThemeProvider } from './context/ThemeContext';
 import { CartProvider } from './context/CartContext';
 import BottomNavbar from './components/Navbar/BottomNavbar';
+import FloatingCart from './components/Cart/FloatingCart';
 
 import Loader from './components/Loader/Loader';
 import GlobalSocketListener from './components/GlobalSocketListener/GlobalSocketListener';
@@ -109,6 +110,7 @@ function App() {
                 <Route path="/digital-menu" element={<DigitalMenu />} />
               </Routes>
             </Suspense>
+            <FloatingCart />
             <BottomNavbar />
           </BrowserRouter>
         </CartProvider>

@@ -122,16 +122,33 @@ class DashboardService {
       this.getMonthlyRevenueTrend(),
 
       // 13. Out of Stock Items
-      Menu.countDocuments({ totalStock: 0 }),
+      Menu.aggregate([
+        { $lookup: { from: 'categories', localField: 'category', foreignField: '_id', as: 'cat' } },
+        { $unwind: { path: '$cat', preserveNullAndEmptyArrays: true } },
+        { $addFields: { effectiveStock: { $cond: [ { $eq: ['$cat.isSharedStock', true] }, { $ifNull: ['$cat.totalStock', 0] }, { $ifNull: ['$totalStock', 0] } ] } } },
+        { $match: { effectiveStock: { $lte: 0 } } },
+        { $count: 'count' }
+      ]),
 
       // 14. Low Stock Items (Threshold: 10)
-      Menu.countDocuments({ totalStock: { $gt: 0, $lte: 10 } }),
+      Menu.aggregate([
+        { $lookup: { from: 'categories', localField: 'category', foreignField: '_id', as: 'cat' } },
+        { $unwind: { path: '$cat', preserveNullAndEmptyArrays: true } },
+        { $addFields: { effectiveStock: { $cond: [ { $eq: ['$cat.isSharedStock', true] }, { $ifNull: ['$cat.totalStock', 0] }, { $ifNull: ['$totalStock', 0] } ] } } },
+        { $match: { effectiveStock: { $gt: 0, $lte: 10 } } },
+        { $count: 'count' }
+      ]),
 
       // 15. Stock Alerts (Items to display)
-      Menu.find({ totalStock: { $lte: 10 } })
-        .sort({ totalStock: 1 })
-        .limit(5)
-        .populate('category', 'name')
+      Menu.aggregate([
+        { $lookup: { from: 'categories', localField: 'category', foreignField: '_id', as: 'cat' } },
+        { $unwind: { path: '$cat', preserveNullAndEmptyArrays: true } },
+        { $addFields: { effectiveStock: { $cond: [ { $eq: ['$cat.isSharedStock', true] }, { $ifNull: ['$cat.totalStock', 0] }, { $ifNull: ['$totalStock', 0] } ] } } },
+        { $match: { effectiveStock: { $lte: 10 } } },
+        { $sort: { effectiveStock: 1 } },
+        { $limit: 5 },
+        { $project: { name: 1, image: 1, effectiveStock: 1, 'category.name': '$cat.name' } }
+      ])
     ]);
 
     const totalRevenue = totalRevenueData[0]?.total || 0;
@@ -164,9 +181,12 @@ class DashboardService {
       monthlyTrend,
       topDishes,
       stockStats: {
-        outOfStock: outOfStockCount,
-        lowStock: lowStockCount,
-        alerts: stockAlerts
+        outOfStock: outOfStockCount[0]?.count || 0,
+        lowStock: lowStockCount[0]?.count || 0,
+        alerts: stockAlerts.map(a => ({
+          ...a,
+          totalStock: a.effectiveStock // Map back for frontend
+        }))
       }
     };
   }

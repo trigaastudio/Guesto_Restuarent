@@ -19,6 +19,7 @@ import { useTheme } from '../../context/ThemeContext';
 import Navbar from '../../components/Navbar/Navbar';
 import Footer from '../../components/Footer/Footer';
 import Loader from '../../components/Loader/Loader';
+import { getEffectiveStock } from '../../utils/stockHelpers';
 import Swal from 'sweetalert2';
 import socket from '../../services/socket';
 
@@ -53,8 +54,24 @@ const MenuDetailPage = () => {
       }
     });
 
+    socket.on('categoryStockUpdate', ({ categoryId, totalStock }) => {
+      setMenu(prev => {
+        if (prev && prev.category && prev.category._id.toString() === categoryId.toString() && prev.category.isSharedStock) {
+          return {
+            ...prev,
+            category: {
+              ...prev.category,
+              totalStock: totalStock
+            }
+          };
+        }
+        return prev;
+      });
+    });
+
     return () => {
       socket.off('stockUpdate');
+      socket.off('categoryStockUpdate');
     };
   }, [id]);
 
@@ -80,8 +97,26 @@ const MenuDetailPage = () => {
   };
 
   const handleQuantityChange = (type) => {
-    if (type === 'inc') setQuantity(prev => prev + 1);
-    else if (type === 'dec' && quantity > 1) setQuantity(prev => prev - 1);
+    if (type === 'inc') {
+      const availableStock = getEffectiveStock(menu);
+      if (!menu.isCombo && quantity >= availableStock) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Stock Limit Reached',
+          text: `Only ${availableStock} left in stock.`,
+          confirmButtonColor: '#B91C1C',
+          toast: true,
+          position: 'top-end',
+          timer: 2000,
+          showConfirmButton: false
+        });
+        return;
+      }
+      setQuantity(prev => prev + 1);
+    }
+    else if (type === 'dec' && quantity > 1) {
+      setQuantity(prev => prev - 1);
+    }
   };
 
   const handleAddToCart = () => {
@@ -90,7 +125,7 @@ const MenuDetailPage = () => {
     if (menu.isCombo && menu.comboItems?.length > 0) {
       const outOfStockItems = [];
       for (const ci of menu.comboItems) {
-        if (ci.menuItem?.totalStock !== undefined && ci.menuItem.totalStock <= 0) {
+        if (ci.menuItem && getEffectiveStock(ci.menuItem) <= 0) {
           outOfStockItems.push(ci.menuItem.name);
         }
       }
@@ -104,7 +139,7 @@ const MenuDetailPage = () => {
         return;
       }
     } else {
-      if (menu.totalStock !== undefined && menu.totalStock <= 0) {
+      if (getEffectiveStock(menu) <= 0) {
         Swal.fire({
           icon: 'error',
           title: 'Out of Stock',
@@ -230,7 +265,7 @@ const MenuDetailPage = () => {
                 <span className="px-4 py-1.5 rounded-full bg-[#DA9133] text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-[#DA9133]/20">
                   🔥 Best Seller
                 </span>
-                {(menu.totalStock <= 0 || menu.isBlocked) && (
+                {(getEffectiveStock(menu) <= 0 || menu.isBlocked) && (
                   <span className="px-4 py-1.5 rounded-full bg-red-600 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-600/20 animate-pulse">
                     🚫 {menu.isBlocked ? 'Unavailable' : 'Out of Stock'}
                   </span>
@@ -311,7 +346,42 @@ const MenuDetailPage = () => {
                   >
                     <Minus size={20} />
                   </button>
-                  <span className="w-12 text-center font-black text-xl">{quantity}</span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={quantity}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '') {
+                        setQuantity('');
+                      } else {
+                        const parsed = parseInt(val, 10);
+                        if (!isNaN(parsed) && parsed > 0) {
+                          const availableStock = getEffectiveStock(menu);
+                          if (!menu.isCombo && parsed > availableStock) {
+                             setQuantity(availableStock);
+                             Swal.fire({
+                               icon: 'warning',
+                               title: 'Stock Limit Reached',
+                               text: `Only ${availableStock} left in stock.`,
+                               confirmButtonColor: '#B91C1C',
+                               toast: true,
+                               position: 'top-end',
+                               timer: 2000,
+                               showConfirmButton: false
+                             });
+                          } else {
+                             setQuantity(parsed);
+                          }
+                        }
+                      }
+                    }}
+                    onBlur={() => {
+                      if (quantity === '' || quantity < 1) setQuantity(1);
+                    }}
+                    className="w-16 text-center font-black text-xl bg-transparent border-none outline-none appearance-none"
+                    style={{ MozAppearance: 'textfield' }}
+                  />
                   <button
                     onClick={() => handleQuantityChange('inc')}
                     className="w-12 h-12 rounded-xl flex items-center justify-center text-white bg-[#B91C1C] shadow-lg shadow-[#B91C1C]/20 active:scale-90 transition-all"
@@ -326,16 +396,16 @@ const MenuDetailPage = () => {
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <button
                 onClick={handleAddToCart}
-                disabled={menu.totalStock <= 0 || menu.isBlocked}
-                className={`flex-1 flex items-center justify-center gap-3 px-10 py-5 rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] transition-all active:scale-95 shadow-2xl ${menu.totalStock <= 0 || menu.isBlocked ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-[#B91C1C] text-white hover:bg-[#B10000] shadow-[#B91C1C]/30 hover:-translate-y-1'}`}
+                disabled={getEffectiveStock(menu) <= 0 || menu.isBlocked}
+                className={`flex-1 flex items-center justify-center gap-3 px-10 py-5 rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] transition-all active:scale-95 shadow-2xl ${getEffectiveStock(menu) <= 0 || menu.isBlocked ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-[#B91C1C] text-white hover:bg-[#B10000] shadow-[#B91C1C]/30 hover:-translate-y-1'}`}
               >
                 <ShoppingCart size={20} />
-                {menu.isBlocked ? 'Unavailable' : (menu.totalStock <= 0 ? 'Out of Stock' : 'Add to Cart')}
+                {menu.isBlocked ? 'Unavailable' : (getEffectiveStock(menu) <= 0 ? 'Out of Stock' : 'Add to Cart')}
               </button>
               <button
                 onClick={() => { handleAddToCart(); navigate('/cart'); }}
-                disabled={menu.totalStock <= 0 || menu.isBlocked}
-                className={`flex-1 px-10 py-5 rounded-[2rem] border-2 font-black text-sm uppercase tracking-[0.2em] transition-all active:scale-95 hover:-translate-y-1 ${menu.totalStock <= 0 || menu.isBlocked ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-[#DA9133] text-[#DA9133] hover:bg-[#DA9133] hover:text-white'}`}
+                disabled={getEffectiveStock(menu) <= 0 || menu.isBlocked}
+                className={`flex-1 px-10 py-5 rounded-[2rem] border-2 font-black text-sm uppercase tracking-[0.2em] transition-all active:scale-95 hover:-translate-y-1 ${getEffectiveStock(menu) <= 0 || menu.isBlocked ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-[#DA9133] text-[#DA9133] hover:bg-[#DA9133] hover:text-white'}`}
               >
                 Buy Now
               </button>

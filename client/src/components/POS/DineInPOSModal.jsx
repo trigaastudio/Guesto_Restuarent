@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Minus, X, ShoppingCart, User, Phone, CheckCircle2 } from 'lucide-react';
 import { io } from 'socket.io-client';
+import { getEffectiveStock } from '../../utils/stockHelpers';
 import api from '../../api/axiosInstance';
 import { showToast } from '../../utils/sweetAlert';
 
@@ -27,6 +28,21 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
             : item
         )
       );
+    });
+
+    socket.on('categoryStockUpdate', ({ categoryId, totalStock }) => {
+      setMenuItems(prev => prev.map(menu => {
+        if (menu.category && menu.category._id.toString() === categoryId.toString() && menu.category.isSharedStock) {
+          return {
+            ...menu,
+            category: {
+              ...menu.category,
+              totalStock: totalStock
+            }
+          };
+        }
+        return menu;
+      }));
     });
 
     return () => {
@@ -80,9 +96,9 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
         return acc + (c.quantity * stockValue);
       }, 0);
 
-  // Remaining RAW stock shown in the badge (e.g. 18 Left when stock=20, 1×Full(sv=2) in cart)
+  // Remaining RAW stock shown in the badge
   const getDynamicRawStock = (item) =>
-    Math.max(0, (item.totalStock ?? 0) - getConsumedStock(item));
+    Math.max(0, getEffectiveStock(item) - getConsumedStock(item));
 
   // Can we add one more serving of a specific variant right now?
   const canAddVariant = (item, variant) => {
@@ -151,15 +167,14 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
         if (menuItem && menuItem.totalStock !== undefined) {
           const variant = menuItem.variants?.find(v => v.size === targetItem.size);
           const stockValue = variant?.stockValue || 1;
-          // Total raw stock consumed by ALL sizes of this item currently in cart
           const totalConsumed = prevCart
             .filter(c => c.menuItem === targetItem.menuItem)
             .reduce((acc, c) => {
               const v = menuItem.variants?.find(vv => vv.size === c.size);
               return acc + (c.quantity * (v?.stockValue || 1));
             }, 0);
-          if (totalConsumed + stockValue > menuItem.totalStock) {
-            const remaining = Math.floor((menuItem.totalStock - totalConsumed) / stockValue);
+          if (totalConsumed + stockValue > getEffectiveStock(menuItem)) {
+            const remaining = Math.floor((getEffectiveStock(menuItem) - totalConsumed) / stockValue);
             showToast('error', `Only ${remaining} more serving${remaining !== 1 ? 's' : ''} of ${targetItem.name} available`);
             return prevCart;
           }
@@ -173,6 +188,60 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
             ...item,
             quantity: newQty,
             totalPrice: newQty * item.unitPrice
+          };
+        }
+        return item;
+      });
+    });
+  };
+
+  const setCartQuantity = (index, value) => {
+    setCart(prevCart => {
+      const targetItem = prevCart[index];
+      if (!targetItem) return prevCart;
+      
+      if (value === '') {
+        return prevCart.map((item, idx) => idx === index ? { ...item, quantity: '' } : item);
+      }
+
+      const parsedQty = parseInt(value, 10);
+      if (isNaN(parsedQty)) return prevCart;
+      
+      const newQty = Math.max(1, parsedQty);
+
+      if (newQty > targetItem.quantity) {
+        const delta = newQty - targetItem.quantity;
+        const menuItem = menuItems.find(m => m._id === targetItem.menuItem);
+        if (menuItem && menuItem.totalStock !== undefined) {
+          const currentTotalInCart = prevCart.reduce((acc, c) => c.menuItem === targetItem.menuItem ? acc + (c.quantity || 1) : acc, 0);
+          if (currentTotalInCart + delta > menuItem.totalStock) {
+            showToast('error', `Cannot exceed available stock of ${menuItem.totalStock} for ${targetItem.name}`);
+            return prevCart;
+          }
+        }
+      }
+
+      return prevCart.map((item, idx) => {
+        if (idx === index) {
+          return {
+            ...item,
+            quantity: newQty,
+            totalPrice: newQty * item.unitPrice
+          };
+        }
+        return item;
+      });
+    });
+  };
+
+  const handleCartQuantityBlur = (index) => {
+    setCart(prevCart => {
+      return prevCart.map((item, idx) => {
+        if (idx === index && (item.quantity === '' || item.quantity < 1)) {
+          return {
+            ...item,
+            quantity: 1,
+            totalPrice: item.unitPrice
           };
         }
         return item;
@@ -457,7 +526,15 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                   </div>
                   <div className="flex items-center bg-background border border-border-light rounded-xl overflow-hidden shadow-inner">
                     <button onClick={() => updateCartQuantity(index, -1)} className="p-2.5 hover:bg-background-muted text-text-secondary transition-colors"><Minus size={16} /></button>
-                    <span className="w-8 text-center font-black text-sm md:text-base">{item.quantity}</span>
+                    <input
+                      type="number"
+                      min="1"
+                      value={item.quantity}
+                      onChange={(e) => setCartQuantity(index, e.target.value)}
+                      onBlur={() => handleCartQuantityBlur(index)}
+                      className="w-10 text-center font-black text-sm md:text-base bg-transparent border-none outline-none appearance-none"
+                      style={{ MozAppearance: 'textfield' }}
+                    />
                     <button onClick={() => updateCartQuantity(index, 1)} className="p-2.5 hover:bg-background-muted text-text-secondary transition-colors"><Plus size={16} /></button>
                   </div>
                   <button onClick={() => removeFromCart(index)} className="p-2.5 text-status-unavailable/50 hover:text-status-unavailable hover:bg-status-off/10 rounded-xl transition-all">

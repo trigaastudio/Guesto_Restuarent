@@ -144,7 +144,7 @@ const MenuSection = () => {
 
   const handleIncludedItemChange = (variantIndex, itemIndex, field, value) => {
     const newVariants = [...currentMenu.variants];
-    newVariants[variantIndex].includedItems[itemIndex][field] = field === 'quantity' ? parseInt(value) || 1 : value;
+    newVariants[variantIndex].includedItems[itemIndex][field] = field === 'quantity' ? (value === '' ? '' : parseInt(value)) : value;
     setCurrentMenu({ ...currentMenu, variants: newVariants });
   };
 
@@ -390,14 +390,16 @@ const MenuSection = () => {
   };
 
   const getCalculatedStock = (menu) => {
+    const baseStock = menu.category?.isSharedStock ? (menu.category?.totalStock || 0) : (menu.totalStock || 0);
+
     const selectedSizeId = selectedSizes[menu._id];
-    if (!selectedSizeId) return menu.totalStock || 0;
+    if (!selectedSizeId) return baseStock;
 
     const variant = menu.variants?.find(v => v.size === selectedSizeId);
-    if (!variant) return menu.totalStock || 0;
+    if (!variant) return baseStock;
 
     const multiplier = variant.stockValue || 1;
-    return Math.floor((menu.totalStock || 0) / multiplier);
+    return Math.floor(baseStock / multiplier);
   };
 
   return (
@@ -641,15 +643,19 @@ const MenuSection = () => {
                           <span className="text-[9px] font-black text-primary uppercase bg-primary/10 px-2 py-1 rounded border border-primary/20">
                             Combo Item
                           </span>
-                        ) : menu.totalStock > 0 ? (
+                        ) : getCalculatedStock(menu) > 0 ? (
                           <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300">
-                            <span className={`text-sm font-black ${menu.totalStock <= 10 ? 'text-amber-600' : 'text-text-primary'}`}>
+                            <span className={`text-sm font-black ${getCalculatedStock(menu) <= 10 ? 'text-amber-600' : 'text-text-primary'}`}>
                               {getCalculatedStock(menu)}
                             </span>
-                            <span className="text-[9px] text-text-muted font-bold uppercase tracking-tighter">
-                              {menu.variants?.find(v => v.size === selectedSizes[menu._id])?.size || 'Units'} Available
+                            <span className="text-[9px] text-text-muted font-bold uppercase tracking-tighter flex flex-col items-center mt-0.5">
+                              {menu.category?.isSharedStock ? (
+                                <span className="text-primary font-black bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">Category Stock</span>
+                              ) : (
+                                <span>{menu.variants?.find(v => v.size === selectedSizes[menu._id])?.size || 'Units'} Available</span>
+                              )}
                             </span>
-                            {menu.totalStock <= 10 && (
+                            {getCalculatedStock(menu) <= 10 && (
                               <span className="mt-1 px-1.5 py-0.5 bg-amber-500/10 text-amber-600 text-[8px] font-black uppercase rounded border border-amber-500/20">
                                 Low Stock
                               </span>
@@ -765,22 +771,45 @@ const MenuSection = () => {
               </div>
 
 
-              {categories.find(c => c._id === currentMenu.category)?.name.toLowerCase() !== 'combo' && (
-                <div className="bg-background-muted/30 p-4 rounded-2xl border border-border-light space-y-4">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-semibold text-text-secondary">Total Stock</label>
-                    <p className="text-[10px] text-text-muted uppercase">Base Stock (e.g. Total Pieces)</p>
+              {(() => {
+                const selectedCat = categories.find(c => c._id === currentMenu.category);
+                const isComboCat = selectedCat?.name.toLowerCase() === 'combo';
+                const isSharedStock = selectedCat?.isSharedStock;
+
+                if (isComboCat) return null;
+
+                if (isSharedStock) {
+                  return (
+                    <div className="bg-primary/5 p-4 rounded-2xl border border-primary/20 flex items-start space-x-3">
+                      <AlertCircle size={20} className="text-primary shrink-0 mt-0.5" />
+                      <div>
+                        <h4 className="text-sm font-bold text-primary">Shared Category Stock</h4>
+                        <p className="text-[10px] text-text-secondary mt-1">This item's stock is automatically managed by the <strong>{selectedCat.name}</strong> category pool. You do not need to set individual stock for this item.</p>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="bg-background-muted/30 p-4 rounded-2xl border border-border-light space-y-4">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-semibold text-text-secondary">Total Stock</label>
+                      <p className="text-[10px] text-text-muted uppercase">Base Stock (e.g. Total Pieces)</p>
+                    </div>
+                    <input
+                      type="number"
+                      value={currentMenu.totalStock === '' ? '' : currentMenu.totalStock}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setCurrentMenu({ ...currentMenu, totalStock: val === '' ? '' : parseInt(val) });
+                      }}
+                      className="w-full px-4 py-2 bg-background-card rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm"
+                      placeholder="Total base units (e.g. total pieces)"
+                    />
+                    <p className="text-[10px] text-text-muted italic">* Stock is tracked in base units (e.g. pieces)</p>
                   </div>
-                  <input
-                    type="number"
-                    value={currentMenu.totalStock === 0 ? '' : currentMenu.totalStock}
-                    onChange={(e) => setCurrentMenu({ ...currentMenu, totalStock: e.target.value === '' ? 0 : parseInt(e.target.value) })}
-                    className="w-full px-4 py-2 bg-background-card rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm"
-                    placeholder="Total base units (e.g. total pieces)"
-                  />
-                  <p className="text-[10px] text-text-muted italic">* Stock is tracked in base units (e.g. pieces)</p>
-                </div>
-              )}
+                );
+              })()}
 
               {categories.find(c => c._id === currentMenu.category)?.name.toLowerCase() !== 'combo' ? (
                 <div className="space-y-3">
@@ -837,7 +866,7 @@ const MenuSection = () => {
                             <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider ml-1">Sell Price (₹)</label>
                             <input
                               type="number"
-                              value={variant.price || ''}
+                              value={variant.price === '' ? '' : (variant.price || 0)}
                               onChange={(e) => handleSizeChange(idx, 'price', e.target.value)}
                               className="w-full px-4 py-3 bg-background-card border border-border-main focus:border-primary/50 rounded-xl text-xs font-bold transition-all outline-none"
                               placeholder="0"
@@ -893,17 +922,17 @@ const MenuSection = () => {
                                   }}
                                   className="w-full px-3 py-2 bg-background-card border border-border-main rounded-lg text-[11px] font-bold text-text-primary outline-none appearance-none cursor-pointer pr-8"
                                 >
-                                  <option value="">Select an item and variant...</option>
+                                  <option value="" className="bg-background-card text-text-primary">Select an item and variant...</option>
                                   {menus.map(m => (
                                     <React.Fragment key={m._id}>
                                       {m.variants?.length > 0 ? (
                                         m.variants.map((v, vIdx) => (
-                                          <option key={`${m._id}-${vIdx}`} value={`${m._id}|${v.size}`}>
+                                          <option key={`${m._id}-${vIdx}`} value={`${m._id}|${v.size}`} className="bg-background-card text-text-primary">
                                             {m.name} - {v.size}
                                           </option>
                                         ))
                                       ) : (
-                                        <option value={`${m._id}|`}>
+                                        <option value={`${m._id}|`} className="bg-background-card text-text-primary">
                                           {m.name}
                                         </option>
                                       )}
@@ -951,9 +980,9 @@ const MenuSection = () => {
                                   onChange={(e) => handleIncludedItemChange(idx, incIdx, 'menuItem', e.target.value)}
                                   className="flex-1 bg-transparent border-0 text-[11px] font-bold text-text-primary outline-none focus:ring-0 cursor-pointer"
                                 >
-                                  <option value="">Select Item</option>
+                                  <option value="" className="bg-background-card text-text-primary">Select Item</option>
                                   {menus.filter(m => m._id !== currentMenu._id).map(m => (
-                                    <option key={m._id} value={m._id}>{m.name}</option>
+                                    <option key={m._id} value={m._id} className="bg-background-card text-text-primary">{m.name}</option>
                                   ))}
                                 </select>
                                 <div className="flex items-center space-x-2 border-l border-border-main pl-2">
@@ -1033,19 +1062,20 @@ const MenuSection = () => {
                           }}
                           className="flex-1 bg-background-card border border-border-main rounded-lg px-3 py-2 text-sm text-text-primary outline-none"
                         >
-                          <option value="">Select Item</option>
+                          <option value="" className="bg-background-card text-text-primary">Select Item</option>
                           {menus.filter(m => m._id !== currentMenu._id).map(m => (
-                            <option key={m._id} value={m._id}>{m.name}</option>
+                            <option key={m._id} value={m._id} className="bg-background-card text-text-primary">{m.name}</option>
                           ))}
                         </select>
                         <div className="w-24 relative">
                           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-text-muted">₹</span>
                           <input
                             type="number"
-                            value={item.price}
+                            value={item.price === '' ? '' : (item.price || 0)}
                             onChange={(e) => {
                               const newComboItems = [...currentMenu.comboItems];
-                              newComboItems[idx].price = parseFloat(e.target.value) || 0;
+                              const val = e.target.value;
+                              newComboItems[idx].price = val === '' ? '' : parseFloat(val);
                               setCurrentMenu({ ...currentMenu, comboItems: newComboItems });
                             }}
                             className="w-full pl-5 pr-2 py-2 bg-background-card border border-border-main rounded-lg text-sm text-text-primary outline-none"
@@ -1056,10 +1086,11 @@ const MenuSection = () => {
                           <input
                             type="number"
                             min="1"
-                            value={item.quantity || 1}
+                            value={item.quantity === '' ? '' : (item.quantity || 1)}
                             onChange={(e) => {
                               const newComboItems = [...currentMenu.comboItems];
-                              newComboItems[idx].quantity = parseInt(e.target.value) || 1;
+                              const val = e.target.value;
+                              newComboItems[idx].quantity = val === '' ? '' : parseInt(val);
                               setCurrentMenu({ ...currentMenu, comboItems: newComboItems });
                             }}
                             className="w-full px-2 py-2 bg-background-card border border-border-main rounded-lg text-sm text-text-primary outline-none text-center"
@@ -1092,10 +1123,10 @@ const MenuSection = () => {
                         <div className="w-24 relative">
                           <input
                             type="number"
-                            value={currentMenu.offerPercentage}
+                            value={currentMenu.offerPercentage === '' ? '' : currentMenu.offerPercentage}
                             onChange={(e) => {
-                              const val = parseFloat(e.target.value) || 0;
-                              setCurrentMenu({ ...currentMenu, offerPercentage: val });
+                              const val = e.target.value;
+                              setCurrentMenu({ ...currentMenu, offerPercentage: val === '' ? '' : parseFloat(val) });
                             }}
                             className="w-full px-3 py-1.5 bg-background-card border border-border-main rounded-lg text-sm text-text-primary outline-none text-right pr-6"
                             max="100"

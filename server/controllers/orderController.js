@@ -4,9 +4,10 @@ import Cart from '../models/cartSchema.js';
 import User from '../models/userSchema.js';
 import Counter from '../models/counterSchema.js';
 import Menu from '../models/menuSchema.js';
+import Category from '../models/categorySchema.js';
 import Settings from '../models/settingsSchema.js';
 import Table from '../models/tableSchema.js';
-import { getIO, emitStockUpdate, emitTablesUpdated } from '../socket.js';
+import { getIO, emitStockUpdate, emitCategoryStockUpdate, emitTablesUpdated } from '../socket.js';
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; // km
@@ -77,14 +78,18 @@ const getNextOrderNumber = async () => {
 
 const checkStockAvailability = async (items) => {
   for (const item of items) {
-    const menuDoc = await Menu.findById(item.menuItem);
+    const menuDoc = await Menu.findById(item.menuItem).populate('category');
     if (!menuDoc) continue;
 
     const variant = menuDoc.variants.find(v => v.size === item.size);
     const multiplier = variant && variant.stockValue ? variant.stockValue : 1;
     const amountNeeded = item.quantity * multiplier;
 
-    if (menuDoc.totalStock < amountNeeded) {
+    if (menuDoc.category && menuDoc.category.isSharedStock) {
+      if (menuDoc.category.totalStock < amountNeeded) {
+        return { available: false, itemName: menuDoc.name };
+      }
+    } else if (menuDoc.totalStock < amountNeeded) {
       return { available: false, itemName: menuDoc.name };
     }
 
@@ -116,7 +121,7 @@ const checkStockAvailability = async (items) => {
 const handleStock = async (items, type = 'reduce') => {
   for (const item of items) {
     try {
-      const menuDoc = await Menu.findById(item.menuItem);
+      const menuDoc = await Menu.findById(item.menuItem).populate('category');
       if (!menuDoc) continue;
 
       const variant = menuDoc.variants.find(v => v.size === item.size);
@@ -124,39 +129,75 @@ const handleStock = async (items, type = 'reduce') => {
       const amount = item.quantity * multiplier;
       const factor = type === 'reduce' ? -1 : 1;
 
-      // Update main item stock
-      const updatedMenu = await Menu.findByIdAndUpdate(
-        item.menuItem,
-        { $inc: { totalStock: factor * amount } },
-        { returnDocument: 'after' }
-      );
+      if (menuDoc.category && menuDoc.category.isSharedStock) {
+        // Update shared category stock
+        const updatedCategory = await Category.findByIdAndUpdate(
+          menuDoc.category._id,
+          { $inc: { totalStock: factor * amount } },
+          { returnDocument: 'after' }
+        );
 
-      // Force floor at 0 if it somehow went negative
-      if (updatedMenu && updatedMenu.totalStock < 0) {
-        await Menu.findByIdAndUpdate(item.menuItem, { totalStock: 0 });
-        updatedMenu.totalStock = 0;
-      }
+        if (updatedCategory && updatedCategory.totalStock < 0) {
+          await Category.findByIdAndUpdate(menuDoc.category._id, { totalStock: 0 });
+          updatedCategory.totalStock = 0;
+        }
 
-      if (updatedMenu) {
-        emitStockUpdate(updatedMenu._id, updatedMenu.totalStock);
-      }
+        if (updatedCategory) {
+          emitCategoryStockUpdate(updatedCategory._id, updatedCategory.totalStock);
+        }
 
-      // Real-time Stock Alerts (Only on reduction)
-      if (type === 'reduce' && updatedMenu) {
-        if (updatedMenu.totalStock <= 0) {
-          getIO().emit('stockAlert', {
-            type: 'outOfStock',
-            itemId: updatedMenu._id,
-            name: updatedMenu.name,
-            message: `CRITICAL: ${updatedMenu.name} is now OUT OF STOCK!`
-          });
-        } else if (updatedMenu.totalStock <= 5) {
-          getIO().emit('stockAlert', {
-            type: 'lowStock',
-            itemId: updatedMenu._id,
-            name: updatedMenu.name,
-            message: `ALERT: ${updatedMenu.name} is running low (${updatedMenu.totalStock} left)`
-          });
+        if (type === 'reduce' && updatedCategory) {
+          if (updatedCategory.totalStock <= 0) {
+            getIO().emit('stockAlert', {
+              type: 'outOfStock',
+              itemId: updatedCategory._id, // Might need distinction from menuItemId on client
+              name: updatedCategory.name,
+              message: `CRITICAL: ${updatedCategory.name} Category is now OUT OF STOCK!`
+            });
+          } else if (updatedCategory.totalStock <= 5) {
+            getIO().emit('stockAlert', {
+              type: 'lowStock',
+              itemId: updatedCategory._id,
+              name: updatedCategory.name,
+              message: `ALERT: ${updatedCategory.name} Category is running low (${updatedCategory.totalStock} left)`
+            });
+          }
+        }
+      } else {
+        // Update main item stock
+        const updatedMenu = await Menu.findByIdAndUpdate(
+          item.menuItem,
+          { $inc: { totalStock: factor * amount } },
+          { returnDocument: 'after' }
+        );
+
+        // Force floor at 0 if it somehow went negative
+        if (updatedMenu && updatedMenu.totalStock < 0) {
+          await Menu.findByIdAndUpdate(item.menuItem, { totalStock: 0 });
+          updatedMenu.totalStock = 0;
+        }
+
+        if (updatedMenu) {
+          emitStockUpdate(updatedMenu._id, updatedMenu.totalStock);
+        }
+
+        // Real-time Stock Alerts (Only on reduction)
+        if (type === 'reduce' && updatedMenu) {
+          if (updatedMenu.totalStock <= 0) {
+            getIO().emit('stockAlert', {
+              type: 'outOfStock',
+              itemId: updatedMenu._id,
+              name: updatedMenu.name,
+              message: `CRITICAL: ${updatedMenu.name} is now OUT OF STOCK!`
+            });
+          } else if (updatedMenu.totalStock <= 5) {
+            getIO().emit('stockAlert', {
+              type: 'lowStock',
+              itemId: updatedMenu._id,
+              name: updatedMenu.name,
+              message: `ALERT: ${updatedMenu.name} is running low (${updatedMenu.totalStock} left)`
+            });
+          }
         }
       }
 
@@ -1082,7 +1123,8 @@ class OrderController {
       } else {
         query = {
           $or: [
-            { orderStatus: 'delivered', paymentStatus: 'paid' },
+            { orderType: 'dine-in', orderStatus: 'billed', paymentStatus: 'paid' },
+            { orderType: { $ne: 'dine-in' }, orderStatus: 'delivered', paymentStatus: 'paid' },
             { orderStatus: 'cancelled' }
           ]
         };

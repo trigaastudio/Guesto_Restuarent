@@ -146,7 +146,7 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
                 return !item || item.isBlocked || item.totalStock <= 0;
               });
 
-              const isOutOfStock = menu.totalStock <= 0 || isClosed || !!isComboOutOfStock;
+              const isOutOfStock = (menu.isCombo ? false : (menu.totalStock <= 0)) || isClosed || !!isComboOutOfStock;
 
               return (
                 <div

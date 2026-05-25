@@ -67,7 +67,7 @@ const HeroSection = React.memo(({ searchQuery, setSearchQuery, heroImages, trend
                   <img
                     src={img}
                     alt={`Hero ${idx + 1}`}
-                    fetchpriority={idx === 0 ? "high" : "low"}
+                    fetchPriority={idx === 0 ? "high" : "low"}
                     loading={idx === 0 ? "eager" : "lazy"}
                     onLoad={() => setLoadedImages(prev => ({ ...prev, [idx]: true }))}
                     className={`w-full h-full object-contain drop-shadow-[0_30px_50px_rgba(0,0,0,0.4)] animate-float transition-opacity duration-700 ${

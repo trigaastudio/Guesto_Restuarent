@@ -1216,6 +1216,9 @@ const WaiterDashboard = () => {
                 <button
                   onClick={() => {
                     handlePrintKOT(selectedOrderForView);
+                    if (selectedOrderForView.orderStatus !== 'delivered') {
+                      handleUpdateOrderStatus(selectedOrderForView._id, 'billed', false);
+                    }
                     setIsDetailsModalOpen(false);
                   }}
                   disabled={selectedOrderForView.kitchenStatus !== 'ready'}
