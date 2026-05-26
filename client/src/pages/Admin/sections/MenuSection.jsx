@@ -51,6 +51,7 @@ const MenuSection = () => {
   // Crop State
   const [showCropper, setShowCropper] = useState(false);
   const [imageToCrop, setImageToCrop] = useState(null);
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     fetchData();
@@ -153,22 +154,22 @@ const MenuSection = () => {
   };
 
   const handleSave = async () => {
-    if (!currentMenu.name || !currentMenu.category) {
-      showToast('warning', 'Name and Category are required');
-      return;
-    }
-
     const isComboCategory = categories.find(c => c._id === currentMenu.category)?.name.toLowerCase() === 'combo';
+    
+    const newErrors = {};
+    if (!currentMenu.name || !currentMenu.name.trim()) newErrors.name = true;
+    if (!currentMenu.category) newErrors.category = true;
+    if (currentMenu.totalStock === '' || currentMenu.totalStock === undefined || currentMenu.totalStock === null) newErrors.totalStock = true;
+    
+    if (!isComboCategory && currentMenu.variants.length === 0) newErrors.variants = true;
+    if (isComboCategory && currentMenu.comboItems.length === 0) newErrors.variants = true; // Use variants error for combo items as well
+    if (!currentMenu.image) newErrors.image = true;
 
-    if (!isComboCategory && currentMenu.variants.length === 0) {
-      showToast('warning', 'Please select at least one size variant');
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
-
-    if (isComboCategory && currentMenu.comboItems.length === 0) {
-      showToast('warning', 'At least one item is required for a combo');
-      return;
-    }
+    setErrors({});
 
     const comboTotalPrice = isComboCategory
       ? currentMenu.comboItems.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0) * (1 - (currentMenu.offerPercentage || 0) / 100)
@@ -180,8 +181,8 @@ const MenuSection = () => {
       includedItems: (v.includedItems || []).filter(inc => inc.menuItem !== '')
     }));
 
-    const finalPrice = isComboCategory 
-      ? comboTotalPrice 
+    const finalPrice = isComboCategory
+      ? comboTotalPrice
       : (currentMenu.variants.length > 0 ? (currentMenu.variants[0]?.price || 0) : (currentMenu.price || 0));
 
     const payload = {
@@ -549,14 +550,8 @@ const MenuSection = () => {
                             </div>
                           )}
                         </div>
-                        <div className="flex flex-col space-y-1.5">
+                        <div className="flex flex-col justify-center">
                           <p className="font-bold text-text-primary text-sm leading-tight">{menu.name}</p>
-                          <div className="flex items-center space-x-2">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary bg-background-muted/80 px-2 py-0.5 rounded border border-border-light">
-                              {menu.category?.name || 'Uncategorized'}
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-text-muted line-clamp-1 max-w-[200px]">{menu.description}</p>
                         </div>
                       </div>
                     </td>
@@ -766,21 +761,36 @@ const MenuSection = () => {
             <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh] no-scrollbar">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-text-secondary">Item Name</label>
+                  <label className={`text-sm font-semibold ${errors.name ? 'text-primary' : 'text-text-secondary'}`}>Item Name</label>
                   <input
                     type="text"
                     value={currentMenu.name}
-                    onChange={(e) => setCurrentMenu({ ...currentMenu, name: e.target.value })}
-                    className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all"
+                    onChange={(e) => {
+                      setCurrentMenu({ ...currentMenu, name: e.target.value });
+                      if (errors.name) setErrors({ ...errors, name: false });
+                    }}
+                    className={`w-full px-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all ${
+                      errors.name 
+                        ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                        : 'border-border-main focus:border-primary'
+                    }`}
                     placeholder="e.g. Chicken Biryani"
                   />
+                  {errors.name && <p className="text-[10px] font-bold text-primary mt-1">Item Name is required</p>}
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-text-secondary">Category</label>
+                  <label className={`text-sm font-semibold ${errors.category ? 'text-primary' : 'text-text-secondary'}`}>Category</label>
                   <select
                     value={currentMenu.category}
-                    onChange={(e) => setCurrentMenu({ ...currentMenu, category: e.target.value })}
-                    className="w-full px-4 py-2 bg-background-muted/50 text-text-primary rounded-xl border border-border-main focus:border-primary outline-none transition-all cursor-pointer"
+                    onChange={(e) => {
+                      setCurrentMenu({ ...currentMenu, category: e.target.value });
+                      if (errors.category) setErrors({ ...errors, category: false });
+                    }}
+                    className={`w-full px-4 py-2 bg-background-muted/50 text-text-primary rounded-xl border outline-none transition-all cursor-pointer ${
+                      errors.category 
+                        ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                        : 'border-border-main focus:border-primary'
+                    }`}
                   >
                     <option value="" className="bg-background-card text-text-primary">Select Category</option>
                     {categories.map(cat => (
@@ -790,17 +800,23 @@ const MenuSection = () => {
                 </div>
                 {!categories.find(c => c._id === currentMenu.category)?.stockactive && (
                   <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-text-secondary">Total Stock</label>
+                    <label className={`text-sm font-semibold ${errors.totalStock ? 'text-primary' : 'text-text-secondary'}`}>Total Stock</label>
                     <input
                       type="number"
                       value={currentMenu.totalStock === '' ? '' : currentMenu.totalStock}
                       onChange={(e) => {
                         const val = e.target.value;
                         setCurrentMenu({ ...currentMenu, totalStock: val === '' ? '' : parseInt(val) });
+                        if (errors.totalStock) setErrors({ ...errors, totalStock: false });
                       }}
-                      className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all"
+                      className={`w-full px-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all ${
+                        errors.totalStock 
+                          ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                          : 'border-border-main focus:border-primary'
+                      }`}
                       placeholder="0"
                     />
+                    {errors.totalStock && <p className="text-[10px] font-bold text-primary mt-1">Stock is required</p>}
                   </div>
                 )}
               </div>
@@ -818,18 +834,19 @@ const MenuSection = () => {
 
 
               {categories.find(c => c._id === currentMenu.category)?.name.toLowerCase() !== 'combo' ? (
-                <div className="space-y-4">
+                <div className={`space-y-4 p-2 rounded-xl transition-all ${errors.variants ? 'bg-primary/5 ring-1 ring-primary/30 border border-primary' : ''}`}>
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-semibold text-text-secondary">Size Variants</label>
+                    <label className={`text-sm font-semibold ${errors.variants ? 'text-primary' : 'text-text-secondary'}`}>Size Variants</label>
+                    {errors.variants && <p className="text-[10px] font-bold text-primary">Please select at least one size variant</p>}
                   </div>
-                  
+
                   {/* Checkbox Group for Variants */}
                   <div className="flex flex-wrap gap-3">
                     {[...new Set([...STANDARD_VARIANTS, ...currentMenu.variants.map(v => v.size)])].map(size => {
                       const isChecked = currentMenu.variants.some(v => v.size.toLowerCase() === size.toLowerCase());
                       return (
                         <label key={size} className={`flex items-center space-x-2 px-4 py-2 rounded-xl border cursor-pointer transition-all ${isChecked ? 'bg-primary/10 border-primary shadow-sm' : 'bg-background border-border-main text-text-muted hover:border-primary/50'}`}>
-                          <input 
+                          <input
                             type="checkbox"
                             checked={isChecked}
                             onChange={(e) => {
@@ -838,6 +855,7 @@ const MenuSection = () => {
                                   ...currentMenu,
                                   variants: [...currentMenu.variants, { size, price: '', stockValue: 1, costPrice: 0, isBOGO: false, bogoItem: '', bogoVariant: '' }]
                                 });
+                                if (errors.variants) setErrors({ ...errors, variants: false });
                               } else {
                                 setCurrentMenu({
                                   ...currentMenu,
@@ -860,170 +878,170 @@ const MenuSection = () => {
                     <div className="mt-4">
                       <label className="text-sm font-semibold text-text-secondary mb-3 block">Variant Pricing & Stock</label>
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      {currentMenu.variants.map((variant, idx) => (
-                        <div key={idx} className="group/variant bg-background-muted/30 p-3 rounded-xl border border-border-light space-y-3 animate-in slide-in-from-top-2 duration-300">
-                          <div className="flex items-center justify-between border-b border-border-light pb-2">
-                            <div className="flex items-center space-x-4">
-                              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">{variant.size}</span>
-                              <div className="flex items-center space-x-2 px-3 py-1 bg-primary/5 rounded-full border border-primary/10">
-                                <span className="text-[9px] font-black uppercase text-primary tracking-tighter">Buy 1 Get 1</span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleSizeChange(idx, 'isBOGO', !variant.isBOGO)}
-                                  className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors focus:outline-none ${variant.isBOGO ? 'bg-primary' : 'bg-text-muted'}`}
-                                >
-                                  <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform ${variant.isBOGO ? 'translate-x-4' : 'translate-x-1'}`} />
-                                </button>
+                        {currentMenu.variants.map((variant, idx) => (
+                          <div key={idx} className="group/variant bg-background-muted/30 p-3 rounded-xl border border-border-light space-y-3 animate-in slide-in-from-top-2 duration-300">
+                            <div className="flex items-center justify-between border-b border-border-light pb-2">
+                              <div className="flex items-center space-x-4">
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">{variant.size}</span>
+                                <div className="flex items-center space-x-2 px-3 py-1 bg-primary/5 rounded-full border border-primary/10">
+                                  <span className="text-[9px] font-black uppercase text-primary tracking-tighter">Buy 1 Get 1</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSizeChange(idx, 'isBOGO', !variant.isBOGO)}
+                                    className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors focus:outline-none ${variant.isBOGO ? 'bg-primary' : 'bg-text-muted'}`}
+                                  >
+                                    <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform ${variant.isBOGO ? 'translate-x-4' : 'translate-x-1'}`} />
+                                  </button>
+                                </div>
                               </div>
                             </div>
-                          </div>
 
-                          <div className="flex items-end space-x-4">
-                          <div className="space-y-1 w-28">
-                            <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider ml-1">Sell Price (₹)</label>
-                            <input
-                              type="number"
-                              value={variant.price === '' ? '' : (variant.price || 0)}
-                              onChange={(e) => handleSizeChange(idx, 'price', e.target.value)}
-                              className="w-full px-2 py-1 bg-background-card border border-border-main focus:border-primary/50 rounded-lg text-[11px] font-bold transition-all outline-none"
-                              placeholder="0"
-                            />
-                          </div>
+                            <div className="flex items-end space-x-4">
+                              <div className="space-y-1 w-28">
+                                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider ml-1">Sell Price (₹)</label>
+                                <input
+                                  type="number"
+                                  value={variant.price === '' ? '' : (variant.price || 0)}
+                                  onChange={(e) => handleSizeChange(idx, 'price', e.target.value)}
+                                  className="w-full px-2 py-1 bg-background-card border border-border-main focus:border-primary/50 rounded-lg text-[11px] font-bold transition-all outline-none"
+                                  placeholder="0"
+                                />
+                              </div>
 
-                          <div className="space-y-1 w-24">
-                            <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider ml-1 block">
-                              Stock Val
-                            </label>
-                            <input
-                              type="number"
-                              step="0.1"
-                              value={variant.stockValue}
-                              onChange={(e) => handleSizeChange(idx, 'stockValue', e.target.value)}
-                              className="w-full px-2 py-1 bg-background-card border border-border-main focus:border-primary/50 rounded-lg text-[11px] font-bold transition-all outline-none"
-                              placeholder="1"
-                            />
-                          </div>
-                        </div>
-
-                        {variant.isBOGO && (
-                          <div className="p-3 bg-primary/5 rounded-xl border border-primary/10 animate-in slide-in-from-top-2 duration-300">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-[10px] font-black uppercase tracking-widest text-primary">Select Free Item & Variant</span>
-                              {variant.bogoItem && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    handleSizeChange(idx, 'bogoItem', '');
-                                    handleSizeChange(idx, 'bogoVariant', '');
-                                  }}
-                                  className="text-[9px] font-bold text-status-unavailable hover:underline"
-                                >
-                                  Clear Selection
-                                </button>
-                              )}
+                              <div className="space-y-1 w-24">
+                                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider ml-1 block">
+                                  Stock Val
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.1"
+                                  value={variant.stockValue}
+                                  onChange={(e) => handleSizeChange(idx, 'stockValue', e.target.value)}
+                                  className="w-full px-2 py-1 bg-background-card border border-border-main focus:border-primary/50 rounded-lg text-[11px] font-bold transition-all outline-none"
+                                  placeholder="1"
+                                />
+                              </div>
                             </div>
-                            <div className="flex items-center space-x-2">
-                              <div className="flex-1 relative">
-                                <select
-                                  value={variant.bogoItem ? `${variant.bogoItem}|${variant.bogoVariant}` : ''}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    if (val) {
-                                      const [menuId, variantSize] = val.split('|');
-                                      handleSizeChange(idx, 'bogoItem', menuId);
-                                      handleSizeChange(idx, 'bogoVariant', variantSize);
-                                    } else {
+
+                            {variant.isBOGO && (
+                              <div className="p-3 bg-primary/5 rounded-xl border border-primary/10 animate-in slide-in-from-top-2 duration-300">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-[10px] font-black uppercase tracking-widest text-primary">Select Free Item & Variant</span>
+                                  {variant.bogoItem && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        handleSizeChange(idx, 'bogoItem', '');
+                                        handleSizeChange(idx, 'bogoVariant', '');
+                                      }}
+                                      className="text-[9px] font-bold text-status-unavailable hover:underline"
+                                    >
+                                      Clear Selection
+                                    </button>
+                                  )}
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <div className="flex-1 relative">
+                                    <select
+                                      value={variant.bogoItem ? `${variant.bogoItem}|${variant.bogoVariant}` : ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val) {
+                                          const [menuId, variantSize] = val.split('|');
+                                          handleSizeChange(idx, 'bogoItem', menuId);
+                                          handleSizeChange(idx, 'bogoVariant', variantSize);
+                                        } else {
+                                          handleSizeChange(idx, 'bogoItem', '');
+                                          handleSizeChange(idx, 'bogoVariant', '');
+                                        }
+                                      }}
+                                      className="w-full px-3 py-2 bg-background-card border border-border-main rounded-lg text-[11px] font-bold text-text-primary outline-none appearance-none cursor-pointer pr-8"
+                                    >
+                                      <option value="" className="bg-background-card text-text-primary">Select an item and variant...</option>
+                                      {menus.map(m => (
+                                        <React.Fragment key={m._id}>
+                                          {m.variants?.length > 0 ? (
+                                            m.variants.map((v, vIdx) => (
+                                              <option key={`${m._id}-${vIdx}`} value={`${m._id}|${v.size}`} className="bg-background-card text-text-primary">
+                                                {m.name} - {v.size}
+                                              </option>
+                                            ))
+                                          ) : (
+                                            <option value={`${m._id}|`} className="bg-background-card text-text-primary">
+                                              {m.name}
+                                            </option>
+                                          )}
+                                        </React.Fragment>
+                                      ))}
+                                    </select>
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted">
+                                      <ArrowUpDown size={12} />
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
                                       handleSizeChange(idx, 'bogoItem', '');
                                       handleSizeChange(idx, 'bogoVariant', '');
-                                    }
-                                  }}
-                                  className="w-full px-3 py-2 bg-background-card border border-border-main rounded-lg text-[11px] font-bold text-text-primary outline-none appearance-none cursor-pointer pr-8"
-                                >
-                                  <option value="" className="bg-background-card text-text-primary">Select an item and variant...</option>
-                                  {menus.map(m => (
-                                    <React.Fragment key={m._id}>
-                                      {m.variants?.length > 0 ? (
-                                        m.variants.map((v, vIdx) => (
-                                          <option key={`${m._id}-${vIdx}`} value={`${m._id}|${v.size}`} className="bg-background-card text-text-primary">
-                                            {m.name} - {v.size}
-                                          </option>
-                                        ))
-                                      ) : (
-                                        <option value={`${m._id}|`} className="bg-background-card text-text-primary">
-                                          {m.name}
-                                        </option>
-                                      )}
-                                    </React.Fragment>
-                                  ))}
-                                </select>
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted">
-                                  <ArrowUpDown size={12} />
+                                    }}
+                                    className="p-2 text-text-muted hover:text-status-unavailable hover:bg-status-off/10 rounded-lg transition-all border border-border-main bg-background-card"
+                                    title="Clear Selection"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
                                 </div>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  handleSizeChange(idx, 'bogoItem', '');
-                                  handleSizeChange(idx, 'bogoVariant', '');
-                                }}
-                                className="p-2 text-text-muted hover:text-status-unavailable hover:bg-status-off/10 rounded-lg transition-all border border-border-main bg-background-card"
-                                title="Clear Selection"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          </div>
-                        )}
+                            )}
 
-                        {/* Included Items Section */}
-                        <div className="pt-2 border-t border-border-light/50">
-                          <div className="flex items-center justify-end mb-2">
-                            <button
-                              type="button"
-                              onClick={() => handleAddIncludedItem(idx)}
-                              className="text-[9px] font-bold text-primary hover:bg-primary/5 px-2 py-1 rounded-lg border border-primary/20 transition-all flex items-center space-x-1"
-                            >
-                              <Plus size={10} />
-                              <span>Add Item</span>
-                            </button>
-                          </div>
-
-                          <div className="space-y-2">
-                            {variant.includedItems?.map((included, incIdx) => (
-                              <div key={incIdx} className="flex items-center space-x-2 bg-background-card/50 p-2 rounded-xl border border-border-main/50 animate-in slide-in-from-left-2 duration-200">
-                                <select
-                                  value={included.menuItem}
-                                  onChange={(e) => handleIncludedItemChange(idx, incIdx, 'menuItem', e.target.value)}
-                                  className="flex-1 bg-transparent border-0 text-[11px] font-bold text-text-primary outline-none focus:ring-0 cursor-pointer"
-                                >
-                                  <option value="" className="bg-background-card text-text-primary">Select Item</option>
-                                  {menus.filter(m => m._id !== currentMenu._id).map(m => (
-                                    <option key={m._id} value={m._id} className="bg-background-card text-text-primary">{m.name}</option>
-                                  ))}
-                                </select>
-                                <div className="flex items-center space-x-2 border-l border-border-main pl-2">
-                                  <span className="text-[10px] font-black text-text-muted">QTY:</span>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    value={included.quantity}
-                                    onChange={(e) => handleIncludedItemChange(idx, incIdx, 'quantity', e.target.value)}
-                                    className="w-10 bg-transparent border-0 text-[11px] font-black text-primary text-center outline-none focus:ring-0 p-0"
-                                  />
-                                </div>
+                            {/* Included Items Section */}
+                            <div className="pt-2 border-t border-border-light/50">
+                              <div className="flex items-center justify-end mb-2">
                                 <button
                                   type="button"
-                                  onClick={() => handleRemoveIncludedItem(idx, incIdx)}
-                                  className="p-1 text-text-muted hover:text-status-unavailable transition-colors"
+                                  onClick={() => handleAddIncludedItem(idx)}
+                                  className="text-[9px] font-bold text-primary hover:bg-primary/5 px-2 py-1 rounded-lg border border-primary/20 transition-all flex items-center space-x-1"
                                 >
-                                  <Trash2 size={12} />
+                                  <Plus size={10} />
+                                  <span>Add Item</span>
                                 </button>
                               </div>
-                            ))}
+
+                              <div className="space-y-2">
+                                {variant.includedItems?.map((included, incIdx) => (
+                                  <div key={incIdx} className="flex items-center space-x-2 bg-background-card/50 p-2 rounded-xl border border-border-main/50 animate-in slide-in-from-left-2 duration-200">
+                                    <select
+                                      value={included.menuItem}
+                                      onChange={(e) => handleIncludedItemChange(idx, incIdx, 'menuItem', e.target.value)}
+                                      className="flex-1 bg-transparent border-0 text-[11px] font-bold text-text-primary outline-none focus:ring-0 cursor-pointer"
+                                    >
+                                      <option value="" className="bg-background-card text-text-primary">Select Item</option>
+                                      {menus.filter(m => m._id !== currentMenu._id).map(m => (
+                                        <option key={m._id} value={m._id} className="bg-background-card text-text-primary">{m.name}</option>
+                                      ))}
+                                    </select>
+                                    <div className="flex items-center space-x-2 border-l border-border-main pl-2">
+                                      <span className="text-[10px] font-black text-text-muted">QTY:</span>
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        value={included.quantity}
+                                        onChange={(e) => handleIncludedItemChange(idx, incIdx, 'quantity', e.target.value)}
+                                        className="w-10 bg-transparent border-0 text-[11px] font-black text-primary text-center outline-none focus:ring-0 p-0"
+                                      />
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveIncludedItem(idx, incIdx)}
+                                      className="p-1 text-text-muted hover:text-status-unavailable transition-colors"
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                    ))}
+                        ))}
                       </div>
                     </div>
                   )}
@@ -1165,15 +1183,18 @@ const MenuSection = () => {
 
 
 
-              <div className="space-y-3">
-                <label className="text-sm font-semibold text-text-secondary">Item Image</label>
+              <div className={`space-y-3 p-2 rounded-xl transition-all ${errors.image ? 'bg-primary/5 ring-1 ring-primary/30 border border-primary' : ''}`}>
+                <div className="flex items-center justify-between">
+                  <label className={`text-sm font-semibold ${errors.image ? 'text-primary' : 'text-text-secondary'}`}>Item Image</label>
+                  {errors.image && <p className="text-[10px] font-bold text-primary">Item Image is required</p>}
+                </div>
                 <div className="flex flex-col space-y-3">
                   <div className="flex items-center space-x-4">
-                    <div className="w-24 h-24 rounded-xl bg-background-muted border-2 border-dashed border-border-main flex items-center justify-center overflow-hidden shrink-0">
+                    <div className={`w-24 h-24 rounded-xl bg-background-muted border-2 border-dashed flex items-center justify-center overflow-hidden shrink-0 ${errors.image ? 'border-primary' : 'border-border-main'}`}>
                       {currentMenu.image ? (
                         <img src={currentMenu.image} alt="Preview" className="w-full h-full object-cover" />
                       ) : (
-                        <ImageIcon size={32} className="text-text-muted" />
+                        <ImageIcon size={32} className={errors.image ? 'text-primary/50' : 'text-text-muted'} />
                       )}
                     </div>
                     <div className="flex-1 space-y-2">
@@ -1187,7 +1208,10 @@ const MenuSection = () => {
                           type="file"
                           className="hidden"
                           accept="image/*"
-                          onChange={handleImageUpload}
+                          onChange={(e) => {
+                            handleImageUpload(e);
+                            if (errors.image) setErrors({ ...errors, image: false });
+                          }}
                           disabled={isUploading}
                         />
                       </label>
@@ -1199,7 +1223,10 @@ const MenuSection = () => {
                     <input
                       type="text"
                       value={currentMenu.image}
-                      onChange={(e) => setCurrentMenu({ ...currentMenu, image: e.target.value })}
+                      onChange={(e) => {
+                        setCurrentMenu({ ...currentMenu, image: e.target.value });
+                        if (errors.image) setErrors({ ...errors, image: false });
+                      }}
                       className="w-full px-4 py-1.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm"
                       placeholder="https://example.com/image.jpg"
                     />

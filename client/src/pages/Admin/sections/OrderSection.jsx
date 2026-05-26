@@ -131,6 +131,7 @@ const OrderSection = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [allUsers, setAllUsers] = useState([]);
   const [deliveryStaff, setDeliveryStaff] = useState([]);
+  const [errors, setErrors] = useState({});
   const socketRef = useRef();
 
   useEffect(() => {
@@ -439,19 +440,21 @@ const OrderSection = () => {
     }
 
     if (posOrderType === 'delivery') {
-      if (!customer.name || customer.name === 'Walk-in') {
-        showToast('warning', 'Customer name is required for delivery orders');
-        return;
-      }
-      if (!customer.phone || customer.phone.trim() === '') {
-        showToast('warning', 'Contact number is required for delivery orders');
-        return;
-      }
+      const newErrors = {};
+      if (!customer.name || customer.name === 'Walk-in' || !customer.name.trim()) newErrors.customerName = true;
+      if (!customer.phone || customer.phone.trim() === '') newErrors.customerPhone = true;
       if ((!deliveryAddress || deliveryAddress.trim() === '') && (!deliveryLocation || deliveryLocation.trim() === '')) {
-        showToast('warning', 'Either address or location map link is required for delivery orders');
+        newErrors.deliveryAddress = true;
+        newErrors.deliveryLocation = true;
+      }
+
+      if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
+        showToast('warning', 'Please fill all required delivery details');
         return;
       }
     }
+    setErrors({});
 
     setIsSubmitting(true);
     try {
@@ -2363,27 +2366,44 @@ const OrderSection = () => {
                 <div className="space-y-2 relative">
                   {posOrderType === 'delivery' && (
                     <div className="grid grid-cols-2 gap-2">
-                      <div className="flex items-center space-x-2 bg-background-card p-2 rounded-xl border border-border-light">
-                        <User size={12} className="text-text-muted" />
-                        <input
-                          type="text"
-                          placeholder="Name"
-                          value={customer.name}
-                          onChange={e => handleCustomerSearch('name', e.target.value)}
-                          onFocus={() => customer.name.length > 1 && setShowSuggestions(true)}
-                          className="bg-transparent text-[10px] font-bold text-text-primary outline-none w-full"
-                        />
+                      <div className={`flex flex-col gap-1`}>
+                        <div className={`flex items-center space-x-2 bg-background-card p-2 rounded-xl border transition-all ${
+                          errors.customerName ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'border-border-light'
+                        }`}>
+                          <User size={12} className={errors.customerName ? 'text-primary' : 'text-text-muted'} />
+                          <input
+                            type="text"
+                            placeholder="Name"
+                            value={customer.name}
+                            onChange={e => {
+                              handleCustomerSearch('name', e.target.value);
+                              if (errors.customerName) setErrors({ ...errors, customerName: false });
+                            }}
+                            onFocus={() => customer.name.length > 1 && setShowSuggestions(true)}
+                            className="bg-transparent text-[10px] font-bold text-text-primary outline-none w-full"
+                          />
+                        </div>
+                        {errors.customerName && <p className="text-[9px] font-bold text-primary px-1">Name is required</p>}
                       </div>
-                      <div className="flex items-center space-x-2 bg-background-card p-2 rounded-xl border border-border-light">
-                        <Phone size={12} className="text-text-muted" />
-                        <input
-                          type="text"
-                          placeholder="Phone"
-                          value={customer.phone}
-                          onChange={e => handleCustomerSearch('phone', e.target.value)}
-                          onFocus={() => customer.phone.length > 1 && setShowSuggestions(true)}
-                          className="bg-transparent text-[10px] font-bold text-text-primary outline-none w-full"
-                        />
+                      
+                      <div className={`flex flex-col gap-1`}>
+                        <div className={`flex items-center space-x-2 bg-background-card p-2 rounded-xl border transition-all ${
+                          errors.customerPhone ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'border-border-light'
+                        }`}>
+                          <Phone size={12} className={errors.customerPhone ? 'text-primary' : 'text-text-muted'} />
+                          <input
+                            type="text"
+                            placeholder="Phone"
+                            value={customer.phone}
+                            onChange={e => {
+                              handleCustomerSearch('phone', e.target.value);
+                              if (errors.customerPhone) setErrors({ ...errors, customerPhone: false });
+                            }}
+                            onFocus={() => customer.phone.length > 1 && setShowSuggestions(true)}
+                            className="bg-transparent text-[10px] font-bold text-text-primary outline-none w-full"
+                          />
+                        </div>
+                        {errors.customerPhone && <p className="text-[9px] font-bold text-primary px-1">Phone is required</p>}
                       </div>
                     </div>
                   )}
@@ -2468,15 +2488,22 @@ const OrderSection = () => {
                             />
                           </div>
                         </div>
+                      </div>
 
-                        <div className="relative group/field flex items-center bg-primary/[0.03] px-3 py-2 rounded-xl border border-primary/20 focus-within:border-primary transition-all">
+                      <div className="space-y-2">
+                        <div className={`relative group/field flex items-center px-3 py-2 rounded-xl border transition-all ${
+                          errors.deliveryLocation ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'bg-primary/[0.03] border-primary/20 focus-within:border-primary'
+                        }`}>
                           <ExternalLink size={12} className="text-primary mr-2" />
                           <div className="flex-1">
                             <input
                               type="text"
                               placeholder="Maps Link"
                               value={deliveryLocation}
-                              onChange={e => handleLocationLinkChange(e.target.value)}
+                              onChange={e => {
+                                handleLocationLinkChange(e.target.value);
+                                if (errors.deliveryLocation) setErrors({ ...errors, deliveryLocation: false, deliveryAddress: false });
+                              }}
                               className="bg-transparent text-[10px] font-black text-primary outline-none w-full placeholder:text-primary/30"
                             />
                           </div>
@@ -2488,34 +2515,40 @@ const OrderSection = () => {
                             <Loader2 size={12} className={isResolvingLink ? 'animate-spin' : ''} />
                           </button>
                         </div>
-                      </div>
 
-                      <div className="relative bg-background-card px-3 py-2 rounded-xl border border-border-main focus-within:border-primary transition-all shadow-sm">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center space-x-1.5">
-                            <MapPin size={10} className="text-primary" />
-                            <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Delivery Address</p>
+                        <div className={`relative px-3 py-2 rounded-xl border transition-all shadow-sm ${
+                          errors.deliveryAddress ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'bg-background-card border-border-main focus-within:border-primary'
+                        }`}>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center space-x-1.5">
+                              <MapPin size={10} className="text-primary" />
+                              <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Delivery Address</p>
+                            </div>
+
+                            {selectedUserId && (
+                              <button
+                                type="button"
+                                onClick={() => setUpdateProfile(!updateProfile)}
+                                className="flex items-center space-x-1.5 group cursor-pointer"
+                              >
+                                <div className={`w-3 h-3 rounded-[4px] border flex items-center justify-center transition-all ${updateProfile ? 'bg-primary border-primary' : 'bg-transparent border-border-main'}`}>
+                                  {updateProfile && <CheckCircle2 size={8} className="text-white" />}
+                                </div>
+                                <span className={`text-[8px] font-black uppercase tracking-widest ${updateProfile ? 'text-primary' : 'text-text-muted'}`}>Update Profile</span>
+                              </button>
+                            )}
                           </div>
-
-                          {selectedUserId && (
-                            <button
-                              type="button"
-                              onClick={() => setUpdateProfile(!updateProfile)}
-                              className="flex items-center space-x-1.5 group cursor-pointer"
-                            >
-                              <div className={`w-3 h-3 rounded-[4px] border flex items-center justify-center transition-all ${updateProfile ? 'bg-primary border-primary' : 'bg-transparent border-border-main'}`}>
-                                {updateProfile && <CheckCircle2 size={8} className="text-white" />}
-                              </div>
-                              <span className={`text-[8px] font-black uppercase tracking-widest ${updateProfile ? 'text-primary' : 'text-text-muted'}`}>Update Profile</span>
-                            </button>
-                          )}
+                          <textarea
+                            placeholder="Building, Street, Area Details..."
+                            value={deliveryAddress}
+                            onChange={e => {
+                              setDeliveryAddress(e.target.value);
+                              if (errors.deliveryAddress) setErrors({ ...errors, deliveryAddress: false, deliveryLocation: false });
+                            }}
+                            className="bg-transparent text-[10px] font-bold text-text-primary outline-none w-full h-12 resize-none placeholder:text-text-muted/20"
+                          />
                         </div>
-                        <textarea
-                          placeholder="Building, Street, Area Details..."
-                          value={deliveryAddress}
-                          onChange={e => setDeliveryAddress(e.target.value)}
-                          className="bg-transparent text-[10px] font-bold text-text-primary outline-none w-full h-12 resize-none placeholder:text-text-muted/20"
-                        />
+                        {(errors.deliveryAddress || errors.deliveryLocation) && <p className="text-[9px] font-bold text-primary px-1">Either Address or Maps Link is required</p>}
                       </div>
                     </div>
                   )}

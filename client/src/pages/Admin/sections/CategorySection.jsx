@@ -27,9 +27,9 @@ const CategorySection = ({ refreshKey }) => {
   const [discountValue, setDiscountValue] = useState('');
   const socketRef = React.useRef();
 
-  // Crop State
   const [showCropper, setShowCropper] = useState(false);
   const [imageToCrop, setImageToCrop] = useState(null);
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     fetchCategories();
@@ -140,7 +140,12 @@ const CategorySection = ({ refreshKey }) => {
   };
 
   const handleSave = async () => {
-    if (!currentCategory.name.trim()) return;
+    if (!currentCategory.name || !currentCategory.name.trim()) {
+      setErrors({ name: true });
+      showToast('warning', 'Category name is required');
+      return;
+    }
+    setErrors({});
 
     try {
       if (isEditing) {
@@ -536,14 +541,22 @@ const CategorySection = ({ refreshKey }) => {
             </div>
             <div className="p-6 space-y-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-text-secondary">Category Name</label>
+                <label className={`text-sm font-semibold ${errors.name ? 'text-primary' : 'text-text-secondary'}`}>Category Name</label>
                 <input
                   type="text"
                   value={currentCategory.name}
-                  onChange={(e) => setCurrentCategory({ ...currentCategory, name: e.target.value })}
-                  className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all"
+                  onChange={(e) => {
+                    setCurrentCategory({ ...currentCategory, name: e.target.value });
+                    if (errors.name) setErrors({ ...errors, name: false });
+                  }}
+                  className={`w-full px-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all ${
+                    errors.name 
+                      ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                      : 'border-border-main focus:border-primary'
+                  }`}
                   placeholder="e.g. Main Course"
                 />
+                {errors.name && <p className="text-[10px] font-bold text-primary mt-1">Category Name is required</p>}
               </div>
               {!isEditing && (
                 <div className="flex items-center space-x-3">

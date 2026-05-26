@@ -126,11 +126,10 @@ const LoginPage = () => {
   /* ── Input field style helper ── */
   const inputCls = (field) =>
     `w-full bg-background-muted border rounded-2xl py-2.5 sm:py-3.5 pl-10 sm:pl-12 pr-4 text-xs sm:text-sm font-semibold
-     placeholder:text-text-muted/50 focus:outline-none transition-all text-text-primary ${
-       errors[field]
-         ? 'border-primary/60 bg-primary/5 focus:ring-1 focus:ring-primary'
-         : 'border-border focus:border-primary focus:ring-1 focus:ring-primary/40'
-     }`;
+     placeholder:text-text-muted/50 focus:outline-none transition-all text-text-primary ${errors[field]
+      ? 'border-primary/60 bg-primary/5 focus:ring-1 focus:ring-primary'
+      : 'border-border focus:border-primary focus:ring-1 focus:ring-primary/40'
+    }`;
 
   return (
     <div className="min-h-screen w-full bg-background font-sans select-none flex">
@@ -330,7 +329,8 @@ const LoginPage = () => {
         </div>
       </div>
 
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @keyframes slow-zoom {
           from { transform: scale(1); }
           to   { transform: scale(1.07); }

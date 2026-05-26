@@ -57,6 +57,13 @@ api.interceptors.response.use(
         localStorage.removeItem('user');
         window.location.replace('/login');
       }
+    } else if (error.response?.status >= 500 || (!error.response && !axios.isCancel(error))) {
+      // Handle Server Errors (500+) or Network Errors (no response)
+      const path = window.location.pathname;
+      if (path !== '/error') {
+        const message = error.response?.data?.message || error.message || 'Unable to connect to the server.';
+        window.location.replace(`/error?type=server&message=${encodeURIComponent(message)}`);
+      }
     }
     return Promise.reject(error);
   }

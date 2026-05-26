@@ -17,6 +17,7 @@ const SizeSection = () => {
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     fetchSizes();
@@ -85,10 +86,17 @@ const SizeSection = () => {
   };
 
   const handleSave = async () => {
-    if (!currentSize.name.trim() || !currentSize.unit.trim() || !currentSize.value) {
+    const newErrors = {};
+    if (!currentSize.name || !currentSize.name.trim()) newErrors.name = true;
+    if (!currentSize.unit || !currentSize.unit.trim()) newErrors.unit = true;
+    if (!currentSize.value) newErrors.value = true;
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       showToast('warning', 'All fields are required');
       return;
     }
+    setErrors({});
 
     try {
       if (isEditing) {
@@ -232,10 +240,10 @@ const SizeSection = () => {
           </table>
         </div>
 
-        <Pagination 
-          currentPage={currentPage} 
-          totalPages={totalPages} 
-          onPageChange={setCurrentPage} 
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
         />
       </div>
 
@@ -250,37 +258,59 @@ const SizeSection = () => {
             </div>
             <div className="p-6 space-y-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-text-secondary">Size Name</label>
+                <label className={`text-sm font-semibold ${errors.name ? 'text-primary' : 'text-text-secondary'}`}>Size Name</label>
                 <input
                   type="text"
                   value={currentSize.name}
-                  onChange={(e) => setCurrentSize({ ...currentSize, name: e.target.value })}
-                  className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all"
+                  onChange={(e) => {
+                    setCurrentSize({ ...currentSize, name: e.target.value });
+                    if (errors.name) setErrors({ ...errors, name: false });
+                  }}
+                  className={`w-full px-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all ${
+                    errors.name 
+                      ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                      : 'border-border-main focus:border-primary'
+                  }`}
                   placeholder="e.g. Quarter, Half, Full, Packet"
                 />
+                {errors.name && <p className="text-[10px] font-bold text-primary mt-1">Size Name is required</p>}
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-text-secondary">Base Unit</label>
+                <label className={`text-sm font-semibold ${errors.unit ? 'text-primary' : 'text-text-secondary'}`}>Base Unit</label>
                 <input
                   type="text"
                   value={currentSize.unit}
-                  onChange={(e) => setCurrentSize({ ...currentSize, unit: e.target.value })}
-                  className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all"
+                  onChange={(e) => {
+                    setCurrentSize({ ...currentSize, unit: e.target.value });
+                    if (errors.unit) setErrors({ ...errors, unit: false });
+                  }}
+                  className={`w-full px-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all ${
+                    errors.unit 
+                      ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                      : 'border-border-main focus:border-primary'
+                  }`}
                   placeholder="e.g. piece, plate, kg"
                 />
+                {errors.unit && <p className="text-[10px] font-bold text-primary mt-1">Base Unit is required</p>}
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-text-secondary">Multiplier Value</label>
+                <label className={`text-sm font-semibold ${errors.value ? 'text-primary' : 'text-text-secondary'}`}>Multiplier Value</label>
                 <input
                   type="number"
                   value={currentSize.value === '' ? '' : currentSize.value}
                   onChange={(e) => {
                     const val = e.target.value;
                     setCurrentSize({ ...currentSize, value: val === '' ? '' : parseFloat(val) });
+                    if (errors.value) setErrors({ ...errors, value: false });
                   }}
-                  className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all"
+                  className={`w-full px-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all ${
+                    errors.value 
+                      ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                      : 'border-border-main focus:border-primary'
+                  }`}
                   placeholder="e.g. 1, 2, 4, 10"
                 />
+                {errors.value && <p className="text-[10px] font-bold text-primary mt-1">Value is required</p>}
                 <p className="text-[10px] text-text-muted italic">* How many base units this size contains</p>
               </div>
 

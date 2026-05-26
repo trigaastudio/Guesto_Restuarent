@@ -7,7 +7,10 @@ import mongoose from 'mongoose';
 class DashboardService {
   async getDashboardStats() {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    if (today.getHours() < 5) {
+      today.setDate(today.getDate() - 1);
+    }
+    today.setHours(5, 0, 0, 0);
 
     const [
       totalRevenueData,
@@ -52,8 +55,8 @@ class DashboardService {
         }
       ]),
 
-      // 3. Total Orders
-      Order.countDocuments(),
+      // 3. Today Orders
+      Order.countDocuments({ createdAt: { $gte: today } }),
 
       // 4. Total Customers
       User.countDocuments({ role: 'user' }),

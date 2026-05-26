@@ -154,7 +154,7 @@ const StockSection = ({ refreshKey }) => {
       <>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead className="bg-background-muted/50 text-text-secondary uppercase text-[10px] font-bold tracking-widest border-b border-border-light">
+            <thead className="bg-background-muted text-text-muted text-[10px] font-black uppercase tracking-[0.2em] border-b border-border-light">
               <tr>
                 <th className="px-2 py-4 w-12 text-center">#</th>
                 <th className="px-3 py-4">Category</th>
@@ -175,7 +175,7 @@ const StockSection = ({ refreshKey }) => {
                 </tr>
               ) : (
                 paginated.map((category, index) => (
-                  <tr key={category._id} className="hover:bg-background-muted/30 transition-colors">
+                  <tr key={category._id} className="group hover:bg-primary/5 transition-colors duration-300">
                     <td className="px-2 py-4 text-center font-medium text-text-muted">{(currentPage - 1) * itemsPerPage + index + 1}</td>
                     <td className="px-3 py-4 font-bold text-text-primary">{category.name}</td>
                     <td className="px-3 py-4 text-center">
@@ -185,14 +185,14 @@ const StockSection = ({ refreshKey }) => {
                             <span className="font-bold text-text-primary text-sm">{category.totalStock}</span>
                             <button
                               onClick={() => handleUpdateCategoryStock(category)}
-                              className="p-1.5 text-primary hover:bg-primary/10 rounded transition-colors"
+                              className="p-1.5 text-primary hover:bg-primary/10 rounded-xl transition-all group-hover:scale-110"
                               title="Edit Stock"
                             >
                               <Edit2 size={16} />
                             </button>
                             <button
                               onClick={() => handleDeleteCategoryStock(category)}
-                              className="p-1.5 text-status-unavailable hover:bg-status-off/10 rounded transition-colors"
+                              className="p-1.5 text-status-unavailable hover:bg-status-off/10 rounded-xl transition-all group-hover:scale-110"
                               title="Reset Stock"
                             >
                               <Trash2 size={16} />
@@ -201,7 +201,7 @@ const StockSection = ({ refreshKey }) => {
                         ) : (
                           <button
                             onClick={() => handleUpdateCategoryStock(category)}
-                            className="flex items-center space-x-1 px-3 py-1.5 bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white rounded-lg transition-colors text-xs font-bold"
+                            className="flex items-center space-x-1 px-4 py-2 bg-primary text-white hover:bg-primary-dark rounded-xl transition-all hover:scale-105 shadow-lg shadow-primary/30 text-[10px] font-black tracking-widest uppercase"
                             title="Add Stock"
                           >
                             <Plus size={14} />
@@ -212,11 +212,11 @@ const StockSection = ({ refreshKey }) => {
                     </td>
                     <td className="px-3 py-4 text-center">
                       {category.stockactive ? (
-                        <span className="px-2 py-1 bg-primary/10 text-primary border border-primary/20 rounded text-[10px] font-black uppercase">
+                        <span className="px-3 py-1.5 bg-status-available/10 text-status-available border border-status-available/20 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm">
                           Active
                         </span>
                       ) : (
-                        <span className="px-2 py-1 bg-status-off/10 text-status-unavailable border border-status-off/20 rounded text-[10px] font-black uppercase">
+                        <span className="px-3 py-1.5 bg-status-unavailable/10 text-status-unavailable border border-status-unavailable/20 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm">
                           Inactive
                         </span>
                       )}
@@ -245,7 +245,7 @@ const StockSection = ({ refreshKey }) => {
       <>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead className="bg-background-muted/50 text-text-secondary uppercase text-[10px] font-bold tracking-widest border-b border-border-light">
+            <thead className="bg-background-muted text-text-muted text-[10px] font-black uppercase tracking-[0.2em] border-b border-border-light">
               <tr>
                 <th className="px-2 py-4 w-12 text-center">#</th>
                 <th className="px-3 py-4">Menu Item</th>
@@ -268,11 +268,11 @@ const StockSection = ({ refreshKey }) => {
                 paginated.map((menu, index) => {
                   const catStockActive = menu.category?.stockactive;
                   return (
-                    <tr key={menu._id} className="hover:bg-background-muted/30 transition-colors">
+                    <tr key={menu._id} className="group hover:bg-primary/5 transition-colors duration-300">
                       <td className="px-2 py-4 text-center font-medium text-text-muted">{(currentPage - 1) * itemsPerPage + index + 1}</td>
                       <td className="px-3 py-4 font-bold text-text-primary">{menu.name}</td>
                       <td className="px-3 py-4">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary bg-background-muted/80 px-2 py-0.5 rounded border border-border-light">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary bg-background-card px-3 py-1 rounded-full border border-border/60 shadow-sm">
                           {menu.category?.name || 'Uncategorized'}
                         </span>
                       </td>
@@ -281,7 +281,7 @@ const StockSection = ({ refreshKey }) => {
                           {catStockActive ? (
                             <div className="flex flex-col items-center">
                               <span className="text-sm font-black text-text-primary mb-1">{menu.category?.totalStock || 0}</span>
-                              <span className="text-[8px] font-black text-primary uppercase tracking-widest bg-primary/10 px-2 py-1 rounded border border-primary/20">
+                              <span className="text-[8px] font-black text-primary uppercase tracking-widest bg-primary/10 px-3 py-1 rounded-full border border-primary/20 shadow-sm">
                                 Category Managed
                               </span>
                             </div>
@@ -290,26 +290,26 @@ const StockSection = ({ refreshKey }) => {
                               <span className="text-sm font-black text-text-primary">{menu.totalStock}</span>
                               <button
                                 onClick={() => handleUpdateMenuStock(menu)}
-                                className="p-1 text-primary hover:bg-primary/10 rounded transition-colors"
+                                className="p-1.5 text-primary hover:bg-primary/10 rounded-xl transition-all group-hover:scale-110"
                                 title="Edit Stock"
                               >
-                                <Edit2 size={14} />
+                                <Edit2 size={16} />
                               </button>
                               <button
                                 onClick={() => handleDeleteMenuStock(menu)}
-                                className="p-1 text-status-unavailable hover:bg-status-off/10 rounded transition-colors"
+                                className="p-1.5 text-status-unavailable hover:bg-status-off/10 rounded-xl transition-all group-hover:scale-110"
                                 title="Reset Stock"
                               >
-                                <Trash2 size={14} />
+                                <Trash2 size={16} />
                               </button>
                             </div>
                           ) : (
                             <button
                               onClick={() => handleUpdateMenuStock(menu)}
-                              className="flex items-center space-x-1 px-3 py-1.5 bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white rounded-lg transition-colors text-[10px] font-bold"
+                              className="flex items-center space-x-1 px-4 py-2 bg-primary text-white hover:bg-primary-dark rounded-xl transition-all hover:scale-105 shadow-lg shadow-primary/30 text-[10px] font-black tracking-widest uppercase"
                               title="Add Stock"
                             >
-                              <Plus size={12} />
+                              <Plus size={14} />
                               <span>Add Stock</span>
                             </button>
                           )}
@@ -330,46 +330,51 @@ const StockSection = ({ refreshKey }) => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-text-primary">Stock Management</h2>
-          <p className="text-text-secondary text-sm">Manage inventory levels across categories and items</p>
+        <div className="flex items-center space-x-4">
+          <div className="p-3 bg-primary/10 text-primary rounded-2xl shadow-sm border border-primary/20">
+            <Package size={28} />
+          </div>
+          <div>
+            <h2 className="text-3xl font-black text-text-primary tracking-tight">Stock Management</h2>
+            <p className="text-text-secondary text-sm font-medium">Manage inventory levels across categories and items</p>
+          </div>
         </div>
       </div>
 
-      <div className="bg-background-card rounded-2xl border border-border-light shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-border-light bg-background-muted/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-background-card rounded-[2.5rem] border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)] overflow-hidden">
+        <div className="p-6 border-b border-border/40 bg-gradient-to-r from-background-muted/30 to-transparent flex flex-col md:flex-row md:items-center justify-between gap-6">
           
-          <div className="flex items-center space-x-2 p-1 bg-background-muted/50 border border-border-main rounded-xl w-fit">
+          <div className="flex items-center space-x-1 p-1.5 bg-background-muted/50 border border-border-light rounded-[1rem] w-fit shadow-inner">
             <button
               onClick={() => setActiveTab('category')}
-              className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${
+              className={`px-5 py-2 rounded-xl text-sm font-bold transition-all duration-300 ${
                 activeTab === 'category'
-                  ? 'bg-background-card text-primary shadow-sm'
-                  : 'text-text-muted hover:text-text-primary'
+                  ? 'bg-primary text-white shadow-lg shadow-primary/25'
+                  : 'text-text-muted hover:text-text-primary hover:bg-background-card/50'
               }`}
             >
               Category-wise
             </button>
             <button
               onClick={() => setActiveTab('menu')}
-              className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${
+              className={`px-5 py-2 rounded-xl text-sm font-bold transition-all duration-300 ${
                 activeTab === 'menu'
-                  ? 'bg-background-card text-primary shadow-sm'
-                  : 'text-text-muted hover:text-text-primary'
+                  ? 'bg-primary text-white shadow-lg shadow-primary/25'
+                  : 'text-text-muted hover:text-text-primary hover:bg-background-card/50'
               }`}
             >
               Menu-wise
             </button>
           </div>
 
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
+          <div className="relative flex-1 max-w-md group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors" size={20} />
             <input
               type="text"
               placeholder={`Search ${activeTab === 'category' ? 'categories' : 'items'}...`}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-background-card rounded-lg border border-border-main focus:border-primary/50 transition-all outline-none text-sm"
+              className="w-full pl-12 pr-4 py-3 bg-background-card rounded-2xl border border-border-light focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none text-sm font-medium shadow-sm"
             />
           </div>
 
