@@ -48,6 +48,7 @@ import UserManagement from './sections/UserManagement';
 import SettingsSection from './sections/SettingsSection';
 import OfferSection from './sections/OfferSection';
 import SalesSection from './sections/SalesSection';
+import StockSection from './sections/StockSection';
 import Loader from '../../components/Loader/Loader';
 
 const AdminDashboard = () => {
@@ -108,7 +109,15 @@ const AdminDashboard = () => {
     // Stock alerts are now excluded as requested
     socket.off('stockAlert');
 
-    return () => socket.disconnect();
+    const handleDbChange = () => {
+      setRefreshKey(prev => prev + 1);
+    };
+    window.addEventListener('db_change', handleDbChange);
+
+    return () => {
+      socket.disconnect();
+      window.removeEventListener('db_change', handleDbChange);
+    };
   }, []);
 
   const clearNotifications = () => {
@@ -196,7 +205,7 @@ const AdminDashboard = () => {
   const metrics = stats ? [
     { label: 'Today Revenue', value: `₹${stats.metrics.todayRevenue.toLocaleString()}`, description: 'Daily sales', icon: TrendingUp, color: 'text-blue-500' },
     { label: 'Daily Profit', value: `₹${stats.metrics.todayProfit.toLocaleString()}`, description: 'Net earnings today', icon: DollarSign, color: 'text-status-available' },
-    { label: 'Total Orders', value: stats.metrics.totalOrders.toString(), description: 'Order count', icon: ShoppingCart, color: 'text-purple-500' },
+    { label: 'Today Orders', value: stats.metrics.totalOrders.toString(), description: "Today's count", icon: ShoppingCart, color: 'text-purple-500' },
     { label: 'Customers', value: stats.metrics.totalCustomers.toString(), description: 'Unique customers', icon: Users, color: 'text-amber-500' },
     { label: 'Menu Items', value: stats.metrics.totalMenuItems.toString(), description: 'Catalogue size', icon: BookOpen, color: 'text-pink-500' },
     { label: 'Avg Order Value', value: `₹${stats.metrics.avgOrderValue.toFixed(2)}`, description: 'Average spend', icon: BarChart3, color: 'text-orange-500' },
@@ -291,6 +300,7 @@ const AdminDashboard = () => {
               {
                 group: 'Inventory',
                 items: [
+                  { name: 'Stock', icon: Package },
                   { name: 'Categories', icon: Filter },
                   { name: 'Menu', icon: UtensilsCrossed },
                   { name: 'Tables', icon: Layers },
@@ -536,13 +546,13 @@ const AdminDashboard = () => {
                           <div className="p-2.5 bg-purple-500/10 text-purple-500 rounded-xl group-hover:scale-110 transition-transform">
                             <ShoppingCart size={18} />
                           </div>
-                          <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Total Orders</span>
+                          <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Today Orders</span>
                         </div>
                         <ChevronRight size={16} className="text-text-muted group-hover:translate-x-1 transition-transform" />
                       </div>
                       <div className="flex items-end space-x-3">
                         <span className="text-4xl font-black text-text-primary tracking-tighter">{stats.metrics.totalOrders}</span>
-                        <div className="text-[9px] font-black text-text-muted uppercase mb-1 opacity-60">All Time</div>
+                        <div className="text-[9px] font-black text-text-muted uppercase mb-1 opacity-60">Today</div>
                       </div>
                       <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-125" />
                     </div>
@@ -674,7 +684,7 @@ const AdminDashboard = () => {
                         <div className="space-y-6">
                           {[
                             { label: 'Number of Customers', value: stats.metrics.totalCustomers.toLocaleString(), icon: Users, color: 'bg-purple-500/10 text-purple-500', action: () => handleTabChange('Users') },
-                            { label: 'Total Orders', value: stats.metrics.totalOrders.toLocaleString(), icon: ShoppingCart, color: 'bg-blue-500/10 text-blue-500', action: () => navigateWithFilter('Orders', 'history') },
+                            { label: 'Today Orders', value: stats.metrics.totalOrders.toLocaleString(), icon: ShoppingCart, color: 'bg-blue-500/10 text-blue-500', action: () => navigateWithFilter('Orders', 'history') },
                             { label: 'Average Order Values', value: `₹ ${stats.metrics.avgOrderValue.toFixed(2)}`, icon: BarChart3, color: 'bg-primary/10 text-primary', action: () => navigateWithFilter('Orders', 'history') },
                           ].map((item) => (
                             <div key={item.label} className="group cursor-pointer active:scale-95" onClick={item.action}>
@@ -885,9 +895,10 @@ const AdminDashboard = () => {
           )}
 
           {activeTab === 'Orders' && <OrderSection key={`order-${refreshKey}`} />}
-          {activeTab === 'Categories' && <CategorySection key={`cat-${refreshKey}`} />}
+          {activeTab === 'Categories' && <CategorySection refreshKey={refreshKey} />}
+          {activeTab === 'Stock' && <StockSection refreshKey={refreshKey} />}
           {activeTab === 'Menu' && <MenuSection key={`menu-${refreshKey}`} />}
-          {activeTab === 'Tables' && <TableSection key={`tables-${refreshKey}`} />}
+          {activeTab === 'Tables' && <TableSection refreshKey={refreshKey} />}
 
           {activeTab === 'Staff' && <StaffManagement key={`staff-${refreshKey}`} />}
           {activeTab === 'Users' && <UserManagement key={`users-${refreshKey}`} />}

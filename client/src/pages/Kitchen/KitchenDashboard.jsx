@@ -153,11 +153,20 @@ const KitchenDashboard = () => {
       fetchOrders(true);
     });
 
+    const handleDbChange = (event) => {
+      const data = event.detail;
+      if (['Order', 'orders'].includes(data.collection)) {
+        fetchOrders(true);
+      }
+    };
+    window.addEventListener('db_change', handleDbChange);
+
     // Timer for order age
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
 
     return () => {
       if (socketRef.current) socketRef.current.disconnect();
+      window.removeEventListener('db_change', handleDbChange);
       clearInterval(timer);
     };
   }, []);

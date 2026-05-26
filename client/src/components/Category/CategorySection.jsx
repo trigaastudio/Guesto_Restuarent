@@ -13,7 +13,7 @@ const CategorySection = React.memo(({ categories, selectedCategory, handleCatego
   };
 
   return (
-    <section className="bg-background pt-6 md:pt-12 pb-4 w-full">
+    <section className="bg-background pt-0 md:pt-2 pb-4 w-full">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-center justify-between mb-6">
           <div className="space-y-1">
@@ -47,21 +47,17 @@ const CategorySection = React.memo(({ categories, selectedCategory, handleCatego
             {/* "All" Category button */}
             <button
               onClick={() => handleCategoryChange('all')}
-              className={`flex-shrink-0 group relative flex flex-col items-center gap-2 p-2 md:p-4 rounded-[1.5rem] md:rounded-[2rem] transition-all duration-500 border-2 ${
-                selectedCategory === 'all'
-                  ? 'bg-primary border-primary shadow-2xl shadow-primary/30 scale-105'
-                  : 'bg-transparent border-border/40 text-text-primary hover:border-primary/40'
-              }`}
+              className="flex-shrink-0 group relative flex flex-col items-center gap-3 w-20 md:w-28 transition-all duration-500"
             >
-              <div className={`w-12 h-12 md:w-16 md:h-16 shrink-0 aspect-square rounded-full flex items-center justify-center transition-all duration-500 ${
+              <div className={`w-16 h-16 md:w-24 md:h-24 shrink-0 rounded-full flex items-center justify-center transition-all duration-500 ${
                 selectedCategory === 'all' 
-                  ? 'bg-white/20 scale-110' 
-                  : 'bg-background-muted shadow-inner group-hover:scale-110'
+                  ? 'bg-primary shadow-[0_10px_30px_rgba(185,28,28,0.4)] scale-105' 
+                  : 'bg-background-card shadow-sm hover:shadow-md hover:-translate-y-1'
               }`}>
-                <LayoutGrid size={18} className={`md:size-5 ${selectedCategory === 'all' ? 'text-white' : 'text-primary'}`} />
+                <LayoutGrid size={24} className={`md:size-8 ${selectedCategory === 'all' ? 'text-white' : 'text-primary'}`} />
               </div>
-              <span className={`text-[8px] md:text-[10px] font-black tracking-widest uppercase transition-colors duration-300 ${
-                selectedCategory === 'all' ? 'text-white' : 'text-text-primary'
+              <span className={`text-[9px] md:text-[10px] font-black tracking-widest uppercase text-center transition-colors duration-300 ${
+                selectedCategory === 'all' ? 'text-primary' : 'text-text-primary group-hover:text-primary'
               }`}>
                 All Dishes
               </span>
@@ -71,25 +67,21 @@ const CategorySection = React.memo(({ categories, selectedCategory, handleCatego
               <button
                 key={category._id}
                 onClick={() => handleCategoryChange(category._id)}
-                className={`flex-shrink-0 group relative flex flex-col items-center gap-2 p-2 md:p-4 rounded-[1.5rem] md:rounded-[2rem] transition-all duration-500 border-2 ${
-                  selectedCategory === category._id
-                    ? 'bg-primary border-primary shadow-2xl shadow-primary/30 scale-105'
-                    : 'bg-transparent border-border/40 text-text-primary hover:border-primary/40'
-                }`}
+                className="flex-shrink-0 group relative flex flex-col items-center gap-3 w-20 md:w-28 transition-all duration-500"
               >
-                <div className={`w-12 h-12 md:w-16 md:h-16 shrink-0 aspect-square rounded-full flex items-center justify-center transition-all duration-500 ${
+                <div className={`w-16 h-16 md:w-24 md:h-24 shrink-0 rounded-full flex items-center justify-center transition-all duration-500 ${
                   selectedCategory === category._id 
-                    ? 'bg-white/20 scale-110 rotate-12' 
-                    : 'bg-background-muted shadow-inner group-hover:scale-110'
+                    ? 'bg-primary shadow-[0_10px_30px_rgba(185,28,28,0.4)] scale-105' 
+                    : 'bg-background-card shadow-sm hover:shadow-md hover:-translate-y-1'
                 }`}>
                   <img 
                     src={category.image || '/placeholder-category.png'} 
                     alt={category.name}
-                    className="w-7 h-7 md:w-10 md:h-10 object-contain"
+                    className={`w-10 h-10 md:w-14 md:h-14 object-contain transition-transform duration-500 ${selectedCategory === category._id ? 'scale-110' : 'group-hover:scale-110'}`}
                   />
                 </div>
-                <span className={`text-[8px] md:text-[10px] font-black tracking-widest uppercase transition-colors duration-300 ${
-                  selectedCategory === category._id ? 'text-white' : 'text-text-primary'
+                <span className={`text-[9px] md:text-[10px] font-black tracking-widest uppercase text-center transition-colors duration-300 line-clamp-1 w-full px-1 ${
+                  selectedCategory === category._id ? 'text-primary' : 'text-text-primary group-hover:text-primary'
                 }`}>
                   {category.name}
                 </span>

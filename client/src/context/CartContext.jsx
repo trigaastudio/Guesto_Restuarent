@@ -123,8 +123,13 @@ export const CartProvider = ({ children }) => {
         const currentQtyInCart = cartItems
           .filter(c => c.menuItemId === menuItem._id && c.selectedSize === selectedSize)
           .reduce((acc, c) => acc + c.quantity, 0);
-          
-        if (currentQtyInCart + quantity > availableStock) {
+
+        const variants = Array.isArray(menuItem.variants) ? menuItem.variants : (Array.isArray(menuItem.sizes) ? menuItem.sizes : []);
+      const variant = variants.find(v => v.size === selectedSize);
+      const multiplier = variant && variant.stockValue ? variant.stockValue : 1;
+      const effectiveStockQty = Math.floor(availableStock / multiplier);
+
+      if (currentQtyInCart + quantity > effectiveStockQty) {
           showToast('error', `Cannot add ${quantity} more. Only ${availableStock} left in stock.`);
           return;
         }
@@ -174,8 +179,13 @@ export const CartProvider = ({ children }) => {
         .filter(c => c.menuItemId === targetCartItem.menuItemId && c._id !== id)
         .reduce((acc, c) => acc + c.quantity, 0);
 
-      if (quantity + otherVariationsQty > availableStock) {
-        showToast('error', `Cannot increase quantity. Only ${availableStock} left in stock.`);
+      const variants = Array.isArray(targetCartItem.variants) ? targetCartItem.variants : (Array.isArray(targetCartItem.sizes) ? targetCartItem.sizes : []);
+      const variant = variants.find(v => v.size === targetCartItem.selectedSize);
+      const multiplier = variant && variant.stockValue ? variant.stockValue : 1;
+      const effectiveStockQty = Math.floor(availableStock / multiplier);
+
+      if (quantity + otherVariationsQty > effectiveStockQty) {
+        showToast('error', `Cannot increase quantity. Only ${effectiveStockQty} left in stock.`);
         return; // Reject update
       }
     }

@@ -7,7 +7,10 @@ import mongoose from 'mongoose';
 class DashboardService {
   async getDashboardStats() {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    if (today.getHours() < 5) {
+      today.setDate(today.getDate() - 1);
+    }
+    today.setHours(5, 0, 0, 0);
 
     const [
       totalRevenueData,
@@ -35,21 +38,25 @@ class DashboardService {
       // 2. Today Revenue & Profit
       Order.aggregate([
         { $match: { orderStatus: { $ne: 'cancelled' }, createdAt: { $gte: today } } },
-        { 
-          $group: { 
-            _id: null, 
+        {
+          $group: {
+            _id: null,
             total: { $sum: '$totalAmount' },
-            totalCost: { $sum: { $reduce: {
-              input: '$items',
-              initialValue: 0,
-              in: { $add: ['$$value', { $multiply: ['$$this.quantity', '$$this.costPrice'] }] }
-            }}}
-          } 
+            totalCost: {
+              $sum: {
+                $reduce: {
+                  input: '$items',
+                  initialValue: 0,
+                  in: { $add: ['$$value', { $multiply: ['$$this.quantity', '$$this.costPrice'] }] }
+                }
+              }
+            }
+          }
         }
       ]),
 
-      // 3. Total Orders
-      Order.countDocuments(),
+      // 3. Today Orders
+      Order.countDocuments({ createdAt: { $gte: today } }),
 
       // 4. Total Customers
       User.countDocuments({ role: 'user' }),
@@ -65,11 +72,13 @@ class DashboardService {
 
       // 8. Table Stats
       Table.aggregate([
-        { $group: { 
-          _id: null, 
-          total: { $sum: 1 }, 
-          available: { $sum: { $cond: [{ $eq: ['$status', 'empty'] }, 1, 0] } } 
-        } }
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            available: { $sum: { $cond: [{ $eq: ['$status', 'empty'] }, 1, 0] } }
+          }
+        }
       ]),
 
       // 9. Recent Orders
@@ -82,12 +91,14 @@ class DashboardService {
       Order.aggregate([
         { $match: { orderStatus: { $ne: 'cancelled' } } },
         { $unwind: '$items' },
-        { $group: { 
-          _id: '$items.menuItem', 
-          name: { $first: '$items.name' },
-          orders: { $sum: '$items.quantity' },
-          unitPrice: { $first: '$items.price' }
-        } },
+        {
+          $group: {
+            _id: '$items.menuItem',
+            name: { $first: '$items.name' },
+            orders: { $sum: '$items.quantity' },
+            unitPrice: { $first: '$items.price' }
+          }
+        },
         {
           $lookup: {
             from: 'menus',
@@ -97,22 +108,33 @@ class DashboardService {
           }
         },
         { $unwind: { path: '$menuInfo', preserveNullAndEmptyArrays: true } },
-        { $project: {
-          _id: 1,
-          name: { $ifNull: ['$name', '$menuInfo.name'] },
-          orders: 1,
-          image: '$menuInfo.image',
-          price: { $ifNull: ['$menuInfo.price', '$unitPrice'] },
-          offerPrice: '$menuInfo.offerPrice',
-          variants: '$menuInfo.variants',
-          description: '$menuInfo.description',
-          foodType: '$menuInfo.foodType',
-          isCombo: '$menuInfo.isCombo',
-          comboItems: '$menuInfo.comboItems',
-          totalStock: '$menuInfo.totalStock',
-          discountPercentage: '$menuInfo.discountPercentage',
-          category: '$menuInfo.category'
-        } },
+        {
+          $lookup: {
+            from: 'categories',
+            localField: 'menuInfo.category',
+            foreignField: '_id',
+            as: 'categoryInfo'
+          }
+        },
+        { $unwind: { path: '$categoryInfo', preserveNullAndEmptyArrays: true } },
+        {
+          $project: {
+            _id: 1,
+            name: { $ifNull: ['$name', '$menuInfo.name'] },
+            orders: 1,
+            image: '$menuInfo.image',
+            price: { $ifNull: ['$menuInfo.price', '$unitPrice'] },
+            offerPrice: '$menuInfo.offerPrice',
+            variants: '$menuInfo.variants',
+            description: '$menuInfo.description',
+            foodType: '$menuInfo.foodType',
+            isCombo: '$menuInfo.isCombo',
+            comboItems: '$menuInfo.comboItems',
+            totalStock: '$menuInfo.totalStock',
+            discountPercentage: '$menuInfo.discountPercentage',
+            category: '$categoryInfo'
+          }
+        },
         { $match: { name: { $ne: null } } },
         { $sort: { orders: -1 } },
         { $limit: 5 }
@@ -125,7 +147,7 @@ class DashboardService {
       Menu.aggregate([
         { $lookup: { from: 'categories', localField: 'category', foreignField: '_id', as: 'cat' } },
         { $unwind: { path: '$cat', preserveNullAndEmptyArrays: true } },
-        { $addFields: { effectiveStock: { $cond: [ { $eq: ['$cat.isSharedStock', true] }, { $ifNull: ['$cat.totalStock', 0] }, { $ifNull: ['$totalStock', 0] } ] } } },
+        { $addFields: { effectiveStock: { $cond: [{ $eq: ['$cat.isSharedStock', true] }, { $ifNull: ['$cat.totalStock', 0] }, { $ifNull: ['$totalStock', 0] }] } } },
         { $match: { effectiveStock: { $lte: 0 } } },
         { $count: 'count' }
       ]),
@@ -134,7 +156,7 @@ class DashboardService {
       Menu.aggregate([
         { $lookup: { from: 'categories', localField: 'category', foreignField: '_id', as: 'cat' } },
         { $unwind: { path: '$cat', preserveNullAndEmptyArrays: true } },
-        { $addFields: { effectiveStock: { $cond: [ { $eq: ['$cat.isSharedStock', true] }, { $ifNull: ['$cat.totalStock', 0] }, { $ifNull: ['$totalStock', 0] } ] } } },
+        { $addFields: { effectiveStock: { $cond: [{ $eq: ['$cat.isSharedStock', true] }, { $ifNull: ['$cat.totalStock', 0] }, { $ifNull: ['$totalStock', 0] }] } } },
         { $match: { effectiveStock: { $gt: 0, $lte: 10 } } },
         { $count: 'count' }
       ]),
@@ -143,7 +165,7 @@ class DashboardService {
       Menu.aggregate([
         { $lookup: { from: 'categories', localField: 'category', foreignField: '_id', as: 'cat' } },
         { $unwind: { path: '$cat', preserveNullAndEmptyArrays: true } },
-        { $addFields: { effectiveStock: { $cond: [ { $eq: ['$cat.isSharedStock', true] }, { $ifNull: ['$cat.totalStock', 0] }, { $ifNull: ['$totalStock', 0] } ] } } },
+        { $addFields: { effectiveStock: { $cond: [{ $eq: ['$cat.isSharedStock', true] }, { $ifNull: ['$cat.totalStock', 0] }, { $ifNull: ['$totalStock', 0] }] } } },
         { $match: { effectiveStock: { $lte: 10 } } },
         { $sort: { effectiveStock: 1 } },
         { $limit: 5 },
@@ -197,11 +219,11 @@ class DashboardService {
     sevenDaysAgo.setHours(0, 0, 0, 0);
 
     const trend = await Order.aggregate([
-      { 
-        $match: { 
-          orderStatus: { $ne: 'cancelled' }, 
-          createdAt: { $gte: sevenDaysAgo } 
-        } 
+      {
+        $match: {
+          orderStatus: { $ne: 'cancelled' },
+          createdAt: { $gte: sevenDaysAgo }
+        }
       },
       {
         $group: {
@@ -219,7 +241,7 @@ class DashboardService {
       date.setDate(date.getDate() + i);
       const dateStr = date.toISOString().split('T')[0];
       const dayData = trend.find(t => t._id === dateStr);
-      
+
       fullTrend.push({
         date: dateStr,
         day: date.toLocaleDateString('en-US', { weekday: 'short' }),
@@ -236,11 +258,11 @@ class DashboardService {
     firstDayOfMonth.setHours(0, 0, 0, 0);
 
     const trend = await Order.aggregate([
-      { 
-        $match: { 
-          orderStatus: { $ne: 'cancelled' }, 
-          createdAt: { $gte: firstDayOfMonth } 
-        } 
+      {
+        $match: {
+          orderStatus: { $ne: 'cancelled' },
+          createdAt: { $gte: firstDayOfMonth }
+        }
       },
       {
         $group: {
@@ -260,7 +282,7 @@ class DashboardService {
       const date = new Date(today.getFullYear(), today.getMonth(), i);
       const dateStr = date.toISOString().split('T')[0];
       const dayData = trend.find(t => t._id === dateStr);
-      
+
       fullTrend.push({
         date: dateStr,
         day: i.toString(),

@@ -69,8 +69,18 @@ const WaiterDashboard = () => {
       fetchTables(true);
     });
 
+    const handleDbChange = (event) => {
+      const data = event.detail;
+      // Refresh on table or order changes
+      if (['Table', 'tables', 'Order', 'orders'].includes(data.collection)) {
+        fetchTables(true);
+      }
+    };
+    window.addEventListener('db_change', handleDbChange);
+
     return () => {
       if (socketRef.current) socketRef.current.disconnect();
+      window.removeEventListener('db_change', handleDbChange);
     };
   }, []);
 

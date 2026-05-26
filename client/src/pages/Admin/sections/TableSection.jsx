@@ -5,7 +5,7 @@ import Loader from '../../../components/Loader/Loader';
 import { showToast } from '../../../utils/sweetAlert';
 import Swal from 'sweetalert2';
 
-const TableSection = () => {
+const TableSection = ({ refreshKey }) => {
   const [tables, setTables] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -19,7 +19,7 @@ const TableSection = () => {
   const fetchTables = async (silent = false) => {
     if (!silent) setIsLoading(true);
     try {
-      const response = await api.get('/api/tables');
+      const response = await api.get('/api/tables?all=true');
       setTables(response.data);
     } catch (error) {
       showToast('error', error.response?.data?.message || 'Failed to fetch tables');
@@ -29,8 +29,8 @@ const TableSection = () => {
   };
 
   useEffect(() => {
-    fetchTables();
-  }, []);
+    fetchTables(refreshKey > 0);
+  }, [refreshKey]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -81,6 +81,31 @@ const TableSection = () => {
       fetchTables(true);
     } catch (error) {
       showToast('error', error.response?.data?.message || 'Action failed');
+    }
+  };
+
+  const handleToggleActive = async (table) => {
+    const newIsActive = table.isActive === false ? true : false;
+    
+    // Optimistic UI update
+    setTables(prevTables => 
+      prevTables.map(t => 
+        t._id === table._id ? { ...t, isActive: newIsActive } : t
+      )
+    );
+
+    try {
+      await api.put(`/api/tables/${table._id}`, {
+        isActive: newIsActive
+      });
+    } catch (error) {
+      // Revert on error
+      setTables(prevTables => 
+        prevTables.map(t => 
+          t._id === table._id ? { ...t, isActive: table.isActive } : t
+        )
+      );
+      showToast('error', error.response?.data?.message || 'Failed to update table status');
     }
   };
 
@@ -211,13 +236,28 @@ const TableSection = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center space-x-1">
-                        <button onClick={() => openModal(table)} className="p-2 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all" title="Edit Table">
-                          <Edit2 size={18} />
+                      <div className="flex items-center justify-center space-x-4">
+                        <button
+                          onClick={() => handleToggleActive(table)}
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
+                            table.isActive !== false ? 'bg-status-available border border-status-on/20' : 'bg-background-muted/80 border border-border-main'
+                          }`}
+                          title={table.isActive !== false ? "Active (Shown to waiters)" : "Inactive (Hidden from waiters)"}
+                        >
+                          <span
+                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform ${
+                              table.isActive !== false ? 'translate-x-4' : 'translate-x-1'
+                            }`}
+                          />
                         </button>
-                        <button onClick={() => handleDelete(table._id)} className="p-2 hover:bg-status-off/10 text-text-secondary hover:text-status-unavailable rounded-lg transition-all" title="Deactivate Table">
-                          <Trash2 size={18} />
-                        </button>
+                        <div className="flex items-center space-x-1">
+                          <button onClick={() => openModal(table)} className="p-2 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all" title="Edit Table">
+                            <Edit2 size={18} />
+                          </button>
+                          <button onClick={() => handleDelete(table._id)} className="p-2 hover:bg-status-off/10 text-text-secondary hover:text-status-unavailable rounded-lg transition-all" title="Delete Table">
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
                       </div>
                     </td>
                   </tr>

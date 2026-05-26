@@ -73,6 +73,7 @@ const orderSchema = new mongoose.Schema({
   }],
 
   // Customer & Delivery Info
+  assignedDeliveryBoy: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff' },
   customerDetails: {
     name: { type: String, default: "Walk-in" },
     phone: String,

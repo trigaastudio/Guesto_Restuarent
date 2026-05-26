@@ -343,9 +343,16 @@ const OrdersPage = () => {
 
                           {/* 2. Order Info & Items */}
                           <div className="flex-1 min-w-0 space-y-1">
-                            <h4 className="text-sm md:text-base font-black text-text-primary tracking-tight truncate capitalize group-hover:text-primary transition-colors">
-                              {order.items.map(item => item.name || item.menuItem?.name).join(', ')}
-                            </h4>
+                            <div className="space-y-0.5">
+                              <h4 className="text-sm md:text-base font-black text-text-primary tracking-tight truncate capitalize group-hover:text-primary transition-colors">
+                                {order.items[0]?.name || order.items[0]?.menuItem?.name}
+                              </h4>
+                              {order.items.length > 1 && (
+                                <p className="text-[11px] font-bold text-text-muted hover:text-primary transition-colors cursor-pointer">
+                                  + {order.items.length - 1} more item{order.items.length - 1 > 1 ? 's' : ''}
+                                </p>
+                              )}
+                            </div>
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                               <p className="text-[11px] font-medium text-text-muted">
                                 Order ID: <span className="font-bold text-text-primary uppercase tracking-wider">{order.orderNumber || order._id.slice(-8).toUpperCase()}</span>

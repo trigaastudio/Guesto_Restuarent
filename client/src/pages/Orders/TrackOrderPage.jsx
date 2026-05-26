@@ -23,6 +23,7 @@ const TrackOrderPage = () => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [showAllItems, setShowAllItems] = useState(false);
   const dropdownRef = useRef(null);
   const user = JSON.parse(localStorage.getItem('user') || localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || '{}');
 
@@ -301,13 +302,31 @@ const TrackOrderPage = () => {
                         <div className={`flex-1 -mt-1 ${isActive ? `${step.bg} -mx-4 px-4 py-4 rounded-xl border border-border/10 shadow-sm` : ''}`}>
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
                             <h3 className={`text-sm font-bold ${isCompleted ? 'text-text-primary' : 'text-text-muted opacity-60'}`}>
-                              {step.label}, <span className="font-semibold">{index === 0 ? orderDate : 'Today'}</span>
+                              {step.label}{index === 0 ? `, ${orderDate}` : ''}
                             </h3>
                           </div>
                           <p className={`text-[11px] font-semibold leading-relaxed ${isCompleted ? 'text-text-muted' : 'text-text-muted/40'}`}>
                             {step.description}
                           </p>
-
+                          {step.id === 'out-for-delivery' && order.assignedDeliveryBoy && isActive && (
+                            <div className="mt-4 pt-3 border-t border-border/10">
+                              <span className="block text-[9px] font-black uppercase tracking-widest text-primary mb-2">Assigned Delivery Partner</span>
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                                  <Truck size={12} className="text-primary" />
+                                </div>
+                                <span className="text-[11px] font-bold text-text-primary">{order.assignedDeliveryBoy.name}</span>
+                                {order.assignedDeliveryBoy.phoneNumber && (
+                                  <>
+                                    <span className="text-border/40 text-[8px]">•</span>
+                                    <a href={`tel:${order.assignedDeliveryBoy.phoneNumber}`} className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1">
+                                      <Phone size={10} /> {order.assignedDeliveryBoy.phoneNumber}
+                                    </a>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -390,7 +409,7 @@ const TrackOrderPage = () => {
             <div className="bg-background-card rounded-2xl border border-border/60 shadow-sm p-6 relative overflow-hidden">
               <h2 className="text-sm font-bold text-text-primary mb-4 relative z-10">Items Ordered</h2>
               <div className="space-y-4 relative z-10 divide-y divide-border/20">
-                {order.items.map((item, idx) => (
+                {(showAllItems ? order.items : order.items.slice(0, 1)).map((item, idx) => (
                   <div key={idx} className={`${idx !== 0 ? 'pt-4' : ''}`}>
                     <div className="flex justify-between items-start gap-4">
                       <div className="min-w-0 flex-1">
@@ -439,6 +458,14 @@ const TrackOrderPage = () => {
                   </div>
                 ))}
               </div>
+              {order.items.length > 1 && (
+                <button
+                  onClick={() => setShowAllItems(!showAllItems)}
+                  className="w-full mt-4 py-3 bg-background-muted hover:bg-border/20 rounded-xl text-[10px] font-black text-text-primary uppercase tracking-widest transition-colors flex items-center justify-center gap-2 relative z-10"
+                >
+                  {showAllItems ? 'View Less' : `View ${order.items.length - 1} More Items`}
+                </button>
+              )}
             </div>
 
             {/* Price Details Card */}

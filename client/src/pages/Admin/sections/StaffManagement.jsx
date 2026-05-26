@@ -17,6 +17,7 @@ const StaffManagement = () => {
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [errors, setErrors] = useState({});
 
   const [currentStaff, setCurrentStaff] = useState({
     name: '',
@@ -75,9 +76,21 @@ const StaffManagement = () => {
   };
 
   const handleSave = async () => {
-    if (!currentStaff.name || !currentStaff.employeeId || (!isEditing && !currentStaff.password)) {
+    const newErrors = {};
+    if (!currentStaff.name || !currentStaff.name.trim()) newErrors.name = true;
+    if (!currentStaff.employeeId || !currentStaff.employeeId.trim()) newErrors.employeeId = true;
+    if (!isEditing && (!currentStaff.password || !currentStaff.password.trim()) && currentStaff.role !== 'delivery') newErrors.password = true;
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       showToast('warning', 'Please fill all required fields');
       return;
+    }
+    setErrors({});
+
+    const payload = { ...currentStaff };
+    if (!isEditing && payload.role === 'delivery' && !payload.password) {
+      payload.password = 'delivery123'; // Default password for delivery staff
     }
 
     try {
@@ -85,11 +98,11 @@ const StaffManagement = () => {
         // If password is empty, don't update it
         const updateData = { ...currentStaff };
         if (!updateData.password) delete updateData.password;
-        
+
         await api.put(`/api/staff/${currentStaff._id}`, updateData);
         showToast('success', 'Staff updated successfully');
       } else {
-        await api.post('/api/staff', currentStaff);
+        await api.post('/api/staff', payload);
         showToast('success', 'Staff created successfully');
       }
       fetchStaff(true);
@@ -195,15 +208,15 @@ const StaffManagement = () => {
               <option value="kitchen">Kitchen</option>
               <option value="waiter">Waiter</option>
               <option value="cashier">Cashier</option>
+              <option value="delivery">Delivery Boy</option>
             </select>
             <button
               onClick={() => { setSearchTerm(''); setRoleFilter('all'); }}
               disabled={!searchTerm && roleFilter === 'all'}
-              className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${
-                !searchTerm && roleFilter === 'all'
+              className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${!searchTerm && roleFilter === 'all'
                   ? 'bg-background-muted/50 text-text-muted/30 border-border-light cursor-not-allowed'
                   : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white'
-              }`}
+                }`}
               title="Clear All Filters"
             >
               <RotateCcw size={12} />
@@ -258,11 +271,11 @@ const StaffManagement = () => {
                       </div>
                     </td>
                     <td className="px-3 py-4">
-                      <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
-                        staff.role === 'kitchen' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                        staff.role === 'waiter' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                        'bg-purple-500/10 text-purple-500 border-purple-500/20'
-                      }`}>
+                      <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${staff.role === 'kitchen' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                          staff.role === 'waiter' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                            staff.role === 'delivery' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
+                              'bg-purple-500/10 text-purple-500 border-purple-500/20'
+                        }`}>
                         {staff.role}
                       </span>
                     </td>
@@ -275,14 +288,12 @@ const StaffManagement = () => {
                     <td className="px-3 py-4 text-center">
                       <button
                         onClick={() => handleToggleStatus(staff)}
-                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
-                          staff.isActive ? 'bg-primary' : 'bg-text-muted/50'
-                        }`}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${staff.isActive ? 'bg-primary' : 'bg-text-muted/50'
+                          }`}
                         title={staff.isActive ? 'Deactivate Staff' : 'Activate Staff'}
                       >
-                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                          staff.isActive ? 'translate-x-5' : 'translate-x-1'
-                        }`} />
+                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${staff.isActive ? 'translate-x-5' : 'translate-x-1'
+                          }`} />
                       </button>
                     </td>
                     <td className="px-3 py-4 text-center">
@@ -302,10 +313,10 @@ const StaffManagement = () => {
           </table>
         </div>
 
-        <Pagination 
-          currentPage={currentPage} 
-          totalPages={totalPages} 
-          onPageChange={setCurrentPage} 
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
         />
       </div>
 
@@ -319,21 +330,29 @@ const StaffManagement = () => {
                 <XCircle size={24} />
               </button>
             </div>
-            
+
             <div className="p-8 space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Full Name</label>
+                  <label className={`text-[10px] font-bold uppercase tracking-widest ${errors.name ? 'text-primary' : 'text-text-muted'}`}>Full Name</label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={14} />
+                    <User className={`absolute left-3 top-1/2 -translate-y-1/2 ${errors.name ? 'text-primary' : 'text-text-muted'}`} size={14} />
                     <input
                       type="text"
                       value={currentStaff.name}
-                      onChange={(e) => setCurrentStaff({...currentStaff, name: e.target.value})}
-                      className="w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold"
+                      onChange={(e) => {
+                        setCurrentStaff({ ...currentStaff, name: e.target.value });
+                        if (errors.name) setErrors({ ...errors, name: false });
+                      }}
+                      className={`w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all text-sm font-bold ${
+                        errors.name 
+                          ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                          : 'border-border-main focus:border-primary'
+                      }`}
                       placeholder="Enter name"
                     />
                   </div>
+                  {errors.name && <p className="text-[10px] font-bold text-primary">Name is required</p>}
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Role</label>
@@ -341,7 +360,7 @@ const StaffManagement = () => {
                     <Shield className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={14} />
                     <select
                       value={currentStaff.role}
-                      onChange={(e) => setCurrentStaff({...currentStaff, role: e.target.value})}
+                      onChange={(e) => setCurrentStaff({ ...currentStaff, role: e.target.value })}
                       className="w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold appearance-none cursor-pointer"
                     >
                       <option value="waiter">Waiter</option>
@@ -351,33 +370,46 @@ const StaffManagement = () => {
                     </select>
                   </div>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Employee ID (Login ID)</label>
+                  <label className={`text-[10px] font-bold uppercase tracking-widest ${errors.employeeId ? 'text-primary' : 'text-text-muted'}`}>Employee ID (Login ID)</label>
                   <input
                     type="text"
                     value={currentStaff.employeeId}
-                    onChange={(e) => setCurrentStaff({...currentStaff, employeeId: e.target.value})}
-                    className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold"
+                    onChange={(e) => {
+                      setCurrentStaff({ ...currentStaff, employeeId: e.target.value });
+                      if (errors.employeeId) setErrors({ ...errors, employeeId: false });
+                    }}
+                    className={`w-full px-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all text-sm font-bold ${
+                      errors.employeeId 
+                        ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                        : 'border-border-main focus:border-primary'
+                    }`}
                     placeholder="e.g. KS001"
                     disabled={isEditing}
                   />
+                  {errors.employeeId && <p className="text-[10px] font-bold text-primary">Employee ID is required</p>}
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Password</label>
-                  <input
-                    type="password"
-                    value={currentStaff.password}
-                    onChange={(e) => setCurrentStaff({...currentStaff, password: e.target.value})}
-                    className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold"
-                    placeholder={isEditing ? "Leave blank to keep same" : "Min 6 chars"}
-                  />
-                </div>
-              </div>
+                {currentStaff.role !== 'delivery' && (
+                  <div className="space-y-1.5">
+                    <label className={`text-[10px] font-bold uppercase tracking-widest ${errors.password ? 'text-primary' : 'text-text-muted'}`}>Password</label>
+                    <input
+                      type="password"
+                      value={currentStaff.password}
+                      onChange={(e) => {
+                        setCurrentStaff({ ...currentStaff, password: e.target.value });
+                        if (errors.password) setErrors({ ...errors, password: false });
+                      }}
+                      className={`w-full px-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all text-sm font-bold ${
+                        errors.password 
+                          ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                          : 'border-border-main focus:border-primary'
+                      }`}
+                      placeholder={isEditing ? "Leave blank to keep same" : "Min 6 chars"}
+                    />
+                    {errors.password && <p className="text-[10px] font-bold text-primary">Password is required</p>}
+                  </div>
+                )}
 
-              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Phone Number</label>
                   <div className="relative">
@@ -385,7 +417,7 @@ const StaffManagement = () => {
                     <input
                       type="text"
                       value={currentStaff.phoneNumber}
-                      onChange={(e) => setCurrentStaff({...currentStaff, phoneNumber: e.target.value})}
+                      onChange={(e) => setCurrentStaff({ ...currentStaff, phoneNumber: e.target.value })}
                       className="w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold"
                       placeholder="10-digit number"
                     />
@@ -398,7 +430,7 @@ const StaffManagement = () => {
                     <input
                       type="text"
                       value={currentStaff.email}
-                      onChange={(e) => setCurrentStaff({...currentStaff, email: e.target.value})}
+                      onChange={(e) => setCurrentStaff({ ...currentStaff, email: e.target.value })}
                       className="w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold"
                       placeholder="email@example.com"
                     />

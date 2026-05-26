@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check, Plus, Minus } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
+import { getEffectiveStock } from '../../utils/stockHelpers';
 
 const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
   const { checkStoreStatus } = useCart();
@@ -38,27 +39,27 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
 
   const variants = menu.variants || menu.sizes || [];
   const selectedVariant = variants.find(v => v.size === selectedSize);
-  
+
   const menuDiscount = menu.discountPercentage || 0;
   const categoryDiscount = menu.category?.discountPercentage || 0;
   const discountPercent = Math.max(menuDiscount, categoryDiscount);
 
   const basePrice = selectedVariant ? selectedVariant.price : (menu.offerPrice || menu.price || 0);
-  
-  const currentPrice = menu.isCombo 
-    ? (menu.price || basePrice) 
+
+  const currentPrice = menu.isCombo
+    ? (menu.price || basePrice)
     : Math.round(discountPercent > 0 ? basePrice * (1 - discountPercent / 100) : basePrice);
 
-  const originalPrice = menu.isCombo 
+  const originalPrice = menu.isCombo
     ? menu.comboItems?.reduce((sum, item) => sum + (item.price || 0), 0) || 0
     : basePrice;
 
   const isComboOutOfStock = menu?.isCombo && menu?.comboItems?.length > 0 && menu.comboItems.some(ci => {
     const item = ci.menuItem;
-    return !item || item.isBlocked || item.totalStock <= 0;
+    return !item || item.isBlocked || getEffectiveStock(item) <= 0;
   });
 
-  const isOutOfStock = (menu?.isCombo ? false : (menu?.totalStock <= 0 || menu?.isBlocked)) || isClosed || !!isComboOutOfStock;
+  const isOutOfStock = (menu?.isCombo ? false : (getEffectiveStock(menu) <= 0 || menu?.isBlocked)) || isClosed || !!isComboOutOfStock;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -109,7 +110,7 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
                   </div>
                 ))}
               </div>
-              
+
               {/* Savings Message */}
               {(() => {
                 const originalTotal = menu.comboItems.reduce((sum, item) => sum + (item.price || 0), 0);
@@ -178,9 +179,9 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
               </div>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-white shadow-sm border border-border/5 flex items-center justify-center overflow-hidden">
-                  <img 
-                    src={selectedVariant.bogoItem.image || '/placeholder-food.jpg'} 
-                    alt={selectedVariant.bogoItem.name} 
+                  <img
+                    src={selectedVariant.bogoItem.image || '/placeholder-food.jpg'}
+                    alt={selectedVariant.bogoItem.name}
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -255,11 +256,10 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
             <button
               onClick={() => { if (!isOutOfStock) { onAction(menu, quantity, selectedSize); onClose(); } }}
               disabled={isOutOfStock}
-              className={`${
-                isOutOfStock 
-                ? 'bg-background-muted text-text-muted cursor-not-allowed grayscale' 
-                : 'bg-primary-light hover:bg-primary-light/90 text-white shadow-primary-light/20'
-              } px-6 py-2.5 rounded-xl font-black text-[9px] tracking-wider transition-all shadow-xl active:scale-95 flex items-center gap-2 uppercase`}
+              className={`${isOutOfStock
+                  ? 'bg-background-muted text-text-muted cursor-not-allowed grayscale'
+                  : 'bg-primary-light hover:bg-primary-light/90 text-white shadow-primary-light/20'
+                } px-6 py-2.5 rounded-xl font-black text-[9px] tracking-wider transition-all shadow-xl active:scale-95 flex items-center gap-2 uppercase`}
             >
               {isClosed ? 'Closed' : isOutOfStock ? 'Out of Stock' : 'Add to cart'}
               {!isOutOfStock && <Plus size={14} strokeWidth={3} />}

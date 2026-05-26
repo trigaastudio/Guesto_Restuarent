@@ -15,6 +15,7 @@ import Swal from 'sweetalert2';
 import Loader from '../../../components/Loader/Loader';
 import Pagination from '../../../components/Pagination/Pagination';
 import TableSection from './TableSection';
+import api from '../../../api/axiosInstance';
 
 const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:5000/api`;
 const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
@@ -129,11 +130,14 @@ const OrderSection = () => {
   const [userSuggestions, setUserSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [allUsers, setAllUsers] = useState([]);
+  const [deliveryStaff, setDeliveryStaff] = useState([]);
+  const [errors, setErrors] = useState({});
   const socketRef = useRef();
 
   useEffect(() => {
     fetchOrders();
     fetchMenu();
+    fetchDeliveryStaff();
 
     // Socket Setup for Real-time updates
     socketRef.current = io(SOCKET_URL);
@@ -436,19 +440,21 @@ const OrderSection = () => {
     }
 
     if (posOrderType === 'delivery') {
-      if (!customer.name || customer.name === 'Walk-in') {
-        showToast('warning', 'Customer name is required for delivery orders');
-        return;
-      }
-      if (!customer.phone || customer.phone.trim() === '') {
-        showToast('warning', 'Contact number is required for delivery orders');
-        return;
-      }
+      const newErrors = {};
+      if (!customer.name || customer.name === 'Walk-in' || !customer.name.trim()) newErrors.customerName = true;
+      if (!customer.phone || customer.phone.trim() === '') newErrors.customerPhone = true;
       if ((!deliveryAddress || deliveryAddress.trim() === '') && (!deliveryLocation || deliveryLocation.trim() === '')) {
-        showToast('warning', 'Either address or location map link is required for delivery orders');
+        newErrors.deliveryAddress = true;
+        newErrors.deliveryLocation = true;
+      }
+
+      if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
+        showToast('warning', 'Please fill all required delivery details');
         return;
       }
     }
+    setErrors({});
 
     setIsSubmitting(true);
     try {
@@ -579,6 +585,52 @@ const OrderSection = () => {
       }
     } catch (error) {
       showToast('error', error.response?.data?.message || 'Failed to update order status');
+    }
+  };
+
+  const handleAssignDelivery = async (order) => {
+    if (deliveryStaff.length === 0) {
+      showToast('warning', 'No active delivery boys available. Please add one in Staff Management first.');
+      return;
+    }
+
+    const options = {};
+    deliveryStaff.forEach(staff => {
+      options[staff._id] = `${staff.name} (${staff.phoneNumber || 'No phone'})`;
+    });
+
+    const { value: selectedStaffId } = await Swal.fire({
+      title: 'Assign Delivery Boy',
+      text: 'Select a delivery boy for this order:',
+      input: 'select',
+      inputOptions: options,
+      inputPlaceholder: 'Select Delivery Boy',
+      showCancelButton: true,
+      buttonsStyling: false,
+      confirmButtonText: 'Assign',
+      cancelButtonText: 'Cancel',
+      customClass: {
+        popup: 'rounded-[2rem] bg-background-card text-text-primary p-8 shadow-2xl border border-border-light',
+        title: 'text-text-primary font-black text-xl mb-1 text-center',
+        htmlContainer: 'text-text-muted text-[10px] font-bold uppercase tracking-widest opacity-60 text-center mb-6',
+        actions: 'flex justify-center w-full gap-4 mt-8',
+        confirmButton: 'flex-1 bg-primary text-white rounded-xl px-4 py-3.5 text-[11px] font-black tracking-widest uppercase shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all',
+        cancelButton: 'flex-1 bg-background-muted border border-border/60 text-text-primary rounded-xl px-4 py-3.5 text-[11px] font-black tracking-widest uppercase hover:bg-background transition-all',
+        input: 'w-[90%] mx-auto block px-5 py-3.5 rounded-xl border border-border/60 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm font-bold bg-background-muted/50 hover:bg-background text-text-primary appearance-none cursor-pointer text-center'
+      },
+      inputValidator: (value) => {
+        return new Promise((resolve) => {
+          if (value) {
+            resolve();
+          } else {
+            resolve('You need to select a delivery boy');
+          }
+        });
+      }
+    });
+
+    if (selectedStaffId) {
+      handleUpdateOrderStatus(order._id, 'out-for-delivery', { assignedDeliveryBoy: selectedStaffId });
     }
   };
 
@@ -730,7 +782,7 @@ const OrderSection = () => {
         input: 'text',
         inputPlaceholder: 'e.g., Items out of stock, Outside delivery area...',
         showCancelButton: true,
-        confirmButtonText: 'Submit & Reject',
+        confirmButtonText: 'Submit',
         cancelButtonText: 'Cancel',
         buttonsStyling: false,
         customClass: {
@@ -819,6 +871,7 @@ const OrderSection = () => {
       const change = payMethod === 'cash' ? Math.max(0, cashReceived - totalAmount) : 0;
       const updateData = {
         paymentStatus: 'paid',
+        orderStatus: 'delivered',
         paymentMethod: payMethod,
         paidAmount: totalAmount
       };
@@ -861,6 +914,17 @@ const OrderSection = () => {
       setAllUsers(response.data.data || []);
     } catch (error) {
       console.error('Error fetching users:', error);
+    }
+  };
+
+  const fetchDeliveryStaff = async () => {
+    try {
+      const response = await api.get('/api/staff');
+      const allStaff = response.data.data || [];
+      const dStaff = allStaff.filter(s => s.role === 'delivery' && s.isActive);
+      setDeliveryStaff(dStaff);
+    } catch (error) {
+      console.error('Error fetching delivery staff:', error);
     }
   };
 
@@ -1252,7 +1316,7 @@ const OrderSection = () => {
       const matchesPayment = payment === 'all' || o.paymentStatus === payment;
       const matchesPaymentMethod = method === 'all' || o.paymentMethod === method;
 
-      const isHistoryOrder = o.orderStatus === 'cancelled' || o.orderStatus === 'completed' || (o.orderType === 'dine-in' && o.orderStatus === 'billed' && o.paymentStatus === 'paid') || (o.orderType !== 'dine-in' && o.orderStatus === 'delivered' && o.paymentStatus === 'paid');
+      const isHistoryOrder = o.orderStatus === 'cancelled' || o.orderStatus === 'completed' || (o.orderStatus === 'billed' && o.paymentStatus === 'paid') || (o.orderStatus === 'delivered' && o.paymentStatus === 'paid');
 
       let matchesType = false;
       if (tabId === 'history') {
@@ -1698,27 +1762,23 @@ const OrderSection = () => {
                       <td className="px-2 py-2.5 text-center">
                         {(() => {
                           const status = getFriendlyStatus(order);
-                          const isActionable = (status.label === 'Ready' || order.orderStatus === 'out-for-delivery' || order.orderStatus === 'billed' || order.orderStatus === 'processing') && activeTab !== 'dine-in';
+                          const isActionable = status.label === 'Ready' && activeTab !== 'dine-in';
 
                           if (isActionable) {
                             return (
                               <select
                                 value={order.orderStatus === 'completed' ? 'delivered' : order.orderStatus}
-                                onChange={(e) => handleUpdateOrderStatus(order._id, e.target.value)}
+                                onChange={(e) => {
+                                  if (e.target.value === 'out-for-delivery') {
+                                    handleAssignDelivery(order);
+                                  } else {
+                                    handleUpdateOrderStatus(order._id, e.target.value);
+                                  }
+                                }}
                                 onClick={(e) => e.stopPropagation()}
                                 className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border cursor-pointer outline-none transition-all text-center ${status.color}`}
                               >
-                                {['Order Accepted', 'Preparing', 'Ready'].includes(status.label) && (
-                                  <>
-                                    <option value={order.orderStatus} className="bg-background-card text-text-primary">{status.label}</option>
-                                    {(order.orderType === 'dine-in' || order.orderType === 'dining') && (
-                                      <option value="billed" className="bg-background-card text-text-primary">Billed</option>
-                                    )}
-                                  </>
-                                )}
-                                {order.orderStatus === 'billed' && (
-                                  <option value="billed" className="bg-background-card text-text-primary">Billed</option>
-                                )}
+                                <option value={order.orderStatus} className="bg-background-card text-text-primary">{status.label}</option>
                                 {order.orderType === 'delivery' && (
                                   <option value="out-for-delivery" className="bg-background-card text-text-primary">Out for Delivery</option>
                                 )}
@@ -2207,80 +2267,80 @@ const OrderSection = () => {
                       isItemOutOfStock = getEffectiveStock(item) <= 0;
                     }
                     return (
-                    <div
-                      key={item._id}
-                      onClick={() => {
-                        const targetVariant = (item.variants && item.variants.length > 0)
-                          ? item.variants[0]
-                          : { size: 'Standard', price: item.price || 0 };
-                        addToCart(item, targetVariant);
-                      }}
-                      className={`bg-background-muted/30 p-3 rounded-2xl border border-border-light hover:border-primary/30 transition-all group relative cursor-pointer active:scale-[0.98] ${isItemOutOfStock ? 'opacity-40 grayscale pointer-events-none' : ''}`}
-                    >
-                      <div className="w-full aspect-square bg-background-card rounded-xl mb-3 overflow-hidden border border-border-light relative">
-                        <img src={item.image || '/placeholder-dish.png'} alt={item.name} className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${isItemOutOfStock ? 'grayscale' : ''}`} />
-                        {isItemOutOfStock && (
-                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px]">
-                            <span className="bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest shadow-lg">Out of Stock</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-col mb-2">
-                        <div className="flex items-center justify-between mb-1">
-                          <p className="font-bold text-text-primary text-xs line-clamp-1">{item.name}</p>
-                          <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${isItemOutOfStock ? 'bg-red-500/10 text-red-500' : (item.isCombo ? 'bg-primary/10 text-primary' : (getEffectiveStock(item) > 10 ? 'bg-primary/10 text-primary' : 'bg-amber-500/10 text-amber-500'))}`}>
-                            {item.isCombo ? (isItemOutOfStock ? 'Out of Stock' : 'Available') : `${getEffectiveStock(item)} Left`}
-                          </span>
+                      <div
+                        key={item._id}
+                        onClick={() => {
+                          const targetVariant = (item.variants && item.variants.length > 0)
+                            ? item.variants[0]
+                            : { size: 'Standard', price: item.price || 0 };
+                          addToCart(item, targetVariant);
+                        }}
+                        className={`bg-background-muted/30 p-3 rounded-2xl border border-border-light hover:border-primary/30 transition-all group relative cursor-pointer active:scale-[0.98] ${isItemOutOfStock ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+                      >
+                        <div className="w-full aspect-square bg-background-card rounded-xl mb-3 overflow-hidden border border-border-light relative">
+                          <img src={item.image || '/placeholder-dish.png'} alt={item.name} className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${isItemOutOfStock ? 'grayscale' : ''}`} />
+                          {isItemOutOfStock && (
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px]">
+                              <span className="bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest shadow-lg">Out of Stock</span>
+                            </div>
+                          )}
                         </div>
-                        {item.isCombo && item.comboItems && item.comboItems.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mb-2">
-                            {item.comboItems.map((ci, idx) => (
-                              <span key={idx} className="text-[7px] font-black text-text-muted bg-background-muted px-1.5 py-0.5 rounded-md uppercase tracking-tighter border border-border-light">
-                                {ci.menuItem?.name || ci.name || 'Item'}
-                              </span>
-                            ))}
+                        <div className="flex flex-col mb-2">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="font-bold text-text-primary text-xs line-clamp-1">{item.name}</p>
+                            <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${isItemOutOfStock ? 'bg-red-500/10 text-red-500' : (item.isCombo ? 'bg-primary/10 text-primary' : (getEffectiveStock(item) > 10 ? 'bg-primary/10 text-primary' : 'bg-amber-500/10 text-amber-500'))}`}>
+                              {item.isCombo ? (isItemOutOfStock ? 'Out of Stock' : 'Available') : `${getEffectiveStock(item)} Left`}
+                            </span>
                           </div>
-                        )}
-                        {item.isCombo ? (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const targetVariant = (item.variants && item.variants.length > 0)
-                                ? item.variants[0]
-                                : { size: 'Standard', price: item.price || 0 };
-                              addToCart(item, targetVariant);
-                            }}
-                            className="w-full py-2 bg-primary text-white text-[10px] font-black rounded-xl uppercase tracking-widest hover:bg-primary-light transition-all shadow-lg shadow-primary/20 mt-1"
-                          >
-                            Add to Cart
-                          </button>
-                        ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {item.variants && item.variants.map((v, idx) => {
-                              const isOutOfStock = isItemOutOfStock;
-                              return (
-                                <button
-                                  key={idx}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (!isOutOfStock) addToCart(item, v);
-                                  }}
-                                  disabled={isOutOfStock}
-                                  className={`px-2 py-1 text-[9px] font-black rounded-lg transition-all ${isOutOfStock
-                                    ? 'bg-background-muted text-text-muted cursor-not-allowed border border-border-light'
-                                    : 'bg-primary text-white hover:bg-primary-light shadow-sm active:scale-95'
-                                    }`}
-                                >
-                                  {v.size}: ₹{v.price}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
+                          {item.isCombo && item.comboItems && item.comboItems.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mb-2">
+                              {item.comboItems.map((ci, idx) => (
+                                <span key={idx} className="text-[7px] font-black text-text-muted bg-background-muted px-1.5 py-0.5 rounded-md uppercase tracking-tighter border border-border-light">
+                                  {ci.menuItem?.name || ci.name || 'Item'}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {item.isCombo ? (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const targetVariant = (item.variants && item.variants.length > 0)
+                                  ? item.variants[0]
+                                  : { size: 'Standard', price: item.price || 0 };
+                                addToCart(item, targetVariant);
+                              }}
+                              className="w-full py-2 bg-primary text-white text-[10px] font-black rounded-xl uppercase tracking-widest hover:bg-primary-light transition-all shadow-lg shadow-primary/20 mt-1"
+                            >
+                              Add to Cart
+                            </button>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {item.variants && item.variants.map((v, idx) => {
+                                const isOutOfStock = isItemOutOfStock;
+                                return (
+                                  <button
+                                    key={idx}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (!isOutOfStock) addToCart(item, v);
+                                    }}
+                                    disabled={isOutOfStock}
+                                    className={`px-2 py-1 text-[9px] font-black rounded-lg transition-all ${isOutOfStock
+                                      ? 'bg-background-muted text-text-muted cursor-not-allowed border border-border-light'
+                                      : 'bg-primary text-white hover:bg-primary-light shadow-sm active:scale-95'
+                                      }`}
+                                  >
+                                    {v.size}: ₹{v.price}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
               </div>
             </div>
 
@@ -2306,27 +2366,44 @@ const OrderSection = () => {
                 <div className="space-y-2 relative">
                   {posOrderType === 'delivery' && (
                     <div className="grid grid-cols-2 gap-2">
-                      <div className="flex items-center space-x-2 bg-background-card p-2 rounded-xl border border-border-light">
-                        <User size={12} className="text-text-muted" />
-                        <input
-                          type="text"
-                          placeholder="Name"
-                          value={customer.name}
-                          onChange={e => handleCustomerSearch('name', e.target.value)}
-                          onFocus={() => customer.name.length > 1 && setShowSuggestions(true)}
-                          className="bg-transparent text-[10px] font-bold text-text-primary outline-none w-full"
-                        />
+                      <div className={`flex flex-col gap-1`}>
+                        <div className={`flex items-center space-x-2 bg-background-card p-2 rounded-xl border transition-all ${
+                          errors.customerName ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'border-border-light'
+                        }`}>
+                          <User size={12} className={errors.customerName ? 'text-primary' : 'text-text-muted'} />
+                          <input
+                            type="text"
+                            placeholder="Name"
+                            value={customer.name}
+                            onChange={e => {
+                              handleCustomerSearch('name', e.target.value);
+                              if (errors.customerName) setErrors({ ...errors, customerName: false });
+                            }}
+                            onFocus={() => customer.name.length > 1 && setShowSuggestions(true)}
+                            className="bg-transparent text-[10px] font-bold text-text-primary outline-none w-full"
+                          />
+                        </div>
+                        {errors.customerName && <p className="text-[9px] font-bold text-primary px-1">Name is required</p>}
                       </div>
-                      <div className="flex items-center space-x-2 bg-background-card p-2 rounded-xl border border-border-light">
-                        <Phone size={12} className="text-text-muted" />
-                        <input
-                          type="text"
-                          placeholder="Phone"
-                          value={customer.phone}
-                          onChange={e => handleCustomerSearch('phone', e.target.value)}
-                          onFocus={() => customer.phone.length > 1 && setShowSuggestions(true)}
-                          className="bg-transparent text-[10px] font-bold text-text-primary outline-none w-full"
-                        />
+                      
+                      <div className={`flex flex-col gap-1`}>
+                        <div className={`flex items-center space-x-2 bg-background-card p-2 rounded-xl border transition-all ${
+                          errors.customerPhone ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'border-border-light'
+                        }`}>
+                          <Phone size={12} className={errors.customerPhone ? 'text-primary' : 'text-text-muted'} />
+                          <input
+                            type="text"
+                            placeholder="Phone"
+                            value={customer.phone}
+                            onChange={e => {
+                              handleCustomerSearch('phone', e.target.value);
+                              if (errors.customerPhone) setErrors({ ...errors, customerPhone: false });
+                            }}
+                            onFocus={() => customer.phone.length > 1 && setShowSuggestions(true)}
+                            className="bg-transparent text-[10px] font-bold text-text-primary outline-none w-full"
+                          />
+                        </div>
+                        {errors.customerPhone && <p className="text-[9px] font-bold text-primary px-1">Phone is required</p>}
                       </div>
                     </div>
                   )}
@@ -2411,15 +2488,22 @@ const OrderSection = () => {
                             />
                           </div>
                         </div>
+                      </div>
 
-                        <div className="relative group/field flex items-center bg-primary/[0.03] px-3 py-2 rounded-xl border border-primary/20 focus-within:border-primary transition-all">
+                      <div className="space-y-2">
+                        <div className={`relative group/field flex items-center px-3 py-2 rounded-xl border transition-all ${
+                          errors.deliveryLocation ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'bg-primary/[0.03] border-primary/20 focus-within:border-primary'
+                        }`}>
                           <ExternalLink size={12} className="text-primary mr-2" />
                           <div className="flex-1">
                             <input
                               type="text"
                               placeholder="Maps Link"
                               value={deliveryLocation}
-                              onChange={e => handleLocationLinkChange(e.target.value)}
+                              onChange={e => {
+                                handleLocationLinkChange(e.target.value);
+                                if (errors.deliveryLocation) setErrors({ ...errors, deliveryLocation: false, deliveryAddress: false });
+                              }}
                               className="bg-transparent text-[10px] font-black text-primary outline-none w-full placeholder:text-primary/30"
                             />
                           </div>
@@ -2431,34 +2515,40 @@ const OrderSection = () => {
                             <Loader2 size={12} className={isResolvingLink ? 'animate-spin' : ''} />
                           </button>
                         </div>
-                      </div>
 
-                      <div className="relative bg-background-card px-3 py-2 rounded-xl border border-border-main focus-within:border-primary transition-all shadow-sm">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center space-x-1.5">
-                            <MapPin size={10} className="text-primary" />
-                            <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Delivery Address</p>
+                        <div className={`relative px-3 py-2 rounded-xl border transition-all shadow-sm ${
+                          errors.deliveryAddress ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'bg-background-card border-border-main focus-within:border-primary'
+                        }`}>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center space-x-1.5">
+                              <MapPin size={10} className="text-primary" />
+                              <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Delivery Address</p>
+                            </div>
+
+                            {selectedUserId && (
+                              <button
+                                type="button"
+                                onClick={() => setUpdateProfile(!updateProfile)}
+                                className="flex items-center space-x-1.5 group cursor-pointer"
+                              >
+                                <div className={`w-3 h-3 rounded-[4px] border flex items-center justify-center transition-all ${updateProfile ? 'bg-primary border-primary' : 'bg-transparent border-border-main'}`}>
+                                  {updateProfile && <CheckCircle2 size={8} className="text-white" />}
+                                </div>
+                                <span className={`text-[8px] font-black uppercase tracking-widest ${updateProfile ? 'text-primary' : 'text-text-muted'}`}>Update Profile</span>
+                              </button>
+                            )}
                           </div>
-
-                          {selectedUserId && (
-                            <button
-                              type="button"
-                              onClick={() => setUpdateProfile(!updateProfile)}
-                              className="flex items-center space-x-1.5 group cursor-pointer"
-                            >
-                              <div className={`w-3 h-3 rounded-[4px] border flex items-center justify-center transition-all ${updateProfile ? 'bg-primary border-primary' : 'bg-transparent border-border-main'}`}>
-                                {updateProfile && <CheckCircle2 size={8} className="text-white" />}
-                              </div>
-                              <span className={`text-[8px] font-black uppercase tracking-widest ${updateProfile ? 'text-primary' : 'text-text-muted'}`}>Update Profile</span>
-                            </button>
-                          )}
+                          <textarea
+                            placeholder="Building, Street, Area Details..."
+                            value={deliveryAddress}
+                            onChange={e => {
+                              setDeliveryAddress(e.target.value);
+                              if (errors.deliveryAddress) setErrors({ ...errors, deliveryAddress: false, deliveryLocation: false });
+                            }}
+                            className="bg-transparent text-[10px] font-bold text-text-primary outline-none w-full h-12 resize-none placeholder:text-text-muted/20"
+                          />
                         </div>
-                        <textarea
-                          placeholder="Building, Street, Area Details..."
-                          value={deliveryAddress}
-                          onChange={e => setDeliveryAddress(e.target.value)}
-                          className="bg-transparent text-[10px] font-bold text-text-primary outline-none w-full h-12 resize-none placeholder:text-text-muted/20"
-                        />
+                        {(errors.deliveryAddress || errors.deliveryLocation) && <p className="text-[9px] font-bold text-primary px-1">Either Address or Maps Link is required</p>}
                       </div>
                     </div>
                   )}
@@ -2682,10 +2772,10 @@ const OrderSection = () => {
             >
               {/* Header */}
               <div className="relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-teal-500/5" />
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5" />
                 <div className="relative p-6 flex items-start justify-between">
                   <div className="space-y-1">
-                    <p className="text-[9px] font-black text-emerald-600 uppercase tracking-[0.25em]">Accept Payment</p>
+                    <p className="text-[9px] font-black text-primary uppercase tracking-[0.25em]">Accept Payment</p>
                     <h3 className="text-2xl font-black text-text-primary tracking-tight">{order.orderNumber}</h3>
                     <p className="text-[10px] text-text-muted font-bold">
                       {order.orderType === 'dine-in' ? `Table ${order.table?.tableNumber || '–'}` : order.orderType?.toUpperCase()}
@@ -2702,8 +2792,8 @@ const OrderSection = () => {
                 </div>
 
                 {/* Total Amount Banner */}
-                <div className="mx-6 mb-6 p-4 bg-emerald-500/8 border border-emerald-500/20 rounded-2xl flex items-center justify-between">
-                  <div className="flex items-center space-x-2 text-emerald-700">
+                <div className="mx-6 mb-6 p-4 bg-primary/10 border border-primary/20 rounded-2xl flex items-center justify-between">
+                  <div className="flex items-center space-x-2 text-primary">
                     <IndianRupee size={16} strokeWidth={2.5} />
                     <span className="text-[10px] font-black uppercase tracking-widest">Total Payable</span>
                   </div>
@@ -2719,21 +2809,21 @@ const OrderSection = () => {
                   <button
                     onClick={() => setPayMethod('cash')}
                     className={`relative flex flex-col items-center justify-center gap-2.5 p-5 rounded-2xl border-2 transition-all duration-200 group ${payMethod === 'cash'
-                        ? 'bg-emerald-500/10 border-emerald-500 shadow-lg shadow-emerald-500/15'
-                        : 'bg-background-muted/30 border-border-light hover:border-emerald-500/40 hover:bg-emerald-500/5'
+                      ? 'bg-primary/10 border-primary shadow-lg shadow-primary/15'
+                      : 'bg-background-muted/30 border-border-light hover:border-primary/40 hover:bg-primary/5'
                       }`}
                   >
                     {payMethod === 'cash' && (
-                      <div className="absolute top-2.5 right-2.5 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center">
+                      <div className="absolute top-2.5 right-2.5 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
                         <CheckCircle2 size={10} className="text-white" />
                       </div>
                     )}
-                    <div className={`p-3 rounded-xl transition-colors ${payMethod === 'cash' ? 'bg-emerald-500/20 text-emerald-600' : 'bg-background-card text-text-muted group-hover:text-emerald-500'
+                    <div className={`p-3 rounded-xl transition-colors ${payMethod === 'cash' ? 'bg-primary/20 text-primary' : 'bg-background-card text-text-muted group-hover:text-primary'
                       }`}>
                       <Banknote size={24} strokeWidth={1.5} />
                     </div>
                     <div className="text-center">
-                      <p className={`text-xs font-black uppercase tracking-widest transition-colors ${payMethod === 'cash' ? 'text-emerald-700' : 'text-text-primary'
+                      <p className={`text-xs font-black uppercase tracking-widest transition-colors ${payMethod === 'cash' ? 'text-primary' : 'text-text-primary'
                         }`}>Cash</p>
                       <p className="text-[9px] text-text-muted font-medium">Physical currency</p>
                     </div>
@@ -2743,21 +2833,21 @@ const OrderSection = () => {
                   <button
                     onClick={() => setPayMethod('upi/card')}
                     className={`relative flex flex-col items-center justify-center gap-2.5 p-5 rounded-2xl border-2 transition-all duration-200 group ${payMethod === 'upi/card'
-                        ? 'bg-blue-500/10 border-blue-500 shadow-lg shadow-blue-500/15'
-                        : 'bg-background-muted/30 border-border-light hover:border-blue-500/40 hover:bg-blue-500/5'
+                      ? 'bg-primary/10 border-primary shadow-lg shadow-primary/15'
+                      : 'bg-background-muted/30 border-border-light hover:border-primary/40 hover:bg-primary/5'
                       }`}
                   >
                     {payMethod === 'upi/card' && (
-                      <div className="absolute top-2.5 right-2.5 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
+                      <div className="absolute top-2.5 right-2.5 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
                         <CheckCircle2 size={10} className="text-white" />
                       </div>
                     )}
-                    <div className={`p-3 rounded-xl transition-colors ${payMethod === 'upi/card' ? 'bg-blue-500/20 text-blue-600' : 'bg-background-card text-text-muted group-hover:text-blue-500'
+                    <div className={`p-3 rounded-xl transition-colors ${payMethod === 'upi/card' ? 'bg-primary/20 text-primary' : 'bg-background-card text-text-muted group-hover:text-primary'
                       }`}>
                       <Smartphone size={24} strokeWidth={1.5} />
                     </div>
                     <div className="text-center">
-                      <p className={`text-xs font-black uppercase tracking-widest transition-colors ${payMethod === 'upi/card' ? 'text-blue-700' : 'text-text-primary'
+                      <p className={`text-xs font-black uppercase tracking-widest transition-colors ${payMethod === 'upi/card' ? 'text-primary' : 'text-text-primary'
                         }`}>UPI / Card</p>
                       <p className="text-[9px] text-text-muted font-medium">Digital payment</p>
                     </div>
@@ -2772,12 +2862,12 @@ const OrderSection = () => {
 
                     {/* Cash Received Input */}
                     <div className={`flex items-center space-x-3 p-4 rounded-2xl border-2 transition-all ${cashInput && !cashValid
-                        ? 'border-red-400 bg-red-50/50'
-                        : cashInput && cashValid
-                          ? 'border-emerald-400 bg-emerald-50/50'
-                          : 'border-border-light bg-background-muted/20 focus-within:border-emerald-400'
+                      ? 'border-red-400 bg-red-500/10'
+                      : cashInput && cashValid
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border-light bg-background-muted/20 focus-within:border-primary'
                       }`}>
-                      <div className="w-9 h-9 bg-emerald-500/10 text-emerald-600 rounded-xl flex items-center justify-center shrink-0">
+                      <div className="w-9 h-9 bg-primary/10 text-primary rounded-xl flex items-center justify-center shrink-0">
                         <Banknote size={18} />
                       </div>
                       <div className="flex-1">
@@ -2799,15 +2889,15 @@ const OrderSection = () => {
 
                     {/* Change Display */}
                     <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${cash > 0 && cashValid
-                        ? 'bg-emerald-500/8 border-emerald-500/20 opacity-100'
-                        : 'bg-background-muted/10 border-border-light opacity-40'
+                      ? 'bg-primary/5 border-primary/20 opacity-100'
+                      : 'bg-background-muted/10 border-border-light opacity-40'
                       }`}>
                       <div className="space-y-0.5">
                         <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Change to Return</p>
                         <p className="text-[10px] text-text-muted">{cash > 0 ? `₹${cash} − ₹${total}` : '—'}</p>
                       </div>
                       <div className="text-right">
-                        <span className={`text-3xl font-black tracking-tighter ${cash > 0 && cashValid ? 'text-emerald-600' : 'text-text-muted'
+                        <span className={`text-3xl font-black tracking-tighter ${cash > 0 && cashValid ? 'text-primary' : 'text-text-muted'
                           }`}>
                           ₹{cash > 0 && cashValid ? change.toFixed(2) : '0.00'}
                         </span>
@@ -2826,8 +2916,8 @@ const OrderSection = () => {
                 {/* UPI Confirmed State */}
                 {payMethod === 'upi/card' && (
                   <div className="mt-4 animate-in slide-in-from-top-2 fade-in duration-300">
-                    <div className="flex items-center space-x-3 p-4 bg-blue-500/8 border border-blue-500/20 rounded-2xl">
-                      <div className="w-9 h-9 bg-blue-500/15 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
+                    <div className="flex items-center space-x-3 p-4 bg-primary/10 border border-primary/20 rounded-2xl">
+                      <div className="w-9 h-9 bg-primary/15 text-primary rounded-xl flex items-center justify-center shrink-0">
                         <Smartphone size={18} />
                       </div>
                       <div>
@@ -2851,8 +2941,8 @@ const OrderSection = () => {
                   onClick={handleConfirmPayment}
                   disabled={!canConfirm || isPaymentSubmitting}
                   className={`flex-[2] py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center space-x-2 transition-all ${canConfirm && !isPaymentSubmitting
-                      ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-xl shadow-emerald-500/25 hover:scale-[1.02] active:scale-95'
-                      : 'bg-background-muted text-text-muted cursor-not-allowed opacity-50'
+                    ? 'bg-primary hover:bg-primary-light text-white shadow-xl shadow-primary/25 hover:scale-[1.02] active:scale-95'
+                    : 'bg-background-muted text-text-muted cursor-not-allowed opacity-50'
                     }`}
                 >
                   {isPaymentSubmitting ? (

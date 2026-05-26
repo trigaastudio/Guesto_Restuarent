@@ -1,5 +1,9 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import socketPlugin from '../plugins/socketPlugin.js';
+
+// Apply socket.io plugin globally to all schemas BEFORE they are loaded
+mongoose.plugin(socketPlugin);
 
 import Menu from '../models/menuSchema.js';
 

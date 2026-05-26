@@ -15,6 +15,7 @@ const UserManagement = () => {
   const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [errors, setErrors] = useState({});
 
   const [currentUser, setCurrentUser] = useState({
     name: '',
@@ -85,10 +86,20 @@ const UserManagement = () => {
   };
 
   const handleSave = async () => {
-    if (!currentUser.name || (!currentUser.email && !currentUser.phone) || (!isEditing && !currentUser.password)) {
+    const newErrors = {};
+    if (!currentUser.name || !currentUser.name.trim()) newErrors.name = true;
+    if (!currentUser.email && !currentUser.phone) {
+      newErrors.email = true;
+      newErrors.phone = true;
+    }
+    if (!isEditing && !currentUser.password) newErrors.password = true;
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       showToast('warning', 'Name and (Email or Phone) are required');
       return;
     }
+    setErrors({});
 
     try {
       if (isEditing) {
@@ -205,11 +216,10 @@ const UserManagement = () => {
             <button
               onClick={() => { setSearchTerm(''); setStatusFilter('all'); }}
               disabled={!searchTerm && statusFilter === 'all'}
-              className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${
-                !searchTerm && statusFilter === 'all'
+              className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${!searchTerm && statusFilter === 'all'
                   ? 'bg-background-muted/50 text-text-muted/30 border-border-light cursor-not-allowed'
                   : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white'
-              }`}
+                }`}
               title="Clear All Filters"
             >
               <RotateCcw size={12} />
@@ -313,10 +323,10 @@ const UserManagement = () => {
           </table>
         </div>
 
-        <Pagination 
-          currentPage={currentPage} 
-          totalPages={totalPages} 
-          onPageChange={setCurrentPage} 
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
         />
       </div>
 
@@ -333,57 +343,88 @@ const UserManagement = () => {
 
             <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto no-scrollbar">
               <div className="space-y-1.5">
-                <label className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Full Name</label>
+                <label className={`text-[10px] font-bold uppercase tracking-widest ${errors.name ? 'text-primary' : 'text-text-muted'}`}>Full Name</label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={14} />
+                  <User className={`absolute left-3 top-1/2 -translate-y-1/2 ${errors.name ? 'text-primary' : 'text-text-muted'}`} size={14} />
                   <input
                     type="text"
                     value={currentUser.name}
-                    onChange={(e) => setCurrentUser({ ...currentUser, name: e.target.value })}
-                    className="w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold"
+                    onChange={(e) => {
+                      setCurrentUser({ ...currentUser, name: e.target.value });
+                      if (errors.name) setErrors({ ...errors, name: false });
+                    }}
+                    className={`w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all text-sm font-bold ${
+                      errors.name 
+                        ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                        : 'border-border-main focus:border-primary'
+                    }`}
                     placeholder="Enter full name"
                   />
                 </div>
+                {errors.name && <p className="text-[10px] font-bold text-primary">Name is required</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Email Address</label>
+                  <label className={`text-[10px] font-bold uppercase tracking-widest ${errors.email ? 'text-primary' : 'text-text-muted'}`}>Email Address</label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={14} />
+                    <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 ${errors.email ? 'text-primary' : 'text-text-muted'}`} size={14} />
                     <input
                       type="email"
                       value={currentUser.email}
-                      onChange={(e) => setCurrentUser({ ...currentUser, email: e.target.value })}
-                      className="w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold"
+                      onChange={(e) => {
+                        setCurrentUser({ ...currentUser, email: e.target.value });
+                        if (errors.email) setErrors({ ...errors, email: false, phone: false });
+                      }}
+                      className={`w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all text-sm font-bold ${
+                        errors.email 
+                          ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                          : 'border-border-main focus:border-primary'
+                      }`}
                       placeholder="email@example.com"
                     />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Phone Number</label>
+                  <label className={`text-[10px] font-bold uppercase tracking-widest ${errors.phone ? 'text-primary' : 'text-text-muted'}`}>Phone Number</label>
                   <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={14} />
+                    <Phone className={`absolute left-3 top-1/2 -translate-y-1/2 ${errors.phone ? 'text-primary' : 'text-text-muted'}`} size={14} />
                     <input
                       type="text"
                       value={currentUser.phone}
-                      onChange={(e) => setCurrentUser({ ...currentUser, phone: e.target.value })}
-                      className="w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold"
+                      onChange={(e) => {
+                        setCurrentUser({ ...currentUser, phone: e.target.value });
+                        if (errors.phone) setErrors({ ...errors, phone: false, email: false });
+                      }}
+                      className={`w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all text-sm font-bold ${
+                        errors.phone 
+                          ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                          : 'border-border-main focus:border-primary'
+                      }`}
                       placeholder="10-digit number"
                     />
                   </div>
                 </div>
+                {(errors.email || errors.phone) && <p className="text-[10px] font-bold text-primary col-span-2">Email or Phone is required</p>}
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Password</label>
+                <label className={`text-[10px] font-bold uppercase tracking-widest ${errors.password ? 'text-primary' : 'text-text-muted'}`}>Password</label>
                 <input
                   type="password"
                   value={currentUser.password}
-                  onChange={(e) => setCurrentUser({ ...currentUser, password: e.target.value })}
-                  className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold"
+                  onChange={(e) => {
+                    setCurrentUser({ ...currentUser, password: e.target.value });
+                    if (errors.password) setErrors({ ...errors, password: false });
+                  }}
+                  className={`w-full px-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all text-sm font-bold ${
+                    errors.password 
+                      ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                      : 'border-border-main focus:border-primary'
+                  }`}
                   placeholder={isEditing ? "Leave blank to keep same" : "Min 6 chars"}
                 />
+                {errors.password && <p className="text-[10px] font-bold text-primary">Password is required</p>}
               </div>
 
               <div className="flex items-center space-x-3 pt-2">
@@ -425,8 +466,8 @@ const UserManagement = () => {
                       <div
                         key={idx}
                         className={`group relative p-5 rounded-[1.5rem] border-2 transition-all duration-300 ${addr.isDefault
-                            ? 'bg-primary/[0.03] border-primary/30 shadow-[0_8px_30px_rgb(var(--color-primary-rgb),0.05)]'
-                            : 'bg-background-muted/20 border-border-light hover:border-primary/20 shadow-sm'
+                          ? 'bg-primary/[0.03] border-primary/30 shadow-[0_8px_30px_rgb(var(--color-primary-rgb),0.05)]'
+                          : 'bg-background-muted/20 border-border-light hover:border-primary/20 shadow-sm'
                           }`}
                       >
                         <div className="flex items-center justify-between mb-4">

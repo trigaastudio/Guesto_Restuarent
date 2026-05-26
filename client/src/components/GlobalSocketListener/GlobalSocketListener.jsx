@@ -28,8 +28,23 @@ const GlobalSocketListener = () => {
       });
     }
 
+    // Global db_change listener
+    if (!socket.connected) {
+      socket.connect();
+    }
+    
+    // Listen for database changes from anywhere
+    const handleDbChange = (data) => {
+      // Dispatch a standard browser event so any component can listen to it
+      // Data format: { collection: 'Menu', operation: 'UPDATE', docId: '...' }
+      window.dispatchEvent(new CustomEvent('db_change', { detail: data }));
+    };
+    
+    socket.on('db_change', handleDbChange);
+
     return () => {
       socket.off('accountStatusChanged');
+      socket.off('db_change', handleDbChange);
     };
   }, [navigate]);
 

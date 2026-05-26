@@ -350,12 +350,12 @@ const PaymentPage = () => {
               </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
-              <button id="track-order-btn" class="bg-primary hover:bg-primary-dark text-white font-black py-4 rounded-2xl transition-all duration-300 shadow-xl shadow-primary/20 active:scale-95 text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 group">
+            <div class="flex flex-col sm:flex-row gap-4 mt-4">
+              <button id="track-order-btn" class="flex-1 w-full bg-primary hover:bg-primary-dark text-white font-black py-4 px-2 rounded-2xl transition-all duration-300 shadow-xl shadow-primary/20 active:scale-95 text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 group">
                 Track Order
                 <svg class="group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
               </button>
-              <button id="home-btn" class="bg-background-card hover:bg-background border border-border/60 text-text-primary font-black py-4 rounded-2xl transition-all duration-300 active:scale-95 text-[10px] uppercase tracking-widest">
+              <button id="home-btn" class="flex-1 w-full bg-background-card hover:bg-background border border-border/60 text-text-primary font-black py-4 px-2 rounded-2xl transition-all duration-300 active:scale-95 text-[10px] uppercase tracking-widest flex items-center justify-center">
                 Go Shopping
               </button>
             </div>

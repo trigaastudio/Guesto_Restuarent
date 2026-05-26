@@ -21,8 +21,10 @@ const KitchenDashboard = lazy(() => import('./pages/Kitchen/KitchenDashboard'));
 const WaiterDashboard = lazy(() => import('./pages/Waiter/WaiterDashboard'));
 const AboutPage = lazy(() => import('./pages/About/AboutPage'));
 const DigitalMenu = lazy(() => import('./pages/Menu/DigitalMenu'));
+const ErrorPage = lazy(() => import('./pages/Error/ErrorPage'));
 
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
 import { ThemeProvider } from './context/ThemeContext';
 import { CartProvider } from './context/CartContext';
 import BottomNavbar from './components/Navbar/BottomNavbar';
@@ -42,74 +44,77 @@ function App() {
         <CartProvider>
           <BrowserRouter>
             <GlobalSocketListener />
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                {/* Admin Routes */}
-                <Route path="/admin/login" element={<AdminLogin />} />
-                <Route path="/admin/dashboard" element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                } />
+            <ErrorBoundary>
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  {/* Admin Routes */}
+                  <Route path="/admin/login" element={<AdminLogin />} />
+                  <Route path="/admin/dashboard" element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  } />
 
-                {/* Staff Routes */}
-                <Route path="/staff/login" element={<StaffLogin />} />
-                <Route path="/kitchen/dashboard" element={
-                  <ProtectedRoute allowedRoles={['kitchen']}>
-                    <KitchenDashboard />
-                  </ProtectedRoute>
-                } />
-                <Route path="/waiter/dashboard" element={
-                  <ProtectedRoute allowedRoles={['waiter']}>
-                    <WaiterDashboard />
-                  </ProtectedRoute>
-                } />
+                  {/* Staff Routes */}
+                  <Route path="/staff/login" element={<StaffLogin />} />
+                  <Route path="/kitchen/dashboard" element={
+                    <ProtectedRoute allowedRoles={['kitchen']}>
+                      <KitchenDashboard />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/waiter/dashboard" element={
+                    <ProtectedRoute allowedRoles={['waiter']}>
+                      <WaiterDashboard />
+                    </ProtectedRoute>
+                  } />
 
-                {/* General Routes */}
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/register" element={<RegisterPage />} />
-                <Route path="/login" element={<LoginPage />} />
+                  {/* General Routes */}
+                  <Route path="/" element={<LandingPage />} />
+                  <Route path="/register" element={<RegisterPage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/error" element={<ErrorPage />} />
 
-                {/* Protected User Routes */}
-                <Route path="/home" element={
-                  <ProtectedRoute>
-                    <HomePage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/cart" element={
-                  <ProtectedRoute>
-                    <CartPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/payment" element={
-                  <ProtectedRoute>
-                    <PaymentPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/profile" element={
-                  <ProtectedRoute>
-                    <ProfilePage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/my-orders" element={
-                  <ProtectedRoute>
-                    <OrdersPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/track-order/:orderId" element={
-                  <ProtectedRoute>
-                    <TrackOrderPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/menu/:id" element={
-                  <ProtectedRoute>
-                    <MenuDetailPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/about" element={<AboutPage />} />
-                <Route path="/digital-menu" element={<DigitalMenu />} />
-              </Routes>
-            </Suspense>
+                  {/* Protected User Routes */}
+                  <Route path="/home" element={
+                    <ProtectedRoute>
+                      <HomePage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/cart" element={
+                    <ProtectedRoute>
+                      <CartPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/payment" element={
+                    <ProtectedRoute>
+                      <PaymentPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/profile" element={
+                    <ProtectedRoute>
+                      <ProfilePage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/my-orders" element={
+                    <ProtectedRoute>
+                      <OrdersPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/track-order/:orderId" element={
+                    <ProtectedRoute>
+                      <TrackOrderPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/menu/:id" element={
+                    <ProtectedRoute>
+                      <MenuDetailPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/about" element={<AboutPage />} />
+                  <Route path="/digital-menu" element={<DigitalMenu />} />
+                </Routes>
+              </Suspense>
+            </ErrorBoundary>
             <FloatingCart />
             <BottomNavbar />
           </BrowserRouter>
