@@ -130,7 +130,7 @@ export const CartProvider = ({ children }) => {
       const effectiveStockQty = Math.floor(availableStock / multiplier);
 
       if (currentQtyInCart + quantity > effectiveStockQty) {
-          showToast('error', `Cannot add ${quantity} more. Only ${availableStock} left in stock.`);
+          showToast('error', `Cannot add ${quantity} more. Only ${effectiveStockQty} portions of ${selectedSize} left in stock.`);
           return;
         }
       }
@@ -463,7 +463,7 @@ export const CartProvider = ({ children }) => {
   return (
     <CartContext.Provider value={{
       cartItems, addToCart, updateQuantity, removeFromCart, clearCart,
-      subtotal, loading, settings, checkStoreStatus, offers
+      subtotal, loading, settings, checkStoreStatus, offers, fetchCart
     }}>
       {children}
     </CartContext.Provider>

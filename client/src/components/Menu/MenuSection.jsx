@@ -138,12 +138,9 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
 
               const hasSavings = originalPrice > discountedPrice;
 
-              const isComboOutOfStock = menu.isCombo && menu.comboItems?.length > 0 && menu.comboItems.some(ci => {
-                const item = ci.menuItem;
-                return !item || item.isBlocked || getEffectiveStock(item) <= 0;
-              });
-
-              const isOutOfStock = (menu.isCombo ? false : (getEffectiveStock(menu) <= 0)) || isClosed || !!isComboOutOfStock;
+              const isOutOfStock = getEffectiveStock(menu) < 1 || isClosed;
+              const effectiveStock = menu.isCombo ? Infinity : getEffectiveStock(menu);
+              const isLowStock = !isOutOfStock && !isClosed && effectiveStock > 0 && effectiveStock < 5;
 
               return (
                 <div
@@ -182,6 +179,11 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
                     {variants.some(v => v.isBOGO) && !isOutOfStock && (
                       <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-lg z-10 uppercase tracking-tighter">
                         BOGO
+                      </div>
+                    )}
+                    {isLowStock && (
+                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-red-500/90 backdrop-blur-sm border border-red-400 text-white text-[9px] font-black px-2.5 py-1 rounded-full shadow-lg z-10 uppercase tracking-widest whitespace-nowrap">
+                        Only {effectiveStock} Left
                       </div>
                     )}
                   </div>

@@ -82,12 +82,14 @@ const RegisterPage = () => {
   }, [navigate]);
 
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&^#()_+\-=\[\]{};':"\\|,.<>\/?]).{8,64}$/;
+  const nameRegex = /^[A-Za-z\s]{2,50}$/;
+  const phoneRegex = /^[0-9]{10}$/;
 
   const validateField = (name, value) => {
     switch (name) {
-      case 'name': return !value.trim() ? 'REQUIRED' : '';
+      case 'name': return !value.trim() ? 'REQUIRED' : !nameRegex.test(value) ? 'Must be 2-50 characters, letters only' : '';
       case 'email': return !value.trim() ? 'REQUIRED' : !/\S+@\S+\.\S+/.test(value) ? 'Invalid email format' : '';
-      case 'phone': return !value.trim() ? 'REQUIRED' : '';
+      case 'phone': return !value.trim() ? 'REQUIRED' : !phoneRegex.test(value) ? 'Must be exactly 10 digits' : '';
       case 'password': return !value ? 'REQUIRED' : !passwordRegex.test(value) ? 'Must be 8-64 chars with A-Z, a-z, 0-9 & symbol' : '';
       case 'confirmPassword': return !value ? 'REQUIRED' : value !== fields.password ? 'Passwords do not match' : '';
       default: return '';
@@ -120,8 +122,8 @@ const RegisterPage = () => {
   };
 
   const isFormValid = () =>
-    fields.name.trim() && fields.email.trim() && /\S+@\S+\.\S+/.test(fields.email) &&
-    fields.phone.trim() && passwordRegex.test(fields.password) && fields.password === fields.confirmPassword;
+    nameRegex.test(fields.name) && /\S+@\S+\.\S+/.test(fields.email) &&
+    phoneRegex.test(fields.phone) && passwordRegex.test(fields.password) && fields.password === fields.confirmPassword;
 
   const handleSubmit = async (e) => {
     e.preventDefault();

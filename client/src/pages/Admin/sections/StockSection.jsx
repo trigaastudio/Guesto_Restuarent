@@ -41,7 +41,7 @@ const StockSection = ({ refreshKey }) => {
     } catch (error) {
       console.error('Error fetching stock data:', error);
     } finally {
-      if (!silent) setIsLoading(false);
+      setIsLoading(false);
     }
   };
 

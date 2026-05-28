@@ -325,6 +325,72 @@ const checkStoreStatusHelper = (settings) => {
 class OrderController {
   // --- USER FACING METHODS ---
 
+  async validateCart(req, res) {
+    try {
+      const { items } = req.body;
+      const errors = [];
+
+      if (!items || items.length === 0) {
+        return res.json({ valid: false, errors: ['Your cart is empty.'] });
+      }
+
+      for (const item of items) {
+        const menuItemId = item.menuItemId || (item.menuItem && item.menuItem._id) || item.menuItem || item._id;
+        const menuDoc = await Menu.findById(menuItemId).populate('category');
+        if (!menuDoc) {
+          errors.push(`"${item.name || 'An item'}" is no longer available.`);
+          continue;
+        }
+
+        // Check if the item itself is active
+        if (menuDoc.isActive === false) {
+          errors.push(`"${menuDoc.name}" is currently unavailable/inactive.`);
+          continue;
+        }
+
+        // Check if category is active
+        if (menuDoc.category && menuDoc.category.isActive === false) {
+          errors.push(`"${menuDoc.category.name}" category is currently unavailable.`);
+          continue;
+        }
+
+        const variant = menuDoc.variants?.find(v => v.size === item.size);
+        const multiplier = variant && variant.stockValue ? variant.stockValue : 1;
+        const amountNeeded = item.quantity * multiplier;
+
+        // Check stock availability
+        if (menuDoc.category && menuDoc.category.stockactive) {
+          if (menuDoc.category.totalStock < amountNeeded) {
+            errors.push(`"${menuDoc.name}" is out of stock.`);
+          }
+        } else if (menuDoc.totalStock < amountNeeded) {
+          errors.push(`"${menuDoc.name}" is out of stock.`);
+        }
+
+        // Check included items
+        if (variant && variant.includedItems && variant.includedItems.length > 0) {
+          for (const included of variant.includedItems) {
+            const includedDoc = await Menu.findById(included.menuItem);
+            if (!includedDoc) continue;
+            const totalNeeded = item.quantity * included.quantity;
+            if (includedDoc.totalStock < totalNeeded) {
+              errors.push(`An ingredient for "${menuDoc.name}" is out of stock.`);
+            }
+          }
+        }
+      }
+
+      if (errors.length > 0) {
+        return res.json({ valid: false, errors: [...new Set(errors)] });
+      }
+
+      return res.json({ valid: true });
+    } catch (error) {
+      console.error('Cart Validation Error:', error);
+      res.status(500).json({ success: false, message: 'Failed to validate cart. Please try again.' });
+    }
+  }
+
   async placeOrder(req, res) {
     try {
       const { items, address, paymentMethod, totalAmount, subtotal, discount, tax, razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;

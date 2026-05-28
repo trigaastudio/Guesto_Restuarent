@@ -4,7 +4,7 @@ import { useCart } from '../../context/CartContext';
 import { getEffectiveStock } from '../../utils/stockHelpers';
 
 const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
-  const { checkStoreStatus } = useCart();
+  const { checkStoreStatus, cartItems = [] } = useCart();
   const storeStatus = checkStoreStatus ? checkStoreStatus() : { isOpen: true };
   const isClosed = !storeStatus.isOpen;
   const [selectedSize, setSelectedSize] = useState(null);
@@ -13,7 +13,10 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
   useEffect(() => {
     const variants = menu?.variants || menu?.sizes || [];
     if (variants.length > 0) {
-      const lowestVariant = [...variants].sort((a, b) => a.price - b.price)[0];
+      const effectiveStock = menu?.isCombo ? Infinity : getEffectiveStock(menu);
+      const inStockVariants = variants.filter(v => Math.max(0, Math.floor(effectiveStock / (v.stockValue || 1))) > 0);
+      const targetVariants = inStockVariants.length > 0 ? inStockVariants : variants;
+      const lowestVariant = [...targetVariants].sort((a, b) => a.price - b.price)[0];
       setSelectedSize(lowestVariant.size);
     } else {
       setSelectedSize(null);
@@ -54,24 +57,35 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
     ? menu.comboItems?.reduce((sum, item) => sum + (item.price || 0), 0) || 0
     : basePrice;
 
-  const isComboOutOfStock = menu?.isCombo && menu?.comboItems?.length > 0 && menu.comboItems.some(ci => {
-    const item = ci.menuItem;
-    return !item || item.isBlocked || getEffectiveStock(item) <= 0;
-  });
+  const isGlobalOutOfStock = getEffectiveStock(menu) < 1 || menu?.isBlocked || isClosed;
+  const effectiveStock = menu?.isCombo ? Infinity : getEffectiveStock(menu);
 
-  const isOutOfStock = (menu?.isCombo ? false : (getEffectiveStock(menu) <= 0 || menu?.isBlocked)) || isClosed || !!isComboOutOfStock;
+  const currentInCart = cartItems
+    .filter(c => (c.menuItemId || c.menuItem?._id || c._id) === menu._id && c.selectedSize === selectedSize)
+    .reduce((acc, c) => acc + c.quantity, 0);
+  const mult = selectedVariant && selectedVariant.stockValue ? selectedVariant.stockValue : 1;
+  const maxAllowedQty = menu?.isCombo ? Infinity : Math.floor(effectiveStock / mult) - currentInCart;
+  const isMaxReached = quantity >= maxAllowedQty;
+
+  const isOutOfStock = isGlobalOutOfStock || (!menu?.isCombo && maxAllowedQty <= 0);
+  const isLowStock = !isOutOfStock && !isClosed && effectiveStock > 0 && effectiveStock < (5 * mult);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose}></div>
-      <div className="bg-background-card w-full max-w-[400px] rounded-[2rem] shadow-2xl relative z-10 overflow-hidden animate-in fade-in zoom-in duration-300 border border-border/10">
+      <div className="bg-background-card w-full max-w-[500px] rounded-[2rem] shadow-2xl relative z-10 overflow-hidden animate-in fade-in zoom-in duration-300 border border-border/10">
         {/* Modal Header/Image */}
-        <div className="relative h-48 md:h-52 bg-background-muted/50 flex items-center justify-center p-3">
+        <div className="relative h-40 md:h-44 bg-background-muted/50 flex items-center justify-center p-3">
           <img
             src={menu.image || '/placeholder-food.jpg'}
             alt={menu.name}
             className="w-full h-full object-contain drop-shadow-2xl"
           />
+          {isLowStock && (
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-red-500/90 backdrop-blur-sm border border-red-400 text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-lg z-10 uppercase tracking-widest whitespace-nowrap">
+              Only {effectiveStock} Left
+            </div>
+          )}
           <button
             onClick={onClose}
             className="absolute top-5 right-5 p-2 bg-background-card/80 backdrop-blur-md rounded-full text-text-primary hover:bg-primary hover:text-white transition-all shadow-lg border border-border/10 active:scale-90"
@@ -80,7 +94,7 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
           </button>
         </div>
 
-        <div className="p-4 md:p-5 space-y-3 max-h-[60vh] overflow-y-auto no-scrollbar">
+        <div className="p-4 md:p-5 space-y-3 max-h-[50vh] overflow-y-auto no-scrollbar">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${menu.foodType === 'veg' ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></span>
@@ -140,12 +154,28 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
                 <h4 className="text-[9px] font-black tracking-wider text-text-primary uppercase">Choose portion</h4>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                {variants.map((v) => (
+                {variants.map((v) => {
+                  const variantMaxQty = Math.max(0, Math.floor(effectiveStock / (v.stockValue || 1)));
+                  const isVariantOutOfStock = variantMaxQty < 1;
+                  
+                  return (
                   <button
                     key={v.size}
+                    disabled={isVariantOutOfStock}
                     onClick={() => setSelectedSize(v.size)}
-                    className={`relative p-2 rounded-xl flex flex-col items-start transition-all duration-300 border-2 overflow-hidden group ${selectedSize === v.size ? 'bg-background border-primary shadow-lg' : 'bg-background-muted border-transparent hover:bg-background hover:border-border/60'}`}
+                    className={`relative p-2 rounded-xl flex flex-col items-start transition-all duration-300 border-2 overflow-hidden group ${
+                      isVariantOutOfStock
+                        ? 'bg-background-muted opacity-50 cursor-not-allowed border-border/20 grayscale'
+                        : selectedSize === v.size 
+                          ? 'bg-background border-primary shadow-lg' 
+                          : 'bg-background-muted border-transparent hover:bg-background hover:border-border/60'
+                    }`}
                   >
+                    {isVariantOutOfStock && (
+                      <div className="absolute inset-0 bg-background-muted/60 backdrop-blur-[1px] flex items-center justify-center z-20">
+                        <span className="text-[8px] font-black text-text-primary px-2 py-1 bg-background rounded-md border border-border/10 uppercase tracking-wider shadow-md">Out of Stock</span>
+                      </div>
+                    )}
                     {selectedSize === v.size && (
                       <div className="absolute top-0 right-0 p-1.5 bg-primary text-white rounded-bl-xl">
                         <Check size={8} strokeWidth={4} />
@@ -166,7 +196,7 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
                       </span>
                     </div>
                   </button>
-                ))}
+                )})}
               </div>
             </div>
           )}
@@ -197,6 +227,8 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
             </div>
           )}
 
+
+
           {/* Quantity Selector */}
           {!isOutOfStock && !viewOnly && (
             <div className="space-y-3 pt-2">
@@ -204,38 +236,48 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
                 <div className="w-1 h-3 bg-primary rounded-full"></div>
                 <h4 className="text-[9px] font-black tracking-wider text-text-primary uppercase">Select Quantity</h4>
               </div>
-              <div className="flex items-center bg-background border border-border/40 rounded-xl overflow-hidden h-10 w-fit shadow-sm">
-                <button
-                  type="button"
-                  onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
-                  disabled={quantity <= 1}
-                  className="w-10 flex items-center justify-center hover:bg-background-muted transition-colors text-text-muted disabled:opacity-20"
-                >
-                  <Minus size={14} strokeWidth={3} />
-                </button>
-                <input
-                  type="number"
-                  value={quantity === '' ? '' : quantity}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === '') {
-                      setQuantity('');
-                    } else {
-                      setQuantity(Math.max(1, parseInt(val) || 1));
-                    }
-                  }}
-                  onBlur={() => {
-                    if (quantity === '' || quantity < 1) setQuantity(1);
-                  }}
-                  className="w-12 text-center text-sm font-black text-text-primary bg-transparent outline-none [-moz-appearance:_textfield] [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => setQuantity(prev => prev + 1)}
-                  className="w-10 flex items-center justify-center hover:bg-background-muted transition-colors text-text-muted"
-                >
-                  <Plus size={14} strokeWidth={3} />
-                </button>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center bg-background border border-border/40 rounded-xl overflow-hidden h-10 w-fit shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
+                    disabled={quantity <= 1}
+                    className="w-10 flex items-center justify-center hover:bg-background-muted transition-colors text-text-muted disabled:opacity-20"
+                  >
+                    <Minus size={14} strokeWidth={3} />
+                  </button>
+                  <input
+                    type="number"
+                    value={quantity === '' ? '' : quantity}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '') {
+                        setQuantity('');
+                      } else {
+                        setQuantity(Math.min(maxAllowedQty, Math.max(1, parseInt(val) || 1)));
+                      }
+                    }}
+                    onBlur={() => {
+                      if (quantity === '' || quantity < 1) setQuantity(1);
+                    }}
+                    className="w-12 text-center text-sm font-black text-text-primary bg-transparent outline-none [-moz-appearance:_textfield] [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isMaxReached) {
+                        import('../../utils/sweetAlert').then(({ showToast }) => {
+                          showToast('error', `Only ${maxAllowedQty} will be available`);
+                        });
+                      } else {
+                        setQuantity(prev => Math.min(maxAllowedQty, prev + 1));
+                      }
+                    }}
+                    className="w-10 flex items-center justify-center hover:bg-background-muted transition-colors text-text-muted disabled:opacity-20"
+                  >
+                    <Plus size={14} strokeWidth={3} />
+                  </button>
+                </div>
               </div>
             </div>
           )}

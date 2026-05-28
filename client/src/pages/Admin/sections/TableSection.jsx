@@ -24,7 +24,7 @@ const TableSection = ({ refreshKey }) => {
     } catch (error) {
       showToast('error', error.response?.data?.message || 'Failed to fetch tables');
     } finally {
-      if (!silent) setIsLoading(false);
+      setIsLoading(false);
     }
   };
 

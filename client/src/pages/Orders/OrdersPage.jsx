@@ -394,12 +394,21 @@ const OrdersPage = () => {
                                 {getStatusLabel(order.orderStatus)}
                               </span>
                             </div>
-                            <p className="text-[11px] font-medium text-text-muted leading-tight">
-                              {order.orderStatus === 'delivered' ? 'Your meal has been delivered' :
-                                order.orderStatus === 'cancelled' ? 'This order was cancelled' :
-                                  order.orderStatus === 'processing' ? 'Your feast is being prepared by our chef' :
-                                    'Your order is being processed'}
-                            </p>
+                            <div className="text-[11px] font-medium leading-tight">
+                              {order.orderStatus === 'delivered' ? <p className="text-text-muted">Your meal has been delivered</p> :
+                                order.orderStatus === 'cancelled' ? (
+                                  order.rejectionReason ? (
+                                    <div className="bg-red-500/10 border border-red-500/20 rounded-md p-2 mt-1.5 inline-block">
+                                      <p className="text-red-600 font-bold tracking-wide">
+                                        <span className="opacity-70 uppercase text-[9px] mr-1">Reason:</span>
+                                        {order.rejectionReason}
+                                      </p>
+                                    </div>
+                                  ) : <p className="text-text-muted">This order was cancelled</p>
+                                ) :
+                                  order.orderStatus === 'processing' ? <p className="text-text-muted">Your feast is being prepared by our chef</p> :
+                                    <p className="text-text-muted">Your order is being processed</p>}
+                            </div>
                           </div>
 
                           {/* 5. Primary Actions Section */}

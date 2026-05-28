@@ -543,6 +543,16 @@ const PaymentPage = () => {
                             </div>
                           </div>
                         )}
+
+                        {/* BOGO Item */}
+                        {item.bogoItem && item.variants?.find(v => v.size === item.selectedSize)?.isBOGO && (
+                          <div className="mt-2 space-y-1 pl-2 border-l border-emerald-500/30">
+                            <span className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">Buy 1 Get 1 Free Add-on:</span>
+                            <div className="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-emerald-500/20">
+                              🎁 Free {item.bogoItem.name} {item.bogoItem.size ? `(${item.bogoItem.size})` : ''} x {item.bogoItem.quantity || item.quantity}
+                            </div>
+                          </div>
+                        )}
                       </div>
                       <div className="text-lg font-black text-text-primary tracking-tighter pr-2">
                         ₹{(() => {

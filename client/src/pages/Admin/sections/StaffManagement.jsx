@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit2, Trash2, Search, User, Mail, Phone, Shield, Power, Loader2, ArrowUpDown, XCircle, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import api from '../../../api/axiosInstance';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
@@ -6,6 +6,59 @@ import Loader from '../../../components/Loader/Loader';
 import Pagination from '../../../components/Pagination/Pagination';
 
 
+
+const StaffRow = React.memo(({ staff, handleToggleStatus, handleOpenModal, handleDelete }) => {
+  return (
+    <tr className="hover:bg-background-muted/30 transition-colors group">
+      <td className="px-3 py-4">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+            {staff.name.charAt(0)}
+          </div>
+          <div className="flex flex-col">
+            <span className="font-bold text-text-primary">{staff.name}</span>
+            <span className="text-[10px] text-text-muted uppercase">{staff.email || 'No Email'}</span>
+          </div>
+        </div>
+      </td>
+      <td className="px-3 py-4">
+        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${staff.role === 'kitchen' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+            staff.role === 'waiter' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+              staff.role === 'delivery' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
+                'bg-purple-500/10 text-purple-500 border-purple-500/20'
+          }`}>
+          {staff.role}
+        </span>
+      </td>
+      <td className="px-3 py-4 font-mono font-bold text-text-primary">{staff.employeeId}</td>
+      <td className="px-3 py-4 text-text-secondary text-xs">
+        <div className="flex flex-col">
+          <span className="flex items-center space-x-1"><Phone size={10} /> <span>{staff.phoneNumber}</span></span>
+        </div>
+      </td>
+      <td className="px-3 py-4 text-center">
+        <button
+          onClick={() => handleToggleStatus(staff)}
+          className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border transition-all ${staff.isActive ? 'bg-status-off/10 text-status-unavailable border-status-off/20 hover:bg-status-off/20' : 'bg-status-on/10 text-status-available border-status-on/20 hover:bg-status-on/20'
+            }`}
+          title={staff.isActive ? 'Block Staff' : 'Unblock Staff'}
+        >
+          {staff.isActive ? 'Block' : 'Unblock'}
+        </button>
+      </td>
+      <td className="px-3 py-4 text-center">
+        <div className="flex items-center justify-center space-x-1">
+          <button onClick={() => handleOpenModal(staff)} className="p-2 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all">
+            <Edit2 size={18} />
+          </button>
+          <button onClick={() => handleDelete(staff._id)} className="p-2 hover:bg-status-off/10 text-text-secondary hover:text-status-unavailable rounded-lg transition-all">
+            <Trash2 size={18} />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+});
 
 const StaffManagement = () => {
   const [staffList, setStaffList] = useState([]);
@@ -40,7 +93,7 @@ const StaffManagement = () => {
     }
   }, [currentPage]);
 
-  const fetchStaff = async (silent = false) => {
+  const fetchStaff = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
     try {
       const response = await api.get('/api/staff');
@@ -49,11 +102,11 @@ const StaffManagement = () => {
       console.error('Error fetching staff:', error);
       showToast('error', 'Failed to fetch staff list');
     } finally {
-      if (!silent) setIsLoading(false);
+      setIsLoading(false);
     }
-  };
+  }, []);
 
-  const handleOpenModal = (staff = null) => {
+  const handleOpenModal = useCallback((staff = null) => {
     if (staff) {
       setCurrentStaff({
         ...staff,
@@ -73,7 +126,7 @@ const StaffManagement = () => {
       setIsEditing(false);
     }
     setIsModalOpen(true);
-  };
+  }, []);
 
   const handleSave = async () => {
     const newErrors = {};
@@ -117,7 +170,7 @@ const StaffManagement = () => {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = useCallback(async (id) => {
     const result = await showDeleteConfirmation('Remove Staff?', 'This action cannot be undone.');
     if (result.isConfirmed) {
       try {
@@ -128,18 +181,32 @@ const StaffManagement = () => {
         showToast('error', 'Failed to remove staff');
       }
     }
-  };
+  }, [fetchStaff]);
 
-  const handleToggleStatus = async (staff) => {
+  const handleToggleStatus = useCallback(async (staff) => {
+    const newIsActive = !staff.isActive;
+    
+    // Optimistic UI update
+    setStaffList(prevList => 
+      prevList.map(s => 
+        s._id === staff._id ? { ...s, isActive: newIsActive } : s
+      )
+    );
+
     try {
-      const updateData = { ...staff, isActive: !staff.isActive };
+      const updateData = { ...staff, isActive: newIsActive };
       await api.put(`/api/staff/${staff._id}`, updateData);
-      showToast('success', `Staff ${updateData.isActive ? 'activated' : 'deactivated'} successfully`);
-      fetchStaff(true);
+      showToast('success', `Staff ${newIsActive ? 'activated' : 'deactivated'} successfully`);
     } catch (error) {
+      // Revert on error
+      setStaffList(prevList => 
+        prevList.map(s => 
+          s._id === staff._id ? { ...s, isActive: !newIsActive } : s
+        )
+      );
       showToast('error', 'Failed to update status');
     }
-  };
+  }, []);
 
   const handleSort = (key) => {
     let direction = 'asc';
@@ -258,55 +325,13 @@ const StaffManagement = () => {
                 </tr>
               ) : (
                 paginatedStaff.map((staff) => (
-                  <tr key={staff._id} className="hover:bg-background-muted/30 transition-colors group">
-                    <td className="px-3 py-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                          {staff.name.charAt(0)}
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-text-primary">{staff.name}</span>
-                          <span className="text-[10px] text-text-muted uppercase">{staff.email || 'No Email'}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-3 py-4">
-                      <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${staff.role === 'kitchen' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                          staff.role === 'waiter' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                            staff.role === 'delivery' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
-                              'bg-purple-500/10 text-purple-500 border-purple-500/20'
-                        }`}>
-                        {staff.role}
-                      </span>
-                    </td>
-                    <td className="px-3 py-4 font-mono font-bold text-text-primary">{staff.employeeId}</td>
-                    <td className="px-3 py-4 text-text-secondary text-xs">
-                      <div className="flex flex-col">
-                        <span className="flex items-center space-x-1"><Phone size={10} /> <span>{staff.phoneNumber}</span></span>
-                      </div>
-                    </td>
-                    <td className="px-3 py-4 text-center">
-                      <button
-                        onClick={() => handleToggleStatus(staff)}
-                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${staff.isActive ? 'bg-primary' : 'bg-text-muted/50'
-                          }`}
-                        title={staff.isActive ? 'Deactivate Staff' : 'Activate Staff'}
-                      >
-                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${staff.isActive ? 'translate-x-5' : 'translate-x-1'
-                          }`} />
-                      </button>
-                    </td>
-                    <td className="px-3 py-4 text-center">
-                      <div className="flex items-center justify-center space-x-1">
-                        <button onClick={() => handleOpenModal(staff)} className="p-2 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all">
-                          <Edit2 size={18} />
-                        </button>
-                        <button onClick={() => handleDelete(staff._id)} className="p-2 hover:bg-status-off/10 text-text-secondary hover:text-status-unavailable rounded-lg transition-all">
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  <StaffRow 
+                    key={staff._id} 
+                    staff={staff} 
+                    handleToggleStatus={handleToggleStatus} 
+                    handleOpenModal={handleOpenModal} 
+                    handleDelete={handleDelete} 
+                  />
                 ))
               )}
             </tbody>

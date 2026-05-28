@@ -23,7 +23,7 @@ class DashboardService {
       tableStats,
       recentOrders,
       revenueTrend,
-      topDishes,
+      topDishesRaw,
       monthlyTrend,
       outOfStockCount,
       lowStockCount,
@@ -94,48 +94,10 @@ class DashboardService {
         {
           $group: {
             _id: '$items.menuItem',
-            name: { $first: '$items.name' },
-            orders: { $sum: '$items.quantity' },
-            unitPrice: { $first: '$items.price' }
+            orders: { $sum: '$items.quantity' }
           }
         },
-        {
-          $lookup: {
-            from: 'menus',
-            localField: '_id',
-            foreignField: '_id',
-            as: 'menuInfo'
-          }
-        },
-        { $unwind: { path: '$menuInfo', preserveNullAndEmptyArrays: true } },
-        {
-          $lookup: {
-            from: 'categories',
-            localField: 'menuInfo.category',
-            foreignField: '_id',
-            as: 'categoryInfo'
-          }
-        },
-        { $unwind: { path: '$categoryInfo', preserveNullAndEmptyArrays: true } },
-        {
-          $project: {
-            _id: 1,
-            name: { $ifNull: ['$name', '$menuInfo.name'] },
-            orders: 1,
-            image: '$menuInfo.image',
-            price: { $ifNull: ['$menuInfo.price', '$unitPrice'] },
-            offerPrice: '$menuInfo.offerPrice',
-            variants: '$menuInfo.variants',
-            description: '$menuInfo.description',
-            foodType: '$menuInfo.foodType',
-            isCombo: '$menuInfo.isCombo',
-            comboItems: '$menuInfo.comboItems',
-            totalStock: '$menuInfo.totalStock',
-            discountPercentage: '$menuInfo.discountPercentage',
-            category: '$categoryInfo'
-          }
-        },
-        { $match: { name: { $ne: null } } },
+        { $match: { _id: { $ne: null } } },
         { $sort: { orders: -1 } },
         { $limit: 5 }
       ]),
@@ -180,6 +142,17 @@ class DashboardService {
     const activeOrdersCount = await Order.countDocuments({ orderStatus: { $ne: 'cancelled' } });
     const avgOrderValue = activeOrdersCount > 0 ? (totalRevenue / activeOrdersCount) : 0;
 
+    const topDishesIds = topDishesRaw.map(d => d._id);
+    const populatedMenus = await Menu.find({ _id: { $in: topDishesIds } })
+      .populate('category')
+      .populate('comboItems.menuItem')
+      .lean();
+      
+    const topDishes = topDishesRaw.map(d => {
+      const menu = populatedMenus.find(m => m._id.toString() === d._id?.toString());
+      return menu ? { ...menu, orders: d.orders } : null;
+    }).filter(Boolean);
+
     return {
       metrics: {
         totalRevenue,
@@ -216,7 +189,7 @@ class DashboardService {
   async getRevenueTrend() {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-    sevenDaysAgo.setHours(0, 0, 0, 0);
+    sevenDaysAgo.setHours(5, 0, 0, 0);
 
     const trend = await Order.aggregate([
       {
@@ -227,7 +200,13 @@ class DashboardService {
       },
       {
         $group: {
-          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          _id: { 
+            $dateToString: { 
+              format: "%Y-%m-%d", 
+              date: { $dateSubtract: { startDate: "$createdAt", unit: "hour", amount: 5 } },
+              timezone: "+05:30"
+            } 
+          },
           revenue: { $sum: "$totalAmount" }
         }
       },
@@ -239,7 +218,8 @@ class DashboardService {
     for (let i = 0; i < 7; i++) {
       const date = new Date(sevenDaysAgo);
       date.setDate(date.getDate() + i);
-      const dateStr = date.toISOString().split('T')[0];
+      // We format the date as local string to match the _id format
+      const dateStr = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().split('T')[0];
       const dayData = trend.find(t => t._id === dateStr);
 
       fullTrend.push({
@@ -255,7 +235,7 @@ class DashboardService {
   async getMonthlyRevenueTrend() {
     const firstDayOfMonth = new Date();
     firstDayOfMonth.setDate(1);
-    firstDayOfMonth.setHours(0, 0, 0, 0);
+    firstDayOfMonth.setHours(5, 0, 0, 0);
 
     const trend = await Order.aggregate([
       {
@@ -266,7 +246,13 @@ class DashboardService {
       },
       {
         $group: {
-          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          _id: { 
+            $dateToString: { 
+              format: "%Y-%m-%d", 
+              date: { $dateSubtract: { startDate: "$createdAt", unit: "hour", amount: 5 } },
+              timezone: "+05:30"
+            } 
+          },
           revenue: { $sum: "$totalAmount" }
         }
       },
@@ -280,7 +266,7 @@ class DashboardService {
 
     for (let i = 1; i <= daysInMonth; i++) {
       const date = new Date(today.getFullYear(), today.getMonth(), i);
-      const dateStr = date.toISOString().split('T')[0];
+      const dateStr = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().split('T')[0];
       const dayData = trend.find(t => t._id === dateStr);
 
       fullTrend.push({

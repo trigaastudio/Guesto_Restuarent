@@ -65,7 +65,7 @@ const CategorySection = ({ refreshKey }) => {
     } catch (error) {
       console.error('Error fetching categories:', error);
     } finally {
-      if (!silent) setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
