@@ -1,6 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import './OTPModal.css';
 
+const maskEmail = (email) => {
+  if (!email) return '';
+  const parts = email.split('@');
+  if (parts.length !== 2) return email;
+  const [name, domain] = parts;
+  if (name.length <= 3) {
+    return `${name[0]}***@${domain}`;
+  }
+  return `${name.substring(0, 2)}***${name.substring(name.length - 2)}@${domain}`;
+};
+
 const OTPModal = ({ email, onVerify, onResend, onClose, loading }) => {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(60);
@@ -57,7 +68,10 @@ const OTPModal = ({ email, onVerify, onResend, onClose, loading }) => {
       <div className="otp-modal-content">
         <button className="close-modal" onClick={onClose}>&times;</button>
         <h2>Verify Your Email</h2>
-        <p>We've sent a 6-digit code to <strong>{email}</strong></p>
+        <p>We've sent a 6-digit code to <strong>{maskEmail(email)}</strong></p>
+        <p style={{ fontSize: '12px', color: 'var(--color-text-muted, #777)', marginTop: '-10px', marginBottom: '20px', fontStyle: 'italic' }}>
+          (Please check your spam/junk folder as well)
+        </p>
         
         <form onSubmit={handleSubmit}>
           <div className="otp-input-container">

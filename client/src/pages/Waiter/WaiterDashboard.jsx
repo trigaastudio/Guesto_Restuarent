@@ -456,7 +456,7 @@ const WaiterDashboard = () => {
       <tr>
         <td colspan="4" style="text-transform: uppercase; font-weight: bold; padding-top: 8px;">${name} (${item.size})</td>
       </tr>
-      ${item.bogoItem ? `
+      ${item.bogoItem && (item.menuItem?.variants || item.menuItem?.sizes || [])?.find(v => (v.size || 'Standard') === (item.size || 'Standard'))?.isBOGO ? `
       <tr>
         <td colspan="4" style="text-transform: uppercase; font-size: 11px; font-weight: bold; color: #000; padding-left: 10px;">
           * FREE: ${item.bogoItem.name || 'Free Item'} ${item.bogoItem.size ? `(${item.bogoItem.size})` : ''} x ${item.bogoItem.quantity || 1}
@@ -757,15 +757,7 @@ const WaiterDashboard = () => {
                       </div>
 
                       <div className="w-full border-t border-border-light pt-6 space-y-3">
-                        {currentTable.mergedGroup && currentTable.mergedGroup.length > 0 && (
-                          <button
-                            onClick={() => handleUnmerge(currentTable.tableNumber)}
-                            className="w-full flex items-center justify-center space-x-2.5 py-4 rounded-2xl font-black text-sm bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border border-amber-500/20 transition-all duration-300 shadow-sm"
-                          >
-                            <GitMerge size={18} strokeWidth={2.5} className="rotate-180" />
-                            <span>Unmerge Tables</span>
-                          </button>
-                        )}
+
                         <button
                           onClick={() => handleTakeOrder(currentTable)}
                           disabled={currentTable.activeOrders?.length >= 4}

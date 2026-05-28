@@ -202,7 +202,7 @@ const OrderSection = () => {
       <tr>
         <td colspan="4" style="text-transform: uppercase; font-weight: bold; padding-top: 8px;">${name} (${item.size})</td>
       </tr>
-      ${item.bogoItem ? `
+      ${item.bogoItem && (item.menuItem?.variants || item.menuItem?.sizes || [])?.find(v => (v.size || 'Standard') === (item.size || 'Standard'))?.isBOGO ? `
       <tr>
         <td colspan="4" style="text-transform: uppercase; font-size: 11px; font-weight: bold; color: #000; padding-left: 10px;">
           * FREE: ${item.bogoItem.name || 'Free Item'} ${item.bogoItem.size ? `(${item.bogoItem.size})` : ''} x ${item.bogoItem.quantity || 1}
@@ -636,36 +636,16 @@ const OrderSection = () => {
 
   const handleConfirmOrder = async (order) => {
     const itemsHtml = order.items.map(item => `
-      <div class="flex justify-between items-start py-1 border-b border-border-light/50 last:border-0">
-        <div class="text-left">
-          <p class="text-[10px] font-black text-text-primary uppercase tracking-tight">${item.name}</p>
-          <p class="text-[8px] font-bold text-text-muted uppercase opacity-70">${item.size ? item.size + ' × ' : ''}${item.quantity}</p>
-          ${item.comboItems?.length > 0 ? `
-            <div class="mt-1.5 bg-background-muted/30 p-1.5 rounded-lg border border-border-light/40">
-              <span class="text-[7px] font-black text-status-available uppercase tracking-widest block mb-1 opacity-80">Combo Includes:</span>
-              <div class="flex flex-col gap-0.5 pl-1 border-l-[1.5px] border-status-available/30">
-                ${item.comboItems.map(ci => `
-                  <span class="text-text-muted text-[8px] font-bold flex items-center gap-1">
-                    <span class="text-text-primary/40 text-[6px]">▶</span> ${ci.quantity || 1}x ${ci.name}
-                  </span>
-                `).join('')}
-              </div>
+      <div class="flex justify-between items-start py-2.5 border-b border-border-light/60 last:border-0">
+        <div class="text-left w-full pr-2">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-[11px] font-black text-text-primary uppercase tracking-tight">${item.name}</p>
+              <p class="text-[9px] font-bold text-text-muted uppercase opacity-80 mt-0.5">${item.size ? item.size + ' × ' : '× '}${item.quantity}</p>
             </div>
-          ` : ''}
-          ${item.includedItems?.length > 0 ? `
-            <div class="mt-1.5 bg-background-muted/30 p-1.5 rounded-lg border border-border-light/40">
-              <span class="text-[7px] font-black text-primary uppercase tracking-widest block mb-1 opacity-80">Includes Add-ons:</span>
-              <div class="flex flex-col gap-0.5 pl-1 border-l-[1.5px] border-primary/30">
-                ${item.includedItems.map(ii => `
-                  <span class="text-text-muted text-[8px] font-bold flex items-center gap-1">
-                    <span class="text-text-primary/40 text-[6px]">▶</span> ${ii.quantity || 1}x ${ii.name}
-                  </span>
-                `).join('')}
-              </div>
-            </div>
-          ` : ''}
+          </div>
+
         </div>
-        <p class="text-[10px] font-black text-text-primary mt-0.5">₹${item.totalPrice}</p>
       </div>
     `).join('');
 
@@ -689,70 +669,76 @@ const OrderSection = () => {
     const result = await showAlert({
       title: `Confirm ${order.orderType === 'takeaway' ? 'Takeaway' : 'Delivery'} Order?`,
       html: `
-        <div class="space-y-2 mt-1 text-left">
-          <!-- Items First -->
-          <div class="px-1">
-            <div class="flex justify-between items-end mb-1">
-               <p class="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Ordered Items</p>
-               <span class="text-[8px] font-black text-primary px-2 py-0.5 bg-primary/10 rounded-full">${order.items.length} items</span>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2 text-left">
+          
+          <!-- Left Side: Ordered Items -->
+          <div class="flex flex-col border-r-0 md:border-r border-border-light md:pr-4 h-[340px]">
+            <div class="flex justify-between items-end mb-3 gap-2">
+               <p class="text-[11px] font-black text-primary uppercase tracking-[0.2em] whitespace-nowrap">Ordered Items</p>
+               <span class="text-[10px] font-black text-white px-3 py-1 bg-primary rounded-md shadow-sm whitespace-nowrap">${order.items.length} items</span>
             </div>
-            <div class="max-h-[70px] overflow-y-auto pr-1 no-scrollbar bg-background rounded-lg border border-border/40 p-1.5">
+            <div class="flex-1 overflow-y-auto pr-2 no-scrollbar bg-primary/[0.03] rounded-xl border border-primary/10 p-3 shadow-inner">
               ${itemsHtml}
             </div>
           </div>
 
-          <!-- Customer Details & Payment -->
-          <div class="p-2 bg-primary/5 rounded-xl border border-primary/10">
-            <div class="flex justify-between items-start">
-              <div>
-                <p class="text-[7px] font-black text-primary uppercase tracking-[0.2em] mb-1">${order.orderType === 'takeaway' ? 'Customer' : 'Delivery To'}</p>
-                <p class="text-[10px] font-black text-text-primary">${customerName}</p>
-                <p class="text-[9px] font-bold text-text-muted mt-0.5">${customerPhone}</p>
+          <!-- Right Side: Details & Price -->
+          <div class="flex flex-col h-[340px]">
+            <!-- Customer Details & Payment -->
+            <div class="p-3 bg-primary/5 rounded-xl border border-primary/10">
+              <div class="flex justify-between items-start">
+                <div>
+                  <p class="text-[8px] font-black text-primary uppercase tracking-[0.2em] mb-1.5">${order.orderType === 'takeaway' ? 'Customer' : 'Delivery To'}</p>
+                  <p class="text-[12px] font-black text-text-primary">${customerName}</p>
+                  <p class="text-[10px] font-bold text-text-muted mt-0.5">${customerPhone}</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-[8px] font-black text-primary uppercase tracking-[0.2em] mb-1.5 whitespace-nowrap">Payment</p>
+                  <span class="px-2 py-1 bg-background-card border border-border-light rounded-md text-[9px] font-black text-text-primary uppercase tracking-wider shadow-sm">
+                    ${paymentMethod}
+                  </span>
+                </div>
               </div>
-              <div class="text-right">
-                <p class="text-[7px] font-black text-primary uppercase tracking-[0.2em] mb-1">Payment</p>
-                <span class="px-1.5 py-0.5 bg-background-card border border-border-light rounded-[4px] text-[8px] font-black text-text-primary uppercase tracking-wider shadow-sm">
-                  ${paymentMethod}
-                </span>
-              </div>
+              
+              ${order.orderType === 'delivery' ? `<p class="text-[10px] font-bold text-text-secondary leading-snug border-t border-primary/5 pt-2 mt-2">${customerAddress}</p>` : ''}
+              
+              ${mapsUrl ? `
+                <a href="${mapsUrl}" target="_blank" class="inline-flex items-center space-x-1.5 mt-2.5 px-3 py-1.5 bg-background-card border border-primary/20 rounded-lg text-[9px] font-black text-primary hover:bg-primary hover:text-white transition-all shadow-sm no-underline">
+                  <span>📍 VIEW ON MAPS</span>
+                </a>
+              ` : ''}
             </div>
             
-            ${order.orderType === 'delivery' ? `<p class="text-[9px] font-bold text-text-secondary leading-snug border-t border-primary/5 pt-1.5 mt-1.5">${customerAddress}</p>` : ''}
+            <div class="flex-1"></div>
             
-            ${mapsUrl ? `
-              <a href="${mapsUrl}" target="_blank" class="inline-flex items-center space-x-1 mt-2 px-2 py-1 bg-background-card border border-primary/20 rounded-lg text-[7px] font-black text-primary hover:bg-primary hover:text-white transition-all shadow-sm no-underline">
-                <span>📍 VIEW ON MAPS</span>
-              </a>
-            ` : ''}
-          </div>
-          
-          <!-- Total Bill -->
-          <div class="pt-1.5 border-t-2 border-dashed border-border-light flex flex-col gap-0.5 px-1">
-            <div class="flex justify-between items-center">
-              <span class="text-[9px] font-black text-text-muted uppercase tracking-widest">Listing Price</span>
-              <span class="text-[10px] font-black text-text-primary">₹${(order.subtotal || 0) + (order.discount || 0)}</span>
-            </div>
-            ${order.deliveryFee > 0 ? `
-              <div class="flex justify-between items-center text-text-muted">
-                <span class="text-[9px] font-black uppercase tracking-widest">Delivery Fee</span>
-                <span class="text-[10px] font-black">+₹${order.deliveryFee}</span>
+            <!-- Total Bill -->
+            <div class="pt-3 border-t-2 border-dashed border-border-light flex flex-col gap-1 px-1">
+              <div class="flex justify-between items-center">
+                <span class="text-[10px] font-black text-text-muted uppercase tracking-widest">Listing Price</span>
+                <span class="text-[11px] font-black text-text-primary">₹${(order.subtotal || 0) + (order.discount || 0)}</span>
               </div>
-            ` : ''}
-            ${order.platformFee > 0 ? `
-              <div class="flex justify-between items-center text-text-muted">
-                <span class="text-[9px] font-black uppercase tracking-widest">Platform Fee</span>
-                <span class="text-[10px] font-black">+₹${order.platformFee}</span>
+              ${order.deliveryFee > 0 ? `
+                <div class="flex justify-between items-center text-text-muted">
+                  <span class="text-[10px] font-black uppercase tracking-widest">Delivery Fee</span>
+                  <span class="text-[11px] font-black">+₹${order.deliveryFee}</span>
+                </div>
+              ` : ''}
+              ${order.platformFee > 0 ? `
+                <div class="flex justify-between items-center text-text-muted">
+                  <span class="text-[10px] font-black uppercase tracking-widest">Platform Fee</span>
+                  <span class="text-[11px] font-black">+₹${order.platformFee}</span>
+                </div>
+              ` : ''}
+              ${order.discount > 0 ? `
+                <div class="flex justify-between items-center text-green-600">
+                  <span class="text-[10px] font-black uppercase tracking-widest">Discount</span>
+                  <span class="text-[11px] font-black">-₹${order.discount}</span>
+                </div>
+              ` : ''}
+              <div class="flex justify-between items-center mt-2 pt-2 border-t border-border-light/50">
+                <p class="text-[11px] font-black text-text-primary uppercase tracking-widest">Total Payable</p>
+                <p class="text-[18px] font-black text-primary">₹${(order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0)}</p>
               </div>
-            ` : ''}
-            ${order.discount > 0 ? `
-              <div class="flex justify-between items-center text-green-600">
-                <span class="text-[9px] font-black uppercase tracking-widest">Discount</span>
-                <span class="text-[10px] font-black">-₹${order.discount}</span>
-              </div>
-            ` : ''}
-            <div class="flex justify-between items-center mt-1 pt-1 border-t border-border-light/50">
-              <p class="text-[9px] font-black text-text-primary uppercase tracking-widest">Total Payable</p>
-              <p class="text-[14px] font-black text-primary">₹${(order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0)}</p>
             </div>
           </div>
         </div>
@@ -764,9 +750,11 @@ const OrderSection = () => {
       cancelButtonText: 'Cancel',
       buttonsStyling: false,
       customClass: {
-        popup: 'rounded-[2.5rem] border-none shadow-2xl max-w-[460px] bg-background-card text-text-primary p-0',
-        htmlContainer: 'px-6 pb-2 m-0',
-        actions: 'flex flex-row gap-3 justify-center mt-6 mb-6 px-6 w-full',
+        popup: 'rounded-[2.5rem] border-none shadow-2xl max-w-[780px] bg-background-card text-text-primary p-0',
+        title: 'text-2xl mt-4 mb-0 font-black',
+        icon: 'mt-6 mb-2 scale-[0.8]',
+        htmlContainer: 'px-8 pb-4 m-0 mt-2',
+        actions: 'flex flex-row gap-3 justify-center mt-2 mb-6 px-8 w-full',
         confirmButton: 'flex-1 px-4 py-3.5 bg-primary text-white rounded-xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all active:scale-95',
         denyButton: 'flex-1 px-4 py-3.5 bg-background border border-border/60 text-text-primary rounded-xl font-black uppercase tracking-widest text-[10px] shadow-sm hover:bg-background-muted transition-all active:scale-95',
         cancelButton: 'flex-1 px-4 py-3.5 bg-transparent text-text-muted hover:text-text-primary rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-background-muted transition-all active:scale-95'
@@ -1030,8 +1018,15 @@ const OrderSection = () => {
       }
     } else {
       const availableStock = getEffectiveStock(item);
-      if (availableStock <= 0) {
-        showToast('error', `Out of stock: ${item.name} is currently unavailable`);
+      const mult = variant?.stockValue || 1;
+      const effectiveVariantStock = Math.floor(availableStock / mult);
+      
+      const currentInCart = cart
+        .filter(c => c.menuItem === item._id && c.size === (variant?.size || 'Standard'))
+        .reduce((acc, c) => acc + c.quantity, 0);
+
+      if (currentInCart + 1 > effectiveVariantStock) {
+        showToast('error', `Out of stock: Only ${effectiveVariantStock} portions of ${variant?.size || 'Standard'} are available`);
         return;
       }
     }
@@ -1091,6 +1086,26 @@ const OrderSection = () => {
   };
 
   const updateCartQuantity = (index, delta) => {
+    const targetCartItem = cart[index];
+    if (delta > 0 && targetCartItem) {
+      const fullMenuItem = menuItems.find(m => m._id === targetCartItem.menuItem);
+      if (fullMenuItem) {
+        const availableStock = getEffectiveStock(fullMenuItem);
+        const variant = (fullMenuItem.variants || fullMenuItem.sizes || []).find(v => v.size === targetCartItem.size);
+        const mult = variant?.stockValue || 1;
+        const effectiveVariantStock = Math.floor(availableStock / mult);
+        
+        const currentInCart = cart
+          .filter(c => c.menuItem === targetCartItem.menuItem && c.size === targetCartItem.size)
+          .reduce((acc, c) => acc + c.quantity, 0);
+
+        if (currentInCart + delta > effectiveVariantStock) {
+          showToast('error', `Out of stock: Only ${effectiveVariantStock} portions of ${targetCartItem.size || 'Standard'} are available`);
+          return;
+        }
+      }
+    }
+
     setCart(prevCart => prevCart.map((item, idx) => {
       if (idx === index) {
         const newQty = Math.max(1, item.quantity + delta);
@@ -1319,32 +1334,47 @@ const OrderSection = () => {
       const isHistoryOrder = o.orderStatus === 'cancelled' || o.orderStatus === 'completed' || (o.orderStatus === 'billed' && o.paymentStatus === 'paid') || (o.orderStatus === 'delivered' && o.paymentStatus === 'paid');
 
       let matchesType = false;
+      const orderDate = new Date(o.createdAt);
+      const todayStart = new Date();
+      if (todayStart.getHours() < 5) todayStart.setDate(todayStart.getDate() - 1);
+      todayStart.setHours(5, 0, 0, 0);
+
       if (tabId === 'history') {
         if (!isHistoryOrder) return false;
         const matchesHistType = histType === 'all' || o.orderType === histType;
-        const orderDate = new Date(o.createdAt);
+        
         let matchesDate = true;
-        if (sDate) matchesDate = matchesDate && orderDate >= new Date(sDate);
-        if (eDate) {
-          const end = new Date(eDate);
-          end.setHours(23, 59, 59, 999);
-          matchesDate = matchesDate && orderDate <= end;
-        }
-        matchesType = matchesHistType && matchesDate;
-      } else if (tabId === 'all') {
-        matchesType = !isHistoryOrder;
-      } else if (tabId === 'dine-in') {
-        // Show all dine-in orders (admin or waiter) that are not in history
-        matchesType = (o.orderType === 'dine-in' || o.orderType === 'dining') && !isHistoryOrder;
-      } else {
-        if (isHistoryOrder) {
-          matchesType = false;
-        } else if (tabId === 'delivery') {
-          matchesType = o.orderType === 'delivery' || o.orderType === 'online';
-        } else if (tabId === 'takeaway') {
-          matchesType = o.orderType === 'takeaway' || o.orderType === 'take-away' || o.orderType === 'counter';
+        if (sDate || eDate) {
+          if (sDate) matchesDate = matchesDate && orderDate >= new Date(sDate);
+          if (eDate) {
+            const end = new Date(eDate);
+            end.setHours(23, 59, 59, 999);
+            matchesDate = matchesDate && orderDate <= end;
+          }
         } else {
-          matchesType = o.orderType === tabId;
+          // Default history to today's data starting at 5 AM
+          matchesDate = orderDate >= todayStart;
+        }
+        
+        matchesType = matchesHistType && matchesDate;
+      } else {
+        // Force active tabs to only show today's orders (starting 5 AM)
+        if (orderDate < todayStart) return false;
+
+        if (tabId === 'all') {
+          matchesType = !isHistoryOrder;
+        } else if (tabId === 'dine-in') {
+          matchesType = (o.orderType === 'dine-in' || o.orderType === 'dining') && !isHistoryOrder;
+        } else {
+          if (isHistoryOrder) {
+            matchesType = false;
+          } else if (tabId === 'delivery') {
+            matchesType = (o.orderType === 'delivery' || o.orderType === 'online') && o.orderSource !== 'admin';
+          } else if (tabId === 'takeaway') {
+            matchesType = o.orderType === 'takeaway' || o.orderType === 'take-away' || o.orderType === 'counter' || o.orderSource === 'admin';
+          } else {
+            matchesType = o.orderType === tabId;
+          }
         }
       }
       return matchesSearch && matchesStatus && matchesPayment && matchesPaymentMethod && matchesType;
@@ -2567,35 +2597,12 @@ const OrderSection = () => {
                       <div className="flex-1">
                         <p className="font-bold text-text-primary text-xs">{item.name}</p>
                         <p className="text-[10px] text-text-muted font-bold uppercase">{item.size} • ₹{item.unitPrice}</p>
-                        {item.bogoItem && (
+                        {item.bogoItem && (item.menuItem?.variants || item.menuItem?.sizes || [])?.find(v => (v.size || 'Standard') === (item.size || 'Standard'))?.isBOGO && (
                           <p className="text-[9px] font-black text-status-available uppercase tracking-tighter">
                             + free: {item.bogoItem.name} {item.bogoItem.size && `(${item.bogoItem.size})`} x {item.bogoItem.quantity}
                           </p>
                         )}
-                        {item.comboItems?.length > 0 && (
-                          <div className="mt-1.5 bg-background-muted/30 p-1.5 rounded-lg border border-border-light/40">
-                            <span className="text-[7px] font-black text-status-available uppercase tracking-widest block mb-1 opacity-80">Combo Includes:</span>
-                            <div className="flex flex-col gap-0.5 pl-1 border-l-[1.5px] border-status-available/30">
-                              {item.comboItems.map((ci, cIdx) => (
-                                <span key={cIdx} className="text-text-muted text-[8px] font-bold flex items-center gap-1">
-                                  <span className="text-text-primary/40 text-[6px]">▶</span> {ci.quantity || 1}x {ci.menuItem?.name || ci.name || 'Item'}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {item.includedItems?.length > 0 && (
-                          <div className="mt-1.5 bg-background-muted/30 p-1.5 rounded-lg border border-border-light/40">
-                            <span className="text-[7px] font-black text-primary uppercase tracking-widest block mb-1 opacity-80">Includes Add-ons:</span>
-                            <div className="flex flex-col gap-0.5 pl-1 border-l-[1.5px] border-primary/30">
-                              {item.includedItems.map((ii, iIdx) => (
-                                <span key={iIdx} className="text-text-muted text-[8px] font-bold flex items-center gap-1">
-                                  <span className="text-text-primary/40 text-[6px]">▶</span> {ii.quantity || 1}x {ii.menuItem?.name || ii.name || 'Item'}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+
                       </div>
                       <div className="flex items-center space-x-3">
                         <div className="flex items-center space-x-2 bg-background-card px-2 py-1 rounded-lg border border-border-light">

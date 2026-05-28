@@ -49,7 +49,7 @@ const UserManagement = () => {
       console.error('Error fetching users:', error);
       showToast('error', 'Failed to load users');
     } finally {
-      if (!silent) setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -134,11 +134,23 @@ const UserManagement = () => {
   };
 
   const handleToggleStatus = async (id) => {
+    // Optimistic UI update
+    setUserList(prevUsers => 
+      prevUsers.map(u => 
+        u._id === id ? { ...u, isActive: !u.isActive } : u
+      )
+    );
+
     try {
       const response = await api.patch(`/api/users/${id}/toggle-status`);
       showToast('success', response.data.message);
-      fetchUsers(true);
     } catch (error) {
+      // Revert on error
+      setUserList(prevUsers => 
+        prevUsers.map(u => 
+          u._id === id ? { ...u, isActive: !u.isActive } : u
+        )
+      );
       showToast('error', 'Failed to update user status');
     }
   };
@@ -307,9 +319,6 @@ const UserManagement = () => {
                           title={user.isActive ? "Block User" : "Unblock User"}
                         >
                           {user.isActive ? <Ban size={18} /> : <CheckCircle size={18} />}
-                        </button>
-                        <button onClick={() => handleOpenModal(user)} className="p-2 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all" title="Edit User">
-                          <Edit2 size={18} />
                         </button>
                         <button onClick={() => handleDelete(user._id)} className="p-2 hover:bg-status-off/10 text-text-secondary hover:text-status-unavailable rounded-lg transition-all" title="Delete User">
                           <Trash2 size={18} />

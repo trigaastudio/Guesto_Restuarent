@@ -39,6 +39,7 @@ const settingsSchema = new mongoose.Schema({
     pricingType: { type: String, enum: ['zone', 'distance'], default: 'distance' },
     freeDistanceLimit: { type: Number, default: 5 },
     chargePerExtraKm: { type: Number, default: 10 },
+    maxDeliveryDistance: { type: Number, default: 12 },
     zones: [
       {
         name: { type: String, required: true },

@@ -244,9 +244,9 @@ const KitchenDashboard = () => {
         <body onload="setTimeout(function() { window.print(); window.close(); }, 500);">
           <div class="header">
             ${monochromeLogo
-              ? `<img src="${monochromeLogo}" style="width: 45mm; height: auto; margin: 0 auto 5px auto; display: block;" />`
-              : `<div class="restaurant-name">${restaurantName}</div>`
-            }
+        ? `<img src="${monochromeLogo}" style="width: 45mm; height: auto; margin: 0 auto 5px auto; display: block;" />`
+        : `<div class="restaurant-name">${restaurantName}</div>`
+      }
             <div class="kot-title">KOT</div>
           </div>
           <div class="divider"></div>
@@ -629,10 +629,9 @@ const KitchenDashboard = () => {
                 >
                   <filter.icon size={14} className={activeStatusFilter === filter.id ? 'animate-pulse' : ''} />
                   <span>{filter.label}</span>
-                  <span className={`ml-2 px-2 py-0.5 rounded-full text-[9px] ${
-                    activeStatusFilter === filter.id ? 'bg-white/20 text-white' :
+                  <span className={`ml-2 px-2 py-0.5 rounded-full text-[9px] ${activeStatusFilter === filter.id ? 'bg-white/20 text-white' :
                     isDelayed && count > 0 ? 'bg-red-500/10 text-red-500' : 'bg-primary/10 text-primary'
-                  }`}>
+                    }`}>
                     {count}
                   </span>
                 </button>
@@ -726,6 +725,19 @@ const KitchenDashboard = () => {
                       </div>
                     )}
 
+                    {/* Special Instructions */}
+                    {order.remarks && (
+                      <div className="px-4 py-3 bg-amber-500/10 border-b border-amber-500/20">
+                        <div className="flex items-start space-x-2">
+                          <AlertTriangle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest mb-0.5">Special Instructions</p>
+                            <p className="text-xs font-bold text-amber-900/80 dark:text-amber-200/80">{order.remarks}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Items */}
                     <div className="flex-1 p-4 space-y-3">
                       {/* In 'new' tab: only show 'placed' items to avoid re-showing already-preparing items */}
@@ -746,42 +758,31 @@ const KitchenDashboard = () => {
                             </div>
 
                             {/* Column 2: Details */}
-                            <div className="min-w-0">
-                              <p className="font-black text-text-primary text-[11px] leading-tight truncate uppercase tracking-tight">
-                                {item.name || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Menu Item')}
-                              </p>
-                              <div className="flex items-center space-x-1.5 mt-1">
-                                <span className="text-[8px] bg-background-card px-1.5 py-0.5 rounded-md border border-border-light text-text-muted font-black uppercase tracking-widest truncate max-w-[50px]">{item.size}</span>
-                                <span className="text-[9px] text-primary font-black uppercase tracking-widest shrink-0">x {item.quantity}</span>
+                            <div className="min-w-0 flex flex-col justify-center">
+                              <div className="flex justify-between items-start gap-2">
+                                <p className="font-black text-text-primary text-[11px] leading-tight uppercase tracking-tight">
+                                  {item.name || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Menu Item')}
+                                  {item.size && (
+                                    <span className="inline-block ml-1.5 text-[8px] bg-background-card px-1.5 py-0.5 rounded-md border border-border-light text-text-muted font-black uppercase tracking-widest align-middle">
+                                      {item.size}
+                                    </span>
+                                  )}
+                                </p>
+                                <span className="text-[11px] text-primary font-black uppercase tracking-widest shrink-0 mt-[-1px]">x {item.quantity}</span>
                               </div>
 
-                              {/* Combo Items */}
-                              {item.comboItems?.length > 0 && (
-                                <div className="mt-2 bg-background-muted/30 p-2 rounded-lg border border-border-light/40">
-                                  <span className="text-[8px] font-black text-status-available uppercase tracking-widest block mb-1.5 opacity-80">Combo Includes:</span>
-                                  <div className="flex flex-col gap-1 pl-1.5 border-l-[1.5px] border-status-available/30">
-                                    {item.comboItems.map((ci, idx) => (
-                                      <span key={idx} className="text-text-muted text-[9px] font-bold flex items-center gap-1.5">
-                                        <span className="text-text-primary/40 text-[7px]">▶</span> {ci.quantity || 1}x {ci.name}
-                                      </span>
-                                    ))}
+                              {/* BOGO Items */}
+                              {item.bogoItem && (item.menuItem?.variants || item.menuItem?.sizes || [])?.find(v => (v.size || 'Standard') === (item.size || 'Standard'))?.isBOGO && (
+                                <div className="mt-2 bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/30">
+                                  <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest block mb-1.5 opacity-90">Buy 1 Get 1 Free Add-on:</span>
+                                  <div className="flex flex-col gap-1 pl-1.5 border-l-[1.5px] border-emerald-500/40">
+                                    <span className="text-emerald-700 text-[9px] font-black flex items-center gap-1.5">
+                                      <span className="text-emerald-500/60 text-[8px]">🎁</span> Free {item.bogoItem.name} {item.bogoItem.size ? `(${item.bogoItem.size})` : ''} x {item.bogoItem.quantity || item.quantity}
+                                    </span>
                                   </div>
                                 </div>
                               )}
 
-                              {/* Included Items (Add-ons) */}
-                              {item.includedItems?.length > 0 && (
-                                <div className="mt-2 bg-background-muted/30 p-2 rounded-lg border border-border-light/40">
-                                  <span className="text-[8px] font-black text-primary uppercase tracking-widest block mb-1.5 opacity-80">Includes Add-ons:</span>
-                                  <div className="flex flex-col gap-1 pl-1.5 border-l-[1.5px] border-primary/30">
-                                    {item.includedItems.map((ii, idx) => (
-                                      <span key={idx} className="text-text-muted text-[9px] font-bold flex items-center gap-1.5">
-                                        <span className="text-text-primary/40 text-[7px]">▶</span> {ii.quantity || 1}x {ii.name}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
                             </div>
 
                             {/* Column 3: Status (Hidden in 'new' view) */}

@@ -30,7 +30,8 @@ import {
   Utensils,
   LayoutGrid,
   Phone,
-  User as UserIcon
+  User as UserIcon,
+  Loader2
 } from 'lucide-react';
 
 
@@ -72,10 +73,17 @@ const AddressListModal = ({ isOpen, onClose, addresses, onSelect, onAddAddress }
 const CartPage = () => {
   const navigate = useNavigate();
   const { theme } = useTheme();
-  const { cartItems, updateQuantity, removeFromCart, offers, settings, loading: cartLoading, subtotal, checkStoreStatus } = useCart();
+  const { cartItems, updateQuantity, removeFromCart, offers, settings, loading: cartLoading, subtotal, checkStoreStatus, fetchCart } = useCart();
 
 
-  const [deliveryAddress, setDeliveryAddress] = useState(null);
+  const [deliveryAddress, setDeliveryAddress] = useState(() => {
+    try {
+      const savedObj = localStorage.getItem('selectedDeliveryAddressObj');
+      return savedObj ? JSON.parse(savedObj) : null;
+    } catch (e) {
+      return null;
+    }
+  });
   const [savedAddresses, setSavedAddresses] = useState([]);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [isAddressListOpen, setIsAddressListOpen] = useState(false);
@@ -229,8 +237,12 @@ const CartPage = () => {
         const addresses = response.data.data;
         setSavedAddresses(addresses);
         if (addresses.length > 0) {
-          const defaultAddr = addresses.find(a => a.isDefault) || addresses[0];
+          const savedId = localStorage.getItem('selectedDeliveryAddressId');
+          const savedAddr = savedId ? addresses.find(a => a._id === savedId) : null;
+          const defaultAddr = savedAddr || addresses.find(a => a.isDefault) || addresses[0];
           setDeliveryAddress(defaultAddr);
+          localStorage.setItem('selectedDeliveryAddressId', defaultAddr._id);
+          localStorage.setItem('selectedDeliveryAddressObj', JSON.stringify(defaultAddr));
         }
       }
     } catch (error) { console.error('Error fetching addresses:', error); }
@@ -267,7 +279,13 @@ const CartPage = () => {
       navigate('/login', { replace: true });
     }
   }, [navigate]);
-  const handleSelectAddress = (address) => { setDeliveryAddress(address); };
+  const handleSelectAddress = (address) => { 
+    setDeliveryAddress(address); 
+    if (address?._id) {
+      localStorage.setItem('selectedDeliveryAddressId', address._id);
+      localStorage.setItem('selectedDeliveryAddressObj', JSON.stringify(address));
+    }
+  };
   const getStock = React.useCallback((item) => {
     if (!item) return 0;
 
@@ -300,7 +318,9 @@ const CartPage = () => {
     return (cartItems || []).some(item => (getStock(item) < (item.quantity || 0)) || item.isBlocked);
   }, [cartItems, getStock]);
 
-  const handleCheckout = () => {
+  const [isValidating, setIsValidating] = useState(false);
+
+  const handleCheckout = async () => {
     const storeStatus = checkStoreStatus ? checkStoreStatus() : { isOpen: true };
     if (!storeStatus.isOpen) {
       let message = 'Store is currently closed.';
@@ -342,6 +362,37 @@ const CartPage = () => {
       return;
     }
     if (!dineInTableId && !deliveryAddress) { Swal.fire({ title: 'Missing Address', text: 'Please select a delivery address.', icon: 'warning', confirmButtonColor: '#B91C1C' }); return; }
+
+    setIsValidating(true);
+    try {
+      const response = await api.post('/api/orders/validate-cart', { items: cartItems });
+      if (!response.data.valid) {
+        Swal.fire({
+          title: 'Action Required',
+          html: `
+            <div style="text-align: center; margin-bottom: 12px; font-weight: 500;">The following items need your attention:</div>
+            <ul style="text-align: left; background: #fef2f2; color: #991b1b; padding: 12px 20px 12px 36px; border-radius: 12px; font-size: 14px; margin: 0 auto 16px auto; list-style-type: disc; display: inline-block; max-width: 90%; border: 1px solid #fecaca;">
+              ${response.data.errors.map(err => `<li style="margin-bottom: 4px;">${err}</li>`).join('')}
+            </ul>
+            <div style="font-size: 13px; color: #6b7280;">Please update your cart to continue.</div>
+          `,
+          icon: 'warning',
+          confirmButtonColor: '#B91C1C',
+          customClass: { popup: 'rounded-[2rem] bg-background text-text-primary' }
+        });
+        
+        // Refresh cart to update stock quantities locally, allowing inline error messages to appear.
+        if (fetchCart) await fetchCart();
+        return;
+      }
+    } catch (error) {
+      console.error('Validation error:', error);
+      Swal.fire('Error', 'Failed to validate cart. Please try again.', 'error');
+      return;
+    } finally {
+      setIsValidating(false);
+    }
+
     navigate('/payment', { state: { deliveryAddress, additionalNote, deliveryFee, platformFee, discount, dineInTableId, dineInTableNumber } });
   };
 
@@ -475,6 +526,12 @@ const CartPage = () => {
                       
                     const discountPercent = computedDiscountPercent;
 
+                    const sameItemQty = cartItems
+                      .filter(c => (c.menuItemId || c.menuItem?._id || c._id) === (item.menuItemId || item.menuItem?._id || item._id))
+                      .reduce((acc, c) => acc + c.quantity, 0);
+                    const maxStock = getStock(item);
+                    const isMaxReached = maxStock <= sameItemQty;
+
                     return (
                       <div key={`${item._id}-${item.selectedSize}`} className={`p-4 md:p-6 transition-all hover:bg-primary/[0.01] group relative border-b border-border/5 last:border-0 ${item.isBlocked || getStock(item) < item.quantity ? 'opacity-60' : ''}`}>
                         <div className="flex gap-4 md:gap-6 items-center">
@@ -522,39 +579,48 @@ const CartPage = () => {
                                   </div>
                                 )}
 
-                                {item.bogoItem && (
+                                {/* BOGO Offer */}
+                                {item.bogoItem && item.variants?.find(v => v.size === item.selectedSize)?.isBOGO && (
                                   <div className="mt-2 space-y-1 pl-2 border-l border-emerald-500/30">
                                     <span className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">Buy 1 Get 1 Free Add-on:</span>
-                                    <div className="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[9px] font-bold px-2 py-0.5 rounded-lg border border-emerald-500/20">
+                                    <div className="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-emerald-500/20">
                                       🎁 Free {item.bogoItem.name} {item.bogoItem.size ? `(${item.bogoItem.size})` : ''} x {item.bogoItem.quantity || item.quantity}
                                     </div>
                                   </div>
                                 )}
+
                               </div>
                               <button onClick={() => removeFromCart(item._id)} className="text-text-muted/20 hover:text-red-500 transition-colors p-1"><Trash2 size={16} /></button>
                             </div>
 
                             <div className="flex flex-wrap items-center gap-4 pt-2">
                               {/* Compact Quantity Control */}
-                              <div className="flex items-center bg-background border border-border/40 rounded-xl overflow-hidden h-8 shadow-sm">
-                                <button
-                                  onClick={() => updateQuantity(item._id, item.quantity - 1)}
-                                  disabled={item.quantity <= 1 || getStock(item) < item.quantity}
-                                  className="w-8 flex items-center justify-center hover:bg-background-muted transition-colors text-text-muted disabled:opacity-20"
-                                >
-                                  <Minus size={12} strokeWidth={3} />
-                                </button>
-                                <span className="w-6 text-center text-xs font-black text-text-primary">{item.quantity}</span>
-                                <button
-                                  onClick={() => updateQuantity(item._id, item.quantity + 1)}
-                                  disabled={getStock(item) <= item.quantity}
-                                  className="w-8 flex items-center justify-center hover:bg-background-muted transition-colors text-text-muted disabled:opacity-20"
-                                >
-                                  <Plus size={12} strokeWidth={3} />
-                                </button>
+                              <div className="flex flex-col gap-1.5">
+                                <div className="flex items-center bg-background border border-border/40 rounded-xl overflow-hidden h-8 shadow-sm w-fit">
+                                  <button
+                                    onClick={() => updateQuantity(item._id, item.quantity - 1)}
+                                    disabled={item.quantity <= 1}
+                                    className="w-8 flex items-center justify-center hover:bg-background-muted transition-colors text-text-muted disabled:opacity-20"
+                                  >
+                                    <Minus size={12} strokeWidth={3} />
+                                  </button>
+                                  <span className="w-6 text-center text-xs font-black text-text-primary">{item.quantity}</span>
+                                  <button
+                                    onClick={() => updateQuantity(item._id, item.quantity + 1)}
+                                    disabled={isMaxReached}
+                                    className="w-8 flex items-center justify-center hover:bg-background-muted transition-colors text-text-muted disabled:opacity-20"
+                                  >
+                                    <Plus size={12} strokeWidth={3} />
+                                  </button>
+                                </div>
+                                {getStock(item) < item.quantity && (
+                                  <span className="text-[9px] font-black text-red-500 tracking-wider">
+                                    {getStock(item) === 0 ? 'Out of stock' : `Only ${getStock(item)} left in stock`}
+                                  </span>
+                                )}
                               </div>
 
-                              <div className="flex flex-col items-end gap-1">
+                              <div className="flex flex-col items-end gap-1 ml-auto">
                                 <span className="text-base font-black text-text-primary">₹{(finalPrice * item.quantity).toFixed(0)}</span>
                                 {basePrice > finalPrice && (
                                   <span className="text-xs font-bold text-text-muted line-through opacity-50">₹{(basePrice * item.quantity).toFixed(0)}</span>
@@ -563,9 +629,7 @@ const CartPage = () => {
                             </div>
 
                             <div className="flex flex-wrap gap-2 pt-1">
-                              {activeOffer && (
-                                <span className="text-[8px] font-black uppercase text-green-600 bg-green-500/5 px-1.5 py-0.5 rounded border border-green-500/10">Saver Deal</span>
-                              )}
+
                               {(() => {
                                 if (item.isBlocked) return <span className="text-[8px] font-black uppercase text-red-600 bg-red-500/5 px-1.5 py-0.5 rounded border border-red-500/10">Currently Unavailable</span>;
                                 const stock = getStock(item);
@@ -663,14 +727,23 @@ const CartPage = () => {
                 </div>
                 <button
                   onClick={handleCheckout}
-                  disabled={loading || hasOutOfStockItems}
-                  className={`w-full font-black py-5 rounded-2xl transition-all shadow-2xl uppercase tracking-[0.2em] flex items-center justify-center gap-4 text-xs ${hasOutOfStockItems
+                  disabled={loading || hasOutOfStockItems || isValidating}
+                  className={`w-full font-black py-5 rounded-2xl transition-all shadow-2xl uppercase tracking-[0.2em] flex items-center justify-center gap-4 text-xs ${hasOutOfStockItems || isValidating
                       ? 'bg-background-muted text-text-muted/30 cursor-not-allowed border border-border/10 grayscale opacity-50'
                       : 'bg-primary text-white hover:bg-primary-dark active:scale-[0.98] shadow-primary/20'
                     }`}
                 >
-                  Proceed to Payment
-                  <ChevronRight size={18} strokeWidth={3} />
+                  {isValidating ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      Validating...
+                    </>
+                  ) : (
+                    <>
+                      Proceed to Payment
+                      <ChevronRight size={18} strokeWidth={3} />
+                    </>
+                  )}
                 </button>
               </div>
             </div>

@@ -781,7 +781,7 @@ const SettingsSection = () => {
               </h3>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-text-secondary uppercase">Pricing Method</label>
                 <select
@@ -832,6 +832,25 @@ const SettingsSection = () => {
                     }}
                     className="w-full pl-8 pr-4 py-3 bg-background-muted/50 rounded-2xl border border-transparent focus:border-primary/30 outline-none font-bold text-text-primary text-sm"
                   />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-text-secondary uppercase">Max Delivery Dist.</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={settings.deliverySettings?.maxDeliveryDistance === '' ? '' : (settings.deliverySettings?.maxDeliveryDistance ?? '')}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSettings({
+                        ...settings,
+                        deliverySettings: { ...settings.deliverySettings, maxDeliveryDistance: val === '' ? '' : parseFloat(val) }
+                      });
+                    }}
+                    className="w-full px-4 py-3 bg-background-muted/50 rounded-2xl border border-transparent focus:border-primary/30 outline-none font-bold text-text-primary text-sm"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-text-muted uppercase">KM</span>
                 </div>
               </div>
             </div>

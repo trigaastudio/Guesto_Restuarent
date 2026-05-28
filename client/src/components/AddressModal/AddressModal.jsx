@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, User as UserIcon, Users, MapPin, Home, Briefcase } from 'lucide-react';
+import { useCart } from '../../context/CartContext';
 
 const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
+  const { settings } = useCart();
   const [recipientType, setRecipientType] = useState('myself'); // 'myself' or 'others'
   const [formData, setFormData] = useState({
     name: '',
@@ -107,9 +109,46 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
     };
   }, [isMapOpen]);
 
+  // Helper to calculate distance in km using Haversine formula
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c; // Distance in km
+  };
+
+  const validateDistance = (lat, lng) => {
+    const storeLat = settings?.restaurantDetails?.location?.lat;
+    const storeLng = settings?.restaurantDetails?.location?.lng;
+    const maxDist = settings?.deliverySettings?.maxDeliveryDistance || 12;
+    
+    if (storeLat && storeLng) {
+      const distance = calculateDistance(storeLat, storeLng, lat, lng);
+      if (distance > maxDist) {
+        setErrors(prev => ({ 
+          ...prev, 
+          location: `Delivery Not Available: This location is ${distance.toFixed(1)} km away. We deliver within ${maxDist} km.` 
+        }));
+        return false;
+      }
+    }
+    return true;
+  };
+
   const handleSaveMapLocation = () => {
     if (markerRef.current) {
       const { lat, lng } = markerRef.current.getLatLng();
+      
+      if (!validateDistance(lat, lng)) {
+        setIsMapOpen(false);
+        return;
+      }
+
       const mapsUrl = `https://www.google.com/maps?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
       setFormData({
         ...formData,
@@ -130,6 +169,12 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
+        
+        if (!validateDistance(latitude, longitude)) {
+          setIsGettingLocation(false);
+          return;
+        }
+
         const mapsUrl = `https://www.google.com/maps?q=${latitude.toFixed(6)},${longitude.toFixed(6)}`;
         setFormData({
           ...formData,
@@ -290,9 +335,13 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
                 placeholder="Paste the Google Maps link or click on the current location link"
               />
             </div>
-            <p className="text-[8px] font-bold text-text-muted mt-1 ml-1 italic opacity-80">
-              Tip: Click "Current location" to locate, or paste a Google Maps link directly here if you have one.
-            </p>
+            {typeof errors.location === 'string' ? (
+              <p className="text-[10px] font-bold text-primary mt-1.5 ml-1 leading-snug">{errors.location}</p>
+            ) : (
+              <p className="text-[8px] font-bold text-text-muted mt-1 ml-1 italic opacity-80">
+                Tip: Click "Current location" to locate, or paste a Google Maps link directly here if you have one.
+              </p>
+            )}
           </div>
 
           {/* Address Type */}

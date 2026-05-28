@@ -142,11 +142,13 @@ const FloatingCart = () => {
                   )}
 
                   {/* BOGO Offer */}
-                  {item.bogoItem && (
+                  {item.bogoItem && item.variants?.find(v => v.size === item.selectedSize)?.isBOGO && (
                     <div className="mt-1 inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[8px] font-bold px-1.5 py-0.5 rounded border border-emerald-500/20">
                       🎁 Free {item.bogoItem.name} {item.bogoItem.size ? `(${item.bogoItem.size})` : ''} x {item.bogoItem.quantity || item.quantity}
                     </div>
                   )}
+
+
                 </div>
               </div>
 

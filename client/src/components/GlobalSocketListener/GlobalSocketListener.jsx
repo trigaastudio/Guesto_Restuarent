@@ -49,6 +49,11 @@ const GlobalSocketListener = () => {
   }, [navigate]);
 
   const handleForceLogout = () => {
+    const isStaff = window.location.pathname.startsWith('/kitchen') || 
+                    window.location.pathname.startsWith('/waiter') || 
+                    window.location.pathname.startsWith('/staff') ||
+                    localStorage.getItem('staff_token') !== null;
+
     // Clear all storage
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -67,7 +72,7 @@ const GlobalSocketListener = () => {
       text: 'Your account has been blocked by an administrator. You will be logged out.',
       confirmButtonText: 'OK'
     }).then(() => {
-      window.location.href = '/login';
+      window.location.href = isStaff ? '/staff/login' : '/login';
     });
   };
 

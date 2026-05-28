@@ -72,7 +72,7 @@ const LandingPage = () => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const fetchTrendingDishes = useCallback(async () => {
+  const fetchTrendingDishes = async () => {
     try {
       const response = await api.get('/api/dashboard/stats');
       if (response.data && response.data.success) {
@@ -81,18 +81,18 @@ const LandingPage = () => {
     } catch (error) {
       console.error('Error fetching trending dishes:', error);
     }
-  }, []);
+  };
 
-  const fetchCategories = useCallback(async () => {
+  const fetchCategories = async () => {
     try {
       const response = await api.get('/api/categories');
       setCategories(response.data.filter(cat => cat.isActive !== false));
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
-  }, []);
+  };
 
-  const fetchMenus = useCallback(async (pageNum = 1, filterOverride = offerFilter) => {
+  const fetchMenus = async (pageNum = 1, filterOverride = offerFilter) => {
     try {
       if (pageNum === 1) {
         setLoading(true);
@@ -130,7 +130,7 @@ const LandingPage = () => {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [selectedCategory, debouncedSearchQuery, dietaryFilter, sortBy, offerFilter]);
+  };
 
   useEffect(() => {
     fetchMenus(1, offerFilter);
@@ -326,18 +326,14 @@ const LandingPage = () => {
                 className="flex overflow-x-auto no-scrollbar gap-6 px-6 pb-6 snap-x"
               >
                 {trendingItems.filter(item => !item.isBlocked).map((item, idx) => {
-                  const isComboOutOfStock = item.isCombo && item.comboItems?.length > 0 && item.comboItems.some(ci => {
-                    const subItem = ci.menuItem;
-                    return !subItem || subItem.isBlocked || getEffectiveStock(subItem) <= 0;
-                  });
-                  const isItemOutOfStock = (item.isCombo ? false : (getEffectiveStock(item) <= 0)) || isClosed || !!isComboOutOfStock;
+                  const isItemOutOfStock = getEffectiveStock(item) < 1 || isClosed;
                   return (
                     <div
                       key={idx}
                       onClick={() => { if (!isItemOutOfStock) { setSelectedMenu(item); setIsModalOpen(true); } }}
                       className={`flex-shrink-0 w-[200px] md:w-[260px] bg-background-muted rounded-[2rem] p-4 border border-border/5 shadow-xl transition-all duration-500 group snap-center relative overflow-hidden ${isItemOutOfStock
-                          ? 'grayscale opacity-60 pointer-events-none'
-                          : 'hover:shadow-[0_20px_50px_rgba(185,28,28,0.1)] cursor-pointer'
+                        ? 'grayscale opacity-60 pointer-events-none'
+                        : 'hover:shadow-[0_20px_50px_rgba(185,28,28,0.1)] cursor-pointer'
                         }`}
                     >
                       <div className="relative h-40 md:h-48 rounded-[1.5rem] overflow-hidden mb-4">
