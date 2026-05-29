@@ -70,6 +70,55 @@ const AddressListModal = ({ isOpen, onClose, addresses, onSelect, onAddAddress }
   );
 };
 
+const QuantityInput = ({ item, updateQuantity, getStock }) => {
+  const [localValue, setLocalValue] = useState(item.quantity);
+
+  React.useEffect(() => {
+    setLocalValue(item.quantity);
+  }, [item.quantity]);
+
+  const handleChange = (e) => {
+    const val = e.target.value;
+    setLocalValue(val);
+    if (val !== '' && !isNaN(parseInt(val)) && parseInt(val) >= 1) {
+      updateQuantity(item._id, parseInt(val));
+    }
+  };
+
+  const handleBlur = () => {
+    if (localValue === '' || isNaN(parseInt(localValue)) || parseInt(localValue) < 1) {
+      setLocalValue(item.quantity || 1);
+      updateQuantity(item._id, item.quantity || 1);
+    }
+  };
+
+  return (
+    <div className="flex items-center bg-background border border-border/40 rounded-xl overflow-hidden h-8 shadow-sm">
+      <button
+        onClick={() => updateQuantity(item._id, item.quantity - 1)}
+        disabled={item.quantity <= 1 || getStock(item) < item.quantity}
+        className="w-8 flex items-center justify-center hover:bg-background-muted transition-colors text-text-muted disabled:opacity-20"
+      >
+        <Minus size={12} strokeWidth={3} />
+      </button>
+      <input
+        type="number"
+        value={localValue}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        className="w-10 text-center text-xs font-black text-text-primary bg-transparent outline-none [-moz-appearance:_textfield] [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none"
+      />
+      <button
+        onClick={() => updateQuantity(item._id, item.quantity + 1)}
+        disabled={getStock(item) <= item.quantity}
+        className="w-8 flex items-center justify-center hover:bg-background-muted transition-colors text-text-muted disabled:opacity-20"
+      >
+        <Plus size={12} strokeWidth={3} />
+      </button>
+    </div>
+  );
+};
+
 const CartPage = () => {
   const navigate = useNavigate();
   const { theme } = useTheme();
@@ -596,23 +645,7 @@ const CartPage = () => {
                             <div className="flex flex-wrap items-center gap-4 pt-2">
                               {/* Compact Quantity Control */}
                               <div className="flex flex-col gap-1.5">
-                                <div className="flex items-center bg-background border border-border/40 rounded-xl overflow-hidden h-8 shadow-sm w-fit">
-                                  <button
-                                    onClick={() => updateQuantity(item._id, item.quantity - 1)}
-                                    disabled={item.quantity <= 1}
-                                    className="w-8 flex items-center justify-center hover:bg-background-muted transition-colors text-text-muted disabled:opacity-20"
-                                  >
-                                    <Minus size={12} strokeWidth={3} />
-                                  </button>
-                                  <span className="w-6 text-center text-xs font-black text-text-primary">{item.quantity}</span>
-                                  <button
-                                    onClick={() => updateQuantity(item._id, item.quantity + 1)}
-                                    disabled={isMaxReached}
-                                    className="w-8 flex items-center justify-center hover:bg-background-muted transition-colors text-text-muted disabled:opacity-20"
-                                  >
-                                    <Plus size={12} strokeWidth={3} />
-                                  </button>
-                                </div>
+                                <QuantityInput item={item} updateQuantity={updateQuantity} getStock={getStock} />
                                 {getStock(item) < item.quantity && (
                                   <span className="text-[9px] font-black text-red-500 tracking-wider">
                                     {getStock(item) === 0 ? 'Out of stock' : `Only ${getStock(item)} left in stock`}

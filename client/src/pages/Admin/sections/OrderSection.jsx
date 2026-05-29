@@ -359,7 +359,7 @@ const OrderSection = () => {
           
           ${qrCodeUrl ? `
             <div class="qr-section">
-              <div class="qr-label">${settings.printingSettings.kotQRCodeType === 'upi' ? 'Scan to Pay' : 'Scan for Info'}</div>
+              <div class="qr-label">${settings.printingSettings.kotQRCodeType === 'upi' ? 'Scan to Pay' : 'Scan to Pay'}</div>
               <img src="${qrCodeUrl}" style="width: 120px; height: 120px; border: 1px solid #000; padding: 5px;" />
             </div>
           ` : ''}
@@ -1119,6 +1119,34 @@ const OrderSection = () => {
             ...item.bogoItem,
             quantity: newQty
           };
+        }
+        return updatedItem;
+      }
+      return item;
+    }));
+  };
+
+  const setCartQuantity = (index, value) => {
+    setCart(prevCart => prevCart.map((item, idx) => {
+      if (idx === index) {
+        return { ...item, quantity: value };
+      }
+      return item;
+    }));
+  };
+
+  const handleCartQuantityBlur = (index) => {
+    setCart(prevCart => prevCart.map((item, idx) => {
+      if (idx === index) {
+        const val = parseInt(item.quantity);
+        const newQty = (isNaN(val) || val < 1) ? 1 : val;
+        const updatedItem = {
+          ...item,
+          quantity: newQty,
+          totalPrice: newQty * item.unitPrice
+        };
+        if (item.bogoItem) {
+          updatedItem.bogoItem = { ...item.bogoItem, quantity: newQty };
         }
         return updatedItem;
       }
@@ -2606,8 +2634,15 @@ const OrderSection = () => {
                       </div>
                       <div className="flex items-center space-x-3">
                         <div className="flex items-center space-x-2 bg-background-card px-2 py-1 rounded-lg border border-border-light">
-                          <button onClick={() => updateCartQuantity(idx, -1)} className="text-text-muted hover:text-primary font-black">-</button>
-                          <span className="text-xs font-black w-4 text-center">{item.quantity}</span>
+                          <button onClick={() => updateCartQuantity(idx, -1)} disabled={item.quantity <= 1} className="text-text-muted hover:text-primary font-black disabled:opacity-30">-</button>
+                          <input
+                            type="number"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(e) => setCartQuantity(idx, e.target.value)}
+                            onBlur={() => handleCartQuantityBlur(idx)}
+                            className="w-10 text-center font-black text-xs bg-transparent border-none outline-none appearance-none [-moz-appearance:_textfield] [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none"
+                          />
                           <button onClick={() => updateCartQuantity(idx, 1)} className="text-text-muted hover:text-primary font-black">+</button>
                         </div>
                         <p className="font-black text-xs w-12 text-right">₹{item.totalPrice}</p>

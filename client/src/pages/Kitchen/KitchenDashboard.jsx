@@ -265,7 +265,7 @@ const KitchenDashboard = () => {
           
           ${qrCodeUrl ? `
             <div class="qr-section">
-              <div class="qr-label">${currentSettings.printingSettings.kotQRCodeType === 'upi' ? 'Scan to Pay' : 'Scan for Info'}</div>
+              <div class="qr-label">${currentSettings.printingSettings.kotQRCodeType === 'upi' ? 'Scan to Pay' : 'Scan to Pay'}</div>
               <img src="${qrCodeUrl}" style="width: 120px; height: 120px; border: 1px solid #000; padding: 5px;" />
             </div>
           ` : ''}
