@@ -60,6 +60,54 @@ const FloatingCart = () => {
     );
   }
 
+const QuantityInput = ({ item, updateQuantity }) => {
+  const [localValue, setLocalValue] = useState(item.quantity);
+
+  React.useEffect(() => {
+    setLocalValue(item.quantity);
+  }, [item.quantity]);
+
+  const handleChange = (e) => {
+    const val = e.target.value;
+    setLocalValue(val);
+    if (val !== '' && !isNaN(parseInt(val)) && parseInt(val) >= 1) {
+      updateQuantity(item._id, parseInt(val));
+    }
+  };
+
+  const handleBlur = () => {
+    if (localValue === '' || isNaN(parseInt(localValue)) || parseInt(localValue) < 1) {
+      setLocalValue(item.quantity || 1);
+      updateQuantity(item._id, item.quantity || 1);
+    }
+  };
+
+  return (
+    <div className="flex items-center bg-background-muted rounded-xl border border-border-light overflow-hidden shadow-inner">
+      <button 
+        onClick={() => updateQuantity(item._id, item.quantity - 1)} 
+        disabled={item.quantity <= 1} 
+        className="p-1.5 text-text-muted hover:text-primary hover:bg-background transition-colors disabled:opacity-30 disabled:hover:text-text-muted"
+      >
+        <Minus size={14} strokeWidth={3} />
+      </button>
+      <input
+        type="number"
+        value={localValue}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        className="w-10 text-center text-[11px] font-black text-text-primary bg-transparent outline-none [-moz-appearance:_textfield] [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none"
+      />
+      <button 
+        onClick={() => updateQuantity(item._id, item.quantity + 1)} 
+        className="p-1.5 text-text-muted hover:text-primary hover:bg-background transition-colors"
+      >
+        <Plus size={14} strokeWidth={3} />
+      </button>
+    </div>
+  );
+};
+
   return (
     <div className="hidden lg:flex fixed top-24 right-4 sm:right-6 lg:right-10 z-[999] w-[calc(100vw-32px)] sm:w-[380px] max-h-[calc(100vh-120px)] flex-col bg-background-card border border-border-light shadow-[0_20px_60px_rgba(0,0,0,0.3)] rounded-3xl overflow-hidden animate-in slide-in-from-right-8 duration-500">
       {/* Header */}
@@ -151,11 +199,7 @@ const FloatingCart = () => {
               </div>
 
               <div className="flex items-center justify-between pt-3 border-t border-border-light/50">
-                <div className="flex items-center bg-background-muted rounded-xl border border-border-light overflow-hidden shadow-inner">
-                  <button onClick={() => updateQuantity(item._id, item.quantity - 1)} disabled={item.quantity <= 1} className="p-1.5 text-text-muted hover:text-primary hover:bg-background transition-colors disabled:opacity-30 disabled:hover:text-text-muted"><Minus size={14} strokeWidth={3} /></button>
-                  <span className="w-8 text-center text-[11px] font-black text-text-primary">{item.quantity}</span>
-                  <button onClick={() => updateQuantity(item._id, item.quantity + 1)} className="p-1.5 text-text-muted hover:text-primary hover:bg-background transition-colors"><Plus size={14} strokeWidth={3} /></button>
-                </div>
+                <QuantityInput item={item} updateQuantity={updateQuantity} />
                 <div className="flex items-center gap-4">
                   <div className="flex flex-col items-end">
                     <span className="text-sm font-black text-text-primary">₹{(finalPrice * item.quantity).toFixed(0)}</span>
