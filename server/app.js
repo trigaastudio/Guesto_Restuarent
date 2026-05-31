@@ -3,6 +3,8 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import mongoSanitize from 'express-mongo-sanitize';
+import cookieParser from 'cookie-parser';
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import menuRoutes from './routes/menuRoutes.js';
@@ -67,6 +69,17 @@ app.use('/api/', limiter);
 connectDB();
 
 app.use(express.json());
+app.use(cookieParser());
+// Data sanitization against NoSQL query injection
+// Custom middleware to avoid TypeError in Express 5
+app.use((req, res, next) => {
+  ['body', 'params', 'query'].forEach((key) => {
+    if (req[key]) {
+      mongoSanitize.sanitize(req[key], { replaceWith: '_' });
+    }
+  });
+  next();
+});
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 

@@ -61,7 +61,6 @@ const AdminLogin = () => {
 
       if (response.data.success) {
         const userData = response.data.data;
-        localStorage.setItem('admin_token', userData.token);
         localStorage.setItem('admin_user', JSON.stringify(userData));
 
         // Enforce mutual exclusivity: log out of staff if logging into admin

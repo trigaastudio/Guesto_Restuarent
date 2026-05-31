@@ -86,12 +86,12 @@ export const updateTable = async (req, res) => {
   }
 };
 
-// Delete a table (soft delete by setting isActive: false)
+// Delete a table (hard delete)
 export const deleteTable = async (req, res) => {
   try {
-    const table = await Table.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
+    const table = await Table.findByIdAndDelete(req.params.id);
     if (!table) return res.status(404).json({ message: 'Table not found' });
-    res.status(200).json({ message: 'Table deactivated successfully' });
+    res.status(200).json({ message: 'Table deleted successfully' });
     emitTablesUpdated();
   } catch (error) {
     res.status(500).json({ message: error.message });

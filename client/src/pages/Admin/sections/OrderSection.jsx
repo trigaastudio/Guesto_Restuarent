@@ -135,17 +135,21 @@ const OrderSection = () => {
   const socketRef = useRef();
 
   useEffect(() => {
-    fetchOrders();
     fetchMenu();
     fetchDeliveryStaff();
 
     // Socket Setup for Real-time updates
     socketRef.current = io(SOCKET_URL);
     socketRef.current.on('ordersUpdated', () => {
-      fetchOrders(true);
+      // Intentionally empty or remove, relying on orderUpdated
     });
-    socketRef.current.on('newOrder', () => {
-      fetchOrders(true);
+    socketRef.current.on('orderUpdated', (updatedOrder) => {
+      setOrders(prev => prev.map(o => o._id === updatedOrder._id ? updatedOrder : o));
+    });
+    socketRef.current.on('newOrder', (data) => {
+      if (data && data.order) {
+        setOrders(prev => [data.order, ...prev]);
+      }
     });
 
     socketRef.current.on('stockUpdate', (data) => {
@@ -171,14 +175,8 @@ const OrderSection = () => {
       }));
     });
 
-    // Polling fallback every 30 seconds
-    const pollInterval = setInterval(() => {
-      fetchOrders(true);
-    }, 30000);
-
     return () => {
       if (socketRef.current) socketRef.current.disconnect();
-      clearInterval(pollInterval);
     };
   }, []);
 
@@ -381,10 +379,16 @@ const OrderSection = () => {
     }
   }, [currentPage]);
 
-  const fetchOrders = async (silent = false) => {
+  const fetchOrders = async (silent = false, currentTab = activeTab, start = startDate, end = endDate) => {
     if (!silent) setIsLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/orders`);
+      const params = {};
+      if (currentTab === 'history') {
+        params.history = true;
+        if (start) params.startDate = start;
+        if (end) params.endDate = end;
+      }
+      const response = await axios.get(`${API_BASE_URL}/orders`, { params });
       setOrders(response.data.data);
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -393,6 +397,17 @@ const OrderSection = () => {
       setIsLoading(false);
     }
   };
+
+  const isFirstMount = useRef(true);
+
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      fetchOrders(false, activeTab, startDate, endDate);
+    } else {
+      fetchOrders(true, activeTab, startDate, endDate);
+    }
+  }, [activeTab, startDate, endDate]);
 
   const handleClearHistory = async (ids = null) => {
     const isManualSelection = Array.isArray(ids);
@@ -1020,7 +1035,7 @@ const OrderSection = () => {
       const availableStock = getEffectiveStock(item);
       const mult = variant?.stockValue || 1;
       const effectiveVariantStock = Math.floor(availableStock / mult);
-      
+
       const currentInCart = cart
         .filter(c => c.menuItem === item._id && c.size === (variant?.size || 'Standard'))
         .reduce((acc, c) => acc + c.quantity, 0);
@@ -1094,7 +1109,7 @@ const OrderSection = () => {
         const variant = (fullMenuItem.variants || fullMenuItem.sizes || []).find(v => v.size === targetCartItem.size);
         const mult = variant?.stockValue || 1;
         const effectiveVariantStock = Math.floor(availableStock / mult);
-        
+
         const currentInCart = cart
           .filter(c => c.menuItem === targetCartItem.menuItem && c.size === targetCartItem.size)
           .reduce((acc, c) => acc + c.quantity, 0);
@@ -1370,7 +1385,7 @@ const OrderSection = () => {
       if (tabId === 'history') {
         if (!isHistoryOrder) return false;
         const matchesHistType = histType === 'all' || o.orderType === histType;
-        
+
         let matchesDate = true;
         if (sDate || eDate) {
           if (sDate) matchesDate = matchesDate && orderDate >= new Date(sDate);
@@ -1383,7 +1398,7 @@ const OrderSection = () => {
           // Default history to today's data starting at 5 AM
           matchesDate = orderDate >= todayStart;
         }
-        
+
         matchesType = matchesHistType && matchesDate;
       } else {
         // Force active tabs to only show today's orders (starting 5 AM)
@@ -2425,9 +2440,8 @@ const OrderSection = () => {
                   {posOrderType === 'delivery' && (
                     <div className="grid grid-cols-2 gap-2">
                       <div className={`flex flex-col gap-1`}>
-                        <div className={`flex items-center space-x-2 bg-background-card p-2 rounded-xl border transition-all ${
-                          errors.customerName ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'border-border-light'
-                        }`}>
+                        <div className={`flex items-center space-x-2 bg-background-card p-2 rounded-xl border transition-all ${errors.customerName ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'border-border-light'
+                          }`}>
                           <User size={12} className={errors.customerName ? 'text-primary' : 'text-text-muted'} />
                           <input
                             type="text"
@@ -2443,11 +2457,10 @@ const OrderSection = () => {
                         </div>
                         {errors.customerName && <p className="text-[9px] font-bold text-primary px-1">Name is required</p>}
                       </div>
-                      
+
                       <div className={`flex flex-col gap-1`}>
-                        <div className={`flex items-center space-x-2 bg-background-card p-2 rounded-xl border transition-all ${
-                          errors.customerPhone ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'border-border-light'
-                        }`}>
+                        <div className={`flex items-center space-x-2 bg-background-card p-2 rounded-xl border transition-all ${errors.customerPhone ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'border-border-light'
+                          }`}>
                           <Phone size={12} className={errors.customerPhone ? 'text-primary' : 'text-text-muted'} />
                           <input
                             type="text"
@@ -2549,9 +2562,8 @@ const OrderSection = () => {
                       </div>
 
                       <div className="space-y-2">
-                        <div className={`relative group/field flex items-center px-3 py-2 rounded-xl border transition-all ${
-                          errors.deliveryLocation ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'bg-primary/[0.03] border-primary/20 focus-within:border-primary'
-                        }`}>
+                        <div className={`relative group/field flex items-center px-3 py-2 rounded-xl border transition-all ${errors.deliveryLocation ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'bg-primary/[0.03] border-primary/20 focus-within:border-primary'
+                          }`}>
                           <ExternalLink size={12} className="text-primary mr-2" />
                           <div className="flex-1">
                             <input
@@ -2574,9 +2586,8 @@ const OrderSection = () => {
                           </button>
                         </div>
 
-                        <div className={`relative px-3 py-2 rounded-xl border transition-all shadow-sm ${
-                          errors.deliveryAddress ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'bg-background-card border-border-main focus-within:border-primary'
-                        }`}>
+                        <div className={`relative px-3 py-2 rounded-xl border transition-all shadow-sm ${errors.deliveryAddress ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'bg-background-card border-border-main focus-within:border-primary'
+                          }`}>
                           <div className="flex items-center justify-between mb-1">
                             <div className="flex items-center space-x-1.5">
                               <MapPin size={10} className="text-primary" />

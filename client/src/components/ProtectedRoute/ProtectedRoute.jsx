@@ -2,29 +2,29 @@ import { Navigate } from 'react-router-dom';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const path = window.location.pathname;
-  let token;
+  let hasAuth = false;
   let user;
 
   if (path.startsWith('/admin')) {
     // Admin routes: require admin_token
-    token = localStorage.getItem('admin_token');
+    hasAuth = !!localStorage.getItem('admin_user');
     user = JSON.parse(localStorage.getItem('admin_user') || '{}');
   } else if (path.startsWith('/kitchen') || path.startsWith('/waiter')) {
     // Staff dashboard routes: require staff_token
-    token = localStorage.getItem('staff_token');
+    hasAuth = !!localStorage.getItem('staff_user');
     user = JSON.parse(localStorage.getItem('staff_user') || '{}');
   } else {
     // Customer routes: accept customer token OR admin token
-    const customerToken = localStorage.getItem('token');
-    const adminToken = localStorage.getItem('admin_token');
+    const customerAuth = !!localStorage.getItem('user');
+    const adminAuth = !!localStorage.getItem('admin_user');
 
-    if (customerToken) {
+    if (customerAuth) {
       // Regular customer logged in
-      token = customerToken;
+      hasAuth = customerAuth;
       user = JSON.parse(localStorage.getItem('user') || '{}');
-    } else if (adminToken) {
+    } else if (adminAuth) {
       // Admin can browse customer pages as a preview
-      token = adminToken;
+      hasAuth = adminAuth;
       user = JSON.parse(localStorage.getItem('admin_user') || '{}');
     } else {
       // Nobody is logged in for the website
@@ -32,7 +32,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     }
   }
 
-  if (!token) {
+  if (!hasAuth) {
     // Redirect to appropriate login if no token found
     if (path.startsWith('/admin')) return <Navigate to="/admin/login" replace />;
     if (path.startsWith('/kitchen') || path.startsWith('/waiter')) return <Navigate to="/staff/login" replace />;

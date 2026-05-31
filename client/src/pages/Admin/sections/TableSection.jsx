@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../../../api/axiosInstance';
 import { Plus, Edit2, Trash2, RefreshCw, Users, Hash, Search, RotateCcw, XCircle } from 'lucide-react';
 import Loader from '../../../components/Loader/Loader';
@@ -15,6 +15,9 @@ const TableSection = ({ refreshKey }) => {
     capacity: 4
   });
   const [searchTerm, setSearchTerm] = useState('');
+  const [errors, setErrors] = useState({});
+  const tableNumberRef = useRef(null);
+  const capacityRef = useRef(null);
 
   const fetchTables = async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -38,6 +41,9 @@ const TableSection = ({ refreshKey }) => {
       ...prev,
       [name]: value,
     }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: null }));
+    }
   };
 
   const openModal = (table = null) => {
@@ -54,25 +60,53 @@ const TableSection = ({ refreshKey }) => {
         capacity: '4'
       });
     }
+    setErrors({});
     setIsModalOpen(true);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.tableNumber || !formData.capacity) {
-      showToast('warning', 'Please fill all required fields');
+    
+    const newErrors = {};
+    const alphanumericRegex = /^[a-zA-Z0-9]+$/;
+
+    if (!formData.tableNumber) {
+      newErrors.tableNumber = 'Table Number is required';
+    } else if (!alphanumericRegex.test(formData.tableNumber)) {
+      newErrors.tableNumber = 'Only letters and numbers are allowed';
+    } else {
+      const exists = tables.some(t => t.tableNumber.toString().toLowerCase() === formData.tableNumber.toString().toLowerCase() && t._id !== formData._id);
+      if (exists) {
+        newErrors.tableNumber = 'Table number already exists';
+      }
+    }
+
+    if (!formData.capacity) {
+      newErrors.capacity = 'Seating capacity is required';
+    } else if (parseInt(formData.capacity) < 1) {
+      newErrors.capacity = 'Capacity must be at least 1';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      setTimeout(() => {
+        if (newErrors.tableNumber && tableNumberRef.current) tableNumberRef.current.focus();
+        else if (newErrors.capacity && capacityRef.current) capacityRef.current.focus();
+      }, 0);
       return;
     }
+    setErrors({});
+
     try {
       if (formData._id) {
         await api.put(`/api/tables/${formData._id}`, {
-          tableNumber: parseInt(formData.tableNumber),
+          tableNumber: formData.tableNumber,
           capacity: parseInt(formData.capacity)
         });
         showToast('success', 'Table updated successfully');
       } else {
         await api.post('/api/tables', {
-          tableNumber: parseInt(formData.tableNumber),
+          tableNumber: formData.tableNumber,
           capacity: parseInt(formData.capacity)
         });
         showToast('success', 'Table created successfully');
@@ -112,12 +146,12 @@ const TableSection = ({ refreshKey }) => {
   const handleDelete = async (id) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
-      text: "This will deactivate the table.",
+      text: "This will permanently delete the table.",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',
       cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Yes, deactivate it!',
+      confirmButtonText: 'Yes, delete it!',
       background: 'var(--color-background-card)',
       color: 'var(--color-text-primary)',
     });
@@ -125,10 +159,10 @@ const TableSection = ({ refreshKey }) => {
     if (result.isConfirmed) {
       try {
         await api.delete(`/api/tables/${id}`);
-        showToast('success', 'Table deactivated successfully');
+        showToast('success', 'Table deleted successfully');
         fetchTables(true);
       } catch (error) {
-        showToast('error', error.response?.data?.message || 'Failed to deactivate table');
+        showToast('error', error.response?.data?.message || 'Failed to delete table');
       }
     }
   };
@@ -228,11 +262,11 @@ const TableSection = ({ refreshKey }) => {
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
-                        table.status === 'occupied' 
+                        table.isActive === false 
                           ? 'bg-status-off/10 text-status-unavailable border-status-off/20' 
                           : 'bg-status-on/10 text-status-available border-status-on/20'
                       }`}>
-                        {table.status || 'available'}
+                        {table.isActive === false ? 'Inactive' : 'Active'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
@@ -284,37 +318,45 @@ const TableSection = ({ refreshKey }) => {
             <form onSubmit={handleSubmit}>
               <div className="p-8 space-y-6">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] text-text-muted font-bold uppercase tracking-widest pl-1">Table Number</label>
+                  <label className={`text-[10px] font-bold uppercase tracking-widest pl-1 ${errors.tableNumber ? 'text-primary' : 'text-text-muted'}`}>Table Number</label>
                   <div className="relative">
                     <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={14} />
                     <input
-                      type="number"
+                      ref={tableNumberRef}
+                      type="text"
                       name="tableNumber"
                       value={formData.tableNumber}
                       onChange={handleInputChange}
-                      className="w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold text-text-primary"
+                      className={`w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all text-sm font-bold text-text-primary ${
+                        errors.tableNumber 
+                          ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                          : 'border-border-main focus:border-primary'
+                      }`}
                       placeholder="e.g. 1"
-                      required
-                      min="1"
                     />
                   </div>
+                  {errors.tableNumber && <p className="text-[10px] font-bold text-primary mt-1">{errors.tableNumber}</p>}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] text-text-muted font-bold uppercase tracking-widest pl-1">Seating Capacity</label>
+                  <label className={`text-[10px] font-bold uppercase tracking-widest pl-1 ${errors.capacity ? 'text-primary' : 'text-text-muted'}`}>Seating Capacity</label>
                   <div className="relative">
                     <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={14} />
                     <input
+                      ref={capacityRef}
                       type="number"
                       name="capacity"
                       value={formData.capacity}
                       onChange={handleInputChange}
-                      className="w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold text-text-primary"
+                      className={`w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all text-sm font-bold text-text-primary ${
+                        errors.capacity 
+                          ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                          : 'border-border-main focus:border-primary'
+                      }`}
                       placeholder="e.g. 4"
-                      required
-                      min="1"
                     />
                   </div>
+                  {errors.capacity && <p className="text-[10px] font-bold text-primary mt-1">{errors.capacity}</p>}
                 </div>
               </div>
 

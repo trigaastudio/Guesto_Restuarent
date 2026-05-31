@@ -1,26 +1,28 @@
+import api from '../api/axiosInstance';
+
 /**
  * Centralized auth utility.
  */
 
 export const clearAllAuth = () => {
   const AUTH_KEYS = [
-    'token', 'user', 'admin_token', 'admin_user', 'admin_notifications',
-    'staff_token', 'staff_user', 'dineInTableId', 'dineInTableNumber',
+    'user', 'admin_user', 'admin_notifications',
+    'staff_user', 'dineInTableId', 'dineInTableNumber',
     'orderActiveTab', 'orderStatusFilter', 'orderSearchTerm', 'menuSearchTerm'
   ];
   AUTH_KEYS.forEach((key) => localStorage.removeItem(key));
 };
 
-export const logoutToLanding = (navigate) => {
-  localStorage.removeItem('token');
+export const logoutToLanding = async (navigate) => {
+  try { await api.post('/api/auth/logout'); } catch (err) {}
   localStorage.removeItem('user');
   localStorage.removeItem('dineInTableId');
   localStorage.removeItem('dineInTableNumber');
   navigate('/', { replace: true });
 };
 
-export const logoutAdmin = (navigate) => {
-  localStorage.removeItem('admin_token');
+export const logoutAdmin = async (navigate) => {
+  try { await api.post('/api/auth/logout'); } catch (err) {}
   localStorage.removeItem('admin_user');
   localStorage.removeItem('admin_notifications');
   localStorage.removeItem('orderActiveTab');
@@ -30,8 +32,8 @@ export const logoutAdmin = (navigate) => {
   navigate('/admin/login', { replace: true });
 };
 
-export const logoutStaff = (navigate) => {
-  localStorage.removeItem('staff_token');
+export const logoutStaff = async (navigate) => {
+  try { await api.post('/api/auth/logout'); } catch (err) {}
   localStorage.removeItem('staff_user');
   navigate('/staff/login', { replace: true });
 };

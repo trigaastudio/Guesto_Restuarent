@@ -21,10 +21,21 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
   return R * c;
 };
 
-const expandUrl = async (url) => {
-  if (!url || !url.includes('maps.app.goo.gl') && !url.includes('share.google')) return url;
+const expandUrl = async (urlString) => {
+  if (!urlString || !urlString.startsWith('http')) return urlString;
+  
   try {
-    const response = await fetch(url, {
+    const url = new URL(urlString);
+    const validHostnames = ['maps.app.goo.gl', 'goo.gl', 'maps.google.com', 'share.google'];
+    if (!validHostnames.includes(url.hostname)) {
+       return urlString;
+    }
+  } catch(e) {
+    return urlString;
+  }
+
+  try {
+    const response = await fetch(urlString, {
       method: 'GET',
       redirect: 'follow',
       headers: {
@@ -34,7 +45,7 @@ const expandUrl = async (url) => {
     return response.url;
   } catch (error) {
     console.error('Expand URL Error:', error);
-    return url;
+    return urlString;
   }
 };
 
@@ -462,7 +473,7 @@ class OrderController {
 
         // Try to match coordinates from Google Maps URL or string
         let targetUrl = address.location;
-        if (targetUrl.includes('maps.app.goo.gl') || targetUrl.includes('share.google')) {
+        if (targetUrl && targetUrl.startsWith('http')) {
           targetUrl = await expandUrl(targetUrl);
         }
 
@@ -747,24 +758,59 @@ class OrderController {
 
   async getOrders(req, res) {
     try {
-      const { type } = req.query;
+      const { type, startDate, endDate, history } = req.query;
       const query = type ? { orderType: type } : {};
 
-      // Filter: Show successful payments, COD/Cash orders, OR ANY Dine-In/Takeaway order
-      // This allows active tables and counter orders to be visible while still hiding failed/unpaid online/delivery orders
-      query.$or = [
-        { paymentStatus: 'paid' },
-        { paymentMethod: { $in: ['cod', 'cash'] } },
-        { orderType: 'dine-in' },
-        { orderType: 'takeaway' },
-        { orderSource: 'admin' }
-      ];
+      if (history === 'true') {
+        if (startDate && endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          query.createdAt = { $gte: new Date(startDate), $lte: end };
+        } else if (startDate) {
+          query.createdAt = { $gte: new Date(startDate) };
+        } else if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          query.createdAt = { $lte: end };
+        } else {
+          // Default history to last 30 days if no date selected
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          query.createdAt = { $gte: thirtyDaysAgo };
+        }
+      } else {
+        // For active tabs, fetch today's orders + any active old orders
+        const todayStart = new Date();
+        if (todayStart.getHours() < 5) todayStart.setDate(todayStart.getDate() - 1);
+        todayStart.setHours(5, 0, 0, 0);
 
-      const orders = await Order.find(query)
+        query.$or = [
+          { createdAt: { $gte: todayStart } },
+          { orderStatus: { $in: ['placed', 'processing', 'out-for-delivery'] } }
+        ];
+      }
+
+      // Base visibility filter
+      const baseFilter = {
+        $or: [
+          { paymentStatus: 'paid' },
+          { paymentMethod: { $in: ['cod', 'cash'] } },
+          { orderType: 'dine-in' },
+          { orderType: 'takeaway' },
+          { orderSource: 'admin' }
+        ]
+      };
+
+      const finalQuery = { $and: [query, baseFilter] };
+
+      const orders = await Order.find(finalQuery)
         .populate('items.menuItem', 'name image')
         .populate('table', 'tableNumber mergedGroup')
         .populate('assignedDeliveryBoy', 'name phoneNumber')
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .limit(history === 'true' ? 500 : 200) // Prevent massive payloads
+        .lean(); // Extremely fast fetching by skipping Mongoose overhead
+
       res.json({ success: true, data: orders });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -853,7 +899,13 @@ class OrderController {
         }
       }
 
+      // Populate assigned delivery boy for the response and socket
+      if (order.assignedDeliveryBoy) {
+        await order.populate('assignedDeliveryBoy', 'name phoneNumber');
+      }
+
       getIO().emit('ordersUpdated');
+      getIO().emit('orderUpdated', order);
       res.json({ success: true, data: order });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
