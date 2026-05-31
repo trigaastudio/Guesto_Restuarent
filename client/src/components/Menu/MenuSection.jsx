@@ -4,7 +4,7 @@ import Loader from '../Loader/Loader';
 import { useCart } from '../../context/CartContext';
 import { getEffectiveStock } from '../../utils/stockHelpers';
 
-const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navigate, sortBy, setSortBy, dietaryFilter, setDietaryFilter, setSearchQuery, observerTarget, hasMore, loadingMore, onAddClick, selectedCategory, offerFilter, handlePromoFilterToggle, searchQuery, onClearAll, viewOnly }) => {
+const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navigate, sortBy, setSortBy, dietaryFilter, setDietaryFilter, setSearchQuery, observerTarget, hasMore, loadingMore, onAddClick, selectedCategory, offerFilter, handlePromoFilterToggle, searchQuery, onClearAll, viewOnly, hideNameSort }) => {
   const { offers, checkStoreStatus } = useCart();
   const storeStatus = checkStoreStatus ? checkStoreStatus() : { isOpen: true };
   const isClosed = !storeStatus.isOpen;
@@ -35,7 +35,7 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
                 className="appearance-none bg-background-muted border border-border/40 text-text-primary text-[9px] md:text-xs font-black tracking-widest rounded-xl px-4 py-3 pr-8 focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-primary/40 transition-all cursor-pointer shadow-sm"
               >
                 <option value="default">Relevance</option>
-                <option value="name-az">Name (A-Z)</option>
+                {!hideNameSort && <option value="name-az">Name (A-Z)</option>}
                 <option value="price-low">Price (L-H)</option>
                 <option value="price-high">Price (H-L)</option>
                 <option value="rating">Top Rated</option>
@@ -174,6 +174,11 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
                     {discountPercent > 0 && !isOutOfStock && !menu.isCombo && (
                       <div className="absolute top-2 left-2 bg-primary text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-lg animate-bounce-slow z-10">
                         {`${discountPercent}% OFF`}
+                      </div>
+                    )}
+                    {menu.isCombo && !isOutOfStock && (
+                      <div className="absolute top-2 left-2 bg-amber-500 text-white text-[10px] font-black px-2.5 py-1 rounded-lg shadow-lg z-10 uppercase tracking-wider">
+                        Combo Deal
                       </div>
                     )}
                     {variants.some(v => v.isBOGO) && !isOutOfStock && (

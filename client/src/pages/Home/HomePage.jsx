@@ -364,7 +364,7 @@ const HomePage = () => {
           <OffersCarousel
             onOfferClick={(offer) => {
               setSelectedCategory('all');
-              setOfferFilter(offer._id);
+              setOfferFilter(offer.offerType);
               setOfferName(offer.title);
               setPage(1);
               setHasMore(true);
@@ -506,6 +506,7 @@ const HomePage = () => {
             handlePromoFilterToggle={handlePromoFilterToggle}
             searchQuery={searchQuery}
             onClearAll={clearAllFilters}
+            hideNameSort={true}
             onAddClick={(menu) => {
               setSelectedMenuForModal(menu);
               setIsModalOpen(true);

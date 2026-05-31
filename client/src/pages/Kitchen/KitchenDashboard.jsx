@@ -116,9 +116,9 @@ const KitchenDashboard = () => {
     try {
       const response = await api.get('/api/orders');
       const allOrders = response.data.data || [];
-      // Show only placed and processing orders in the kitchen panel
+      // Show processing orders. For placed orders, only show them if they are NOT from user/online AND NOT delivery.
       const kitchenOrders = allOrders.filter(o =>
-        o.orderStatus === 'processing' || o.orderStatus === 'placed'
+        o.orderStatus === 'processing' || (o.orderStatus === 'placed' && o.orderSource !== 'user' && o.orderSource !== 'online' && o.orderType !== 'delivery')
       );
 
       // Detect new orders for notifications and sound
@@ -161,8 +161,11 @@ const KitchenDashboard = () => {
     };
     window.addEventListener('db_change', handleDbChange);
 
-    // Timer for order age
-    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    // Timer for order age and auto-refresh
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+      fetchOrders(true); // Auto-refresh data every minute
+    }, 60000);
 
     return () => {
       if (socketRef.current) socketRef.current.disconnect();
@@ -200,7 +203,7 @@ const KitchenDashboard = () => {
       </tr>
       <tr>
         <td style="padding-bottom: 8px; font-weight: bold;">
-          <span style="font-size: 14px;">[ ${item.size} ]</span> 
+          <span style="font-size: 14px;">[ ${!item.size || item.size === 'null' ? 'Piece' : item.size} ]</span> 
           <span style="font-size: 18px; margin-left: 20px;">x ${item.quantity}</span>
         </td>
       </tr>
@@ -772,13 +775,41 @@ const KitchenDashboard = () => {
                               </div>
 
                               {/* BOGO Items */}
-                              {item.bogoItem && (item.menuItem?.variants || item.menuItem?.sizes || [])?.find(v => (v.size || 'Standard') === (item.size || 'Standard'))?.isBOGO && (
+                              {item.bogoItem && (
                                 <div className="mt-2 bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/30">
                                   <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest block mb-1.5 opacity-90">Buy 1 Get 1 Free Add-on:</span>
                                   <div className="flex flex-col gap-1 pl-1.5 border-l-[1.5px] border-emerald-500/40">
                                     <span className="text-emerald-700 text-[9px] font-black flex items-center gap-1.5">
                                       <span className="text-emerald-500/60 text-[8px]">🎁</span> Free {item.bogoItem.name} {item.bogoItem.size ? `(${item.bogoItem.size})` : ''} x {item.bogoItem.quantity || item.quantity}
                                     </span>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Combo Items */}
+                              {item.comboItems && item.comboItems.length > 0 && (
+                                <div className="mt-2 bg-primary/5 p-2 rounded-lg border border-primary/10">
+                                  <span className="text-[8px] font-black text-primary uppercase tracking-widest block mb-1.5 opacity-90">Combo includes:</span>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {item.comboItems.map((ci, idx) => (
+                                      <span key={idx} className="text-primary text-[9px] font-black bg-background-card px-1.5 py-0.5 rounded border border-primary/10">
+                                        {ci.quantity || 1}x {ci.name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Included Items (Add-ons) */}
+                              {item.includedItems && item.includedItems.length > 0 && (
+                                <div className="mt-2 bg-purple-500/10 p-2 rounded-lg border border-purple-500/20">
+                                  <span className="text-[8px] font-black text-purple-600 uppercase tracking-widest block mb-1.5 opacity-90">Includes Add-ons:</span>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {item.includedItems.map((ii, idx) => (
+                                      <span key={idx} className="text-purple-700 text-[9px] font-black bg-background-card px-1.5 py-0.5 rounded border border-purple-500/20">
+                                        {ii.quantity || 1}x {ii.name}
+                                      </span>
+                                    ))}
                                   </div>
                                 </div>
                               )}

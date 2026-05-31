@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axiosInstance';
-import { ArrowLeft, Package, Clock, CheckCircle2, Truck, Timer, XCircle, ShoppingBag, MapPin, CreditCard, X } from 'lucide-react';
+import { ArrowLeft, Package, Clock, CheckCircle2, Truck, Timer, XCircle, ShoppingBag, MapPin, CreditCard, X, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import Footer from '../../components/Footer/Footer';
 import Navbar from '../../components/Navbar/Navbar';
 import { useCart } from '../../context/CartContext';
@@ -9,6 +9,8 @@ import { useTheme } from '../../context/ThemeContext';
 import Swal from 'sweetalert2';
 import Loader from '../../components/Loader/Loader';
 import { logoutToLanding } from '../../utils/auth';
+import socket from '../../services/socket';
+import Pagination from '../../components/Pagination/Pagination';
 
 const OrdersPage = () => {
   const navigate = useNavigate();
@@ -17,6 +19,8 @@ const OrdersPage = () => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ordersPerPage = 10;
   const dropdownRef = useRef(null);
 
   const { cartItems, settings } = useCart();
@@ -40,6 +44,47 @@ const OrdersPage = () => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    socket.connect();
+    
+    if (user && user._id) {
+      socket.emit('joinUser', user._id);
+    }
+
+    const onOrderStatusUpdate = (data) => {
+      setOrders(prevOrders => 
+        prevOrders.map(order => {
+          if (order._id === data.orderId) {
+            return {
+              ...order,
+              orderStatus: data.status,
+              kitchenStatus: data.kitchenStatus
+            };
+          }
+          return order;
+        })
+      );
+    };
+
+    socket.on('orderStatusUpdated', onOrderStatusUpdate);
+
+    // Also listen to general ordersUpdated as fallback
+    const onOrdersUpdatedFallback = () => {
+      fetchOrders();
+    };
+    socket.on('ordersUpdated', onOrdersUpdatedFallback);
+
+    const refreshTimer = setInterval(() => {
+      fetchOrders();
+    }, 60000);
+
+    return () => {
+      socket.off('orderStatusUpdated', onOrderStatusUpdate);
+      socket.off('ordersUpdated', onOrdersUpdatedFallback);
+      clearInterval(refreshTimer);
+    };
+  }, [user?._id]);
 
   const fetchOrders = async () => {
     try {
@@ -241,6 +286,11 @@ const OrdersPage = () => {
     }
   };
 
+  const indexOfLastOrder = currentPage * ordersPerPage;
+  const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
+  const currentOrders = orders.slice(indexOfFirstOrder, indexOfLastOrder);
+  const totalPages = Math.ceil(orders.length / ordersPerPage);
+
   const hasOrders = orders.length > 0 || loading;
 
   return (
@@ -306,16 +356,25 @@ const OrdersPage = () => {
                 <div className="bg-background-card rounded-[2.5rem] p-6 md:p-8 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.03)] min-h-[400px] flex flex-col relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
 
-                  <div className="relative z-10 flex items-center gap-3 mb-10">
-                    <span className="w-6 h-1 bg-primary rounded-full"></span>
-                    <div className="space-y-1">
-                      <p className="text-[9px] font-black text-primary tracking-widest uppercase">Order History</p>
-                      <h3 className="text-xl md:text-2xl font-black text-text-primary tracking-tight">Recent Activity</h3>
+                  <div className="relative z-10 flex justify-between items-center mb-10">
+                    <div className="flex items-center gap-3">
+                      <span className="w-6 h-1 bg-primary rounded-full"></span>
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-black text-primary tracking-widest uppercase">Order History</p>
+                        <h3 className="text-xl md:text-2xl font-black text-text-primary tracking-tight">Recent Activity</h3>
+                      </div>
                     </div>
+                    <button
+                      onClick={fetchOrders}
+                      className="p-2.5 rounded-xl bg-background border border-border/40 text-text-muted hover:text-primary hover:border-primary/30 transition-all active:scale-95 shadow-sm"
+                      title="Refresh Orders"
+                    >
+                      <RefreshCw size={18} className={loading ? 'animate-spin text-primary' : ''} />
+                    </button>
                   </div>
 
                   <div className="space-y-4 relative z-10">
-                    {orders.map((order) => (
+                    {currentOrders.map((order) => (
                       <div
                         key={order._id}
                         onClick={() => {
@@ -433,6 +492,17 @@ const OrdersPage = () => {
                       </div>
                     ))}
                   </div>
+
+                  {/* Pagination Controls */}
+                  {totalPages > 1 && (
+                    <div className="pt-6 mt-6 border-t border-border/40 relative z-10 flex justify-center">
+                      <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -486,6 +556,46 @@ const OrdersPage = () => {
                             </span>
                           )}
                         </div>
+
+                        {/* Combo Items */}
+                        {item.comboItems?.length > 0 && (
+                          <div className="mt-1.5 space-y-1 pl-2 border-l-2 border-primary/20">
+                            <span className="text-[8px] font-bold text-primary uppercase tracking-wider block">Combo includes:</span>
+                            <div className="flex flex-wrap gap-1">
+                              {item.comboItems.map((ci, cIdx) => (
+                                <span key={cIdx} className="inline-flex items-center text-text-muted text-[9px] font-semibold">
+                                  {ci.quantity || 1}x {ci.name}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* BOGO Items */}
+                        {item.bogoItem && (
+                          <div className="mt-1.5 space-y-1 pl-2 border-l-2 border-emerald-500/30">
+                            <span className="text-[8px] font-bold text-emerald-600 uppercase tracking-wider block">Free Add-on:</span>
+                            <div className="flex flex-wrap gap-1">
+                              <span className="inline-flex items-center text-text-muted text-[9px] font-semibold">
+                                🎁 {item.bogoItem.quantity || item.quantity}x {item.bogoItem.name} {item.bogoItem.size ? `(${item.bogoItem.size})` : ''}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Included Items (Add-ons) */}
+                        {item.includedItems?.length > 0 && (
+                          <div className="mt-1.5 space-y-1 pl-2 border-l-2 border-primary/20">
+                            <span className="text-[8px] font-bold text-primary uppercase tracking-wider block">Includes Add-ons:</span>
+                            <div className="flex flex-wrap gap-1">
+                              {item.includedItems.map((ii, iIdx) => (
+                                <span key={iIdx} className="inline-flex items-center text-text-muted text-[9px] font-semibold">
+                                  {ii.quantity || 1}x {ii.name}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -17,3 +17,5 @@ export default defineConfig({
     include: ['xlsx', 'jspdf', 'jspdf-autotable'],
   },
 })
+
+

@@ -141,7 +141,7 @@ const OrderSection = () => {
     // Socket Setup for Real-time updates
     socketRef.current = io(SOCKET_URL);
     socketRef.current.on('ordersUpdated', () => {
-      // Intentionally empty or remove, relying on orderUpdated
+      fetchOrders();
     });
     socketRef.current.on('orderUpdated', (updatedOrder) => {
       setOrders(prev => prev.map(o => o._id === updatedOrder._id ? updatedOrder : o));
@@ -175,8 +175,13 @@ const OrderSection = () => {
       }));
     });
 
+    const refreshTimer = setInterval(() => {
+      fetchOrders();
+    }, 60000);
+
     return () => {
       if (socketRef.current) socketRef.current.disconnect();
+      clearInterval(refreshTimer);
     };
   }, []);
 
@@ -198,12 +203,12 @@ const OrderSection = () => {
       const totalPrice = item.totalPrice || (unitPrice * item.quantity);
       return `
       <tr>
-        <td colspan="4" style="text-transform: uppercase; font-weight: bold; padding-top: 8px;">${name} (${item.size})</td>
+        <td colspan="4" style="text-transform: uppercase; font-weight: bold; padding-top: 8px;">${name} (${!item.size || item.size === 'null' ? 'Piece' : item.size})</td>
       </tr>
-      ${item.bogoItem && (item.menuItem?.variants || item.menuItem?.sizes || [])?.find(v => (v.size || 'Standard') === (item.size || 'Standard'))?.isBOGO ? `
+      ${item.bogoItem ? `
       <tr>
         <td colspan="4" style="text-transform: uppercase; font-size: 11px; font-weight: bold; color: #000; padding-left: 10px;">
-          * FREE: ${item.bogoItem.name || 'Free Item'} ${item.bogoItem.size ? `(${item.bogoItem.size})` : ''} x ${item.bogoItem.quantity || 1}
+          * FREE: ${item.bogoItem.name || 'Free Item'} ${!item.bogoItem.size || item.bogoItem.size === 'null' ? '' : `(${item.bogoItem.size})`} x ${item.bogoItem.quantity || 1}
         </td>
       </tr>
       ` : ''}
@@ -633,6 +638,15 @@ const OrderSection = () => {
         cancelButton: 'flex-1 bg-background-muted border border-border/60 text-text-primary rounded-xl px-4 py-3.5 text-[11px] font-black tracking-widest uppercase hover:bg-background transition-all',
         input: 'w-[90%] mx-auto block px-5 py-3.5 rounded-xl border border-border/60 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm font-bold bg-background-muted/50 hover:bg-background text-text-primary appearance-none cursor-pointer text-center'
       },
+      didOpen: () => {
+        const select = Swal.getInput();
+        if (select) {
+          Array.from(select.options).forEach(opt => {
+            opt.style.color = '#000';
+            opt.style.backgroundColor = '#fff';
+          });
+        }
+      },
       inputValidator: (value) => {
         return new Promise((resolve) => {
           if (value) {
@@ -651,16 +665,41 @@ const OrderSection = () => {
 
   const handleConfirmOrder = async (order) => {
     const itemsHtml = order.items.map(item => `
-      <div class="flex justify-between items-start py-2.5 border-b border-border-light/60 last:border-0">
+      <div class="flex flex-col py-2.5 border-b border-border-light/60 last:border-0">
         <div class="text-left w-full pr-2">
           <div class="flex justify-between items-start">
             <div>
               <p class="text-[11px] font-black text-text-primary uppercase tracking-tight">${item.name}</p>
-              <p class="text-[9px] font-bold text-text-muted uppercase opacity-80 mt-0.5">${item.size ? item.size + ' × ' : '× '}${item.quantity}</p>
+              <p class="text-[9px] font-bold text-text-muted uppercase opacity-80 mt-0.5">${(!item.size || item.size === 'null') ? 'Piece × ' : item.size + ' × '}${item.quantity}</p>
             </div>
           </div>
-
         </div>
+        ${item.comboItems && item.comboItems.length > 0 ? `
+          <div class="mt-1.5 pl-2 border-l-2 border-primary/30">
+            <span class="text-[8px] font-black text-primary uppercase tracking-wider block mb-0.5">Combo includes:</span>
+            <div class="flex flex-wrap gap-1">
+              ${item.comboItems.map(ci => `<span class="inline-flex items-center bg-background-card border border-border-light text-text-muted px-1.5 py-0.5 rounded text-[8px] font-black">${ci.quantity || 1}x ${ci.name}</span>`).join('')}
+            </div>
+          </div>
+        ` : ''}
+        ${item.includedItems && item.includedItems.length > 0 ? `
+          <div class="mt-1.5 pl-2 border-l-2 border-purple-500/30">
+            <span class="text-[8px] font-black text-purple-600 uppercase tracking-wider block mb-0.5">Includes Add-ons:</span>
+            <div class="flex flex-wrap gap-1">
+              ${item.includedItems.map(ii => `<span class="inline-flex items-center bg-background-card border border-border-light text-text-muted px-1.5 py-0.5 rounded text-[8px] font-black">${ii.quantity || 1}x ${ii.name}</span>`).join('')}
+            </div>
+          </div>
+        ` : ''}
+        ${item.bogoItem ? `
+          <div class="mt-1.5 pl-2 border-l-2 border-emerald-500/30">
+            <span class="text-[8px] font-black text-emerald-600 uppercase tracking-wider block mb-0.5">Free Add-on:</span>
+            <div class="flex flex-wrap gap-1">
+              <span class="inline-flex items-center bg-background-card border border-border-light text-text-muted px-1.5 py-0.5 rounded text-[8px] font-black">
+                🎁 ${item.bogoItem.quantity || item.quantity}x ${item.bogoItem.name} ${item.bogoItem.size ? `(${item.bogoItem.size})` : ''}
+              </span>
+            </div>
+          </div>
+        ` : ''}
       </div>
     `).join('');
 
@@ -2042,6 +2081,17 @@ const OrderSection = () => {
                             <p className="text-[9px] text-text-muted font-bold uppercase">
                               {item?.size} • ₹{item?.unitPrice || item?.price} x {item?.quantity}
                             </p>
+                            {/* BOGO Items */}
+                            {item?.bogoItem && (
+                              <div className="mt-1 pl-2 border-l border-emerald-500/30">
+                                <span className="text-[8px] font-black text-emerald-600 uppercase tracking-wider block">Free Add-on:</span>
+                                <div className="flex flex-wrap gap-1 mt-0.5">
+                                  <span className="inline-flex items-center text-text-muted text-[8px] font-bold">
+                                    🎁 {item.bogoItem.quantity || item.quantity}x {item.bogoItem.name} {item.bogoItem.size ? `(${item.bogoItem.size})` : ''}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
                             {/* Combo Items */}
                             {item?.comboItems?.length > 0 && (
                               <div className="mt-1 pl-2 border-l border-primary/30">
@@ -2115,6 +2165,26 @@ const OrderSection = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Section 2.5: Delivery Boy */}
+              {selectedOrder.orderType === 'delivery' && selectedOrder.assignedDeliveryBoy && (
+                <div className="p-4 bg-primary/10 rounded-3xl border border-primary/20 overflow-hidden flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-background-card border border-primary/30 flex items-center justify-center shrink-0">
+                    <Truck size={18} className="text-primary" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[9px] text-primary font-bold uppercase tracking-widest">Assigned Delivery Boy</p>
+                    <p className="text-xs font-black text-text-primary">
+                      {selectedOrder.assignedDeliveryBoy.name}
+                    </p>
+                    {selectedOrder.assignedDeliveryBoy.phoneNumber && (
+                      <p className="text-[10px] text-text-muted font-bold">
+                        {selectedOrder.assignedDeliveryBoy.phoneNumber}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Section 3: Delivery Location */}
               {selectedOrder.orderType === 'delivery' && (selectedOrder.customerDetails?.address || selectedOrder.address?.address) && (
