@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Edit2, Trash2, Search, Image as ImageIcon, Filter, CheckCircle2, XCircle, AlertCircle, Loader2, ArrowUpDown, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
 import axios from 'axios';
 import api from '../../../api/axiosInstance';
@@ -52,6 +52,11 @@ const MenuSection = () => {
   const [showCropper, setShowCropper] = useState(false);
   const [imageToCrop, setImageToCrop] = useState(null);
   const [errors, setErrors] = useState({});
+
+  const nameRef = useRef(null);
+  const categoryRef = useRef(null);
+  const stockRef = useRef(null);
+  const descriptionRef = useRef(null);
 
   useEffect(() => {
     fetchData();
@@ -157,9 +162,31 @@ const MenuSection = () => {
     const isComboCategory = categories.find(c => c._id === currentMenu.category)?.name.toLowerCase() === 'combo';
     
     const newErrors = {};
-    if (!currentMenu.name || !currentMenu.name.trim()) newErrors.name = true;
+    const textRegex = /^[a-zA-Z0-9\s]*$/;
+    
+    if (!currentMenu.name || !currentMenu.name.trim()) {
+      newErrors.name = 'Item Name is required';
+    } else if (currentMenu.name.length > 20) {
+      newErrors.name = 'Maximum length is 20 characters';
+    } else if (!textRegex.test(currentMenu.name)) {
+      newErrors.name = 'Only alphabets and numbers are allowed';
+    }
+
     if (!currentMenu.category) newErrors.category = true;
-    if (currentMenu.totalStock === '' || currentMenu.totalStock === undefined || currentMenu.totalStock === null) newErrors.totalStock = true;
+    
+    if (currentMenu.totalStock === '' || currentMenu.totalStock === undefined || currentMenu.totalStock === null) {
+      newErrors.totalStock = 'Stock is required';
+    } else if (currentMenu.totalStock < 0) {
+      newErrors.totalStock = 'Stock must be a positive value';
+    }
+
+    if (currentMenu.description) {
+      if (currentMenu.description.length > 50) {
+        newErrors.description = 'Maximum length is 50 characters';
+      } else if (!textRegex.test(currentMenu.description)) {
+        newErrors.description = 'Special characters are not allowed';
+      }
+    }
     
     if (!isComboCategory && currentMenu.variants.length === 0) newErrors.variants = true;
     if (isComboCategory && currentMenu.comboItems.length === 0) newErrors.variants = true; // Use variants error for combo items as well
@@ -167,6 +194,12 @@ const MenuSection = () => {
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      setTimeout(() => {
+        if (newErrors.name && nameRef.current) nameRef.current.focus();
+        else if (newErrors.category && categoryRef.current) categoryRef.current.focus();
+        else if (newErrors.totalStock && stockRef.current) stockRef.current.focus();
+        else if (newErrors.description && descriptionRef.current) descriptionRef.current.focus();
+      }, 0);
       return;
     }
     setErrors({});
@@ -763,6 +796,7 @@ const MenuSection = () => {
                 <div className="space-y-1.5">
                   <label className={`text-sm font-semibold ${errors.name ? 'text-primary' : 'text-text-secondary'}`}>Item Name</label>
                   <input
+                    ref={nameRef}
                     type="text"
                     value={currentMenu.name}
                     onChange={(e) => {
@@ -776,11 +810,12 @@ const MenuSection = () => {
                     }`}
                     placeholder="e.g. Chicken Biryani"
                   />
-                  {errors.name && <p className="text-[10px] font-bold text-primary mt-1">Item Name is required</p>}
+                  {errors.name && <p className="text-[10px] font-bold text-primary mt-1">{typeof errors.name === 'string' ? errors.name : 'Item Name is required'}</p>}
                 </div>
                 <div className="space-y-1.5">
                   <label className={`text-sm font-semibold ${errors.category ? 'text-primary' : 'text-text-secondary'}`}>Category</label>
                   <select
+                    ref={categoryRef}
                     value={currentMenu.category}
                     onChange={(e) => {
                       setCurrentMenu({ ...currentMenu, category: e.target.value });
@@ -802,6 +837,7 @@ const MenuSection = () => {
                   <div className="space-y-1.5">
                     <label className={`text-sm font-semibold ${errors.totalStock ? 'text-primary' : 'text-text-secondary'}`}>Total Stock</label>
                     <input
+                      ref={stockRef}
                       type="number"
                       value={currentMenu.totalStock === '' ? '' : currentMenu.totalStock}
                       onChange={(e) => {
@@ -816,19 +852,28 @@ const MenuSection = () => {
                       }`}
                       placeholder="0"
                     />
-                    {errors.totalStock && <p className="text-[10px] font-bold text-primary mt-1">Stock is required</p>}
+                    {errors.totalStock && <p className="text-[10px] font-bold text-primary mt-1">{typeof errors.totalStock === 'string' ? errors.totalStock : 'Stock is required'}</p>}
                   </div>
                 )}
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-text-secondary">Description</label>
+                <label className={`text-sm font-semibold ${errors.description ? 'text-primary' : 'text-text-secondary'}`}>Description</label>
                 <textarea
+                  ref={descriptionRef}
                   value={currentMenu.description}
-                  onChange={(e) => setCurrentMenu({ ...currentMenu, description: e.target.value })}
-                  className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all h-20 resize-none"
+                  onChange={(e) => {
+                    setCurrentMenu({ ...currentMenu, description: e.target.value });
+                    if (errors.description) setErrors({ ...errors, description: false });
+                  }}
+                  className={`w-full px-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all h-20 resize-none ${
+                    errors.description 
+                      ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                      : 'border-border-main focus:border-primary'
+                  }`}
                   placeholder="Describe the dish..."
                 />
+                {errors.description && <p className="text-[10px] font-bold text-primary mt-1">{errors.description}</p>}
               </div>
 
 

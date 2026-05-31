@@ -62,7 +62,6 @@ const StaffLogin = () => {
           return;
         }
 
-        localStorage.setItem('staff_token', staffData.token);
         localStorage.setItem('staff_user', JSON.stringify(staffData));
         // Enforce mutual exclusivity: log out of admin if logging into staff
         localStorage.removeItem('admin_token');

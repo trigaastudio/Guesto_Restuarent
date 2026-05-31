@@ -5,10 +5,9 @@ import mongoose from "mongoose";
 const tableSchema = new mongoose.Schema({
 
   tableNumber: {
-    type: Number,
+    type: String,
     required: true,
     unique: true,
-    min: 1
   },
 
   capacity: {
@@ -34,7 +33,7 @@ const tableSchema = new mongoose.Schema({
   },
 
   mergedGroup: {
-    type: [Number],
+    type: [String],
     default: []
   }
 

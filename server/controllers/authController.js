@@ -1,9 +1,25 @@
 import authService from '../services/authService.js';
 
 class AuthController {
+  async logout(req, res) {
+    res.clearCookie('token');
+    res.clearCookie('admin_token');
+    res.clearCookie('staff_token');
+    res.status(200).json({ success: true, message: 'Logged out successfully' });
+  }
+
   async register(req, res) {
     try {
       const user = await authService.register(req.body);
+      const jwtToken = authService.generateToken(user._id);
+      const cookieName = user.role === 'admin' ? 'admin_token' : user.role === 'staff' ? 'staff_token' : 'token';
+      res.cookie(cookieName, typeof jwtToken !== 'undefined' ? jwtToken : token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 30 * 24 * 60 * 60 * 1000
+      });
+
       res.status(201).json({
         success: true,
         message: 'Registration successful',
@@ -15,7 +31,7 @@ class AuthController {
           avatar: user.avatar,
           role: user.role,
           createdAt: user.createdAt,
-          token: authService.generateToken(user._id)
+          token: typeof jwtToken !== 'undefined' ? jwtToken : token // Optional: keep for backward compatibility during transition
         }
       });
     } catch (error) {
@@ -31,6 +47,15 @@ class AuthController {
       const { email, password } = req.body;
       const user = await authService.login(email, password, 'user');
       
+      const token = authService.generateToken(user._id);
+      const cookieName = user.role === 'admin' ? 'admin_token' : user.role === 'staff' ? 'staff_token' : 'token';
+      res.cookie(cookieName, typeof jwtToken !== 'undefined' ? jwtToken : token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 30 * 24 * 60 * 60 * 1000
+      });
+
       res.status(200).json({
         success: true,
         message: 'Login successful',
@@ -42,7 +67,7 @@ class AuthController {
           avatar: user.avatar,
           role: user.role,
           createdAt: user.createdAt,
-          token: authService.generateToken(user._id)
+          token: typeof jwtToken !== 'undefined' ? jwtToken : token // Optional: keep for backward compatibility during transition
         }
       });
     } catch (error) {
@@ -59,6 +84,15 @@ class AuthController {
       const { email, password } = req.body;
       const user = await authService.login(email, password, 'admin');
       
+      const token = authService.generateToken(user._id);
+      const cookieName = user.role === 'admin' ? 'admin_token' : user.role === 'staff' ? 'staff_token' : 'token';
+      res.cookie(cookieName, typeof jwtToken !== 'undefined' ? jwtToken : token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 30 * 24 * 60 * 60 * 1000
+      });
+
       res.status(200).json({
         success: true,
         message: 'Admin login successful',
@@ -70,7 +104,7 @@ class AuthController {
           avatar: user.avatar,
           role: user.role,
           createdAt: user.createdAt,
-          token: authService.generateToken(user._id)
+          token: typeof jwtToken !== 'undefined' ? jwtToken : token // Optional: keep for backward compatibility during transition
         }
       });
     } catch (error) {
@@ -92,6 +126,15 @@ class AuthController {
       }
       const user = await authService.googleLogin(token);
 
+      const jwtToken = authService.generateToken(user._id);
+      const cookieName = user.role === 'admin' ? 'admin_token' : user.role === 'staff' ? 'staff_token' : 'token';
+      res.cookie(cookieName, jwtToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 30 * 24 * 60 * 60 * 1000
+      });
+
       res.status(200).json({
         success: true,
         message: 'Google login successful',
@@ -103,7 +146,7 @@ class AuthController {
           avatar: user.avatar,
           role: user.role,
           createdAt: user.createdAt,
-          token: authService.generateToken(user._id)
+          token: typeof jwtToken !== 'undefined' ? jwtToken : token // Optional: keep for backward compatibility during transition
         }
       });
     } catch (error) {
@@ -145,6 +188,15 @@ class AuthController {
       }
 
       const user = await authService.register(userData);
+      const token = authService.generateToken(user._id);
+      const cookieName = user.role === 'admin' ? 'admin_token' : user.role === 'staff' ? 'staff_token' : 'token';
+      res.cookie(cookieName, typeof jwtToken !== 'undefined' ? jwtToken : token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 30 * 24 * 60 * 60 * 1000
+      });
+
       res.status(201).json({
         success: true,
         message: 'Registration successful',
@@ -156,7 +208,7 @@ class AuthController {
           avatar: user.avatar,
           role: user.role,
           createdAt: user.createdAt,
-          token: authService.generateToken(user._id)
+          token: typeof jwtToken !== 'undefined' ? jwtToken : token // Optional: keep for backward compatibility during transition
         }
       });
     } catch (error) {

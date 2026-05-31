@@ -12,6 +12,16 @@ const __dirname = path.dirname(__filename);
 
 const otps = new Map();
 
+// Cleanup expired OTPs every 5 minutes to prevent memory leaks
+setInterval(() => {
+  const now = Date.now();
+  for (const [email, data] of otps.entries()) {
+    if (now > data.expiresAt) {
+      otps.delete(email);
+    }
+  }
+}, 5 * 60 * 1000);
+
 class AuthService {
   generateToken(id) {
     return jwt.sign({ id }, process.env.JWT_SECRET, {

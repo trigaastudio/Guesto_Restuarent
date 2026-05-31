@@ -5,9 +5,16 @@ import Staff from '../models/staffSchema.js';
 export const protect = async (req, res, next) => {
   let token;
 
+  // Check headers first (fallback)
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    token = req.headers.authorization.split(' ')[1];
+  } else if (req.cookies) {
+    // Then check cookies based on portal awareness or whatever is present
+    token = req.cookies.admin_token || req.cookies.staff_token || req.cookies.token;
+  }
+
+  if (token) {
     try {
-      token = req.headers.authorization.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
       // Check both User and Staff collections

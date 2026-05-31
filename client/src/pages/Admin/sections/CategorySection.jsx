@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Edit2, Trash2, CheckCircle, XCircle, Search, Loader2, ArrowUpDown, Filter, Image as ImageIcon, RotateCcw, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { io } from 'socket.io-client';
 import api from '../../../api/axiosInstance';
@@ -30,6 +30,7 @@ const CategorySection = ({ refreshKey }) => {
   const [showCropper, setShowCropper] = useState(false);
   const [imageToCrop, setImageToCrop] = useState(null);
   const [errors, setErrors] = useState({});
+  const nameRef = useRef(null);
 
   useEffect(() => {
     fetchCategories();
@@ -140,9 +141,21 @@ const CategorySection = ({ refreshKey }) => {
   };
 
   const handleSave = async () => {
+    const newErrors = {};
+    const nameRegex = /^[a-zA-Z0-9\s]*$/;
+
     if (!currentCategory.name || !currentCategory.name.trim()) {
-      setErrors({ name: true });
-      showToast('warning', 'Category name is required');
+      newErrors.name = 'Category Name is required';
+    } else if (!nameRegex.test(currentCategory.name)) {
+      newErrors.name = 'Only letters and numbers are allowed';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      setTimeout(() => {
+        if (newErrors.name && nameRef.current) nameRef.current.focus();
+      }, 0);
+      showToast('warning', 'Please fix the errors');
       return;
     }
     setErrors({});
@@ -543,6 +556,7 @@ const CategorySection = ({ refreshKey }) => {
               <div className="space-y-1.5">
                 <label className={`text-sm font-semibold ${errors.name ? 'text-primary' : 'text-text-secondary'}`}>Category Name</label>
                 <input
+                  ref={nameRef}
                   type="text"
                   value={currentCategory.name}
                   onChange={(e) => {
@@ -556,7 +570,7 @@ const CategorySection = ({ refreshKey }) => {
                   }`}
                   placeholder="e.g. Main Course"
                 />
-                {errors.name && <p className="text-[10px] font-bold text-primary mt-1">Category Name is required</p>}
+                {errors.name && <p className="text-[10px] font-bold text-primary mt-1">{typeof errors.name === 'string' ? errors.name : 'Category Name is required'}</p>}
               </div>
               {!isEditing && (
                 <div className="flex items-center space-x-3">

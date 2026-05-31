@@ -63,7 +63,6 @@ const LoginPage = () => {
         const res = await api.post('/api/auth/google', { token: tokenResponse.access_token });
         if (res.data.success) {
           const u = res.data.data;
-          localStorage.setItem('token', u.token);
           localStorage.setItem('user', JSON.stringify(u));
           window.dispatchEvent(new Event('storage'));
           window.dispatchEvent(new Event('cart-refresh'));
@@ -113,7 +112,6 @@ const LoginPage = () => {
       if (res.data.success) {
         const u = res.data.data;
         localStorage.setItem('user', JSON.stringify(u));
-        localStorage.setItem('token', u.token);
         window.dispatchEvent(new Event('storage'));
         window.dispatchEvent(new Event('cart-refresh'));
         navigate('/home', { replace: true });
