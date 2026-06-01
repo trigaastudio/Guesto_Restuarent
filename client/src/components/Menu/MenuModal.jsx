@@ -74,7 +74,7 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose}></div>
       <div className="bg-background-card w-full max-w-[500px] rounded-[2rem] shadow-2xl relative z-10 overflow-hidden animate-in fade-in zoom-in duration-300 border border-border/10">
-        {/* Modal Header/Image */}
+        {}
         <div className="relative h-40 md:h-44 bg-background-muted/50 flex items-center justify-center p-3">
           <img
             src={menu.image || '/placeholder-food.jpg'}
@@ -106,7 +106,7 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
             </p>
           </div>
 
-          {/* Combo Items List */}
+          {}
           {menu.isCombo && menu.comboItems?.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
@@ -125,7 +125,7 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
                 ))}
               </div>
 
-              {/* Savings Message */}
+              {}
               {(() => {
                 const originalTotal = menu.comboItems.reduce((sum, item) => sum + (item.price || 0), 0);
                 const savings = originalTotal - (menu.price || 0);
@@ -229,7 +229,7 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
 
 
 
-          {/* Quantity Selector */}
+          {}
           {!isOutOfStock && !viewOnly && (
             <div className="space-y-3 pt-2">
               <div className="flex items-center gap-2">

@@ -4,7 +4,7 @@ import { useCart } from '../../context/CartContext';
 
 const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
   const { settings } = useCart();
-  const [recipientType, setRecipientType] = useState('myself'); // 'myself' or 'others'
+  const [recipientType, setRecipientType] = useState('myself'); 
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -77,7 +77,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
     };
   }, [isOpen]);
 
-  // Handle Map Initialization
+  
   useEffect(() => {
     if (isMapOpen && !lMap.current) {
       setTimeout(() => {
@@ -109,9 +109,9 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
     };
   }, [isMapOpen]);
 
-  // Helper to calculate distance in km using Haversine formula
+  
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371; // Radius of the earth in km
+    const R = 6371; 
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a = 
@@ -119,7 +119,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
       Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
       Math.sin(dLon/2) * Math.sin(dLon/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c; // Distance in km
+    return R * c; 
   };
 
   const validateDistance = (lat, lng) => {
@@ -215,7 +215,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
     <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
       <div className="bg-background-card w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 relative flex flex-col max-h-[90vh]">
 
-        {/* Modal Header */}
+        {}
         <div className="bg-primary p-6 md:p-8 text-white relative">
           <button onClick={onClose} className="absolute top-6 right-6 p-2 hover:bg-white/20 rounded-full transition-colors">
             <X size={20} />
@@ -225,7 +225,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
-          {/* Recipient Toggle */}
+          {}
           <div className="flex bg-background-muted p-1.5 rounded-2xl border border-border/40">
             <button
               onClick={() => setRecipientType('myself')}
@@ -242,7 +242,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Name */}
+            {}
             <div className="space-y-1.5">
               <label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">Full Name</label>
               <input
@@ -257,7 +257,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
                 placeholder="Enter name"
               />
             </div>
-            {/* Phone */}
+            {}
             <div className="space-y-1.5">
               <label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">Mobile Number</label>
               <input
@@ -300,7 +300,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
             />
           </div>
 
-          {/* Location Section */}
+          {}
           <div className="space-y-1.5">
             <div className="flex justify-between items-center ml-1 pr-1">
               <label className="text-[10px] font-black text-text-muted uppercase tracking-widest">Delivery Location</label>
@@ -344,7 +344,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
             )}
           </div>
 
-          {/* Address Type */}
+          {}
           <div className="space-y-3">
             <label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">Save As</label>
             <div className="flex gap-3">
@@ -364,7 +364,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
           </div>
         </div>
 
-        {/* Modal Footer */}
+        {}
         <div className="p-6 md:p-8 border-t border-border/40 bg-background-muted/50 pb-10 md:pb-8">
           <button
             onClick={handleFinalSave}
@@ -374,7 +374,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
           </button>
         </div>
 
-        {/* Map Picker Modal Overlay */}
+        {}
         {isMapOpen && (
           <div className="fixed inset-0 z-[3000] flex flex-col bg-background-card">
             <div className="p-4 bg-primary-light text-white flex justify-between items-center">

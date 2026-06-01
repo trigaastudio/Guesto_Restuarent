@@ -6,13 +6,14 @@ import {
   updateMenu,
   deleteMenu,
 } from "../controllers/menuController.js";
+import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.post("/", createMenu);
+router.post("/", protect, createMenu);
 router.get("/", getMenus);
 router.get("/:id", getMenuById);
-router.put("/:id", updateMenu);
-router.delete("/:id", deleteMenu);
+router.put("/:id", protect, updateMenu);
+router.delete("/:id", protect, deleteMenu);
 
 export default router;

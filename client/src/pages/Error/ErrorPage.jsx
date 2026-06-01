@@ -19,7 +19,7 @@ const ErrorPage = () => {
     let path = "/";
     let label = "Return Home";
 
-    // Role-based logic to determine where to redirect
+    
     const adminToken = localStorage.getItem('admin_token');
     const staffToken = localStorage.getItem('staff_token');
     const staffUser = JSON.parse(localStorage.getItem('staff_user') || 'null');
@@ -73,7 +73,7 @@ const ErrorPage = () => {
             </button>
             <button
               onClick={() => {
-                // If it's a server error on an initial load, navigate might not clear the error boundary
+                
                 window.location.href = actionPath;
               }}
               className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary-light shadow-lg shadow-primary/20 transition-all active:scale-95"

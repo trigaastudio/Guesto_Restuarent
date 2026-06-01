@@ -29,13 +29,13 @@ class DashboardService {
       lowStockCount,
       stockAlerts
     ] = await Promise.all([
-      // 1. Total Revenue
+      
       Order.aggregate([
         { $match: { orderStatus: { $ne: 'cancelled' } } },
         { $group: { _id: null, total: { $sum: '$totalAmount' } } }
       ]),
 
-      // 2. Today Revenue & Profit
+      
       Order.aggregate([
         { $match: { orderStatus: { $ne: 'cancelled' }, createdAt: { $gte: today } } },
         {
@@ -55,22 +55,22 @@ class DashboardService {
         }
       ]),
 
-      // 3. Today Orders
+      
       Order.countDocuments({ createdAt: { $gte: today } }),
 
-      // 4. Total Customers
+      
       User.countDocuments({ role: 'user' }),
 
-      // 5. Total Menu Items
+      
       Menu.countDocuments(),
 
-      // 6. Placed Orders
+      
       Order.countDocuments({ orderStatus: 'placed' }),
 
-      // 7. Processing Orders
+      
       Order.countDocuments({ orderStatus: 'processing' }),
 
-      // 8. Table Stats
+      
       Table.aggregate([
         {
           $group: {
@@ -81,13 +81,13 @@ class DashboardService {
         }
       ]),
 
-      // 9. Recent Orders
+      
       Order.find().sort({ createdAt: -1 }).limit(5).populate('customer', 'name'),
 
-      // 10. Revenue Trend (Last 7 days)
+      
       this.getRevenueTrend(),
 
-      // 11. Top Dishes
+      
       Order.aggregate([
         { $match: { orderStatus: { $ne: 'cancelled' } } },
         { $unwind: '$items' },
@@ -102,10 +102,10 @@ class DashboardService {
         { $limit: 5 }
       ]),
 
-      // 12. Monthly Revenue Trend
+      
       this.getMonthlyRevenueTrend(),
 
-      // 13. Out of Stock Items
+      
       Menu.aggregate([
         { $lookup: { from: 'categories', localField: 'category', foreignField: '_id', as: 'cat' } },
         { $unwind: { path: '$cat', preserveNullAndEmptyArrays: true } },
@@ -114,7 +114,7 @@ class DashboardService {
         { $count: 'count' }
       ]),
 
-      // 14. Low Stock Items (Threshold: 10)
+      
       Menu.aggregate([
         { $lookup: { from: 'categories', localField: 'category', foreignField: '_id', as: 'cat' } },
         { $unwind: { path: '$cat', preserveNullAndEmptyArrays: true } },
@@ -123,7 +123,7 @@ class DashboardService {
         { $count: 'count' }
       ]),
 
-      // 15. Stock Alerts (Items to display)
+      
       Menu.aggregate([
         { $lookup: { from: 'categories', localField: 'category', foreignField: '_id', as: 'cat' } },
         { $unwind: { path: '$cat', preserveNullAndEmptyArrays: true } },
@@ -180,7 +180,7 @@ class DashboardService {
         lowStock: lowStockCount[0]?.count || 0,
         alerts: stockAlerts.map(a => ({
           ...a,
-          totalStock: a.effectiveStock // Map back for frontend
+          totalStock: a.effectiveStock 
         }))
       }
     };
@@ -213,12 +213,12 @@ class DashboardService {
       { $sort: { "_id": 1 } }
     ]);
 
-    // Fill missing days with 0
+    
     const fullTrend = [];
     for (let i = 0; i < 7; i++) {
       const date = new Date(sevenDaysAgo);
       date.setDate(date.getDate() + i);
-      // We format the date as local string to match the _id format
+      
       const dateStr = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().split('T')[0];
       const dayData = trend.find(t => t._id === dateStr);
 
@@ -259,7 +259,7 @@ class DashboardService {
       { $sort: { "_id": 1 } }
     ]);
 
-    // Fill missing days of the month with 0
+    
     const fullTrend = [];
     const today = new Date();
     const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();

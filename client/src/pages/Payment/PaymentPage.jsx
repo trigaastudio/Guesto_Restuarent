@@ -11,7 +11,7 @@ const PaymentPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { cartItems, subtotal, clearCart, settings, checkStoreStatus } = useCart();
-  const [paymentMethod, setPaymentMethod] = useState('online'); // 'online', 'cod'
+  const [paymentMethod, setPaymentMethod] = useState('online'); 
   const [loading, setLoading] = useState(false);
   const [isOrderSuccess, setIsOrderSuccess] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -36,7 +36,7 @@ const PaymentPage = () => {
 
   const user = JSON.parse(localStorage.getItem('user') || localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || 'null');
 
-  // Get delivery address and additional note from location state or fallback
+  
   const deliveryAddress = location.state?.deliveryAddress;
   const additionalNote = location.state?.additionalNote || '';
   const deliveryFee = location.state?.deliveryFee || 0;
@@ -55,7 +55,7 @@ const PaymentPage = () => {
     script.async = true;
     document.body.appendChild(script);
 
-    // Check store status
+    
     const storeStatus = checkStoreStatus ? checkStoreStatus() : { isOpen: true };
     if (!isOrderSuccess && !storeStatus.isOpen) {
       let message = 'Store is currently closed.';
@@ -81,7 +81,7 @@ const PaymentPage = () => {
       return;
     }
 
-    // If no address/table, no items, or total is under ₹140, redirect back to cart
+    
     if (!isOrderSuccess && (!(deliveryAddress || dineInTableId) || cartItems.length === 0 || total < 140)) {
       navigate('/cart');
     }
@@ -94,7 +94,7 @@ const PaymentPage = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
-      // Cleanup script
+      
       if (document.body.contains(script)) {
         document.body.removeChild(script);
       }
@@ -133,7 +133,7 @@ const PaymentPage = () => {
         const sizeData = variants.find(v => v.size === item.selectedSize);
         const basePrice = sizeData ? sizeData.price : (item.offerPrice || item.price || 0);
 
-        // Apply item/category discount so DB stores the correct discounted totalPrice
+        
         const menuDiscount = item.discountPercentage || 0;
         const categoryDiscount = item.category?.discountPercentage || 0;
         const maxDiscount = Math.max(menuDiscount, categoryDiscount);
@@ -142,7 +142,7 @@ const PaymentPage = () => {
           : Math.round(maxDiscount > 0 ? basePrice * (1 - maxDiscount / 100) : basePrice);
 
         return {
-          menuItem: item.menuItemId || item._id, // Use menuItemId if available, fallback to _id
+          menuItem: item.menuItemId || item._id, 
           name: item.name,
           image: item.image || '',
           size: item.selectedSize,
@@ -170,7 +170,7 @@ const PaymentPage = () => {
       };
 
       if (paymentMethod === 'online') {
-        // 1. Create Razorpay Order
+        
         const { data: { data: razorpayOrder } } = await api.post('/api/payments/create-order', {
           amount: total,
           currency: 'INR',
@@ -186,7 +186,7 @@ const PaymentPage = () => {
           image: `${window.location.origin}${settings?.branding?.logoGold || '/logo-golden.png'}`,
           order_id: razorpayOrder.id,
           handler: async function (paymentResponse) {
-            // 2. Verify Payment and Place Order
+            
             try {
               const orderDataWithPayment = {
                 ...orderData,
@@ -240,7 +240,7 @@ const PaymentPage = () => {
         const rzp = new window.Razorpay(options);
         rzp.open();
       } else {
-        // COD Flow Success - Directly place order
+        
         const response = await api.post('/api/orders', orderData);
         const createdOrder = response.data.data;
 
@@ -404,9 +404,9 @@ const PaymentPage = () => {
         <main className="max-w-7xl mx-auto px-6 pt-24 md:pt-32 relative z-10 pb-24">
           <div className="flex flex-col lg:flex-row gap-10 items-start">
 
-            {/* Left Column: Delivery & Summary */}
+            {}
             <div className="flex-1 space-y-6 w-full">
-              {/* Delivery Overview */}
+              {}
               <div className="bg-background-card rounded-[3rem] p-8 md:p-10 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.04)] relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-80 h-80 bg-primary/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 group-hover:bg-primary/10 transition-colors duration-1000"></div>
                 <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2"></div>
@@ -490,7 +490,7 @@ const PaymentPage = () => {
                 )}
               </div>
 
-              {/* Order Preview */}
+              {}
               <div className="bg-background-card rounded-[3rem] p-8 md:p-10 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.04)]">
                 <div className="flex items-center gap-4 mb-8">
                   <div className="h-1 w-12 bg-primary rounded-full"></div>
@@ -516,7 +516,7 @@ const PaymentPage = () => {
                           )}
                         </div>
 
-                        {/* Combo Items */}
+                        {}
                         {item.isCombo && item.comboItems?.length > 0 && (
                           <div className="mt-2 space-y-1 pl-2 border-l border-primary/30">
                             <span className="text-[8px] font-black text-primary uppercase tracking-wider block">Combo includes:</span>
@@ -530,7 +530,7 @@ const PaymentPage = () => {
                           </div>
                         )}
 
-                        {/* Included Items (Add-ons) */}
+                        {}
                         {!item.isCombo && item.variants?.find(v => v.size === item.selectedSize)?.includedItems?.length > 0 && (
                           <div className="mt-2 space-y-1 pl-2 border-l border-primary/30">
                             <span className="text-[8px] font-black text-primary uppercase tracking-wider block">Includes Add-ons:</span>
@@ -544,7 +544,7 @@ const PaymentPage = () => {
                           </div>
                         )}
 
-                        {/* BOGO Item */}
+                        {}
                         {item.bogoItem && item.variants?.find(v => v.size === item.selectedSize)?.isBOGO && (
                           <div className="mt-2 space-y-1 pl-2 border-l border-emerald-500/30">
                             <span className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">Buy 1 Get 1 Free Add-on:</span>
@@ -615,7 +615,7 @@ const PaymentPage = () => {
                     </div>
 
 
-                    {/* COD Option */}
+                    {}
                     <div
                       onClick={() => setPaymentMethod('cod')}
                       className={`cursor-pointer group/pay p-4 rounded-[1.5rem] border-2 transition-all duration-500 flex items-center justify-between ${paymentMethod === 'cod' ? 'border-primary bg-primary/[0.03] shadow-lg shadow-primary/5 -translate-y-0.5' : 'border-border/20 bg-background hover:border-primary/30 hover:bg-background-card hover:-translate-y-0.5'}`}
@@ -635,7 +635,7 @@ const PaymentPage = () => {
                     </div>
                   </div>
 
-                  {/* Summary Breakdown */}
+                  {}
                   <div className="bg-background rounded-[2rem] p-6 mb-8 space-y-3 relative border border-border/40 shadow-inner overflow-hidden group/summary">
                     <div className="absolute inset-0 bg-primary/5 -translate-x-full group-hover/summary:translate-x-0 transition-transform duration-700"></div>
                     <div className="relative z-10 flex justify-between text-[10px] font-black text-text-muted uppercase tracking-widest">
@@ -669,7 +669,7 @@ const PaymentPage = () => {
                     </div>
                   </div>
 
-                  {/* Place Order Button */}
+                  {}
                   <button
                     onClick={handlePlaceOrder}
                     disabled={loading}

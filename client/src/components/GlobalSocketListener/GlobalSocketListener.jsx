@@ -17,10 +17,10 @@ const GlobalSocketListener = () => {
         socket.connect();
       }
 
-      // Join the user's private room
+      
       socket.emit('joinUser', userId);
 
-      // Listen for account status changes
+      
       socket.on('accountStatusChanged', (data) => {
         if (data.userId === userId && data.isActive === false) {
           handleForceLogout();
@@ -28,15 +28,15 @@ const GlobalSocketListener = () => {
       });
     }
 
-    // Global db_change listener
+    
     if (!socket.connected) {
       socket.connect();
     }
     
-    // Listen for database changes from anywhere
+    
     const handleDbChange = (data) => {
-      // Dispatch a standard browser event so any component can listen to it
-      // Data format: { collection: 'Menu', operation: 'UPDATE', docId: '...' }
+      
+      
       window.dispatchEvent(new CustomEvent('db_change', { detail: data }));
     };
     
@@ -54,7 +54,7 @@ const GlobalSocketListener = () => {
                     window.location.pathname.startsWith('/staff') ||
                     localStorage.getItem('staff_token') !== null;
 
-    // Clear all storage
+    
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('admin_token');
@@ -62,10 +62,10 @@ const GlobalSocketListener = () => {
     localStorage.removeItem('staff_token');
     localStorage.removeItem('staff_user');
 
-    // Close socket
+    
     socket.disconnect();
 
-    // Notify user
+    
     showAlert({
       icon: 'warning',
       title: 'Account Deactivated',
@@ -87,7 +87,7 @@ const GlobalSocketListener = () => {
           shouldLogout = true;
           redirectPath = '/admin/login';
         } else if (!path.startsWith('/kitchen') && !path.startsWith('/waiter') && !path.startsWith('/staff')) {
-          // We are on the website. If there is no customer token, we were relying on the admin_token.
+          
           const hasCustomerToken = !!localStorage.getItem('token');
           if (!hasCustomerToken) {
             shouldLogout = true;
@@ -106,7 +106,7 @@ const GlobalSocketListener = () => {
           redirectPath = '/login';
         }
       } else if (e.key === null) {
-        // localStorage.clear() was called
+        
         shouldLogout = true;
       }
 

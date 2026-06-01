@@ -116,12 +116,12 @@ const KitchenDashboard = () => {
     try {
       const response = await api.get('/api/orders');
       const allOrders = response.data.data || [];
-      // Show only placed and processing orders in the kitchen panel
+      
       const kitchenOrders = allOrders.filter(o =>
         o.orderStatus === 'processing' || o.orderStatus === 'placed'
       );
 
-      // Detect new orders for notifications and sound
+      
       if (kitchenOrders.length > lastFetchCount && lastFetchCount > 0) {
         const diff = kitchenOrders.length - lastFetchCount;
         playNotificationSound();
@@ -142,12 +142,12 @@ const KitchenDashboard = () => {
   }, [lastFetchCount]);
 
   useEffect(() => {
-    // Initial fetch
+    
     fetchOrders();
     const tabName = TABS.find(t => t.type === activeTab)?.name || 'Kitchen';
     document.title = `Kitchen | ${tabName}`;
 
-    // Socket Setup
+    
     socketRef.current = io(SOCKET_URL);
     socketRef.current.on('ordersUpdated', () => {
       fetchOrders(true);
@@ -161,7 +161,7 @@ const KitchenDashboard = () => {
     };
     window.addEventListener('db_change', handleDbChange);
 
-    // Timer for order age
+    
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
 
     return () => {
@@ -184,7 +184,7 @@ const KitchenDashboard = () => {
   };
 
   const handlePrintKOT = async (order) => {
-    // Fetch settings for dynamic printing
+    
     let currentSettings = null;
     try {
       const response = await api.get('/api/settings');
@@ -309,7 +309,7 @@ const KitchenDashboard = () => {
 
   const handleStartPreparation = async (order) => {
     try {
-      // Update only 'placed' items to 'preparing' (not already-preparing/ready items)
+      
       const placedItems = order.items.filter(i => (i.kitchenStatus || 'placed') === 'placed');
       if (placedItems.length === 0) {
         showToast('info', 'No new items to start preparing');
@@ -357,7 +357,7 @@ const KitchenDashboard = () => {
   };
 
   const filteredOrders = orders.filter(o => {
-    // First Filter by Order Type (Tab)
+    
     let typeMatch = false;
     if (activeTab === 'delivery') typeMatch = o.orderType === 'delivery' || o.orderType === 'online';
     else if (activeTab === 'takeaway') typeMatch = o.orderType === 'takeaway' || o.orderType === 'take-away';
@@ -366,8 +366,8 @@ const KitchenDashboard = () => {
 
     if (!typeMatch) return false;
 
-    // Second Filter by Kitchen Status
-    // Always show orders with delayed items regardless of active filter
+    
+    
     if (o.items?.some(i => i.kitchenStatus === 'delayed')) return true;
     if (activeStatusFilter === 'all') return true;
     if (activeStatusFilter === 'new') return o.items?.some(i => (i.kitchenStatus || 'placed') === 'placed');
@@ -384,19 +384,19 @@ const KitchenDashboard = () => {
   return (
     <div className="flex h-screen bg-background text-text-primary overflow-hidden transition-colors duration-300">
 
-      {/* Mobile overlay */}
+      {}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />
       )}
 
-      {/* Sidebar */}
+      {}
       <aside className={`
         fixed inset-y-0 left-0 z-50 bg-background-card border-r border-border-light flex flex-col transition-all duration-300 ease-in-out
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         ${isSidebarCollapsed ? 'lg:w-[5.5rem]' : 'lg:w-64'}
         w-64
       `}>
-        {/* Collapse toggle */}
+        {}
         <button
           onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           className={`hidden lg:flex absolute -right-3 top-10 p-1.5 bg-primary text-white rounded-full shadow-lg border-2 border-background-card z-20 transition-transform duration-300 ${!isSidebarCollapsed ? 'rotate-180' : ''}`}
@@ -405,7 +405,7 @@ const KitchenDashboard = () => {
         </button>
 
         <div className="flex-1 flex flex-col overflow-x-hidden no-scrollbar">
-          {/* Logo */}
+          {}
           <div className="p-6 border-b border-border-light flex items-center justify-center relative">
             <img
               src={
@@ -424,7 +424,7 @@ const KitchenDashboard = () => {
             </button>
           </div>
 
-          {/* Role Badge */}
+          {}
           {(!isSidebarCollapsed || isMobileMenuOpen) && (
             <div className="px-4 pt-4">
               <div className="flex items-center space-x-2 p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
@@ -437,7 +437,7 @@ const KitchenDashboard = () => {
             </div>
           )}
 
-          {/* Nav */}
+          {}
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto no-scrollbar">
             {TABS.map((tab) => {
               const count = orders.filter(o => {
@@ -449,7 +449,7 @@ const KitchenDashboard = () => {
 
                 if (!typeMatch) return false;
 
-                // Only count if it has "new" items (placed status)
+                
                 return o.items?.some(i => (i.kitchenStatus || 'placed') === 'placed');
               }).length;
               return (
@@ -748,7 +748,7 @@ const KitchenDashboard = () => {
                         const status = item.kitchenStatus || 'placed';
                         return (
                           <div key={item._id} className={`grid ${activeStatusFilter === 'new' ? 'grid-cols-[40px_1fr]' : 'grid-cols-[48px_1fr_auto]'} items-center p-3 bg-background-muted/10 rounded-2xl border border-border-light hover:border-primary/20 transition-all gap-3 group/item`}>
-                            {/* Column 1: Image */}
+                            {}
                             <div className="w-10 h-10 bg-background-card rounded-xl flex items-center justify-center border border-border-light shrink-0 overflow-hidden shadow-sm">
                               {item.image || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.image : '') ? (
                                 <img src={item.image || item.menuItem.image} alt={item.name || item.menuItem.name} className="w-full h-full object-cover group-hover/item:scale-110 transition-transform duration-500" />
@@ -771,7 +771,7 @@ const KitchenDashboard = () => {
                                 <span className="text-[11px] text-primary font-black uppercase tracking-widest shrink-0 mt-[-1px]">x {item.quantity}</span>
                               </div>
 
-                              {/* BOGO Items */}
+                              {}
                               {item.bogoItem && (item.menuItem?.variants || item.menuItem?.sizes || [])?.find(v => (v.size || 'Standard') === (item.size || 'Standard'))?.isBOGO && (
                                 <div className="mt-2 bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/30">
                                   <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest block mb-1.5 opacity-90">Buy 1 Get 1 Free Add-on:</span>
@@ -805,9 +805,9 @@ const KitchenDashboard = () => {
                       })}
                     </div>
 
-                    {/* Footer Actions */}
+                    {}
                     <div className="px-4 pb-4 space-y-2">
-                      {/* Send to Preparing button - only in 'new' tab when there are placed items */}
+                      {}
                       {activeStatusFilter === 'new' && order.items?.some(i => (i.kitchenStatus || 'placed') === 'placed') && (
                         <button
                           onClick={() => handleStartPreparation(order)}

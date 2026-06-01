@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 
-// Prevent number inputs from changing value on scroll
+
 document.addEventListener("wheel", function(event) {
   if (document.activeElement.type === "number") {
     document.activeElement.blur();

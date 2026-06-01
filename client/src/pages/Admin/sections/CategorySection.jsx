@@ -196,7 +196,7 @@ const CategorySection = ({ refreshKey }) => {
 
   const handleToggleStatus = async (category) => {
     try {
-      // Optimistic update
+      
       setCategories(prev => prev.map(c => c._id === category._id ? { ...c, isActive: !c.isActive } : c));
       const updatedCategory = { ...category, isActive: !category.isActive };
       await api.put(`/api/categories/${category._id}`, updatedCategory);
@@ -204,7 +204,7 @@ const CategorySection = ({ refreshKey }) => {
     } catch (error) {
       console.error('Error toggling category status:', error);
       showToast('error', 'Failed to update category status');
-      fetchCategories(true); // Revert on error
+      fetchCategories(true); 
     }
   };
 
@@ -222,7 +222,7 @@ const CategorySection = ({ refreshKey }) => {
     } catch (error) {
       console.error('Error updating discount:', error);
       showToast('error', 'Failed to update discount');
-      fetchCategories(true); // Revert on error
+      fetchCategories(true); 
     } finally {
       setEditingDiscountId(null);
     }
@@ -542,7 +542,7 @@ const CategorySection = ({ refreshKey }) => {
         />
       </div>
 
-      {/* Simple Modal */}
+      {}
       {isModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-background-card w-full max-w-md rounded-2xl border border-border-light shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">

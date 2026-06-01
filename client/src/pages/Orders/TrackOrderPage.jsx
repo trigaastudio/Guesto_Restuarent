@@ -53,6 +53,7 @@ const TrackOrderPage = () => {
     document.addEventListener('mousedown', handleClickOutside);
 
     return () => {
+      socket.emit('leaveOrder', orderId);
       socket.off('connect', onConnect);
       socket.off('orderStatusUpdated', onOrderStatusUpdate);
       socket.disconnect();
@@ -163,7 +164,7 @@ const TrackOrderPage = () => {
 
   const orderDate = formatDate(order.createdAt);
 
-  // Base steps
+  
   let steps = [
     { id: 'placed', label: 'Order placed', color: 'text-primary', bg: 'bg-primary/10', dot: 'bg-primary', description: 'Your order has been received' },
     { id: 'accepted', label: 'Order accepted', color: 'text-blue-500', bg: 'bg-blue-500/10', dot: 'bg-blue-500', description: 'Admin has approved your order' },
@@ -172,22 +173,22 @@ const TrackOrderPage = () => {
     { id: 'delivered', label: 'Delivered', color: 'text-green-600', bg: 'bg-green-500/10', dot: 'bg-green-600', description: 'Enjoy your meal!' }
   ];
 
-  // Logic to determine current tracking step
+  
   let activeStepIndex = 0;
   if (order.orderStatus === 'cancelled') {
     const cancelStep = { id: 'cancelled', label: 'Order cancelled', color: 'text-red-600', bg: 'bg-red-500/10', dot: 'bg-red-600', description: order.rejectionReason ? `Reason: ${order.rejectionReason}` : 'This order has been cancelled' };
 
-    // Determine where the order was before cancellation to place the 'Cancelled' step correctly
+    
     if (order.kitchenStatus !== 'placed') {
-      // If it somehow got cancelled while preparing
+      
       steps = [steps[0], steps[1], steps[2], cancelStep];
       activeStepIndex = 3;
     } else if (order.orderStatus === 'processing' || (order.paymentStatus === 'paid' && order.orderStatus === 'placed')) {
-      // If it was accepted or paid
+      
       steps = [steps[0], steps[1], cancelStep];
       activeStepIndex = 2;
     } else {
-      // If it was just placed
+      
       steps = [steps[0], cancelStep];
       activeStepIndex = 1;
     }
@@ -223,12 +224,12 @@ const TrackOrderPage = () => {
           dropdownRef={dropdownRef}
         />
 
-        {/* Spacer for Navbar visibility */}
+        {}
         <div className="h-24 md:h-32"></div>
       </div>
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-12 relative">
-        {/* Breadcrumb / Back button */}
+        {}
         <button
           onClick={() => navigate('/my-orders')}
           className="flex items-center gap-2 text-[11px] font-bold text-text-muted hover:text-primary mb-8 transition-all"
@@ -239,12 +240,12 @@ const TrackOrderPage = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-          {/* LEFT COLUMN: Tracking & Items */}
+          {}
           <div className="lg:col-span-8 space-y-6">
 
-            {/* Product & Tracking Card */}
+            {}
             <div className="bg-background-card rounded-2xl border border-border/60 shadow-sm overflow-hidden">
-              {/* Product Header */}
+              {}
               <div className="p-6 border-b border-border/40 flex flex-col sm:flex-row gap-6">
                 <div className="w-24 h-24 sm:w-20 sm:h-20 bg-background rounded-lg border border-border/40 p-2 flex-shrink-0">
                   <img
@@ -269,7 +270,7 @@ const TrackOrderPage = () => {
                 </div>
               </div>
 
-              {/* Status Stepper (Project Theme Style) */}
+              {}
               <div className="p-6 md:p-10">
                 <div className="relative">
                   {steps.map((step, index) => {
@@ -279,13 +280,13 @@ const TrackOrderPage = () => {
 
                     return (
                       <div key={step.id} className="relative flex gap-6 pb-8 last:pb-0">
-                        {/* Vertical Line */}
+                        {}
                         {!isLast && (
                           <div className={`absolute left-[11px] top-6 bottom-[-8px] w-[2px] ${index < activeStepIndex ? step.dot : 'bg-border/40 border-dashed border-l-[2px]'}`}>
                           </div>
                         )}
 
-                        {/* Icon/Circle */}
+                        {}
                         <div className="relative z-10">
                           {isCompleted ? (
                             <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white shadow-lg ${step.dot}`}>
@@ -298,7 +299,7 @@ const TrackOrderPage = () => {
                           )}
                         </div>
 
-                        {/* Step Content */}
+                        {}
                         <div className={`flex-1 -mt-1 ${isActive ? `${step.bg} -mx-4 px-4 py-4 rounded-xl border border-border/10 shadow-sm` : ''}`}>
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
                             <h3 className={`text-sm font-bold ${isCompleted ? 'text-text-primary' : 'text-text-muted opacity-60'}`}>
@@ -468,7 +469,7 @@ const TrackOrderPage = () => {
               )}
             </div>
 
-            {/* Price Details Card */}
+            {}
             <div className="bg-background-card rounded-2xl border border-border/60 shadow-sm p-6 relative overflow-hidden">
               <div className="absolute bottom-0 left-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
               <h2 className="text-sm font-bold text-text-primary mb-6 relative z-10">Price details</h2>

@@ -10,7 +10,18 @@ router.post('/expand-url', async (req, res) => {
   }
 
   try {
-    // Follow redirect to get final URL
+    const parsedUrl = new URL(url);
+    const validHostnames = ['maps.app.goo.gl', 'goo.gl', 'maps.google.com', 'share.google'];
+    
+    if (!validHostnames.includes(parsedUrl.hostname)) {
+      return res.status(400).json({ error: 'Invalid URL hostname' });
+    }
+  } catch (error) {
+    return res.status(400).json({ error: 'Invalid URL format' });
+  }
+
+  try {
+    
     const response = await fetch(url, {
       method: 'GET',
       redirect: 'follow',

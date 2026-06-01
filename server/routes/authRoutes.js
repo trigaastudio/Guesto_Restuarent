@@ -5,10 +5,10 @@ import { validateRegister, validateLogin, validateOTPRegister } from '../middlew
 
 const router = express.Router();
 
-// Strict rate limiting for sensitive auth routes
+
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 requests per windowMs
+  windowMs: 15 * 60 * 1000, 
+  max: 5, 
   message: { success: false, message: 'Too many requests from this IP, please try again after 15 minutes' },
   standardHeaders: true,
   legacyHeaders: false,

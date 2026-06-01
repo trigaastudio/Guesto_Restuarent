@@ -14,11 +14,11 @@ const SideNavbar = ({
 }) => {
   return (
     <div className="bg-background-card rounded-[2.5rem] md:rounded-[3.5rem] p-6 md:p-8 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.04)] relative overflow-hidden group w-full">
-      {/* Abstract Backdrop Decor */}
+      {}
       <div className="absolute top-0 right-0 w-32 h-32 md:w-48 md:h-48 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-primary/10 transition-colors duration-700"></div>
       
       <div className="relative z-10 flex flex-col items-center">
-        {/* Avatar Section */}
+        {}
         <div className="relative mb-4 md:mb-6 group/avatar cursor-pointer" onClick={onAvatarClick}>
           <div className="w-28 h-28 md:w-36 md:h-36 rounded-full bg-background-card p-1 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-border/40 relative overflow-hidden group-hover/avatar:shadow-[0_30px_70px_rgba(185,28,28,0.15)] transition-all duration-700">
             <div className="w-full h-full rounded-full overflow-hidden border-4 border-background shadow-inner bg-background-muted flex items-center justify-center">
@@ -57,7 +57,7 @@ const SideNavbar = ({
           />
         </div>
 
-        {/* User Info */}
+        {}
         <div className="text-center mb-6">
           <h2 className="text-xl md:text-2xl font-black text-text-primary tracking-tight mb-1">{user.name}</h2>
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-background-muted rounded-full border border-border/40">
@@ -68,7 +68,7 @@ const SideNavbar = ({
           </div>
         </div>
 
-        {/* Navigation Tabs */}
+        {}
         <div className="w-full space-y-2 pt-6 border-t border-border/40">
           <button
             onClick={() => setActiveTab('addresses')}

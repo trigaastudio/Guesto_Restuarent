@@ -4,7 +4,7 @@ import api from '../../api/axiosInstance';
 import { showToast } from '../../utils/sweetAlert';
 
 const ChangePasswordModal = ({ isOpen, onClose, user }) => {
-  const [step, setStep] = useState(1); // 1: Send OTP, 2: Enter Passwords & OTP, 3: Success
+  const [step, setStep] = useState(1); 
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [formData, setFormData] = useState({
     currentPassword: '',
@@ -101,7 +101,7 @@ const ChangePasswordModal = ({ isOpen, onClose, user }) => {
       if (response.data.success) {
         setStep(3);
         
-        // Terminate session and redirect to login after a short delay
+        
         setTimeout(() => {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
@@ -125,7 +125,7 @@ const ChangePasswordModal = ({ isOpen, onClose, user }) => {
     newOtp[index] = value.substring(value.length - 1);
     setOtp(newOtp);
 
-    // Auto-focus next input
+    
     if (value && index < 5) {
       const nextInput = document.getElementById(`otp-${index + 1}`);
       nextInput?.focus();
@@ -177,7 +177,7 @@ const ChangePasswordModal = ({ isOpen, onClose, user }) => {
             </div>
           )}
 
-          {/* Progress Indicators */}
+          {}
           <div className="flex items-center justify-between mb-8 px-4">
             {[1, 2].map((s) => (
               <div key={s} className="flex items-center flex-1 last:flex-none">

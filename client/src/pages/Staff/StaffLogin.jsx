@@ -33,7 +33,7 @@ const StaffLogin = () => {
     };
   }, []);
 
-  // Redirect if already logged in
+  
   React.useEffect(() => {
     const token = localStorage.getItem('staff_token');
     const user = JSON.parse(localStorage.getItem('staff_user') || '{}');
@@ -56,14 +56,14 @@ const StaffLogin = () => {
       if (response.data.success) {
         const staffData = response.data.data;
 
-        // Block admin and user roles from accessing staff portal
+        
         if (staffData.role === 'admin' || staffData.role === 'user') {
           setErrorMsg('Access denied. This portal is for Waiter & Kitchen staff only.');
           return;
         }
 
         localStorage.setItem('staff_user', JSON.stringify(staffData));
-        // Enforce mutual exclusivity: log out of admin if logging into staff
+        
         localStorage.removeItem('admin_token');
         localStorage.removeItem('admin_user');
         localStorage.removeItem('admin_notifications');
@@ -85,7 +85,7 @@ const StaffLogin = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative transition-colors duration-300">
-      {/* Logo */}
+      {}
       <div className="mb-10 text-center flex flex-col items-center animate-in fade-in slide-in-from-top-4 duration-700">
         <img
           src={settings?.branding?.logoGold || '/logo-golden.png'}
@@ -98,7 +98,7 @@ const StaffLogin = () => {
         </div>
       </div>
 
-      {/* Login Card */}
+      {}
       <div className="bg-background-card w-full max-w-md rounded-[2.5rem] p-10 shadow-xl shadow-primary/5 border border-border-light transition-all duration-500 animate-in fade-in zoom-in-95">
         <h2 className="text-xl font-medium text-text-primary text-center mb-8 italic opacity-70 border-b border-border-light pb-6">
           Kitchen &amp; Waiter Access

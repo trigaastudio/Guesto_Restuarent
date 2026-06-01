@@ -11,20 +11,26 @@ export const initSocket = (httpServer) => {
   });
 
   io.on('connection', (socket) => {
-    // Client connected log removed for cleaner terminal output
+    
 
     socket.on('joinOrder', (orderId) => {
       socket.join(orderId);
-      // Joined order room log removed
+    });
+
+    socket.on('leaveOrder', (orderId) => {
+      socket.leave(orderId);
     });
 
     socket.on('joinUser', (userId) => {
       socket.join(userId);
-      // Joined user room log removed
+    });
+
+    socket.on('leaveUser', (userId) => {
+      socket.leave(userId);
     });
 
     socket.on('disconnect', () => {
-      // Client disconnected log removed
+      
     });
   });
 

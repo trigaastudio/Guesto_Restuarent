@@ -170,7 +170,7 @@ const RegisterPage = () => {
     } catch { setApiError('Failed to resend OTP'); }
   };
 
-  /* ── Input style helper ── */
+  
   const inputCls = (field) =>
     `w-full bg-background-muted border rounded-2xl py-2 sm:py-3 pl-9 sm:pl-11 pr-4 text-xs sm:text-sm font-semibold
      placeholder:text-text-muted/50 focus:outline-none transition-all text-text-primary ${errors[field]
@@ -181,7 +181,7 @@ const RegisterPage = () => {
   return (
     <div className="min-h-screen w-full bg-background font-sans select-none flex">
 
-      {/* ── Left Panel (desktop only) ── */}
+      {}
       <div className="hidden lg:flex w-1/2 relative overflow-hidden">
         <img
           src="/heroSection/hero.png"
@@ -215,21 +215,21 @@ const RegisterPage = () => {
 
       <div ref={containerRef} className="w-full lg:w-1/2 flex flex-col justify-start sm:justify-center items-center px-3 xs:px-4 sm:px-12 pt-3 pb-12 sm:py-6 relative min-h-screen lg:h-screen lg:overflow-y-auto no-scrollbar">
 
-        {/* Mobile hero bg tint */}
+        {}
         <div className="lg:hidden fixed inset-0 pointer-events-none">
           <div className="absolute inset-0 bg-background" />
           <img src="/heroSection/hero.png" alt="" className="w-full h-full object-cover opacity-25" />
           <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-background/80 to-background/95" />
         </div>
 
-        {/* Mobile/Tablet Logo */}
+        {}
         <div className="lg:hidden flex justify-center mb-3 sm:mb-8 mt-2 sm:mt-4 cursor-pointer z-20" onClick={() => navigate('/')}>
           <img src={logoSrc} alt="Logo" className="h-9 xs:h-11 sm:h-14 object-contain" />
         </div>
 
         <div className="w-full max-w-[330px] xs:max-w-[360px] md:max-w-[580px] lg:max-w-[500px] relative z-10 page-fade-in mt-1 sm:my-auto py-4">
 
-          {/* Funny Dumpling Chef walks along the top edge of the card */}
+          {}
           <div className="relative h-16 sm:h-20 w-full overflow-visible z-20">
             <FunnyDumpling
               isHiding={activeField === 'password' || activeField === 'confirmPassword'}
@@ -237,22 +237,22 @@ const RegisterPage = () => {
             />
           </div>
 
-          {/* Card */}
+          {}
           <div className="bg-background-card border border-border rounded-[1.5rem] sm:rounded-[2rem] px-4 py-6 xs:px-5 xs:py-7 sm:p-10 shadow-xl relative overflow-hidden">
 
-            {/* Ambient glow blobs */}
+            {}
             <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/15 rounded-full blur-[50px] pointer-events-none" />
             <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-primary-light/10 rounded-full blur-[50px] pointer-events-none" />
 
             <div className="relative z-10 space-y-5">
 
-              {/* Heading */}
+              {}
               <div className="text-center space-y-1">
                 <h1 className="text-2xl font-black tracking-tight text-text-primary">Join Guesto</h1>
                 <p className="text-[11px] text-text-muted font-semibold uppercase tracking-widest">Create your account</p>
               </div>
 
-              {/* API Error */}
+              {}
               {apiError && (
                 <div className="bg-primary/10 border border-primary/25 text-primary px-4 py-3 rounded-xl text-xs font-bold text-center animate-shake flex items-center justify-center gap-2">
                   {apiError}
@@ -261,7 +261,7 @@ const RegisterPage = () => {
 
               <form onSubmit={handleSubmit} className="space-y-4">
 
-                {/* Row 1 : Name + Phone */}
+                {}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest ml-1">Full Name</label>
@@ -290,7 +290,7 @@ const RegisterPage = () => {
                   </div>
                 </div>
 
-                {/* Email */}
+                {}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest ml-1">
                     Email Address <span className="text-primary-light">*</span>
@@ -308,7 +308,7 @@ const RegisterPage = () => {
                   {errors.email && errors.email !== 'REQUIRED' && <p className="text-[10px] text-primary font-bold ml-1">{errors.email}</p>}
                 </div>
 
-                {/* Row 3 : Password + Confirm */}
+                {}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest ml-1">
@@ -359,7 +359,7 @@ const RegisterPage = () => {
                   </div>
                 </div>
 
-                {/* Terms */}
+                {}
                 <p className="text-center text-[9px] text-text-muted font-semibold tracking-wide">
                   By continuing, you agree to our{' '}
                   <Link to="/terms" className="text-primary-light hover:underline font-bold">Terms</Link>
@@ -367,7 +367,7 @@ const RegisterPage = () => {
                   <Link to="/privacy" className="text-primary-light hover:underline font-bold">Privacy Policy</Link>.
                 </p>
 
-                {/* Submit */}
+                {}
                 <button
                   type="submit"
                   disabled={!isFormValid() || loading}
@@ -396,14 +396,14 @@ const RegisterPage = () => {
                 )}
               </form>
 
-              {/* Divider */}
+              {}
               <div className="flex items-center gap-3">
                 <div className="flex-grow h-px bg-border" />
                 <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">Or</span>
                 <div className="flex-grow h-px bg-border" />
               </div>
 
-              {/* Google */}
+              {}
               <button
                 type="button"
                 onClick={() => googleLogin()}
@@ -413,7 +413,7 @@ const RegisterPage = () => {
                 Continue with Google
               </button>
 
-              {/* Login link */}
+              {}
               <p className="text-center text-[11px] sm:text-xs font-semibold text-text-muted pt-1">
                 Already have an account?{' '}
                 <Link

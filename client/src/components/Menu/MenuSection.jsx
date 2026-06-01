@@ -15,7 +15,7 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
     <section id="menu" className="bg-background pt-2 md:pt-8 pb-6 w-full">
       <div className="max-w-6xl mx-auto px-6">
         <div className="flex flex-col gap-5 mb-8 md:mb-10">
-          {/* Title Row */}
+          {}
           <div className="flex items-end justify-between">
             <div className="space-y-1.5">
               <div className="flex items-center gap-3 flex-wrap">
@@ -27,7 +27,7 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
               <p className="text-[10px] md:text-sm text-text-muted font-bold opacity-80 tracking-widest uppercase md:normal-case">Discover the most loved dishes</p>
             </div>
 
-            {/* Sort dropdown — always top right */}
+            {}
             <div className="relative group flex-shrink-0">
               <select
                 value={sortBy}
@@ -46,7 +46,7 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
             </div>
           </div>
 
-          {/* Filter Pills Row */}
+          {}
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setDietaryFilter(dietaryFilter === 'veg' ? 'all' : 'veg')}
@@ -126,8 +126,8 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
                 ? menu.comboItems?.reduce((sum, item) => sum + (item.price || 0), 0)
                 : (variants.length > 0 ? Math.min(...variants.map(v => v.price)) : (menu.price || 0));
 
-              // Find active discount offer for this item
-              // Compute discount percentage based on max of menu and category discount
+              
+              
               const menuDiscount = menu.discountPercentage || 0;
               const categoryDiscount = menu.category?.discountPercentage || 0;
 
@@ -234,7 +234,7 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
           </div>
         )}
 
-        {/* Observer Target for Infinite Scroll */}
+        {}
         <div ref={observerTarget} className="h-10 flex items-center justify-center mt-2">
           {loadingMore && (
             <div className="flex items-center gap-3">

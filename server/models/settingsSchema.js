@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 const settingsSchema = new mongoose.Schema({
-  // 1. Store Profile (The Identity Hub)
+  
   restaurantDetails: {
     name: {
       type: String,
@@ -48,7 +48,7 @@ const settingsSchema = new mongoose.Schema({
     ]
   },
 
-  // Branding (Logo System)
+  
   branding: {
     logoGold: {
       type: String,
@@ -83,7 +83,7 @@ const settingsSchema = new mongoose.Schema({
     }
   },
 
-  // 3. Payment Settings
+  
   paymentSettings: {
     upiId: { type: String, default: '' },
     merchantName: { type: String, default: 'Guesto' },
@@ -91,7 +91,7 @@ const settingsSchema = new mongoose.Schema({
     enableOnlinePayments: { type: Boolean, default: false }
   },
 
-  // 4. Printing Settings
+  
   printingSettings: {
     billHeader: { type: String, default: 'GUESTO RESTAURENT' },
     billFooter: { type: String, default: 'THANK YOU FOR VISITING!' },
@@ -108,7 +108,7 @@ const settingsSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Singleton helper
+
 settingsSchema.statics.getSettings = async function () {
   let settings = await this.findOne();
   if (!settings) {

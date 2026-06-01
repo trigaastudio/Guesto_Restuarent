@@ -22,14 +22,14 @@ const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:500
 
 const OrderSection = () => {
   const handleCopyForWhatsApp = (order) => {
-    // Support both items structures
+    
     const itemsText = order.items.map(item => {
       const name = item.name || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Menu Item');
       const price = item.unitPrice || item.price || 0;
       return `- ${name} (${item.size}) x${item.quantity}`;
     }).join('\n');
 
-    // Support both customerDetails and address structures
+    
     const name = (order.orderSource === 'online' || order.orderSource === 'user')
       ? (order.address?.recipientName || order.customerDetails?.name || 'Walk-in')
       : (order.customerDetails?.name || order.address?.recipientName || 'Walk-in');
@@ -37,7 +37,7 @@ const OrderSection = () => {
     const address = order.customerDetails?.address || order.address?.address || 'N/A';
     const location = order.customerDetails?.location || order.address?.location;
 
-    // Construct location URL if it's an object or already a string
+    
     let locationUrl = '';
     const locToUse = location || address;
 
@@ -71,7 +71,7 @@ const OrderSection = () => {
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Payment Modal State
+  
   const [paymentModal, setPaymentModal] = useState({ open: false, order: null });
   const [payMethod, setPayMethod] = useState('');
   const [cashInput, setCashInput] = useState('');
@@ -109,12 +109,12 @@ const OrderSection = () => {
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     localStorage.setItem('orderActiveTab', tab);
-    setSelectedOrderIds([]); // Reset selection on tab change
-    setCurrentPage(1); // Reset pagination on tab change
+    setSelectedOrderIds([]); 
+    setCurrentPage(1); 
   };
   const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
 
-  // POS State
+  
   const [cart, setCart] = useState([]);
   const [customer, setCustomer] = useState({ name: 'Walk-in', phone: '' });
   const [paymentMethod, setPaymentMethod] = useState('Not Specified');
@@ -141,7 +141,7 @@ const OrderSection = () => {
     // Socket Setup for Real-time updates
     socketRef.current = io(SOCKET_URL);
     socketRef.current.on('ordersUpdated', () => {
-      // Intentionally empty or remove, relying on orderUpdated
+      
     });
     socketRef.current.on('orderUpdated', (updatedOrder) => {
       setOrders(prev => prev.map(o => o._id === updatedOrder._id ? updatedOrder : o));
@@ -222,7 +222,7 @@ const OrderSection = () => {
     const restaurantPhone = settings?.restaurantDetails?.contactNumber || '7034805085';
     const monochromeLogo = settings?.branding?.logoMonochrome || null;
 
-    // Dynamic QR Logic
+    
     let qrCodeUrl = '';
     const showQR = settings?.printingSettings?.showKOTQRCode && (order.orderType === 'delivery' || order.orderSource === 'online' || order.orderType === 'online');
 
@@ -473,7 +473,7 @@ const OrderSection = () => {
 
     setIsSubmitting(true);
     try {
-      // Update customer profile if requested
+      
       if (updateProfile && selectedUserId) {
         const currentUserData = allUsers.find(u => u._id === selectedUserId);
         if (currentUserData) {
@@ -481,17 +481,17 @@ const OrderSection = () => {
           const defaultIdx = newAddresses.findIndex(a => a.isDefault);
 
           if (defaultIdx > -1) {
-            // Update existing default
+            
             newAddresses[defaultIdx] = {
               ...newAddresses[defaultIdx],
               address: deliveryAddress,
               location: deliveryLocation
             };
           } else if (newAddresses.length > 0) {
-            // No default, update first one
+            
             newAddresses[0] = { ...newAddresses[0], address: deliveryAddress, location: deliveryLocation, isDefault: true };
           } else {
-            // No addresses at all, add first one
+            
             newAddresses.push({ address: deliveryAddress, location: deliveryLocation, type: 'home', isDefault: true });
           }
 
@@ -504,7 +504,7 @@ const OrderSection = () => {
       const subtotal = cart.reduce((acc, item) => acc + item.totalPrice, 0);
 
       if (selectedOrder) {
-        // Full Edit mode (replaces items)
+        
         const response = await axios.patch(`${API_BASE_URL}/orders/${selectedOrder._id}/items`, {
           items: cart,
           cashReceived: parseFloat(cashReceived) || selectedOrder.cashReceived || 0,
@@ -815,7 +815,7 @@ const OrderSection = () => {
       const response = await axios.patch(`${API_BASE_URL}/orders/${orderId}/items/${itemId}/status`, { kitchenStatus: newStatus });
       if (response.data.success) {
         showToast('success', 'Status updated');
-        // Update local state for both order list and selected order modal
+        
         const updatedOrder = response.data.data;
         setOrders(orders.map(o => o._id === orderId ? updatedOrder : o));
         if (selectedOrder?._id === orderId) setSelectedOrder(updatedOrder);
@@ -828,10 +828,10 @@ const OrderSection = () => {
   const handleUpdatePaymentStatus = async (orderId, newStatus) => {
     try {
       const updateData = { paymentStatus: newStatus };
-      // Automatically set order status to delivered if marked as paid
+      
       if (newStatus === 'paid') {
         updateData.orderStatus = 'delivered';
-        // Record the current total as paidAmount when marking as paid
+        
         const orderToUpdate = orders.find(o => o._id === orderId);
         if (orderToUpdate) {
           updateData.paidAmount = orderToUpdate.totalAmount;
@@ -936,7 +936,7 @@ const OrderSection = () => {
 
     if (allUsers.length === 0) fetchUsers();
 
-    // Debounce the actual filtering for performance
+    
     if (window.searchTimer) clearTimeout(window.searchTimer);
 
     window.searchTimer = setTimeout(() => {
@@ -952,7 +952,7 @@ const OrderSection = () => {
       } else {
         setShowSuggestions(false);
       }
-    }, 150); // 150ms delay is perfect for real-time feel without lag
+    }, 150); 
   };
 
   const selectUserSuggestion = (user) => {
@@ -1018,7 +1018,7 @@ const OrderSection = () => {
   };
 
   const addToCart = (item, variant) => {
-    // Stock Check: Prioritize the item's total stock
+    
     if (item.isCombo && item.comboItems?.length > 0) {
       const outOfStockItems = [];
       for (const ci of item.comboItems) {
@@ -1181,9 +1181,9 @@ const OrderSection = () => {
     setSortConfig({ key, direction });
   };
 
-  // Helper to calculate distance from coordinates (Haversine formula)
+  
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371; // Radius of the earth in km
+    const R = 6371; 
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a =
@@ -1191,18 +1191,18 @@ const OrderSection = () => {
       Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
       Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const d = R * c; // Distance in km
+    const d = R * c; 
     return d;
   };
 
-  // Helper to parse Google Maps link for coordinates
+  
   const handleLocationLinkChange = async (url) => {
     setDeliveryLocation(url);
     if (!url) return;
 
     let targetUrl = url;
 
-    // Improved coordinate extraction helper
+    
     const extractCoords = (text) => {
       if (!text) return null;
       const coordRegex = /([-.\d]+),([-.\d]+)/g;
@@ -1217,7 +1217,7 @@ const OrderSection = () => {
       return null;
     };
 
-    // If it's a short link or no coords found, expand it first
+    
     if (url.includes('maps.app.goo.gl') || url.includes('share.google') || !extractCoords(url)) {
       try {
         setIsResolvingLink(true);
@@ -1240,7 +1240,7 @@ const OrderSection = () => {
 
       let roundedDist = Math.ceil(calculateDistance(restLat, restLng, destLat, destLng) * 10) / 10;
 
-      // Try to get Road Distance from OSRM (FREE)
+      
       try {
         const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${restLng},${restLat};${destLng},${destLat}?overview=false`;
         const osrmRes = await axios.get(osrmUrl);
@@ -1252,7 +1252,7 @@ const OrderSection = () => {
         console.error('OSRM failed, falling back to straight line:', osrmErr);
       }
 
-      // Update distance input and fee
+      
       const distInput = document.getElementById('pos-distance-input');
       if (distInput) distInput.value = roundedDist;
 
@@ -1266,11 +1266,11 @@ const OrderSection = () => {
   const getFriendlyStatus = (order) => {
     if (!order) return { label: 'Unknown', color: 'bg-background-muted/10 text-text-muted border-border-light' };
 
-    // Terminal States
+    
     if (order.orderStatus === 'cancelled') return { label: 'Cancelled', color: 'bg-status-off/10 text-status-unavailable border-status-off/20' };
     if (order.orderStatus === 'delivered' || order.orderStatus === 'completed') return { label: 'Delivered', color: 'bg-primary/10 text-primary border-primary/20' };
 
-    // Dine In specific statuses
+    
     if (order.orderType === 'dine-in' || order.orderType === 'dining') {
       const items = order.items || [];
       const isReady = items.length > 0 && items.every(i => i.kitchenStatus === 'ready');
@@ -1288,7 +1288,7 @@ const OrderSection = () => {
       if (currentStatus === 'billed') return { label: 'Billed', color: 'bg-purple-500/10 text-purple-500 border-purple-500/20' };
     }
 
-    // Active States (Other)
+    
     if (order.orderStatus === 'placed') return { label: 'New Order', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' };
     if (order.orderStatus === 'out-for-delivery') return { label: 'Out for Delivery', color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' };
     if (order.orderStatus === 'billed') return { label: 'Billed', color: 'bg-purple-500/10 text-purple-500 border-purple-500/20' };
@@ -1309,16 +1309,16 @@ const OrderSection = () => {
 
   const getSortedData = (data) => {
     return [...data].sort((a, b) => {
-      // Priority 1: Always float 'placed' orders to the top
+      
       if (a.orderStatus === 'placed' && b.orderStatus !== 'placed') return -1;
       if (a.orderStatus !== 'placed' && b.orderStatus === 'placed') return 1;
 
-      // Priority 2: If both are 'placed', sort them newest first
+      
       if (a.orderStatus === 'placed' && b.orderStatus === 'placed') {
         return new Date(b.createdAt) - new Date(a.createdAt);
       }
 
-      // Priority 3: Normal sorting config for everything else
+      
       let valA, valB;
 
       switch (sortConfig.key) {
@@ -1395,13 +1395,13 @@ const OrderSection = () => {
             matchesDate = matchesDate && orderDate <= end;
           }
         } else {
-          // Default history to today's data starting at 5 AM
+          
           matchesDate = orderDate >= todayStart;
         }
 
         matchesType = matchesHistType && matchesDate;
       } else {
-        // Force active tabs to only show today's orders (starting 5 AM)
+        
         if (orderDate < todayStart) return false;
 
         if (tabId === 'all') {
@@ -1817,7 +1817,7 @@ const OrderSection = () => {
                                   : (order.customerDetails?.name || order.address?.recipientName || 'Walk-in')
                                 }
                               </span>
-                              {/* Source Dot Indicator */}
+                              {}
                               {(order.orderSource === 'online' || order.orderSource === 'user') ? (
                                 <span className="flex h-2 w-2 rounded-full bg-blue-500" title="Online Order"></span>
                               ) : (
@@ -1947,7 +1947,7 @@ const OrderSection = () => {
         </div>
       </div>
 
-      {/* Details Modal */}
+      {}
       {isDetailsModalOpen && selectedOrder && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-hidden print:hidden">
           <div className="bg-background-card w-full max-w-2xl h-[85vh] rounded-[2.5rem] border border-border-light shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
@@ -1976,7 +1976,7 @@ const OrderSection = () => {
               </div>
             </div>
             <div className="p-6 space-y-6 flex-1 overflow-y-auto no-scrollbar">
-              {/* Section 1: Order Items */}
+              {}
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-border-light pb-2">
                   <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Ordered Items</p>
@@ -1995,7 +1995,7 @@ const OrderSection = () => {
                           setDeliveryLocation(selectedOrder.address?.location || (typeof selectedOrder.customerDetails?.location === 'string' ? selectedOrder.customerDetails.location : ''));
                           setPosOrderType(selectedOrder.orderType);
                           setPaymentMethod(selectedOrder.paymentMethod || 'Not Specified');
-                          // Populate cart with existing items for editing
+                          
                           setCart(selectedOrder.items.map(item => ({
                             ...item,
                             menuItem: item.menuItem?._id || item.menuItem,
@@ -2042,7 +2042,7 @@ const OrderSection = () => {
                             <p className="text-[9px] text-text-muted font-bold uppercase">
                               {item?.size} • ₹{item?.unitPrice || item?.price} x {item?.quantity}
                             </p>
-                            {/* Combo Items */}
+                            {}
                             {item?.comboItems?.length > 0 && (
                               <div className="mt-1 pl-2 border-l border-primary/30">
                                 <span className="text-[8px] font-black text-primary uppercase tracking-wider block">Combo includes:</span>
@@ -2056,7 +2056,7 @@ const OrderSection = () => {
                               </div>
                             )}
 
-                            {/* Included Items (Add-ons) */}
+                            {}
                             {item?.includedItems?.length > 0 && (
                               <div className="mt-1 pl-2 border-l border-primary/30">
                                 <span className="text-[8px] font-black text-primary uppercase tracking-wider block">Includes Add-ons:</span>
@@ -2086,7 +2086,7 @@ const OrderSection = () => {
                 </div>
               </div>
 
-              {/* Section 2: Customer & Order Details */}
+              {}
               <div className="grid grid-cols-2 gap-4 bg-background-muted/10 p-5 rounded-3xl border border-border-light">
                 <div className="space-y-1">
                   <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest">Customer</p>
@@ -2116,7 +2116,7 @@ const OrderSection = () => {
                 </div>
               </div>
 
-              {/* Section 3: Delivery Location */}
+              {}
               {selectedOrder.orderType === 'delivery' && (selectedOrder.customerDetails?.address || selectedOrder.address?.address) && (
                 <div className="p-4 bg-primary/5 rounded-3xl border border-primary/10 overflow-hidden">
                   <div className="flex flex-col space-y-4">
@@ -2182,7 +2182,7 @@ const OrderSection = () => {
                 </div>
               )}
 
-              {/* Section 4: Special Instructions */}
+              {}
               {selectedOrder.remarks && (
                 <div className="p-4 bg-amber-500/5 rounded-3xl border border-amber-500/20">
                   <div className="flex items-start gap-3">
@@ -2304,11 +2304,11 @@ const OrderSection = () => {
         </div>
       )}
 
-      {/* POS Modal */}
+      {}
       {isModalOpen && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-hidden print:hidden">
           <div className="bg-background-card w-full max-w-5xl h-[85vh] rounded-[3rem] border border-border/40 shadow-2xl flex overflow-hidden animate-in zoom-in-95 duration-300">
-            {/* Menu Selection Side */}
+            {}
             <div className="flex-1 flex flex-col border-r border-border-light">
               <div className="p-6 border-b border-border-light flex items-center justify-between">
                 <h3 className="text-xl font-black text-text-primary">Create Order</h3>
@@ -2417,7 +2417,7 @@ const OrderSection = () => {
               </div>
             </div>
 
-            {/* Cart Side */}
+            {}
             <div className="w-96 flex flex-col bg-background-muted/10">
               <div className="p-6 border-b border-border-light">
                 <div className="flex items-center justify-between mb-4">

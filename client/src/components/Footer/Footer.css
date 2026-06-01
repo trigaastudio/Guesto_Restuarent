@@ -1,9 +1,9 @@
-/* Premium Footer & Global Icon Styles */
+
 footer {
   font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
-/* Stylish Icon Container Glow */
+
 .footer-icon-glow {
   box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -14,22 +14,22 @@ footer {
   transform: translateY(-5px);
 }
 
-/* Global Icon Styling for a "Stylish" Look */
+
 .lucide {
   transition: transform 0.3s ease;
 }
 
-/* Smooth transitions for all links in footer */
+
 footer a {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Hide scrollbar for footer navigation if needed */
+
 .footer-nav-scroll::-webkit-scrollbar {
   display: none;
 }
 
-/* Animated decorative background */
+
 @keyframes pulse-slow {
   0%, 100% { opacity: 0.3; transform: scale(1); }
   50% { opacity: 0.5; transform: scale(1.1); }

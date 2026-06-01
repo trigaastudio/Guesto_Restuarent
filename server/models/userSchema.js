@@ -36,9 +36,9 @@ const userSchema = new mongoose.Schema({
     ],
     validate: {
       validator: function(v) {
-        // If googleId exists and password is empty, it's valid
+        
         if (this.googleId && !v) return true;
-        // Otherwise, it must match the regex
+        
         return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&^#()_+\-=\[\]{};':"\\|,.<>\/?]).{8,64}$/.test(v);
       },
       message: "Password must contain uppercase, lowercase, number, and special character"

@@ -42,7 +42,7 @@ const AboutPage = () => {
 
   return (
     <div className={`min-h-screen bg-background ${theme} font-sans selection:bg-primary/30 selection:text-primary`}>
-      {/* Header with Dynamic Premium Theme */}
+      {}
       <div className="relative w-full overflow-hidden flex flex-col bg-gradient-to-br from-[#B91C1C] via-[#991b1b] to-[#7f1d1d]">
         <div className="absolute inset-0 z-0 bg-[url('/noise.png')] opacity-20 mix-blend-overlay"></div>
         <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-white/5 rounded-full blur-[120px] translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
@@ -107,7 +107,7 @@ const AboutPage = () => {
                   </div>
                 </div>
               </div>
-              {/* Decorative glows */}
+              {}
               <div className="absolute -top-10 -right-10 w-40 h-40 bg-amber-500/20 rounded-full blur-[50px]"></div>
               <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-white/10 rounded-full blur-[60px]"></div>
             </div>
@@ -115,7 +115,7 @@ const AboutPage = () => {
         </div>
       </div>
 
-      {/* Philosophy Section */}
+      {}
       <section className="py-24 relative overflow-hidden bg-background">
         <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-border-main to-transparent"></div>
         <div className="max-w-7xl mx-auto px-6 relative z-10">
@@ -166,13 +166,13 @@ const AboutPage = () => {
         </div>
       </section>
 
-      {/* Ambiance & Values section */}
+      {}
       <section className="py-24 bg-background-muted/30 relative">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/5 via-background to-background"></div>
         <div className="max-w-7xl mx-auto px-6 relative z-10">
           <div className="bg-background-card rounded-[3rem] border border-border-light shadow-2xl overflow-hidden flex flex-col lg:flex-row">
             
-            {/* Left Content */}
+            {}
             <div className="w-full lg:w-1/2 p-12 lg:p-20 flex flex-col justify-center space-y-8 relative">
               <div className="absolute top-0 left-0 w-full h-full bg-primary/5 blur-3xl rounded-full"></div>
               
@@ -203,7 +203,7 @@ const AboutPage = () => {
               </div>
             </div>
 
-            {/* Right Images Gallery */}
+            {}
             <div className="w-full lg:w-1/2 bg-black relative min-h-[400px] lg:min-h-full">
               <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-1 p-1">
                 <div className="row-span-2 col-span-1 relative group overflow-hidden">

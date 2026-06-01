@@ -47,7 +47,7 @@ const SettingsSection = () => {
   const { theme } = useTheme();
   const isDarkMode = theme === 'dark';
 
-  // Image upload state
+  
   const [showCropper, setShowCropper] = useState(false);
   const [imageToCrop, setImageToCrop] = useState(null);
   const [currentLogoField, setCurrentLogoField] = useState(null);
@@ -66,12 +66,12 @@ const SettingsSection = () => {
   const [otpStep, setOtpStep] = useState(false);
   const [isRequestingOTP, setIsRequestingOTP] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [activeSecurityFlow, setActiveSecurityFlow] = useState('none'); // 'none', 'email', 'password'
+  const [activeSecurityFlow, setActiveSecurityFlow] = useState('none'); 
 
   const getLoggedInUser = () => {
     const adminUser = JSON.parse(localStorage.getItem('admin_user'));
 
-    // For Admin Dashboard, always use the dedicated admin_user key
+    
     if (adminUser) return { ...adminUser, isSuperAdmin: adminUser.role === 'admin' };
 
     return null;
@@ -112,7 +112,7 @@ const SettingsSection = () => {
 
   const handleLogoUploadClick = (field) => {
     setCurrentLogoField(field);
-    // Allow freeform cropping (aspectRatio null) to preserve original logo shape/format
+    
     setAspectRatio(null);
     document.getElementById('logo-upload-input').click();
   };
@@ -388,7 +388,7 @@ const SettingsSection = () => {
 
                             const coordRegex = /([0-9.-]+),([0-9.-]+)/;
 
-                            // If it's a short link or no coords found, expand it first
+                            
                             if (!url.match(coordRegex) || url.includes('maps.app.goo.gl') || url.includes('share.google')) {
                               try {
                                 setIsResolving(true);
@@ -427,10 +427,10 @@ const SettingsSection = () => {
                             const val = document.getElementById('settings-location-link')?.value;
                             if (val) {
                               const event = { target: { value: val } };
-                              // We can't easily trigger the async onChange from here, 
-                              // but since it's already in the onChange, we could just copy-paste the logic 
-                              // or just tell the user it auto-syncs.
-                              // For simplicity, I'll just add the spinner to the input area.
+                              
+                              
+                              
+                              
                             }
                           }}
                           className="absolute right-4 top-1/2 -translate-y-1/2 text-primary"
@@ -491,7 +491,7 @@ const SettingsSection = () => {
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-              {/* Gold Logo */}
+              {}
               <div className="space-y-4">
                 <div className="flex flex-col items-center p-6 rounded-[2rem] bg-black border border-white/10 space-y-4 relative group overflow-hidden">
                   <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'repeating-conic-gradient(#808080 0% 25%, #000000 0% 50%)', backgroundSize: '20px 20px' }}></div>
@@ -514,7 +514,7 @@ const SettingsSection = () => {
                 <p className="text-[10px] text-text-muted text-center px-4 font-medium italic">Transparent PNG with gold or white content recommended for dark mode.</p>
               </div>
 
-              {/* Dark Logo */}
+              {}
               <div className="space-y-4">
                 <div className="flex flex-col items-center p-6 rounded-[2rem] bg-white border border-border-light space-y-4 relative group overflow-hidden">
                   <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'repeating-conic-gradient(#808080 0% 25%, #ffffff 0% 50%)', backgroundSize: '20px 20px' }}></div>
@@ -537,7 +537,7 @@ const SettingsSection = () => {
                 <p className="text-[10px] text-text-muted text-center px-4 font-medium italic">Transparent PNG with black or colored content for light mode.</p>
               </div>
 
-              {/* Monochrome Logo */}
+              {}
               <div className="space-y-4">
                 <div className="flex flex-col items-center p-6 rounded-[2rem] bg-gray-50 border border-dashed border-gray-300 space-y-4 relative group">
                   <span className="text-[10px] font-black uppercase text-gray-500 absolute top-4 left-6">Monochrome (Printing)</span>
@@ -565,7 +565,7 @@ const SettingsSection = () => {
         {activeSubTab === 'operational' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Holiday Mode Card */}
+              {}
               <div className={`group p-8 rounded-[2.5rem] border transition-all duration-500 ${settings.operationalSettings?.isHolidayMode ? 'bg-red-500/10 border-red-500/30 shadow-lg shadow-red-500/10' : 'bg-background-muted/20 border-border-light hover:border-red-500/20'}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-5">
@@ -594,7 +594,7 @@ const SettingsSection = () => {
                 )}
               </div>
 
-              {/* Busy Mode Card */}
+              {}
               <div className={`group p-8 rounded-[2.5rem] border transition-all duration-500 ${settings.operationalSettings?.isBusyMode ? 'bg-amber-500/10 border-amber-500/30 shadow-lg shadow-amber-500/10' : 'bg-background-muted/20 border-border-light hover:border-amber-500/20'}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-5">
@@ -681,7 +681,7 @@ const SettingsSection = () => {
               </div>
             </div>
 
-            {/* Unified Working Hours Card */}
+            {}
             <div className="bg-background-muted/30 backdrop-blur-md rounded-[3rem] border border-white/5 p-8 md:p-12 space-y-10 shadow-2xl">
               <div className="flex items-center space-x-6">
                 <div className="p-5 bg-primary/10 text-primary rounded-[2rem] shadow-lg shadow-primary/10 border border-primary/20">
@@ -694,7 +694,7 @@ const SettingsSection = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                {/* Time Selection */}
+                {}
                 <div className="flex items-center space-x-8 bg-black/20 rounded-[2.5rem] p-8 border border-white/5 shadow-inner">
                   <div className="flex-1 space-y-3">
                     <label className="text-[11px] font-black text-primary uppercase tracking-[0.1em] ml-1">Opening</label>
@@ -733,7 +733,7 @@ const SettingsSection = () => {
                   </div>
                 </div>
 
-                {/* Closed Days Selection */}
+                {}
                 <div className="space-y-6">
                   <div className="flex items-center space-x-2 ml-1">
                     <Calendar size={14} className="text-primary" />
@@ -1015,7 +1015,7 @@ const SettingsSection = () => {
             </div>
 
             <div className="max-w-3xl mx-auto space-y-8">
-              {/* Profile Overview Card */}
+              {}
               <div className="bg-background-card p-8 rounded-[2.5rem] border border-border-light shadow-sm flex flex-col md:flex-row items-center gap-8 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-primary/10 transition-all duration-700" />
 
@@ -1054,7 +1054,7 @@ const SettingsSection = () => {
                 </div>
               </div>
 
-              {/* Security Flows */}
+              {}
               {activeSecurityFlow !== 'none' && (
                 <div className="animate-in fade-in zoom-in-95 duration-500">
                   {!otpStep ? (
@@ -1230,7 +1230,7 @@ const SettingsSection = () => {
         )}
       </div>
 
-      {/* Hidden File Input */}
+      {}
       <input
         type="file"
         id="logo-upload-input"
@@ -1239,7 +1239,7 @@ const SettingsSection = () => {
         onChange={handleFileChange}
       />
 
-      {/* Image Cropper Modal */}
+      {}
       {showCropper && (
         <ImageCropper
           image={imageToCrop}

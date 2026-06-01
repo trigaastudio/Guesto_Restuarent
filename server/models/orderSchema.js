@@ -21,9 +21,9 @@ const orderSchema = new mongoose.Schema({
     required: true
   },
 
-  // Linked Entities
+  
   customer: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-  user: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // Team app compatibility
+  user: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, 
   table: { type: mongoose.Schema.Types.ObjectId, ref: "Table" },
   occupiedSeats: { type: Number, default: 0 },
   sessionId: String,
@@ -89,7 +89,7 @@ const orderSchema = new mongoose.Schema({
     location: String
   },
 
-  // Financials
+  
   subtotal: { type: Number, default: 0 },
   tax: { type: Number, default: 0 },
   discount: { type: Number, default: 0 },
@@ -100,7 +100,7 @@ const orderSchema = new mongoose.Schema({
   balance: { type: Number, default: 0 },
   paidAmount: { type: Number, default: 0 },
 
-  // Status Management
+  
   orderStatus: {
     type: String,
     enum: ["placed", "processing", "billed", "out-for-delivery", "delivered", "cancelled"],
@@ -130,7 +130,7 @@ const orderSchema = new mongoose.Schema({
 
 // Pre-validation hook: Data Consistency & Calculations
 orderSchema.pre('validate', async function () {
-  // 1. Financial Calculations
+  
   if (this.isModified('items') || this.isModified('tax') || this.isModified('discount') || this.isModified('deliveryFee') || this.isModified('platformFee')) {
     this.subtotal = this.items.reduce((acc, item) =>
       acc + (item.totalPrice || (item.price * item.quantity) || 0), 0
@@ -138,19 +138,19 @@ orderSchema.pre('validate', async function () {
     this.totalAmount = Math.max(0, this.subtotal + (this.tax || 0) + (this.deliveryFee || 0) + (this.platformFee || 0));
   }
 
-  // 2. Cash Balance Calculation
+  
   if (this.paymentMethod === 'cash' || this.paymentMethod === 'cod') {
     this.balance = (this.cashReceived || 0) - this.totalAmount;
   }
 
-  // 3. Payment Status Auto-Update
+  
   if (this.paymentMethod === 'wallet') {
     if (this.paymentStatus === 'unpaid') {
       this.paymentStatus = 'paid';
     }
   }
 
-  // 4. Kitchen Status Aggregation
+  
   if (this.items && this.items.length > 0) {
     const statuses = this.items.map(i => i.kitchenStatus);
     if (statuses.some(s => s === "delayed")) {
@@ -166,7 +166,7 @@ orderSchema.pre('validate', async function () {
     if (this.kitchenStatus !== "placed") this.isLocked = true;
   }
 
-  // 5. Address/Customer Sync
+  
   if (this.isModified('customerDetails') && !this.isModified('address')) {
     this.address = {
       ...this.address,

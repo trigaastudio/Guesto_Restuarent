@@ -12,7 +12,7 @@ export const createCategory = async (req, res) => {
 
 export const getCategories = async (req, res) => {
   try {
-    // Prefer the service layer if it exists, otherwise fallback to repository
+    
     const categories = categoryService 
       ? await categoryService.getAllCategories() 
       : await categoryRepository.getAll();

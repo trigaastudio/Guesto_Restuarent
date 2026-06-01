@@ -5,11 +5,11 @@ import Staff from '../models/staffSchema.js';
 export const protect = async (req, res, next) => {
   let token;
 
-  // Check headers first (fallback)
+  
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     token = req.headers.authorization.split(' ')[1];
   } else if (req.cookies) {
-    // Then check cookies based on portal awareness or whatever is present
+    
     token = req.cookies.admin_token || req.cookies.staff_token || req.cookies.token;
   }
 
@@ -17,7 +17,7 @@ export const protect = async (req, res, next) => {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // Check both User and Staff collections
+      
       let user = await User.findById(decoded.id).select('-password');
       if (!user) {
         user = await Staff.findById(decoded.id).select('-password');
@@ -31,7 +31,7 @@ export const protect = async (req, res, next) => {
         return res.status(401).json({ success: false, message: 'Not authorized, account deactivated' });
       }
       
-      // Add user to request object
+      
       req.user = user;
       next();
     } catch (error) {

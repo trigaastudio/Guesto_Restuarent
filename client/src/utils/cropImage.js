@@ -3,7 +3,7 @@ export const createImage = (url) =>
     const image = new Image();
     image.addEventListener('load', () => resolve(image));
     image.addEventListener('error', (error) => reject(error));
-    // Only set crossOrigin if it's not a data URL to prevent browser security blocks
+    
     if (!url.startsWith('data:')) {
       image.setAttribute('crossOrigin', 'anonymous');
     }
@@ -14,11 +14,7 @@ export function getRadianAngle(degreeValue) {
   return (degreeValue * Math.PI) / 180;
 }
 
-/**
- * @param {File} image - Image File url
- * @param {Object} pixelCrop - pixelCrop Object provided by react-easy-crop
- * @param {number} rotation - optional rotation parameter
- */
+
 export default async function getCroppedImg(imageSrc, pixelCrop, rotation = 0) {
   const image = await createImage(imageSrc);
   const canvas = document.createElement('canvas');
@@ -75,11 +71,11 @@ export async function getCroppedImgFile(imageSrc, pixelCrop, rotation = 0, fileN
     return null;
   }
 
-  // Set the canvas size to the desired crop size
+  
   canvas.width = pixelCrop.width;
   canvas.height = pixelCrop.height;
 
-  // Handle rotation
+  
   if (rotation !== 0) {
     const safeArea = Math.max(image.width, image.height) * 2;
     const tempCanvas = document.createElement('canvas');
@@ -104,7 +100,7 @@ export async function getCroppedImgFile(imageSrc, pixelCrop, rotation = 0, fileN
       pixelCrop.height
     );
   } else {
-    // Simple path for no rotation
+    
     ctx.drawImage(
       image,
       pixelCrop.x,

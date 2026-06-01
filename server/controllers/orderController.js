@@ -10,7 +10,7 @@ import Table from '../models/tableSchema.js';
 import { getIO, emitStockUpdate, emitCategoryStockUpdate, emitTablesUpdated } from '../socket.js';
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
-  const R = 6371; // km
+  const R = 6371; 
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a =
@@ -23,14 +23,14 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 
 const expandUrl = async (urlString) => {
   if (!urlString || !urlString.startsWith('http')) return urlString;
-  
+
   try {
     const url = new URL(urlString);
     const validHostnames = ['maps.app.goo.gl', 'goo.gl', 'maps.google.com', 'share.google'];
     if (!validHostnames.includes(url.hostname)) {
-       return urlString;
+      return urlString;
     }
-  } catch(e) {
+  } catch (e) {
     return urlString;
   }
 
@@ -51,7 +51,7 @@ const expandUrl = async (urlString) => {
 
 const extractCoordinates = (url) => {
   if (!url) return null;
-  // Look for lat,lng pair. Try to find one that looks like coordinates.
+  
   const coordRegex = /([-.\d]+),([-.\d]+)/g;
   let match;
   while ((match = coordRegex.exec(url)) !== null) {
@@ -69,7 +69,7 @@ const calculateRoadDistance = async (lat1, lon1, lat2, lon2) => {
     const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`);
     const data = await response.json();
     if (data.routes && data.routes.length > 0) {
-      return data.routes[0].distance / 1000; // convert meters to km
+      return data.routes[0].distance / 1000; 
     }
     return calculateDistance(lat1, lon1, lat2, lon2);
   } catch (error) {
@@ -130,7 +130,7 @@ const handleStock = async (items, type = 'reduce') => {
       const factor = type === 'reduce' ? -1 : 1;
 
       if (menuDoc.category && menuDoc.category.stockactive) {
-        // Update shared category stock
+        
         const updatedCategory = await Category.findByIdAndUpdate(
           menuDoc.category._id,
           { $inc: { totalStock: factor * amount } },
@@ -150,7 +150,7 @@ const handleStock = async (items, type = 'reduce') => {
           if (updatedCategory.totalStock <= 0) {
             getIO().emit('stockAlert', {
               type: 'outOfStock',
-              itemId: updatedCategory._id, // Might need distinction from menuItemId on client
+              itemId: updatedCategory._id, 
               name: updatedCategory.name,
               message: `CRITICAL: ${updatedCategory.name} Category is now OUT OF STOCK!`
             });
@@ -164,14 +164,14 @@ const handleStock = async (items, type = 'reduce') => {
           }
         }
       } else {
-        // Update main item stock
+        
         const updatedMenu = await Menu.findByIdAndUpdate(
           item.menuItem,
           { $inc: { totalStock: factor * amount } },
           { returnDocument: 'after' }
         );
 
-        // Force floor at 0 if it somehow went negative
+        
         if (updatedMenu && updatedMenu.totalStock < 0) {
           await Menu.findByIdAndUpdate(item.menuItem, { totalStock: 0 });
           updatedMenu.totalStock = 0;
@@ -181,7 +181,7 @@ const handleStock = async (items, type = 'reduce') => {
           emitStockUpdate(updatedMenu._id, updatedMenu.totalStock);
         }
 
-        // Real-time Stock Alerts (Only on reduction)
+        
         if (type === 'reduce' && updatedMenu) {
           if (updatedMenu.totalStock <= 0) {
             getIO().emit('stockAlert', {
@@ -201,7 +201,7 @@ const handleStock = async (items, type = 'reduce') => {
         }
       }
 
-      // Update included items stock
+      
       if (variant && variant.includedItems && variant.includedItems.length > 0) {
         for (const included of variant.includedItems) {
           const includedReduction = item.quantity * included.quantity;
@@ -220,7 +220,7 @@ const handleStock = async (items, type = 'reduce') => {
             emitStockUpdate(updatedIncluded._id, updatedIncluded.totalStock);
           }
 
-          // Stock Alerts for included items
+          
           if (type === 'reduce' && updatedIncluded) {
             if (updatedIncluded.totalStock <= 0) {
               getIO().emit('stockAlert', {
@@ -259,14 +259,14 @@ const checkStoreStatusHelper = (settings) => {
   if (isHolidayMode) return { isOpen: false, reason: 'holiday' };
   if (isStoreOpen === false) return { isOpen: false, reason: 'manual_close' };
 
-  // BULLETPROOF IST CALCULATION (UTC + 5:30)
+  
   const now = new Date();
   const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
   const istDate = new Date(utc + (330 * 60000));
 
   const day = istDate.toLocaleDateString('en-US', { weekday: 'long' });
 
-  // Check if today is a closed day
+  
   const closedDays = businessHours?.closedDays || [];
   const isClosedToday = closedDays.some(d => d.toLowerCase() === day.toLowerCase());
   if (isClosedToday) {
@@ -274,7 +274,7 @@ const checkStoreStatusHelper = (settings) => {
   }
 
   if (businessHours?.open && businessHours?.close) {
-    // Robust Time Parsing (Handles "11:00", "11.00", etc.)
+    
     const parseTime = (timeStr) => {
       if (!timeStr) return 0;
       const parts = timeStr.replace('.', ':').split(':');
@@ -283,7 +283,7 @@ const checkStoreStatusHelper = (settings) => {
       return h * 60 + m;
     };
 
-    // Format HH:mm string to 12-hour AM/PM format
+    
     const format12Hour = (timeStr) => {
       if (!timeStr) return '';
       const parts = timeStr.replace('.', ':').split(':');
@@ -291,7 +291,7 @@ const checkStoreStatusHelper = (settings) => {
       const m = parseInt(parts[1], 10) || 0;
       const ampm = h >= 12 ? 'PM' : 'AM';
       h = h % 12;
-      h = h ? h : 12; // the hour '0' should be '12'
+      h = h ? h : 12; 
       const mStr = m < 10 ? `0${m}` : m;
       return `${h}:${mStr} ${ampm}`;
     };
@@ -353,13 +353,13 @@ class OrderController {
           continue;
         }
 
-        // Check if the item itself is active
+        
         if (menuDoc.isActive === false) {
           errors.push(`"${menuDoc.name}" is currently unavailable/inactive.`);
           continue;
         }
 
-        // Check if category is active
+        
         if (menuDoc.category && menuDoc.category.isActive === false) {
           errors.push(`"${menuDoc.category.name}" category is currently unavailable.`);
           continue;
@@ -369,7 +369,7 @@ class OrderController {
         const multiplier = variant && variant.stockValue ? variant.stockValue : 1;
         const amountNeeded = item.quantity * multiplier;
 
-        // Check stock availability
+        
         if (menuDoc.category && menuDoc.category.stockactive) {
           if (menuDoc.category.totalStock < amountNeeded) {
             errors.push(`"${menuDoc.name}" is out of stock.`);
@@ -378,7 +378,7 @@ class OrderController {
           errors.push(`"${menuDoc.name}" is out of stock.`);
         }
 
-        // Check included items
+        
         if (variant && variant.includedItems && variant.includedItems.length > 0) {
           for (const included of variant.includedItems) {
             const includedDoc = await Menu.findById(included.menuItem);
@@ -406,14 +406,14 @@ class OrderController {
     try {
       const { items, address, paymentMethod, totalAmount, subtotal, discount, tax, razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
 
-      // Determine Order Source and Type
+      
       const isUser = req.user.role === 'user';
       const finalOrderSource = isUser ? 'user' : (req.user.role || 'admin');
       const finalOrderType = isUser ? 'delivery' : (req.body.orderType || 'dine-in');
 
       const settings = await Settings.getSettings();
 
-      // Check Store Status (Holidays, Working Hours) for customer orders
+      
       if (finalOrderSource === 'user') {
         const storeStatus = checkStoreStatusHelper(settings);
         if (!storeStatus.isOpen) {
@@ -431,18 +431,18 @@ class OrderController {
         }
       }
 
-      // Check Minimum Order Amount
+      
       if (totalAmount < 140) {
         return res.status(400).json({ success: false, message: 'Minimum order amount is ₹140 to proceed to payment.' });
       }
 
-      // Check Stock First
+      
       const stockCheck = await checkStockAvailability(items);
       if (!stockCheck.available) {
         return res.status(400).json({ success: false, message: `Insufficient stock for: ${stockCheck.itemName}` });
       }
 
-      // Verify Razorpay Payment Signature for online payments
+      
       if (paymentMethod === 'online') {
         if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
           return res.status(400).json({ success: false, message: 'Payment verification details are missing.' });
@@ -460,18 +460,18 @@ class OrderController {
         }
       }
 
-      // Wallet Payment logic removed
+      
 
       const orderNumber = await getNextOrderNumber();
 
-      // Calculate delivery fee on server for security
+      
       let deliveryFee = 0;
       if (finalOrderType === 'delivery' && address.location) {
         const { freeDistanceLimit, chargePerExtraKm } = settings.deliverySettings || { freeDistanceLimit: 5, chargePerExtraKm: 10 };
         const restLat = settings.restaurantDetails?.location?.lat || parseFloat(process.env.RESTAURANT_LAT || '10.668194');
         const restLng = settings.restaurantDetails?.location?.lng || parseFloat(process.env.RESTAURANT_LNG || '76.025111');
 
-        // Try to match coordinates from Google Maps URL or string
+        
         let targetUrl = address.location;
         if (targetUrl && targetUrl.startsWith('http')) {
           targetUrl = await expandUrl(targetUrl);
@@ -563,12 +563,12 @@ class OrderController {
 
       await newOrder.save();
 
-      // Reduce Stock
+      
       await handleStock(items, 'reduce');
 
-      // Wallet transaction update removed
+      
 
-      // Clear cart
+      
       await Cart.findOneAndDelete({ customer: req.user._id }).catch(() => { });
       await Cart.findOneAndDelete({ user: req.user._id }).catch(() => { });
 
@@ -578,7 +578,7 @@ class OrderController {
         data: newOrder
       });
 
-      // Global Notification (COD and Paid Online Orders)
+      
       if (newOrder.paymentMethod === 'cod' || newOrder.paymentStatus === 'paid') {
         getIO().emit('newOrder', {
           order: newOrder,
@@ -637,10 +637,10 @@ class OrderController {
         });
       }
 
-      // Restore Stock
+      
       await restoreStock(order.items);
 
-      // Mark refunded if paid
+      
       if (order.paymentStatus === 'paid') {
         order.paymentStatus = 'refunded';
       }
@@ -665,7 +665,7 @@ class OrderController {
     }
   }
 
-  // --- ADMIN FACING METHODS ---
+  
 
   async createCounterOrder(req, res) {
     try {
@@ -773,13 +773,13 @@ class OrderController {
           end.setHours(23, 59, 59, 999);
           query.createdAt = { $lte: end };
         } else {
-          // Default history to last 30 days if no date selected
+          
           const thirtyDaysAgo = new Date();
           thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
           query.createdAt = { $gte: thirtyDaysAgo };
         }
       } else {
-        // For active tabs, fetch today's orders + any active old orders
+        
         const todayStart = new Date();
         if (todayStart.getHours() < 5) todayStart.setDate(todayStart.getDate() - 1);
         todayStart.setHours(5, 0, 0, 0);
@@ -790,7 +790,7 @@ class OrderController {
         ];
       }
 
-      // Base visibility filter
+      
       const baseFilter = {
         $or: [
           { paymentStatus: 'paid' },
@@ -808,8 +808,8 @@ class OrderController {
         .populate('table', 'tableNumber mergedGroup')
         .populate('assignedDeliveryBoy', 'name phoneNumber')
         .sort({ createdAt: -1 })
-        .limit(history === 'true' ? 500 : 200) // Prevent massive payloads
-        .lean(); // Extremely fast fetching by skipping Mongoose overhead
+        .limit(history === 'true' ? 500 : 200) 
+        .lean(); 
 
       res.json({ success: true, data: orders });
     } catch (error) {
@@ -825,7 +825,7 @@ class OrderController {
       const originalOrder = await Order.findById(id);
       if (!originalOrder) return res.status(404).json({ success: false, message: 'Order not found' });
 
-      // Operational Rule
+      
       if (
         originalOrder.orderStatus === 'processing' &&
         updateData.orderStatus &&
@@ -843,7 +843,7 @@ class OrderController {
         await restoreStock(originalOrder.items);
       }
 
-      // Auto-mark as paid when delivered
+      
       if (updateData.orderStatus === 'delivered') {
         updateData.paymentStatus = 'paid';
         updateData.paidAmount = updateData.totalAmount ?? originalOrder.totalAmount;
@@ -877,13 +877,13 @@ class OrderController {
         { path: 'table', select: 'tableNumber mergedGroup' }
       ]);
 
-      // Auto-unmerge logic for Dine-In tables when order is completed/paid
+      
       if (order.orderType === 'dine-in' && (order.orderStatus === 'completed' || order.orderStatus === 'delivered' || order.paymentStatus === 'paid')) {
         if (order.table) {
           const activeOrdersRemaining = await Order.countDocuments({
             table: order.table._id,
             orderStatus: { $nin: ['completed', 'delivered', 'cancelled'] },
-            _id: { $ne: order._id } // Just in case, though this order's status is already updated
+            _id: { $ne: order._id } 
           });
 
           if (activeOrdersRemaining === 0) {
@@ -899,7 +899,7 @@ class OrderController {
         }
       }
 
-      // Populate assigned delivery boy for the response and socket
+      
       if (order.assignedDeliveryBoy) {
         await order.populate('assignedDeliveryBoy', 'name phoneNumber');
       }
@@ -970,7 +970,7 @@ class OrderController {
       const order = await Order.findById(orderId);
       if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
-      // Important: iterate through Mongoose Document Array properly
+      
       let isChanged = false;
       order.items.forEach(item => {
         if (item.kitchenStatus !== kitchenStatus) {

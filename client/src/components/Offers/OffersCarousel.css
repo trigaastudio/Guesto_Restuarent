@@ -82,7 +82,7 @@
   line-height: 1.4;
 }
 
-/* Mobile: Horizontal Snap Scroll */
+
 @media (max-width: 1024px) {
   .offers-grid {
     display: flex;

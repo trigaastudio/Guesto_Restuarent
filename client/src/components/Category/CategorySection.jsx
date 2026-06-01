@@ -44,7 +44,7 @@ const CategorySection = React.memo(({ categories, selectedCategory, handleCatego
             ref={scrollRef}
             className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-6 -mx-2 px-2 scroll-smooth"
           >
-            {/* "All" Category button */}
+            {}
             <button
               onClick={() => handleCategoryChange('all')}
               className="flex-shrink-0 group relative flex flex-col items-center gap-3 w-20 md:w-28 transition-all duration-500"

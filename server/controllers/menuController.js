@@ -1,10 +1,14 @@
 import menuRepository from '../repositories/menuRepository.js';
 import menuService from "../services/menuService.js";
 import mongoose from "mongoose";
+import { logAdminAction } from '../services/auditService.js';
 
 export const createMenu = async (req, res) => {
   try {
     const menu = await menuService.createMenu(req.body);
+    
+    await logAdminAction(req, 'CREATE_MENU', 'Menu', menu._id, { name: menu.name, price: menu.price });
+
     res.status(201).json(menu);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -23,21 +27,21 @@ export const getMenus = async (req, res) => {
 
     let filter = {};
     
-    // Fetch active categories
+    
     const Category = mongoose.model('Category');
     const activeCategories = await Category.find({ isActive: { $ne: false } }).select('_id');
     const activeCategoryIds = activeCategories.map(c => c._id);
 
     if (category && category !== 'all') {
-      // Ensure specific category is active
+      
       if (activeCategoryIds.some(id => id.toString() === category)) {
         filter.category = category;
       } else {
-        // Force no results if requested category is inactive
+        
         filter.category = null;
       }
     } else {
-      // Only include items from active categories by default
+      
       filter.category = { $in: activeCategoryIds };
     }
 
@@ -54,7 +58,7 @@ export const getMenus = async (req, res) => {
             { category: { $in: categoryIds } }
           ];
         } else {
-          // Fallback to offerType if no items or categories are explicitly linked
+          
           if (offer.offerType === 'bogo') {
             filter['variants.isBOGO'] = true;
           } else if (offer.offerType === 'combo') {
@@ -137,6 +141,9 @@ export const getMenuById = async (req, res) => {
 export const updateMenu = async (req, res) => {
   try {
     const menu = await menuService.updateMenu(req.params.id, req.body);
+    
+    await logAdminAction(req, 'UPDATE_MENU', 'Menu', menu._id, { updatedFields: Object.keys(req.body) });
+
     res.status(200).json(menu);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -146,6 +153,9 @@ export const updateMenu = async (req, res) => {
 export const deleteMenu = async (req, res) => {
   try {
     await menuService.deleteMenu(req.params.id);
+
+    await logAdminAction(req, 'DELETE_MENU', 'Menu', req.params.id, {});
+
     res.status(200).json({ message: "Menu item deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });

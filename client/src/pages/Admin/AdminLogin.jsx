@@ -41,7 +41,7 @@ const AdminLogin = () => {
     }
   };
 
-  // Prevent accessing login if already logged in as admin
+  
   React.useEffect(() => {
     const adminToken = localStorage.getItem('admin_token');
     const adminUser = JSON.parse(localStorage.getItem('admin_user') || '{}');
@@ -63,7 +63,7 @@ const AdminLogin = () => {
         const userData = response.data.data;
         localStorage.setItem('admin_user', JSON.stringify(userData));
 
-        // Enforce mutual exclusivity: log out of staff if logging into admin
+        
         localStorage.removeItem('staff_token');
         localStorage.removeItem('staff_user');
 
@@ -78,7 +78,7 @@ const AdminLogin = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative transition-colors duration-300">
-      {/* Logo Section */}
+      {}
       <div className="mb-12 text-center flex flex-col items-center animate-in fade-in slide-in-from-top-4 duration-700">
         <img
           src={settings?.branding?.logoGold || "/logo-golden.png"}

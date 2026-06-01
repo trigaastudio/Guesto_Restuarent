@@ -11,11 +11,11 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [localUser, setLocalUser] = useState(user);
-  // Detect admin token independently so admin can navigate back to dashboard
+  
   const [isAdminSession, setIsAdminSession] = useState(() => !!localStorage.getItem('admin_token'));
 
-  // Define a guaranteed logout function directly in the Navbar
-  // This bypasses any outdated handleLogout props passed from parent pages
+  
+  
   const handleWebsiteLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -25,7 +25,7 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
     localStorage.removeItem('dineInTableId');
     localStorage.removeItem('dineInTableNumber');
     
-    // Hard refresh to landing page
+    
     window.location.href = '/';
   };
 
@@ -36,8 +36,8 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     const handleStorageChange = () => {
-      // Sync active user session (customer or admin) so profile dropdown updates across tabs
-      // Staff sessions are explicitly ignored on the website to maintain total separation
+      
+      
       const activeUser = JSON.parse(
         localStorage.getItem('user') || 
         localStorage.getItem('admin_user') || 
@@ -123,7 +123,7 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
             )}
           </div>
 
-          {/* Desktop Nav */}
+          {}
           <nav className="hidden lg:flex items-center gap-1">
             {navLinks.map((link) => (
               <button
@@ -141,7 +141,7 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
             ))}
           </nav>
 
-          {/* Theme Toggle & Right Actions */}
+          {}
           <div className="flex items-center gap-1.5 md:gap-3">
             <button
               onClick={toggleTheme}

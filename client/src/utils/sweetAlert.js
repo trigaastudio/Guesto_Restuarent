@@ -4,7 +4,7 @@ const Toast = Swal.mixin({
   toast: true,
   position: 'top-end',
   showConfirmButton: false,
-  timer: 1200, // Ultra-fast speed
+  timer: 1200, 
   timerProgressBar: true,
   showClass: {
     popup: 'animate__animated animate__fadeInRight animate__faster'
@@ -53,7 +53,7 @@ export const showToast = (icon, title) => {
   return Toast.fire({
     icon,
     title,
-    timer: 1200, // Consistent fast speed
+    timer: 1200, 
     iconColor: icon === 'error' ? themeColors.error :
       icon === 'success' ? themeColors.success :
         themeColors.primary,

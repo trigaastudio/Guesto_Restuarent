@@ -40,7 +40,7 @@ const MenuDetailPage = () => {
     fetchMenuDetails();
     window.scrollTo(0, 0);
 
-    // Socket Setup
+    
     if (!socket.connected) socket.connect();
 
     socket.on('stockUpdate', ({ itemId, totalStock, isBlocked }) => {
@@ -150,7 +150,7 @@ const MenuDetailPage = () => {
       }
     }
 
-    // Add item to cart with proper quantity and selected size
+    
     addToCart(menu, quantity, selectedSize?.size || null);
 
     Swal.fire({
@@ -227,7 +227,7 @@ const MenuDetailPage = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-12 md:py-20">
-        {/* Breadcrumbs & Back */}
+        {}
         <div className="mb-12 flex items-center justify-between">
           <button
             onClick={() => navigate(-1)}
@@ -247,7 +247,7 @@ const MenuDetailPage = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
-          {/* Left: Image Hero */}
+          {}
           <div className="relative group">
             <div className="absolute -inset-4 bg-[#B91C1C]/5 rounded-[3rem] blur-2xl group-hover:bg-[#B91C1C]/10 transition-all duration-700"></div>
             <div className="relative bg-white rounded-[3rem] p-4 md:p-6 border border-gray-100 shadow-[0_30px_100px_rgba(0,0,0,0.05)] overflow-hidden">
@@ -257,7 +257,7 @@ const MenuDetailPage = () => {
                 className="w-full h-auto max-h-[500px] object-contain transform group-hover:scale-110 transition-transform duration-700 ease-out animate-float"
               />
 
-              {/* Overlay Tags */}
+              {}
               <div className="absolute top-8 left-8 flex flex-col gap-3">
                 <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${menu.foodType === 'veg' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-red-50 text-red-600 border-red-100'}`}>
                   {menu.foodType === 'veg' ? '🥦 Pure Veg' : '🥩 Non-Veg'}
@@ -274,7 +274,7 @@ const MenuDetailPage = () => {
             </div>
           </div>
 
-          {/* Right: Content */}
+          {}
           <div className="space-y-10 py-4">
             <div className="space-y-4">
               <div className="flex items-center gap-2">
@@ -304,7 +304,7 @@ const MenuDetailPage = () => {
               </p>
             </div>
 
-            {/* Sizes Selection */}
+            {}
             {menu.sizes && menu.sizes.length > 0 && (
               <div className="space-y-4">
                 <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Select Size</p>
@@ -322,7 +322,7 @@ const MenuDetailPage = () => {
               </div>
             )}
 
-            {/* Price & Quantity */}
+            {}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 pt-8 border-t border-gray-100">
               <div className="space-y-1">
                 <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Total Price</p>
@@ -392,7 +392,7 @@ const MenuDetailPage = () => {
               </div>
             </div>
 
-            {/* Action Buttons */}
+            {}
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <button
                 onClick={handleAddToCart}
@@ -411,7 +411,7 @@ const MenuDetailPage = () => {
               </button>
             </div>
 
-            {/* Extra Info */}
+            {}
             <div className="grid grid-cols-2 gap-4 pt-10">
               <div className="flex items-center gap-3 p-4 rounded-2xl bg-green-50/50 border border-green-100/50">
                 <CheckCircle2 className="text-green-500" size={20} />
@@ -425,7 +425,7 @@ const MenuDetailPage = () => {
           </div>
         </div>
 
-        {/* Related Items - Placeholder for now or actual fetch if needed */}
+        {}
         <div className="mt-32 space-y-12">
           <div className="flex flex-col items-center text-center space-y-4">
             <h2 className="text-3xl md:text-5xl font-black text-text-primary tracking-tighter uppercase">
@@ -433,9 +433,9 @@ const MenuDetailPage = () => {
             </h2>
             <div className="w-24 h-1.5 bg-[#DA9133] rounded-full"></div>
           </div>
-          {/* Reusing existing Menu card style or similar */}
+          {}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {/* This could be a separate component if we had more time, but for now we'll just show a message or a few placeholder cards */}
+            {}
             <p className="col-span-full text-center text-text-muted font-bold uppercase tracking-widest opacity-40">Coming Soon: Personalized Recommendations</p>
           </div>
         </div>
