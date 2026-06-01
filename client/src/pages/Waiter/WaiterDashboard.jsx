@@ -56,22 +56,22 @@ const WaiterDashboard = () => {
     fetchTables();
     document.title = 'Waiter | Dashboard';
 
-    // Socket Setup
+    
     socketRef.current = io(SOCKET_URL);
 
-    // Re-fetch when any order changes (kitchen status, payment, new order etc.)
+    
     socketRef.current.on('ordersUpdated', () => {
       fetchTables(true);
     });
 
-    // Re-fetch when table structure changes (merge, unmerge, create, delete)
+    
     socketRef.current.on('tablesUpdated', () => {
       fetchTables(true);
     });
 
     const handleDbChange = (event) => {
       const data = event.detail;
-      // Refresh on table or order changes
+      
       if (['Table', 'tables', 'Order', 'orders'].includes(data.collection)) {
         fetchTables(true);
       }
@@ -424,7 +424,7 @@ const WaiterDashboard = () => {
   const handlePrintKOT = (order) => {
     const printWindow = window.open('', '_blank');
 
-    // Aggregate duplicate items (identical MenuItem ID/Name and Size) for clean bill layout
+    
     const aggregatedItems = [];
     order.items.forEach(item => {
       const itemId = item.menuItem?._id || item.menuItem;
@@ -478,7 +478,7 @@ const WaiterDashboard = () => {
     const restaurantPhone = settings?.restaurantDetails?.contactNumber || '7034805085';
     const monochromeLogo = settings?.branding?.logoMonochrome || null;
 
-    // Dynamic QR Logic
+    
     let qrCodeUrl = '';
     const showQR = settings?.printingSettings?.showKOTQRCode && (order.orderType === 'delivery' || order.orderSource === 'online' || order.orderType === 'online');
 
@@ -606,7 +606,7 @@ const WaiterDashboard = () => {
 
   return (
     <div className="flex h-screen bg-background text-text-primary overflow-hidden transition-colors duration-300">
-      {/* Main Content */}
+      {}
       <main className="flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out">
         <header className="h-20 bg-background-card border-b border-border-main flex items-center justify-between px-4 lg:px-8 shrink-0">
           <div className="flex items-center space-x-4">
@@ -677,7 +677,7 @@ const WaiterDashboard = () => {
 
               return (
                 <div className="animate-in fade-in slide-in-from-right-8 duration-500">
-                  {/* Top Bar Navigation */}
+                  {}
                   <div className="flex items-center justify-between mb-6">
                     <button
                       onClick={() => setSelectedViewTableId(null)}
@@ -692,12 +692,12 @@ const WaiterDashboard = () => {
                     </span>
                   </div>
 
-                  {/* Main Grid Layout */}
+                  {}
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-                    {/* Left Column: Table Status Card */}
+                    {}
                     <div className="lg:col-span-4 bg-background-card border border-border-light rounded-[2.5rem] p-6 lg:p-8 shadow-md flex flex-col items-center relative overflow-hidden">
-                      {/* Decorative Background Glows */}
+                      {}
                       <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
                       <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary-light/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -737,7 +737,7 @@ const WaiterDashboard = () => {
                                 {isCurFullyOccupied ? 'Fully Seated' : isCurPartiallyOccupied ? 'Partially Occupied' : 'Available'}
                               </span>
 
-                              {/* Modern Progress Bar */}
+                              {}
                               <div className="w-full max-w-[240px] mt-4">
                                 <div className="flex justify-between text-[10px] font-black text-text-muted uppercase tracking-widest mb-1.5">
                                   <span>Seating Status</span>
@@ -902,7 +902,7 @@ const WaiterDashboard = () => {
             })()
           ) : (
             <div className="space-y-6">
-              {/* Header / Action Controls Bar */}
+              {}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-background-card border border-border-light rounded-3xl p-5 shadow-sm">
                 <div>
                   <h2 className="text-xl font-black text-text-primary tracking-tight">
@@ -946,7 +946,7 @@ const WaiterDashboard = () => {
                 </div>
               </div>
 
-              {/* Table Grid */}
+              {}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {(() => {
                   const displayTables = tables.filter(table => {
@@ -987,7 +987,7 @@ const WaiterDashboard = () => {
                           : 'border border-border-light hover:-translate-y-0.5 active:scale-98'
                         }`}
                     >
-                      {/* Selection checkmark for merge mode */}
+                      {}
                       {isSelectedForMerge && (
                         <div className="absolute top-3.5 left-3.5 bg-primary text-white p-1.5 rounded-xl z-20 shadow-md flex items-center justify-center animate-in zoom-in-50 duration-200">
                           <CheckCircle2 size={14} strokeWidth={3} />
@@ -1002,7 +1002,7 @@ const WaiterDashboard = () => {
                         />
                       </div>
 
-                      {/* Status indicator */}
+                      {}
                       <div className="absolute top-3.5 right-3.5 flex items-center gap-2 z-10">
                         {hasMergedGroup && (
                           <div className="flex items-center gap-1 bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-lg border border-amber-500/20 text-[9px] font-black uppercase tracking-wider">
@@ -1026,7 +1026,7 @@ const WaiterDashboard = () => {
                         })()}
                       </div>
 
-                      {/* Table Info Overlay */}
+                      {}
                       <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/95 via-black/70 to-transparent">
                         <div className="flex justify-between items-end">
                           <div>
@@ -1144,7 +1144,7 @@ const WaiterDashboard = () => {
                 </div>
               </div>
 
-              {/* Items List */}
+              {}
               <div className="space-y-3">
                 <p className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">Items, Quantity & Status</p>
                 <div className="space-y-2">

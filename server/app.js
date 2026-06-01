@@ -1,10 +1,11 @@
-import express from 'express'; // Reloaded to sync upload fixes
+import express from 'express'; 
 import dotenv from 'dotenv';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import mongoSanitize from 'express-mongo-sanitize';
 import cookieParser from 'cookie-parser';
+import qs from 'qs';
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import menuRoutes from './routes/menuRoutes.js';
@@ -33,7 +34,16 @@ dotenv.config();
 
 const app = express();
 
-// 1. CORS Middleware (Must be at the top)
+
+app.set('query parser', function (str) {
+  return qs.parse(str, {
+    parameterLimit: 100, 
+    depth: 2,            
+    arrayLimit: 100      
+  });
+});
+
+
 app.use(cors({
   origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
   credentials: true,
@@ -41,7 +51,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// 2. Security Middleware with Razorpay CSP
+
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -55,10 +65,10 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
 
-// 3. Rate Limiting
+
 const limiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 200, // increased for development
+  windowMs: 1 * 60 * 1000, 
+  max: 200, 
   message: 'Too many requests from this IP, please try again after a minute',
   standardHeaders: true,
   legacyHeaders: false,
@@ -70,8 +80,8 @@ connectDB();
 
 app.use(express.json());
 app.use(cookieParser());
-// Data sanitization against NoSQL query injection
-// Custom middleware to avoid TypeError in Express 5
+
+
 app.use((req, res, next) => {
   ['body', 'params', 'query'].forEach((key) => {
     if (req[key]) {

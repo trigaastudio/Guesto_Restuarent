@@ -39,7 +39,7 @@ class StaffService {
   }
 
   async updateStaff(id, updateData) {
-    // findByIdAndUpdate bypasses the pre-save hook, so hash password manually
+    
     if (updateData.password && updateData.password.trim() !== '') {
       const salt = await bcrypt.genSalt(10);
       updateData.password = await bcrypt.hash(updateData.password, salt);
@@ -64,10 +64,10 @@ class StaffService {
     const isMatch = await account.comparePassword(currentPassword);
     if (!isMatch) throw new Error('Invalid current password');
 
-    // Generate 6 digit OTP
+    
     const otp = crypto.randomInt(100000, 999999).toString();
 
-    // Save to OTP collection (email is used as identifier)
+    
     await OTP.create({ email: account.email, otp, logoUrl });
 
     return { message: 'OTP sent to your email' };
@@ -81,18 +81,18 @@ class StaffService {
 
     if (!account) throw new Error('Account not found');
 
-    // Find latest OTP for this account's email
+    
     const otpDoc = await OTP.findOne({ email: account.email }).sort({ createdAt: -1 });
     if (!otpDoc || otpDoc.otp !== otp) {
       throw new Error('Invalid or expired OTP');
     }
 
-    // Update credentials
+    
     if (newEmail) account.email = newEmail;
-    if (newPassword) account.password = newPassword; // Pre-save hook will handle hashing
+    if (newPassword) account.password = newPassword; 
 
     await account.save();
-    await OTP.deleteMany({ email: account.email }); // Clear OTPs
+    await OTP.deleteMany({ email: account.email }); 
 
     return { message: 'Credentials updated successfully' };
   }

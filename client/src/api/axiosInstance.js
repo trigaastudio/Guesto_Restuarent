@@ -10,7 +10,7 @@ const api = axios.create({
 });
 
 
-// Interceptor removed since cookies handle authorization automatically
+
 
 
 api.interceptors.response.use(
@@ -21,7 +21,7 @@ api.interceptors.response.use(
       const isLoginRequest = error.config?.url?.includes('/api/auth/login');
       const publicPaths = ['/', '/login', '/register', '/admin/login', '/staff/login', '/about', '/digital-menu'];
 
-      // Don't redirect if we're on a public page or it's a login attempt
+      
       if (isLoginRequest || publicPaths.includes(path)) {
         return Promise.reject(error);
       }
@@ -40,7 +40,7 @@ api.interceptors.response.use(
         window.location.replace('/login');
       }
     } else if (error.response?.status >= 500 || (!error.response && !axios.isCancel(error))) {
-      // Handle Server Errors (500+) or Network Errors (no response)
+      
       const path = window.location.pathname;
       if (path !== '/error') {
         const message = error.response?.data?.message || error.message || 'Unable to connect to the server.';

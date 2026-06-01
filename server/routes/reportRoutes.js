@@ -3,7 +3,7 @@ import Order from '../models/orderSchema.js';
 
 const router = express.Router();
 
-// 1. Detailed Sales Report with filters
+
 router.get('/sales', async (req, res) => {
   try {
     const { startDate, endDate, orderType, orderSource, menuItem } = req.query;
@@ -28,7 +28,7 @@ router.get('/sales', async (req, res) => {
       .populate('items.menuItem', 'name category')
       .sort({ createdAt: -1 });
 
-    // Aggregate stats for the filtered period
+    
     const stats = orders.reduce((acc, order) => {
       acc.totalRevenue += order.totalAmount;
       order.items.forEach(item => {
@@ -46,7 +46,7 @@ router.get('/sales', async (req, res) => {
   }
 });
 
-// 2. Periodic Sales (Daily, Weekly, Monthly, Yearly)
+
 router.get('/periodic', async (req, res) => {
   try {
     const { orderType, orderSource, menuItem } = req.query;
@@ -104,7 +104,7 @@ router.get('/periodic', async (req, res) => {
   }
 });
 
-// 3. Item-wise performance
+
 router.get('/items', async (req, res) => {
   try {
     const { startDate, endDate, orderType, orderSource, menuItem } = req.query;

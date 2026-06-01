@@ -28,7 +28,7 @@ const HomePage = () => {
   const [trendingItems, setTrendingItems] = useState([]);
   const [isFirstVisit] = useState(() => !sessionStorage.getItem('home_visited'));
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [offerFilter, setOfferFilter] = useState(null); // null | 'bogo' | 'combo' | 'discount' | mongoId
+  const [offerFilter, setOfferFilter] = useState(null); 
   const [offerName, setOfferName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
@@ -56,14 +56,14 @@ const HomePage = () => {
   const storeStatus = checkStoreStatus ? checkStoreStatus() : { isOpen: true };
   const isClosed = !storeStatus.isOpen;
   const { theme } = useTheme();
-  // Staff are intentionally excluded from the customer website context
+  
   const [user, setUser] = useState(() => JSON.parse(
     localStorage.getItem('user') ||
     localStorage.getItem('admin_user') ||
     '{}'
   ));
 
-  // Listen for storage changes (useful if updated in another tab or component)
+  
   useEffect(() => {
     const handleStorageChange = () => {
       setUser(JSON.parse(
@@ -91,7 +91,7 @@ const HomePage = () => {
     };
     document.addEventListener('mousedown', handleClickOutside);
 
-    // Socket Setup
+    
     if (!socket.connected) socket.connect();
 
     socket.on('stockUpdate', ({ itemId, totalStock, isBlocked }) => {
@@ -312,8 +312,8 @@ const HomePage = () => {
   };
 
   const filteredMenus = useMemo(() => {
-    // We moved most filtering to the backend, but we filter blocked items locally
-    // so that websocket updates can instantly hide them without a refresh.
+    
+    
     return menus.filter(menu => !menu.isBlocked);
   }, [menus]);
 
@@ -376,7 +376,7 @@ const HomePage = () => {
           />
         </div>
 
-        {/* Most Loved Dishes Slider */}
+        {}
         {trendingItems.length > 0 && (
           <div className="mb-0 relative group/slider mt-12">
             <div className="flex items-center justify-between mb-8 px-6">
@@ -522,7 +522,7 @@ const HomePage = () => {
         onAction={addToCart}
       />
 
-      {/* Premium Footer with Brand Red Theme */}
+      {}
       <Footer />
 
       <style dangerouslySetInnerHTML={{

@@ -30,8 +30,7 @@ class AuthController {
           phone: user.phone,
           avatar: user.avatar,
           role: user.role,
-          createdAt: user.createdAt,
-          token: typeof jwtToken !== 'undefined' ? jwtToken : token // Optional: keep for backward compatibility during transition
+          createdAt: user.createdAt
         }
       });
     } catch (error) {
@@ -66,8 +65,7 @@ class AuthController {
           phone: user.phone,
           avatar: user.avatar,
           role: user.role,
-          createdAt: user.createdAt,
-          token: typeof jwtToken !== 'undefined' ? jwtToken : token // Optional: keep for backward compatibility during transition
+          createdAt: user.createdAt
         }
       });
     } catch (error) {
@@ -103,8 +101,7 @@ class AuthController {
           phone: user.phone,
           avatar: user.avatar,
           role: user.role,
-          createdAt: user.createdAt,
-          token: typeof jwtToken !== 'undefined' ? jwtToken : token // Optional: keep for backward compatibility during transition
+          createdAt: user.createdAt
         }
       });
     } catch (error) {
@@ -145,8 +142,7 @@ class AuthController {
           phone: user.phone,
           avatar: user.avatar,
           role: user.role,
-          createdAt: user.createdAt,
-          token: typeof jwtToken !== 'undefined' ? jwtToken : token // Optional: keep for backward compatibility during transition
+          createdAt: user.createdAt
         }
       });
     } catch (error) {
@@ -207,8 +203,7 @@ class AuthController {
           phone: user.phone,
           avatar: user.avatar,
           role: user.role,
-          createdAt: user.createdAt,
-          token: typeof jwtToken !== 'undefined' ? jwtToken : token // Optional: keep for backward compatibility during transition
+          createdAt: user.createdAt
         }
       });
     } catch (error) {

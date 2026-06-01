@@ -1,6 +1,6 @@
 import { check, validationResult } from 'express-validator';
 
-// Standardized validation rules
+
 const emailValidation = check('email')
   .trim()
   .notEmpty().withMessage('Email is required')
@@ -21,11 +21,11 @@ const phoneValidation = check('phone')
   .notEmpty().withMessage('Phone is required')
   .matches(/^[0-9]{10}$/).withMessage('Phone number must be exactly 10 digits');
 
-// Middleware to check for validation errors
+
 export const validate = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    // Return the first error message for simplicity matching existing frontend handling
+    
     return res.status(400).json({
       success: false,
       message: errors.array()[0].msg,
@@ -49,7 +49,7 @@ export const validateLogin = [
   validate
 ];
 
-// For OTP registration, user data is inside req.body.userData
+
 export const validateOTPRegister = [
   check('userData.name')
     .trim()

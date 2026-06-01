@@ -1,9 +1,10 @@
 import User from '../models/userSchema.js';
 import userService from '../services/userService.js';
 import authService from '../services/authService.js';
+import { logAdminAction } from '../services/auditService.js';
 
 class UserController {
-  // --- USER FACING METHODS ---
+  
   async getProfile(req, res) {
     try {
       const userId = req.user._id;
@@ -34,7 +35,7 @@ class UserController {
         return res.status(404).json({ success: false, message: 'User not found' });
       }
 
-      // If this is the first address, make it default
+      
       const defaultStatus = user.addresses.length === 0 ? true : isDefault;
 
       user.addresses.push({ name, phone, address, landmark, location, type, isDefault: defaultStatus });
@@ -167,7 +168,7 @@ class UserController {
         return res.status(404).json({ success: false, message: 'User not found' });
       }
 
-      // If user has a password set, currentPassword is required and must match
+      
       if (user.password) {
         if (!currentPassword) {
           return res.status(400).json({ success: false, message: 'Current password is required' });
@@ -178,7 +179,7 @@ class UserController {
         }
       }
 
-      // Verify OTP (sent to current email)
+      
       const isOtpValid = await authService.verifyOTP(user.email, otp);
       if (!isOtpValid) {
         return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
@@ -205,7 +206,7 @@ class UserController {
         return res.status(400).json({ success: false, message: 'Name is required' });
       }
 
-      // Check if phone number is already taken by someone else
+      
       if (phone) {
         const existingPhone = await User.findOne({ phone, _id: { $ne: userId } });
         if (existingPhone) {
@@ -269,7 +270,7 @@ class UserController {
         return res.status(404).json({ success: false, message: 'User not found' });
       }
 
-      // If user has a password set, currentPassword is required and must match
+      
       if (user.password) {
         if (!currentPassword) {
           return res.status(400).json({ success: false, message: 'Current password is required' });
@@ -280,13 +281,13 @@ class UserController {
         }
       }
 
-      // Verify OTP (sent to newEmail)
+      
       const isOtpValid = await authService.verifyOTP(newEmail, otp);
       if (!isOtpValid) {
         return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
       }
 
-      // Check if another user has this new email
+      
       const existingEmail = await User.findOne({ email: newEmail.toLowerCase().trim(), _id: { $ne: userId } });
       if (existingEmail) {
         return res.status(400).json({ success: false, message: 'Email is already taken by another account' });
@@ -295,7 +296,7 @@ class UserController {
       user.email = newEmail.toLowerCase().trim();
       await user.save();
 
-      // Return user without password
+      
       const updatedUser = user.toObject();
       updatedUser.hasPassword = !!user.password;
       delete updatedUser.password;
@@ -316,7 +317,7 @@ class UserController {
       if (!req.file) {
         return res.status(400).json({ success: false, message: 'Please upload an image' });
       }
-      const avatarPath = `/uploads/${req.file.filename}`;
+      const avatarPath = req.file.path;
       const user = await User.findByIdAndUpdate(
         userId,
         { avatar: avatarPath },
@@ -332,7 +333,7 @@ class UserController {
     }
   }
 
-  // --- ADMIN FACING METHODS ---
+  
   async getAllUsers(req, res) {
     try {
       const users = await userService.getAllUsers();
@@ -373,6 +374,9 @@ class UserController {
           message: 'User not found'
         });
       }
+
+      await logAdminAction(req, 'UPDATE_USER', 'User', user._id, { updatedFields: Object.keys(req.body) });
+
       res.status(200).json({
         success: true,
         message: 'User updated successfully',
@@ -395,6 +399,9 @@ class UserController {
           message: 'User not found'
         });
       }
+
+      await logAdminAction(req, 'DELETE_USER', 'User', user._id, { email: user.email });
+
       res.status(200).json({
         success: true,
         message: 'User deleted successfully'
@@ -411,13 +418,15 @@ class UserController {
     try {
       const user = await userService.toggleUserStatus(req.params.id);
       
-      // Real-time socket notification for status change
+      
       try {
         const { emitAccountStatusUpdate } = await import('../socket.js');
         emitAccountStatusUpdate(user._id.toString(), user.isActive);
       } catch (err) {
         console.error('Socket notification failed:', err);
       }
+
+      await logAdminAction(req, 'TOGGLE_USER_STATUS', 'User', user._id, { newStatus: user.isActive ? 'Active' : 'Blocked' });
 
       res.status(200).json({
         success: true,

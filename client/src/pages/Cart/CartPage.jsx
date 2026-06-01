@@ -197,7 +197,7 @@ const CartPage = () => {
       return;
     }
 
-    // Distance based
+    
     if (pricingType === 'distance' && settings.restaurantDetails?.location?.lat) {
       try {
         setIsCalculatingFee(true);
@@ -342,7 +342,7 @@ const CartPage = () => {
   const getStock = React.useCallback((item) => {
     if (!item) return 0;
 
-    // Explicitly handle empty/null/undefined stock fields as 0
+    
     const rawStock = getEffectiveStock(item);
 
     if (item.isCombo) {
@@ -351,10 +351,10 @@ const CartPage = () => {
         return !menuItem || menuItem.isBlocked || getEffectiveStock(menuItem) <= 0;
       });
       if (isAnyComboItemOutOfStock) return 0;
-      return Infinity; // Combos have unlimited stock as long as their ingredients are in stock
+      return Infinity; 
     }
 
-    // For items with sizes, totalStock is divided by stockValue (multiplier)
+    
     if (item.selectedSize) {
       const variants = Array.isArray(item.variants) ? item.variants : (Array.isArray(item.sizes) ? item.sizes : []);
       const variant = variants.find(v => v.size === item.selectedSize);
@@ -441,7 +441,7 @@ const CartPage = () => {
           customClass: { popup: 'rounded-[2rem] bg-background text-text-primary' }
         });
         
-        // Refresh cart to update stock quantities locally, allowing inline error messages to appear.
+        
         if (fetchCart) await fetchCart();
         return;
       }
@@ -544,7 +544,7 @@ const CartPage = () => {
                 </div>
               )}
 
-              {/* Linear Cart Items */}
+              {}
               <div className="bg-background-card rounded-2xl border border-border/20 shadow-sm overflow-hidden">
                 <div className="p-4 md:p-6 border-b border-border/10">
                   <h2 className="text-lg font-black text-text-primary lowercase flex items-center gap-2">
@@ -611,7 +611,7 @@ const CartPage = () => {
                                   {item.selectedSize ? `size: ${item.selectedSize}` : (item.category?.name || 'Main Course')}
                                 </p>
 
-                                {/* Combo Items */}
+                                {}
                                 {item.isCombo && item.comboItems?.length > 0 && (
                                   <div className="mt-2 space-y-1 pl-2 border-l border-primary/30">
                                     <span className="text-[8px] font-black text-primary uppercase tracking-wider block">Combo includes:</span>
@@ -625,7 +625,7 @@ const CartPage = () => {
                                   </div>
                                 )}
 
-                                {/* Included Items (Add-ons) */}
+                                {}
                                 {!item.isCombo && item.variants?.find(v => v.size === item.selectedSize)?.includedItems?.length > 0 && (
                                   <div className="mt-2 space-y-1 pl-2 border-l border-primary/30">
                                     <span className="text-[8px] font-black text-primary uppercase tracking-wider block">Includes Add-ons:</span>
@@ -639,7 +639,7 @@ const CartPage = () => {
                                   </div>
                                 )}
 
-                                {/* BOGO Offer */}
+                                {}
                                 {item.bogoItem && item.variants?.find(v => v.size === item.selectedSize)?.isBOGO && (
                                   <div className="mt-2 space-y-1 pl-2 border-l border-emerald-500/30">
                                     <span className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">Buy 1 Get 1 Free Add-on:</span>
@@ -701,7 +701,7 @@ const CartPage = () => {
                 ></textarea>
               </div>
             </div>
-            {/* 3. Right Sidebar (Sticky Bill Summary) */}
+            {}
             <div className="w-full lg:w-[450px] sticky top-32">
               <div className="bg-background-card rounded-[3rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-border/20 p-8 md:p-12 space-y-10 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16"></div>

@@ -1,8 +1,5 @@
 import api from '../api/axiosInstance';
 
-/**
- * Centralized auth utility.
- */
 
 export const clearAllAuth = () => {
   const AUTH_KEYS = [

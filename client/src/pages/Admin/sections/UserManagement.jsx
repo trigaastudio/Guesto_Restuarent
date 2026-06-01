@@ -134,7 +134,7 @@ const UserManagement = () => {
   };
 
   const handleToggleStatus = async (id) => {
-    // Optimistic UI update
+    
     setUserList(prevUsers => 
       prevUsers.map(u => 
         u._id === id ? { ...u, isActive: !u.isActive } : u
@@ -145,7 +145,7 @@ const UserManagement = () => {
       const response = await api.patch(`/api/users/${id}/toggle-status`);
       showToast('success', response.data.message);
     } catch (error) {
-      // Revert on error
+      
       setUserList(prevUsers => 
         prevUsers.map(u => 
           u._id === id ? { ...u, isActive: !u.isActive } : u
@@ -339,7 +339,7 @@ const UserManagement = () => {
         />
       </div>
 
-      {/* User Modal */}
+      {}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-hidden">
           <div className="bg-background-card w-full max-w-lg rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">

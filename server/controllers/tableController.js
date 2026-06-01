@@ -1,12 +1,16 @@
 import Table from '../models/tableSchema.js';
 import Order from '../models/orderSchema.js';
 import { emitTablesUpdated, getIO } from '../socket.js';
+import { logAdminAction } from '../services/auditService.js';
 
-// Create a new table
+
 export const createTable = async (req, res) => {
   try {
     const table = new Table(req.body);
     await table.save();
+    
+    await logAdminAction(req, 'CREATE_TABLE', 'Table', table._id, { tableNumber: table.tableNumber, capacity: table.capacity });
+
     res.status(201).json(table);
     emitTablesUpdated();
   } catch (error) {
@@ -14,7 +18,7 @@ export const createTable = async (req, res) => {
   }
 };
 
-// Get all tables (with active orders populated)
+
 export const getTables = async (req, res) => {
   try {
     const filter = req.query.all === 'true' ? {} : { isActive: true };
@@ -29,7 +33,7 @@ export const getTables = async (req, res) => {
       ]
     }).populate('items.menuItem', 'name image price');
 
-    // Attach active orders to their respective tables and calculate dynamic status and seats
+    
     const tablesWithActivity = tables.map(table => {
       const tableObj = table.toObject();
 
@@ -45,7 +49,7 @@ export const getTables = async (req, res) => {
 
       tableObj.capacity = totalCapacity;
 
-      // Active orders are the union of all active orders in the merged group
+      
       tableObj.activeOrders = activeOrders.filter(
         order => order.table && groupTableIds.includes(order.table.toString())
       );
@@ -74,11 +78,14 @@ export const getTables = async (req, res) => {
   }
 };
 
-// Update a table (e.g. capacity or manual status override)
+
 export const updateTable = async (req, res) => {
   try {
     const table = await Table.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!table) return res.status(404).json({ message: 'Table not found' });
+    
+    await logAdminAction(req, 'UPDATE_TABLE', 'Table', table._id, { updatedFields: Object.keys(req.body) });
+
     res.status(200).json(table);
     emitTablesUpdated();
   } catch (error) {
@@ -86,11 +93,14 @@ export const updateTable = async (req, res) => {
   }
 };
 
-// Delete a table (hard delete)
+
 export const deleteTable = async (req, res) => {
   try {
     const table = await Table.findByIdAndDelete(req.params.id);
     if (!table) return res.status(404).json({ message: 'Table not found' });
+
+    await logAdminAction(req, 'DELETE_TABLE', 'Table', table._id, { tableNumber: table.tableNumber });
+
     res.status(200).json({ message: 'Table deleted successfully' });
     emitTablesUpdated();
   } catch (error) {
@@ -98,7 +108,7 @@ export const deleteTable = async (req, res) => {
   }
 };
 
-// Merge Table A into Table B
+
 export const mergeTables = async (req, res) => {
   try {
     const { sourceTableId, destinationTableId } = req.body;
@@ -111,7 +121,7 @@ export const mergeTables = async (req, res) => {
       return res.status(400).json({ message: 'Cannot merge a table into itself.' });
     }
 
-    // 1. Find all active orders for the source table
+    
     const activeOrders = await Order.find({
       table: sourceTableId,
       orderType: 'dine-in',
@@ -126,7 +136,7 @@ export const mergeTables = async (req, res) => {
       return res.status(400).json({ message: 'No active orders found on the source table to merge.' });
     }
 
-    // Fetch source and destination tables to manage occupied seats
+    
     const sourceTable = await Table.findById(sourceTableId);
     const destinationTable = await Table.findById(destinationTableId);
 
@@ -135,20 +145,22 @@ export const mergeTables = async (req, res) => {
     const destCapacity = destinationTable ? (destinationTable.capacity || 4) : 4;
     const newDestSeats = Math.min(destCapacity, destSeats + sourceSeats);
 
-    // 2. Update their table reference to the destination table
+    
     for (const order of activeOrders) {
       order.table = destinationTableId;
-      await order.save(); // using save to trigger pre/post hooks
+      await order.save(); 
     }
 
-    // 3. Update source table status to available and clear occupied seats
+    
     await Table.findByIdAndUpdate(sourceTableId, { status: 'available', occupiedSeats: 0 });
 
-    // 4. Update destination table status to occupied and merge occupied seats
+    
     await Table.findByIdAndUpdate(destinationTableId, { 
       status: 'occupied', 
       occupiedSeats: newDestSeats 
     });
+
+    await logAdminAction(req, 'MERGE_TABLES', 'Table', destinationTableId, { sourceTableId, mergedOrdersCount: activeOrders.length });
 
     res.status(200).json({ message: `Successfully merged ${activeOrders.length} orders into the new table.` });
     emitTablesUpdated();
@@ -158,7 +170,7 @@ export const mergeTables = async (req, res) => {
   }
 };
 
-// Merge multiple tables together (co-sharing)
+
 export const coshareMergeTables = async (req, res) => {
   try {
     const { tableNumbers } = req.body;
@@ -171,11 +183,13 @@ export const coshareMergeTables = async (req, res) => {
       return res.status(404).json({ message: "One or more selected tables were not found." });
     }
 
-    // Set the mergedGroup to the full selection for all involved tables
+    
     await Table.updateMany(
       { tableNumber: { $in: tableNumbers } },
       { $set: { mergedGroup: tableNumbers } }
     );
+
+    await logAdminAction(req, 'COSHARE_TABLES', 'Table', null, { tableNumbers });
 
     res.status(200).json({ message: `Tables ${tableNumbers.join(", ")} merged successfully.`, mergedGroup: tableNumbers });
     emitTablesUpdated();
@@ -184,7 +198,7 @@ export const coshareMergeTables = async (req, res) => {
   }
 };
 
-// Unmerge a table and its entire group
+
 export const coshareUnmergeTables = async (req, res) => {
   try {
     const { tableNumber } = req.body;
@@ -206,6 +220,8 @@ export const coshareUnmergeTables = async (req, res) => {
       { tableNumber: { $in: group } },
       { $set: { mergedGroup: [] } }
     );
+
+    await logAdminAction(req, 'UNMERGE_TABLES', 'Table', table._id, { unmergedGroup: group });
 
     res.status(200).json({ message: "Tables unmerged successfully." });
     emitTablesUpdated();

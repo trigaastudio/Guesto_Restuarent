@@ -1,5 +1,6 @@
 import Settings from '../models/settingsSchema.js';
 import { emitSettingsUpdate } from '../socket.js';
+import { logAdminAction } from '../services/auditService.js';
 
 export const getSettings = async (req, res) => {
   try {
@@ -20,16 +21,18 @@ export const updateSettings = async (req, res) => {
   try {
     const settings = await Settings.getSettings();
     
-    // Update top-level fields and mark them as modified for Mongoose
+    
     Object.keys(req.body).forEach(key => {
       if (req.body[key] !== undefined) {
         settings[key] = req.body[key];
-        settings.markModified(key); // Crucial for nested objects in Mongoose
+        settings.markModified(key); 
       }
     });
 
     await settings.save();
     emitSettingsUpdate(settings);
+    
+    await logAdminAction(req, 'UPDATE_SETTINGS', 'Settings', settings._id, { updatedFields: Object.keys(req.body) });
     
     res.status(200).json({
       success: true,

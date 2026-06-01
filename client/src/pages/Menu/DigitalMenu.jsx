@@ -99,8 +99,8 @@ const DigitalMenu = () => {
           search: debouncedSearchQuery || undefined,
           foodType: dietaryFilter !== 'all' ? dietaryFilter : undefined,
           sortBy: sortBy !== 'default' ? sortBy : undefined,
-          // If offerFilter is a MongoDB ObjectId (24 hex chars), use offerId param
-          // If it's a type string like 'bogo', 'combo', 'discount', use direct type params
+          
+          
           offerId: offerFilter && offerFilter.length === 24 ? offerFilter : undefined,
           bogo: offerFilter === 'bogo' ? 'true' : undefined,
           combo: offerFilter === 'combo' ? 'true' : undefined,
@@ -182,7 +182,7 @@ const DigitalMenu = () => {
     }
   };
 
-  // 3D Tilt Effect Logic
+  
   const handleMouseMove = (e) => {
     if (!heroRef.current) return;
     const { clientX, clientY } = e;
@@ -211,29 +211,29 @@ const DigitalMenu = () => {
 
   return (
     <div className={`min-h-screen bg-background font-sans overflow-x-hidden ${theme}`}>
-      {/* 3D Depth Hero Header */}
+      {}
       <header 
         ref={heroRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         className="relative w-full min-h-[40vh] md:min-h-[50vh] flex flex-col items-center justify-center overflow-hidden bg-[#050505] perspective-[1000px]"
       >
-        {/* Modern 3D Layered Background */}
+        {}
         <div className="absolute inset-0 z-0">
            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-primary/10 via-transparent to-black"></div>
-           {/* Floating Geometric Orbs */}
+           {}
            <div className="absolute top-1/4 -left-20 w-80 h-80 bg-primary/20 rounded-full blur-[100px] animate-pulse"></div>
            <div className="absolute bottom-1/4 -right-20 w-80 h-80 bg-primary-light/10 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '2s' }}></div>
            
-           {/* Subtle Line Pattern */}
+           {}
            <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
         </div>
 
         <div className="relative z-10 flex flex-col items-center text-center px-6">
-          {/* 3D Tilt Logo Container */}
+          {}
           <div className="tilt-logo transition-transform duration-200 ease-out preserve-3d mb-8 mt-4">
              <div className="relative group">
-                {/* Glow Ring */}
+                {}
                 <div className="absolute inset-[-20%] bg-gradient-to-r from-primary/40 to-primary-light/40 blur-3xl rounded-full opacity-30 group-hover:opacity-60 transition-opacity animate-spin-slow"></div>
                 
                 <img 
@@ -245,7 +245,7 @@ const DigitalMenu = () => {
           </div>
           
           <div className="space-y-6 max-w-3xl mx-auto transform translate-z-20">
-            {/* Glass Slabs Badges */}
+            {}
             <div className="flex flex-wrap items-center justify-center gap-4 animate-fade-in">
                <div className="px-6 py-2.5 bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl text-[10px] md:text-xs font-black text-white/90 uppercase tracking-[0.2em] shadow-[0_10px_30px_rgba(0,0,0,0.3)] flex items-center gap-2 hover:bg-white/[0.08] transition-colors cursor-default">
                   <MapPin size={14} className="text-primary" /> 
@@ -257,14 +257,14 @@ const DigitalMenu = () => {
                </div>
             </div>
 
-            {/* Elegant Tagline */}
+            {}
             <div className="opacity-40 animate-fade-in" style={{ animationDelay: '0.3s' }}>
                <p className="text-[10px] font-black text-white uppercase tracking-[0.8em]">Discover Perfection</p>
             </div>
           </div>
         </div>
 
-        {/* 3D Floor Shadow Effect */}
+        {}
         <div className="absolute bottom-0 left-0 w-full h-24 bg-gradient-to-t from-background to-transparent z-20"></div>
       </header>
 
@@ -286,7 +286,7 @@ const DigitalMenu = () => {
             />
           </div>
           
-          {/* Trending Slider with Controls */}
+          {}
           {trendingItems.length > 0 && (
              <div className="mb-24 relative group/slider">
                 <div className="flex items-center justify-between mb-12 px-6">
@@ -395,7 +395,7 @@ const DigitalMenu = () => {
              </div>
           )}
 
-          {/* Sticky Search Container */}
+          {}
           <div className="max-w-3xl mx-auto mb-16 px-4 sticky top-6 z-40">
             <div className="relative group">
               <div className="absolute inset-0 bg-primary/20 blur-[50px] opacity-0 group-focus-within:opacity-100 transition-opacity"></div>

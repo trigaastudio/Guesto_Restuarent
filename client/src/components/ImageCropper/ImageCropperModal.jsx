@@ -67,7 +67,7 @@ const ImageCropperModal = ({ isOpen, image, onCropComplete, onCancel }) => {
   const handleSave = async () => {
     try {
       const croppedImage = await getCroppedImg(image, croppedAreaPixels, rotation);
-      // Convert blob URL to actual blob/file
+      
       const response = await fetch(croppedImage);
       const blob = await response.blob();
       const file = new File([blob], 'profile.jpg', { type: 'image/jpeg' });
@@ -83,7 +83,7 @@ const ImageCropperModal = ({ isOpen, image, onCropComplete, onCancel }) => {
     <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
       <div className="bg-background-card w-full max-w-2xl rounded-[3rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-500 flex flex-col h-[80vh] md:h-[70vh]">
         
-        {/* Header */}
+        {}
         <div className="p-6 md:p-8 bg-primary text-white flex justify-between items-center shrink-0">
           <div>
             <h3 className="text-xl font-black tracking-tight">Perfect Your Profile</h3>
@@ -94,7 +94,7 @@ const ImageCropperModal = ({ isOpen, image, onCropComplete, onCancel }) => {
           </button>
         </div>
 
-        {/* Cropper Container */}
+        {}
         <div className="flex-1 relative bg-background-muted/30 m-4 md:m-8 rounded-[2rem] overflow-hidden border border-border/40">
           <Cropper
             image={image}
@@ -110,10 +110,10 @@ const ImageCropperModal = ({ isOpen, image, onCropComplete, onCancel }) => {
           />
         </div>
 
-        {/* Controls */}
+        {}
         <div className="px-6 md:px-8 pb-6 md:pb-8 space-y-6 shrink-0">
           <div className="flex flex-col md:flex-row gap-6 md:items-center justify-between">
-            {/* Zoom Slider */}
+            {}
             <div className="flex-1 flex items-center gap-4">
               <ZoomOut size={16} className="text-text-muted" />
               <input
@@ -129,7 +129,7 @@ const ImageCropperModal = ({ isOpen, image, onCropComplete, onCancel }) => {
               <ZoomIn size={16} className="text-text-muted" />
             </div>
 
-            {/* Rotation Controls */}
+            {}
             <div className="flex items-center gap-4">
               <button 
                 onClick={() => setRotation((r) => r - 90)}

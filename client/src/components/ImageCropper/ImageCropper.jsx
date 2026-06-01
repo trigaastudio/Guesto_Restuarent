@@ -50,7 +50,7 @@ const ImageCropper = ({ image, onCropComplete, onCancel, aspect = 1 }) => {
           />
         </div>
         
-        {/* Header Overlay */}
+        {}
         <div className="absolute top-0 inset-x-0 p-6 bg-gradient-to-b from-black/60 to-transparent flex items-center justify-between z-10">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-primary/20 backdrop-blur-md rounded-xl">
@@ -69,7 +69,7 @@ const ImageCropper = ({ image, onCropComplete, onCancel, aspect = 1 }) => {
           </button>
         </div>
 
-        {/* Footer Overlay */}
+        {}
         <div className="absolute bottom-0 inset-x-0 p-8 bg-gradient-to-t from-black/60 to-transparent flex flex-col items-center space-y-6 z-10">
           <div className="w-full max-w-sm px-4">
             <input

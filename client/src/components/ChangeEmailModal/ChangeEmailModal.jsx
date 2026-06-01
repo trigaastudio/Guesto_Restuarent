@@ -4,7 +4,7 @@ import api from '../../api/axiosInstance';
 import { showToast } from '../../utils/sweetAlert';
 
 const ChangeEmailModal = ({ isOpen, onClose, user }) => {
-  const [step, setStep] = useState(1); // 1: Enter New Email, 2: Enter Password & OTP, 3: Success
+  const [step, setStep] = useState(1); 
   const [newEmail, setNewEmail] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -91,7 +91,7 @@ const ChangeEmailModal = ({ isOpen, onClose, user }) => {
       if (response.data.success) {
         setStep(3);
         
-        // Terminate session and redirect to login after a short delay
+        
         setTimeout(() => {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
@@ -111,7 +111,7 @@ const ChangeEmailModal = ({ isOpen, onClose, user }) => {
     newOtp[index] = value.substring(value.length - 1);
     setOtp(newOtp);
 
-    // Auto-focus next input
+    
     if (value && index < 5) {
       const nextInput = document.getElementById(`otp-email-${index + 1}`);
       nextInput?.focus();
@@ -163,7 +163,7 @@ const ChangeEmailModal = ({ isOpen, onClose, user }) => {
             </div>
           )}
 
-          {/* Progress Indicators */}
+          {}
           <div className="flex items-center justify-between mb-8 px-4">
             {[1, 2].map((s) => (
               <div key={s} className="flex items-center flex-1 last:flex-none">

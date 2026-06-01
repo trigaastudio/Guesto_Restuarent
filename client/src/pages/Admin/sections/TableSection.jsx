@@ -121,7 +121,7 @@ const TableSection = ({ refreshKey }) => {
   const handleToggleActive = async (table) => {
     const newIsActive = table.isActive === false ? true : false;
     
-    // Optimistic UI update
+    
     setTables(prevTables => 
       prevTables.map(t => 
         t._id === table._id ? { ...t, isActive: newIsActive } : t
@@ -133,7 +133,7 @@ const TableSection = ({ refreshKey }) => {
         isActive: newIsActive
       });
     } catch (error) {
-      // Revert on error
+      
       setTables(prevTables => 
         prevTables.map(t => 
           t._id === table._id ? { ...t, isActive: table.isActive } : t

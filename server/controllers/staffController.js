@@ -1,4 +1,5 @@
 import staffService from '../services/staffService.js';
+import { logAdminAction } from '../services/auditService.js';
 
 class StaffController {
   async login(req, res) {
@@ -43,6 +44,9 @@ class StaffController {
   async createStaff(req, res) {
     try {
       const staff = await staffService.createStaff(req.body);
+      
+      await logAdminAction(req, 'CREATE_STAFF', 'Staff', staff._id, { employeeId: staff.employeeId, name: staff.name });
+
       res.status(201).json({
         success: true,
         message: 'Staff created successfully',
@@ -66,7 +70,7 @@ class StaffController {
         });
       }
 
-      // Real-time socket notification for status change
+      
       if (req.body.hasOwnProperty('isActive')) {
         try {
           const { emitAccountStatusUpdate } = await import('../socket.js');
@@ -75,6 +79,8 @@ class StaffController {
           console.error('Socket notification failed:', err);
         }
       }
+
+      await logAdminAction(req, 'UPDATE_STAFF', 'Staff', staff._id, { updatedFields: Object.keys(req.body) });
 
       res.status(200).json({
         success: true,
@@ -98,6 +104,9 @@ class StaffController {
           message: 'Staff not found'
         });
       }
+
+      await logAdminAction(req, 'DELETE_STAFF', 'Staff', staff._id, { employeeId: staff.employeeId });
+
       res.status(200).json({
         success: true,
         message: 'Staff deleted successfully'
@@ -113,7 +122,7 @@ class StaffController {
   async requestCredentialChange(req, res) {
     try {
       const { currentPassword, logoUrl } = req.body;
-      const staffId = req.user._id; // Take ID from verified token
+      const staffId = req.user._id; 
       const result = await staffService.requestCredentialChange(staffId, currentPassword, logoUrl);
       res.status(200).json({
         success: true,
@@ -130,7 +139,7 @@ class StaffController {
   async verifyCredentialChange(req, res) {
     try {
       const { otp, newEmail, newPassword } = req.body;
-      const staffId = req.user._id; // Take ID from verified token
+      const staffId = req.user._id; 
       const result = await staffService.verifyAndChangeCredentials(staffId, otp, newEmail, newPassword);
       res.status(200).json({
         success: true,

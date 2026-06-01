@@ -4,7 +4,7 @@ import api from '../../api/axiosInstance';
 import { showToast } from '../../utils/sweetAlert';
 
 const ForgotPasswordModal = ({ isOpen, onClose }) => {
-  const [step, setStep] = useState(1); // 1: Email, 2: Passwords & OTP, 3: Success
+  const [step, setStep] = useState(1); 
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [formData, setFormData] = useState({
@@ -103,14 +103,14 @@ const ForgotPasswordModal = ({ isOpen, onClose }) => {
 
     setLoading(true);
     try {
-      // Step 1: Verify the OTP first
+      
       const verifyRes = await api.post('/api/auth/verify-reset-otp', { 
         email: email.toLowerCase().trim(), 
         otp: otpCode 
       });
 
       if (verifyRes.data.success) {
-        // Step 2: Reset the password immediately
+        
         const resetRes = await api.post('/api/auth/reset-password', {
           email: email.toLowerCase().trim(),
           newPassword: formData.newPassword

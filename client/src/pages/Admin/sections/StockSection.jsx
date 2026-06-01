@@ -7,7 +7,7 @@ import Loader from '../../../components/Loader/Loader';
 import Pagination from '../../../components/Pagination/Pagination';
 
 const StockSection = ({ refreshKey }) => {
-  const [activeTab, setActiveTab] = useState('category'); // 'category' or 'menu'
+  const [activeTab, setActiveTab] = useState('category'); 
   const [categories, setCategories] = useState([]);
   const [menus, setMenus] = useState([]);
   const [isLoading, setIsLoading] = useState(false);

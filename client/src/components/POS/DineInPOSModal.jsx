@@ -86,7 +86,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
     }
   };
 
-  // Sum of raw stock consumed by cart items for this menu item (qty × stockValue per variant)
+  
   const getConsumedStock = (item) =>
     cart
       .filter(c => c.menuItem === item._id)
@@ -96,11 +96,11 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
         return acc + (c.quantity * stockValue);
       }, 0);
 
-  // Remaining RAW stock shown in the badge
+  
   const getDynamicRawStock = (item) =>
     Math.max(0, getEffectiveStock(item) - getConsumedStock(item));
 
-  // Can we add one more serving of a specific variant right now?
+  
   const canAddVariant = (item, variant) => {
     const stockValue = variant?.stockValue || 1;
     return getDynamicRawStock(item) >= stockValue;
@@ -258,7 +258,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
       const response = await api.get('/api/menus');
       const latestMenu = response.data.filter(m => !m.isBlocked);
 
-      // Update local menuItems with the absolute latest stock from server
+      
       setMenuItems(latestMenu);
 
       for (const cartItem of cart) {
@@ -308,7 +308,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
       const subtotal = cart.reduce((acc, item) => acc + item.totalPrice, 0);
 
       if (editingOrder) {
-        // Keep newly added items completely separate from already ordered items for individual status tracking
+        
         const mergedItems = [...existingItems, ...cart];
 
         const updateData = {
@@ -379,7 +379,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose}></div>
       <div className="bg-background-card w-full max-w-6xl h-[85vh] rounded-[2.5rem] shadow-2xl relative z-10 flex overflow-hidden animate-in zoom-in-95 duration-200">
 
-        {/* Left Side: Menu Selection */}
+        {}
         <div className="flex-1 flex flex-col border-r border-border-light bg-background">
           <div className="p-6 border-b border-border-light bg-background-card">
             <div className="flex justify-between items-center mb-4">
@@ -482,7 +482,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
           </div>
         </div>
 
-        {/* Right Side: Cart & Customer */}
+        {}
         <div className="w-[40%] min-w-[340px] max-w-[450px] flex flex-col bg-background-card flex-shrink-0 overflow-hidden">
           <div className="p-5 md:p-6 border-b border-border-light flex justify-between items-center shrink-0 bg-background-muted/30">
             <div className="flex items-center gap-2.5">
@@ -579,7 +579,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
           </div>
         </div>
 
-        {/* Confirmation Modal Overlay */}
+        {}
         {showConfirmModal && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px] animate-in fade-in duration-200">
             <div className="bg-background-card w-full max-w-md md:max-w-lg lg:max-w-xl p-6 md:p-8 rounded-[2rem] shadow-2xl animate-in zoom-in-95 duration-200 m-4">

@@ -36,7 +36,7 @@ const MenuSection = () => {
     comboItems: [],
     offerPercentage: 0,
     discountPercentage: 0,
-    includedItems: [] // Global addons if needed, but we'll focus on variants
+    includedItems: [] 
   });
 
 
@@ -189,7 +189,7 @@ const MenuSection = () => {
     }
     
     if (!isComboCategory && currentMenu.variants.length === 0) newErrors.variants = true;
-    if (isComboCategory && currentMenu.comboItems.length === 0) newErrors.variants = true; // Use variants error for combo items as well
+    if (isComboCategory && currentMenu.comboItems.length === 0) newErrors.variants = true; 
     if (!currentMenu.image) newErrors.image = true;
 
     if (Object.keys(newErrors).length > 0) {
@@ -262,14 +262,14 @@ const MenuSection = () => {
   const handleToggleStatus = async (menu) => {
     try {
       const updatedMenu = { ...menu, isBlocked: !menu.isBlocked };
-      // Optimistic update
+      
       setMenus(prev => prev.map(m => m._id === menu._id ? { ...m, isBlocked: !m.isBlocked } : m));
       await api.put(`/api/menus/${menu._id}`, updatedMenu);
       showToast('success', `Item ${updatedMenu.isBlocked ? 'blocked' : 'unblocked'} successfully`);
     } catch (error) {
       console.error('Error toggling menu status:', error);
       showToast('error', 'Failed to update menu status');
-      fetchData(true); // Revert on error
+      fetchData(true); 
     }
   };
 
@@ -287,7 +287,7 @@ const MenuSection = () => {
     } catch (error) {
       console.error('Error updating discount:', error);
       showToast('error', 'Failed to update discount');
-      fetchData(true); // Revert on error
+      fetchData(true); 
     } finally {
       setEditingDiscountId(null);
     }
@@ -388,7 +388,7 @@ const MenuSection = () => {
     return sorted;
   };
 
-  // Filter menu items based on search and selected filters
+  
   const filteredMenus = getSortedData(menus).filter(m => {
     const searchLower = (searchTerm || '').toLowerCase();
     const matchesSearch = (m.name || '').toLowerCase().includes(searchLower) ||
@@ -679,14 +679,14 @@ const MenuSection = () => {
                               onClick={async (e) => {
                                 e.stopPropagation();
                                 try {
-                                  // Optimistic update
+                                  
                                   setMenus(prev => prev.map(m => m._id === menu._id ? { ...m, discountPercentage: 0 } : m));
                                   await api.put(`/api/menus/${menu._id}`, { discountPercentage: 0 });
                                   showToast('success', 'Discount removed');
                                 } catch (error) {
                                   console.error('Error removing discount:', error);
                                   showToast('error', 'Failed to remove discount');
-                                  fetchData(true); // Revert on error
+                                  fetchData(true); 
                                 }
                               }}
                               className="opacity-0 group-hover:opacity-100 text-status-unavailable hover:text-red-600 transition-opacity p-1"
@@ -780,7 +780,7 @@ const MenuSection = () => {
         />
       </div>
 
-      {/* Large Modal for Menu Item */}
+      {}
       {isModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
           <div className="bg-background-card w-full max-w-2xl rounded-2xl border border-border-light shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 my-8">

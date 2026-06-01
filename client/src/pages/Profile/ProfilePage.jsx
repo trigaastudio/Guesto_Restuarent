@@ -26,10 +26,10 @@ const ProfilePage = () => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [editingAddress, setEditingAddress] = useState(null);
   
-  // Navigation active tab: 'addresses' | 'profile' | 'security'
+  
   const [activeTab, setActiveTab] = useState('addresses');
   
-  // Edit Profile States
+  
   const [profileForm, setProfileForm] = useState({ name: '', phone: '' });
   const [profileSaving, setProfileSaving] = useState(false);
 
@@ -170,7 +170,7 @@ const ProfilePage = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Read file and open cropper
+    
     const reader = new FileReader();
     reader.onload = () => {
       setImageToCrop(reader.result);
@@ -178,7 +178,7 @@ const ProfilePage = () => {
     };
     reader.readAsDataURL(file);
     
-    // Reset input so same file can be selected again
+    
     e.target.value = '';
   };
 
@@ -229,7 +229,7 @@ const ProfilePage = () => {
         <main className="max-w-7xl mx-auto px-6 pt-24 md:pt-32 relative z-10 pb-20">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
 
-            {/* Left Column: Side Navbar */}
+            {}
             <div className="lg:col-span-3 xl:col-span-3 lg:sticky lg:top-24 z-20 w-full animate-in fade-in slide-in-from-bottom-10 duration-700">
               <SideNavbar
                 user={user}
@@ -243,7 +243,7 @@ const ProfilePage = () => {
               />
             </div>
 
-            {/* Right Column: Dynamic Panel Content based on activeTab */}
+            {}
             <div className="lg:col-span-9 xl:col-span-9 space-y-6 relative z-10">
               
               {activeTab === 'addresses' && (
@@ -427,7 +427,7 @@ const ProfilePage = () => {
                   </div>
 
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 relative z-10">
-                    {/* Change Email Sub-card */}
+                    {}
                     <div className="bg-background/40 border border-border/40 p-6 md:p-8 rounded-[2.5rem] flex flex-col justify-between">
                       <div>
                         <div className="flex items-center gap-3 mb-6">
@@ -453,7 +453,7 @@ const ProfilePage = () => {
                       </button>
                     </div>
 
-                    {/* Change Password Sub-card */}
+                    {}
                     <div className="bg-background/40 border border-border/40 p-6 md:p-8 rounded-[2.5rem] flex flex-col justify-between">
                       <div>
                         <div className="flex items-center gap-3 mb-6">

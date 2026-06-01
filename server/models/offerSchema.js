@@ -16,21 +16,21 @@ const offerSchema = new mongoose.Schema({
     required: true
   },
   offerValue: {
-    type: Number, // Percentage for discount, or flat value
+    type: Number, 
     default: 0
   },
   minQuantity: {
-    type: Number, // Minimum quantity required to trigger the offer
+    type: Number, 
     default: 1
   },
   bannerImage: {
-    type: String, // URL of the poster
+    type: String, 
     required: true
   },
   cloudinaryPublicId: {
     type: String
   },
-  // Scheduling logic
+  
   isWeekendOnly: {
     type: Boolean,
     default: false
@@ -43,7 +43,7 @@ const offerSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
-  // Target items or categories
+  
   applicableItems: [{
     menuItem: {
       type: mongoose.Schema.Types.ObjectId,
@@ -64,7 +64,7 @@ const offerSchema = new mongoose.Schema({
   }],
   priority: {
     type: Number,
-    default: 0 // Higher priority banners show first
+    default: 0 
   }
 }, { timestamps: true });
 

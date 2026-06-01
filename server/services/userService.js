@@ -7,18 +7,18 @@ class UserService {
   }
 
   async createUser(userData) {
-    // 1. Validate that at least phone or email is present
+    
     if (!userData.phone && !userData.email) {
       throw new Error('Either Phone or Email is required to create a user');
     }
 
-    // 2. Check for duplicate phone
+    
     if (userData.phone) {
       const existingPhone = await User.findOne({ phone: userData.phone });
       if (existingPhone) throw new Error(`User with phone ${userData.phone} already exists`);
     }
 
-    // 3. Check for duplicate email
+    
     if (userData.email) {
       const existingEmail = await User.findOne({ email: userData.email });
       if (existingEmail) throw new Error(`User with email ${userData.email} already exists`);

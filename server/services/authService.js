@@ -12,7 +12,7 @@ const __dirname = path.dirname(__filename);
 
 const otps = new Map();
 
-// Cleanup expired OTPs every 5 minutes to prevent memory leaks
+
 setInterval(() => {
   const now = Date.now();
   for (const [email, data] of otps.entries()) {
@@ -25,14 +25,14 @@ setInterval(() => {
 class AuthService {
   generateToken(id) {
     return jwt.sign({ id }, process.env.JWT_SECRET, {
-      expiresIn: '30d',
+      expiresIn: '1d',
     });
   }
 
   async _sendStylishEmail(email, title, headerText, subText, otp, settings) {
     const restaurantName = settings.restaurantDetails.name || "GuestO";
     
-    // Explicitly use the golden logo from public folder for maximum visibility in all modes
+    
     let primaryLogoPath = '/logo-golden.png';
     
     const attachments = [];
@@ -96,13 +96,13 @@ class AuthService {
   }
 
   async sendOTP(email, phone) {
-    // Check if user already exists with this email
+    
     const existingEmail = await userRepository.findByEmail(email);
     if (existingEmail) {
       throw new Error('User with this email already exists');
     }
 
-    // Check if user already exists with this phone
+    
     if (phone) {
       const existingPhone = await userRepository.findByPhone(phone);
       if (existingPhone) {
@@ -213,11 +213,11 @@ class AuthService {
     try {
       console.log('🚀 Starting Google login with token...');
 
-      // Create a local client instance for thread-safety and set credentials
+      
       const oauth2Client = new OAuth2Client();
       oauth2Client.setCredentials({ access_token: token });
 
-      // Use the library's request mechanism which handles SSL better than default fetch
+      
       const response = await oauth2Client.request({
         url: 'https://www.googleapis.com/oauth2/v3/userinfo'
       });

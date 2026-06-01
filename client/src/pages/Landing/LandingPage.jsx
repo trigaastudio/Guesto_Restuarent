@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
-import '../Home/HomePage.css'; // Reuse HomePage styles
+import '../Home/HomePage.css'; 
 import api from '../../api/axiosInstance';
 import Footer from '../../components/Footer/Footer';
 import Navbar from '../../components/Navbar/Navbar';
@@ -26,7 +26,7 @@ const LandingPage = () => {
   const [categories, setCategories] = useState([]);
   const [trendingItems, setTrendingItems] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [offerFilter, setOfferFilter] = useState(null); // null | 'bogo' | 'combo' | 'discount' | mongoId
+  const [offerFilter, setOfferFilter] = useState(null); 
   const [offerName, setOfferName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
@@ -54,8 +54,8 @@ const LandingPage = () => {
     if (token) {
       navigate('/home', { replace: true });
     }
-    // If it's an admin, we don't redirect them away from landing page
-    // but they can still see the dashboard link in Navbar
+    
+    
   }, [navigate]);
 
   useEffect(() => {
@@ -107,7 +107,7 @@ const LandingPage = () => {
         search: debouncedSearchQuery || undefined,
         dietary: dietaryFilter !== 'all' ? dietaryFilter : undefined,
         sortBy: sortBy !== 'default' ? sortBy : undefined,
-        // Smart routing: 24-char hex = MongoDB ID (poster click), else type string
+        
         offerId: filterOverride && filterOverride.length === 24 ? filterOverride : undefined,
         bogo: filterOverride === 'bogo' ? 'true' : undefined,
         combo: filterOverride === 'combo' ? 'true' : undefined,
@@ -207,8 +207,8 @@ const LandingPage = () => {
 
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const dropdownRef = useRef(null);
-  // Pass active user so Navbar can display their profile avatar instead of falling back to 'Admin Panel'
-  // Staff are intentionally excluded from the customer website context
+  
+  
   const user = JSON.parse(
     localStorage.getItem('user') ||
     localStorage.getItem('admin_user') ||
@@ -229,9 +229,9 @@ const LandingPage = () => {
   }, []);
 
   const handleLogout = () => {
-    // Completely clear all sessions related to the website (Customer & Admin Preview)
-    // We do NOT use logoutAdmin() here because logoutAdmin redirects to /admin/login, 
-    // and the user expects to stay on the Landing Page when logging out from the website Navbar.
+    
+    
+    
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('admin_token');
@@ -240,7 +240,7 @@ const LandingPage = () => {
     localStorage.removeItem('dineInTableId');
     localStorage.removeItem('dineInTableNumber');
 
-    // Force a hard reload to the landing page to guarantee all React state is wiped
+    
     window.location.href = '/';
   };
 
@@ -289,7 +289,7 @@ const LandingPage = () => {
             />
           </div>
 
-          {/* Most Loved Dishes Slider */}
+          {}
           {trendingItems.length > 0 && (
             <div className="mb-20 relative group/slider mt-12">
               <div className="flex items-center justify-between mb-8 px-6">

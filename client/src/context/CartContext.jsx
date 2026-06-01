@@ -18,7 +18,7 @@ export const CartProvider = ({ children }) => {
     fetchSettings();
     fetchOffers();
 
-    // Socket Setup
+    
     if (!socket.connected) socket.connect();
 
     socket.on('stockUpdate', ({ itemId, totalStock, isBlocked }) => {
@@ -103,7 +103,7 @@ export const CartProvider = ({ children }) => {
   const addToCart = async (menuItem, quantity, selectedSize) => {
     try {
       if (menuItem.isCombo) {
-        // Validation for combos
+        
         let outOfStock = false;
         if (menuItem.comboItems) {
           for (const ci of menuItem.comboItems) {
@@ -172,9 +172,9 @@ export const CartProvider = ({ children }) => {
     const targetCartItem = cartItems.find(item => item._id === id);
     if (targetCartItem && !targetCartItem.isCombo) {
       const availableStock = getEffectiveStock(targetCartItem);
-      // We need to check the total quantity of this specific menu item across the whole cart
-      // if there are multiple sizes, but for simplicity we'll just check if the new quantity
-      // exceeds available stock. 
+      
+      
+      
       const otherVariationsQty = cartItems
         .filter(c => c.menuItemId === targetCartItem.menuItemId && c._id !== id)
         .reduce((acc, c) => acc + c.quantity, 0);
@@ -186,34 +186,34 @@ export const CartProvider = ({ children }) => {
 
       if (quantity + otherVariationsQty > effectiveStockQty) {
         showToast('error', `Cannot increase quantity. Only ${effectiveStockQty} left in stock.`);
-        return; // Reject update
+        return; 
       }
     }
 
-    // Optimistically update the UI state immediately
+    
     setCartItems(prev => prev.map(item => item._id === id ? { ...item, quantity } : item));
 
-    // Clear existing timeout for this item if any
+    
     if (pendingUpdatesRef.current[id]) {
       clearTimeout(pendingUpdatesRef.current[id]);
     }
 
-    // Set a new timeout to sync with backend
+    
     pendingUpdatesRef.current[id] = setTimeout(async () => {
       try {
         const response = await api.put(`/api/cart/${id}`, { quantity });
         if (response.data.success) {
-          // Sync with the actual database response in case other things changed
+          
           setCartItems(response.data.data.items);
         }
       } catch (error) {
         showToast('error', 'Failed to update quantity');
-        // Fetch cart to revert to correct state on error
+        
         fetchCart();
       } finally {
         delete pendingUpdatesRef.current[id];
       }
-    }, 400); // 400ms debounce time
+    }, 400); 
   }, [removeFromCart]);
 
   const clearCart = async () => {
@@ -232,14 +232,14 @@ export const CartProvider = ({ children }) => {
     if (isHolidayMode) return { isOpen: false, reason: 'holiday' };
     if (isStoreOpen === false) return { isOpen: false, reason: 'manual_close' };
 
-    // BULLETPROOF IST CALCULATION (UTC + 5:30)
+    
     const now = new Date();
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
     const istDate = new Date(utc + (330 * 60000));
 
     const day = istDate.toLocaleDateString('en-US', { weekday: 'long' });
 
-    // Check if today is a closed day
+    
     const closedDays = businessHours?.closedDays || [];
     const isClosedToday = closedDays.some(d => d.toLowerCase() === day.toLowerCase());
     if (isClosedToday) {
@@ -247,7 +247,7 @@ export const CartProvider = ({ children }) => {
     }
 
     if (businessHours?.open && businessHours?.close) {
-      // Robust Time Parsing (Handles "11:00", "11.00", etc.)
+      
       const parseTime = (timeStr) => {
         if (!timeStr) return 0;
         const parts = timeStr.replace('.', ':').split(':');
@@ -256,7 +256,7 @@ export const CartProvider = ({ children }) => {
         return h * 60 + m;
       };
 
-      // Format HH:mm string to 12-hour AM/PM format
+      
       const format12Hour = (timeStr) => {
         if (!timeStr) return '';
         const parts = timeStr.replace('.', ':').split(':');
@@ -264,7 +264,7 @@ export const CartProvider = ({ children }) => {
         const m = parseInt(parts[1], 10) || 0;
         const ampm = h >= 12 ? 'PM' : 'AM';
         h = h % 12;
-        h = h ? h : 12; // the hour '0' should be '12'
+        h = h ? h : 12; 
         const mStr = m < 10 ? `0${m}` : m;
         return `${h}:${mStr} ${ampm}`;
       };
@@ -328,7 +328,7 @@ export const CartProvider = ({ children }) => {
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const today = dayNames[istDate.getDay()];
 
-    // Offer calculation logs removed for professional console output
+    
 
     const activeOffers = offers.filter(o => {
       if (!o.isActive) return false;
@@ -341,16 +341,16 @@ export const CartProvider = ({ children }) => {
       return true;
     }).sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
-    // Active offers logging removed
+    
 
-    // 1. PROCESS COMBOS (Bundle Percent Discount)
+    
     activeOffers.filter(o => o.offerType === 'combo').forEach(offer => {
       const bundleItems = offer.applicableItems || [];
       if (bundleItems.length === 0) return;
 
-      // Combo checking log removed
+      
 
-      // Aggregate requirements for this bundle (in case same item is listed twice with same size)
+      
       const requirements = {};
       bundleItems.forEach(b => {
         const id = (b.menuItem?._id || b.menuItem || '').toString().toLowerCase();
@@ -443,7 +443,7 @@ export const CartProvider = ({ children }) => {
         return;
       }
 
-      // Check for Item/Category Discount
+      
       const menuDiscount = item.menuItem?.discountPercentage || item.discountPercentage || 0;
       const categoryDiscount = item.menuItem?.category?.discountPercentage || item.category?.discountPercentage || 0;
       const maxDiscountPercent = Math.max(menuDiscount, categoryDiscount);

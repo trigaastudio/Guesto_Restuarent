@@ -1,14 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-/**
- * FunnyDumpling – A 3D-shaded, realistic dumpling chef.
- * Optimizations:
- * - Uses hardware-accelerated translate3d for buttery smooth mobile rendering.
- * - Added touchmove support for mobile screens so eyes follow dragging fingers.
- * - Added a gentle random idle look-around when no mouse/touch movement is detected,
- *   preventing the character from feeling "stuck" on mobile.
- * - Scaled down slightly on mobile screens via CSS media queries.
- */
+
 const FunnyDumpling = ({ isHiding = false, activeField = '' }) => {
   const svgRef = useRef(null);
   const [posX, setPosX] = useState(0);
@@ -98,11 +90,11 @@ const FunnyDumpling = ({ isHiding = false, activeField = '' }) => {
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
     window.addEventListener('touchmove', handleTouchMove, { passive: true });
 
-    // Idle look-around interval: if no move for 1.8s, look at random directions gently
+    
     const idleInterval = setInterval(() => {
       if (Date.now() - lastMoveTime.current > 1800) {
         const randomAngle = Math.random() * Math.PI * 2;
-        const randomFactor = 0.3 + Math.random() * 0.7; // random strength
+        const randomFactor = 0.3 + Math.random() * 0.7; 
         setPupil({
           x: Math.cos(randomAngle) * MAX_PUPIL_TRAVEL * randomFactor,
           y: Math.sin(randomAngle) * MAX_PUPIL_TRAVEL * randomFactor
@@ -120,7 +112,7 @@ const FunnyDumpling = ({ isHiding = false, activeField = '' }) => {
   const isWalking = !activeField && !isHiding && !isTouched;
   const scaleX = isWalking ? (direction > 0 ? 1 : -1) : 1;
 
-  // 3D Parallax offset calculations
+  
   const faceOffsetX = isTouched ? 0 : pupil.x * 1.4;
   const faceOffsetY = isTouched ? -1 : pupil.y * 1.1;
   const hatOffsetX = isTouched ? 0 : -pupil.x * 0.7;

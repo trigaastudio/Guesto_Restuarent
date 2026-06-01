@@ -13,7 +13,7 @@ export default function socketPlugin(schema, options) {
         });
       }
     } catch (error) {
-      // Socket not initialized yet or other error, ignore
+      
     }
   };
 

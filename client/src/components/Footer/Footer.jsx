@@ -16,7 +16,7 @@ const Footer = React.memo(() => {
 
   return (
     <footer className="relative bg-primary dark:bg-background-card text-white dark:text-text-primary pt-6 pb-24 md:pb-6 overflow-hidden border-t border-border/10">
-      {/* Decorative Background Elements */}
+      {}
       <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4 blur-[100px]"></div>
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-black/10 rounded-full translate-y-1/2 -translate-x-1/4 blur-[80px]"></div>
@@ -24,7 +24,7 @@ const Footer = React.memo(() => {
 
       <div className="max-w-7xl mx-auto px-6 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-6">
-          {/* Brand Section */}
+          {}
           <div className="space-y-8">
             <div className="space-y-4">
               <img
@@ -38,7 +38,7 @@ const Footer = React.memo(() => {
               </p>
             </div>
 
-            {/* Stylish Social Icons */}
+            {}
             <div className="flex items-center gap-4">
               {[
                 { name: 'Social', Icon: Share2 },
@@ -56,7 +56,7 @@ const Footer = React.memo(() => {
             </div>
           </div>
 
-          {/* Quick Navigation */}
+          {}
           <div className="space-y-8">
             <h4 className="text-[10px] font-black tracking-[0.3em] text-white/60 dark:text-text-muted/50 uppercase">Navigation</h4>
             <ul className="space-y-4">
@@ -78,7 +78,7 @@ const Footer = React.memo(() => {
             </ul>
           </div>
 
-          {/* Contact Details */}
+          {}
           <div className="space-y-8">
             <h4 className="text-[10px] font-black tracking-[0.3em] text-white/60 dark:text-text-muted/50 uppercase">Connect</h4>
             <div className="space-y-5">
@@ -105,7 +105,7 @@ const Footer = React.memo(() => {
             </div>
           </div>
 
-          {/* Experience Section */}
+          {}
           <div className="space-y-8">
             <h4 className="text-[10px] font-black tracking-[0.3em] text-white/60 dark:text-text-muted/50 uppercase">The Experience</h4>
             <div className="bg-white/10 dark:bg-background-muted backdrop-blur-md rounded-[2rem] p-8 border border-white/20 dark:border-border/10 space-y-4 shadow-2xl">
@@ -120,7 +120,7 @@ const Footer = React.memo(() => {
           </div>
         </div>
 
-        {/* Bottom Bar */}
+        {}
         <div className="pb-12 md:pb-0 pt-6 border-t border-white/10 dark:border-border/10 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex flex-col items-center md:items-start gap-2">
             <p className="text-[10px] font-black text-white/60 dark:text-text-muted/40 tracking-[0.2em] uppercase">

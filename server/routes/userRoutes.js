@@ -1,11 +1,11 @@
 import express from 'express';
 import userController from '../controllers/userController.js';
 import { protect } from '../middleware/authMiddleware.js';
-import upload from '../middleware/uploadMiddleware.js';
+import { upload } from '../config/cloudinaryConfig.js';
 
 const router = express.Router();
 
-// User profile routes
+
 router.get('/profile', protect, userController.getProfile);
 router.put('/profile', protect, userController.updateProfile);
 router.post('/avatar', protect, upload.single('avatar'), userController.updateAvatar);
@@ -19,11 +19,11 @@ router.put('/change-email', protect, userController.changeEmail);
 router.put('/change-password', protect, userController.changePassword);
 router.delete('/address/:addressId', protect, userController.deleteAddress);
 
-// Admin only routes for user management
-router.get('/', userController.getAllUsers);
-router.post('/', userController.createUser);
-router.put('/:id', userController.updateUser);
-router.delete('/:id', userController.deleteUser);
-router.patch('/:id/toggle-status', userController.toggleUserStatus);
+
+router.get('/', protect, userController.getAllUsers);
+router.post('/', protect, userController.createUser);
+router.put('/:id', protect, userController.updateUser);
+router.delete('/:id', protect, userController.deleteUser);
+router.patch('/:id/toggle-status', protect, userController.toggleUserStatus);
 
 export default router;

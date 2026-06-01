@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import './index.css';
 
-// Lazy load components
+
 const AdminLogin = lazy(() => import('./pages/Admin/AdminLogin'));
 const AdminDashboard = lazy(() => import('./pages/Admin/AdminDashboard'));
 const RegisterPage = lazy(() => import('./pages/Register/RegisterPage'));
@@ -47,7 +47,7 @@ function App() {
             <ErrorBoundary>
               <Suspense fallback={<PageLoader />}>
                 <Routes>
-                  {/* Admin Routes */}
+                  {}
                   <Route path="/admin/login" element={<AdminLogin />} />
                   <Route path="/admin/dashboard" element={
                     <ProtectedRoute allowedRoles={['admin']}>
@@ -55,7 +55,7 @@ function App() {
                     </ProtectedRoute>
                   } />
 
-                  {/* Staff Routes */}
+                  {}
                   <Route path="/staff/login" element={<StaffLogin />} />
                   <Route path="/kitchen/dashboard" element={
                     <ProtectedRoute allowedRoles={['kitchen']}>
@@ -68,13 +68,13 @@ function App() {
                     </ProtectedRoute>
                   } />
 
-                  {/* General Routes */}
+                  {}
                   <Route path="/" element={<LandingPage />} />
                   <Route path="/register" element={<RegisterPage />} />
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/error" element={<ErrorPage />} />
 
-                  {/* Protected User Routes */}
+                  {}
                   <Route path="/home" element={
                     <ProtectedRoute>
                       <HomePage />

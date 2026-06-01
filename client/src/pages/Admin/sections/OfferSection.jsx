@@ -42,7 +42,7 @@ const OfferSection = () => {
     priority: 0,
     isActive: true
   });
-  const [selectionMode, setSelectionMode] = useState('category'); // 'category' or 'item'
+  const [selectionMode, setSelectionMode] = useState('category'); 
   const [itemCategoryFilter, setItemCategoryFilter] = useState('all');
 
   useEffect(() => {
@@ -276,7 +276,7 @@ const OfferSection = () => {
         ))}
       </div>
 
-      {/* Pagination */}
+      {}
       {totalPages > 1 && (
         <div className="mt-8 p-6 bg-background-card rounded-[2rem] border border-border/40 flex items-center justify-between shadow-sm">
           <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">
@@ -343,7 +343,7 @@ const OfferSection = () => {
                 <textarea required value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full p-4 bg-background border border-border/40 rounded-2xl focus:border-primary outline-none transition-all font-bold min-h-[80px]" placeholder="Describe the offer..." />
               </div>
 
-              {/* Scheduling */}
+              {}
               <div className="space-y-4 pt-2 border-t border-border/20">
                 <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Active Schedule</label>
                 <div className="flex items-center justify-between p-4 bg-background rounded-2xl border border-border/40">

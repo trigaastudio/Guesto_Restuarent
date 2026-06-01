@@ -8,8 +8,8 @@ const FloatingCart = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Default to minimized on page load to prevent unwanted popups
-  // Only open when the user explicitly clicks it
+  
+  
   const [isMinimized, setIsMinimized] = useState(true);
 
   const originalTotal = React.useMemo(() => {
@@ -43,7 +43,7 @@ const FloatingCart = () => {
   const platformFee = settings?.operationalSettings?.platformFee || 0;
 
   const discount = Math.max(0, Math.round(originalTotal - subtotal));
-  const total = Math.round(subtotal + platformFee); // Excludes delivery since address isn't chosen yet
+  const total = Math.round(subtotal + platformFee); 
 
   if (isMinimized) {
     return (
@@ -167,7 +167,7 @@ const QuantityInput = ({ item, updateQuantity }) => {
                     {item.selectedSize ? `size: ${item.selectedSize}` : (item.category?.name || 'Main Course')}
                   </p>
 
-                  {/* Combo Items */}
+                  {}
                   {item.isCombo && item.comboItems?.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {item.comboItems.map((ci, cIdx) => (
@@ -178,7 +178,7 @@ const QuantityInput = ({ item, updateQuantity }) => {
                     </div>
                   )}
 
-                  {/* Included Add-ons */}
+                  {}
                   {!item.isCombo && item.variants?.find(v => v.size === item.selectedSize)?.includedItems?.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {item.variants.find(v => v.size === item.selectedSize).includedItems.map((ii, iIdx) => (
@@ -189,7 +189,7 @@ const QuantityInput = ({ item, updateQuantity }) => {
                     </div>
                   )}
 
-                  {/* BOGO Offer */}
+                  {}
                   {item.bogoItem && item.variants?.find(v => v.size === item.selectedSize)?.isBOGO && (
                     <div className="mt-1 inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[8px] font-bold px-1.5 py-0.5 rounded border border-emerald-500/20">
                       🎁 Free {item.bogoItem.name} {item.bogoItem.size ? `(${item.bogoItem.size})` : ''} x {item.bogoItem.quantity || item.quantity}

@@ -22,7 +22,7 @@
 
   --font-sans: "Inter", "sans-serif";
 
-  /* Custom Breakpoints */
+  
   --breakpoint-sm: 320px;
   --breakpoint-md: 641px;
   --breakpoint-lg: 1008px;
@@ -112,7 +112,7 @@ body {
   position: relative;
 }
 
-/* Prevent layout shift on fixed elements */
+
 .fixed {
   padding-right: var(--scrollbar-pad, 0px);
 }
@@ -132,7 +132,7 @@ body {
     scrollbar-width: none;
   }
 
-  /* Custom Scrollbar - Minimal & Non-shifting */
+  
   ::-webkit-scrollbar {
     width: 12px;
   }
@@ -149,7 +149,7 @@ body {
     background-color: var(--color-text-muted);
   }
 
-  /* SweetAlert Theme Overrides */
+  
   .swal2-popup {
     background-color: var(--color-background-card) !important;
     color: var(--color-text-primary) !important;
@@ -250,7 +250,7 @@ body {
   animation: progress-vertical 1s ease-out forwards;
 }
 
-/* Global SweetAlert2 Z-Index Fix */
+
 .swal2-container {
   z-index: 9999 !important;
 }
@@ -259,7 +259,7 @@ body {
   z-index: 10000 !important;
 }
 
-/* Hide number input arrows globally */
+
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;

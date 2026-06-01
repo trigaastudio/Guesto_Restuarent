@@ -63,19 +63,19 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [settings, setSettings] = useState(null);
   const [isStatsLoading, setIsStatsLoading] = useState(true);
-  const [chartTimeframe, setChartTimeframe] = useState('week'); // 'week' or 'month'
+  const [chartTimeframe, setChartTimeframe] = useState('week'); 
   const [notifications, setNotifications] = useState(JSON.parse(localStorage.getItem('admin_notifications') || '[]'));
   const [showNotifications, setShowNotifications] = useState(false);
   const admin = JSON.parse(localStorage.getItem('admin_user') || '{}');
 
-  // Notification Audio
+  
   const notificationSound = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'));
 
   useEffect(() => {
     const socket = io(`${window.location.protocol}//${window.location.hostname}:5000`);
 
     socket.on('newOrder', (data) => {
-      // Strictly filter notifications: Only Delivery orders from User source
+      
       const isDelivery = data.order?.orderType === 'delivery' || data.order?.orderType === 'online';
       const isFromUser = data.order?.orderSource === 'user' || data.order?.orderSource === 'online';
 
@@ -106,7 +106,7 @@ const AdminDashboard = () => {
       setRefreshKey(prev => prev + 1);
     });
 
-    // Stock alerts are now excluded as requested
+    
     socket.off('stockAlert');
 
     const handleDbChange = () => {
@@ -214,11 +214,11 @@ const AdminDashboard = () => {
   const getFriendlyStatus = (order) => {
     if (!order) return { label: 'Unknown', color: 'bg-background-muted/10 text-text-muted border-border-light' };
 
-    // Terminal States
+    
     if (order.orderStatus === 'cancelled') return { label: 'Cancelled', color: 'bg-status-off/10 text-status-unavailable border-status-off/20' };
     if (order.orderStatus === 'delivered' || order.orderStatus === 'completed') return { label: 'Delivered', color: 'bg-primary/10 text-primary border-primary/20' };
 
-    // Active States
+    
     if (order.orderStatus === 'placed') return { label: 'New Order', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' };
     if (order.orderStatus === 'out-for-delivery') return { label: 'Out for Delivery', color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' };
 
@@ -438,7 +438,7 @@ const AdminDashboard = () => {
                 )}
               </button>
 
-              {/* Notification Dropdown */}
+              {}
               {showNotifications && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
@@ -536,7 +536,7 @@ const AdminDashboard = () => {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Total Orders Card */}
+                    {}
                     <div
                       onClick={() => navigateWithFilter('Orders', 'history')}
                       className="bg-background-card p-6 rounded-[2rem] border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)] transition-all relative overflow-hidden group cursor-pointer active:scale-[0.98]"
@@ -557,7 +557,7 @@ const AdminDashboard = () => {
                       <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-125" />
                     </div>
 
-                    {/* Dining Status Card */}
+                    {}
                     <div
                       onClick={() => navigateWithFilter('Orders', 'dine-in')}
                       className="bg-background-card p-6 rounded-[2rem] border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)] transition-all relative overflow-hidden group cursor-pointer active:scale-[0.98]"
@@ -584,7 +584,7 @@ const AdminDashboard = () => {
                       <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-125" />
                     </div>
 
-                    {/* Today Revenue Card */}
+                    {}
                     <div
                       onClick={() => handleTabChange('Sales')}
                       className="bg-background-card p-6 rounded-[2rem] border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)] transition-all relative overflow-hidden group cursor-pointer active:scale-[0.98]"

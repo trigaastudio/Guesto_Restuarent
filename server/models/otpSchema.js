@@ -22,19 +22,19 @@ const otpSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now,
-    expires: 60 * 5, // The document will be automatically deleted after 5 minutes of its creation
+    expires: 60 * 5, 
   },
 });
 
 import Settings from './settingsSchema.js';
 
-// Define a function to send emails
+
 async function sendVerificationEmail(email, otp) {
   try {
     const settings = await Settings.getSettings();
     const restaurantName = settings.restaurantDetails.name || "GuestO";
     
-    // Explicitly use the golden logo from public folder for maximum visibility in all modes
+    
     let primaryLogoPath = '/logo-golden.png';
     
     const attachments = [];
@@ -106,9 +106,9 @@ async function sendVerificationEmail(email, otp) {
   }
 }
 
-// Define a post-save hook to send email after the document has been saved
+
 otpSchema.pre("save", async function () {
-  // Only send an email when a new document is created
+  
   if (this.isNew) {
     await sendVerificationEmail(this.email, this.otp);
   }

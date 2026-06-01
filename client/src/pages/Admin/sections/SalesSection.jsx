@@ -21,7 +21,8 @@ import {
 import Pagination from '../../../components/Pagination/Pagination';
 import api from '../../../api/axiosInstance';
 import { showToast } from '../../../utils/sweetAlert';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -32,7 +33,7 @@ const SalesSection = () => {
   const [itemStats, setItemStats] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
 
-  // Filters
+  
   const [filters, setFilters] = useState({
     startDate: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0],
@@ -41,11 +42,11 @@ const SalesSection = () => {
     menuItem: 'all'
   });
 
-  const [activeTab, setActiveTab] = useState('summary'); // summary, items, detailed
+  const [activeTab, setActiveTab] = useState('summary'); 
   const [itemSearchTerm, setItemSearchTerm] = useState('');
   const [itemSortConfig, setItemSortConfig] = useState({ key: 'qty', direction: 'desc' });
 
-  // Pagination
+  
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -105,26 +106,48 @@ const SalesSection = () => {
     });
   };
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
+    
+    const sanitizeValue = (val) => {
+      if (typeof val === 'string' && /^[=+\-@]/.test(val)) {
+        return "'" + val;
+      }
+      return val;
+    };
+
     const dataToExport = activeTab === 'summary' ? itemStats.map(i => ({
-      'Item Name': i.name,
-      'Size': i.size,
+      'Item Name': sanitizeValue(i.name),
+      'Size': sanitizeValue(i.size),
       'Qty Sold': i.qty,
       'Revenue': Math.round(i.revenue)
     })) : salesData.orders.map(o => ({
-      'Order #': o.orderNumber,
+      'Order #': sanitizeValue(o.orderNumber),
       'Date': new Date(o.createdAt).toLocaleDateString(),
-      'Type': o.orderType.toUpperCase(),
-      'Source': o.orderSource.toUpperCase(),
-      'Status': o.orderStatus.toUpperCase(),
-      'Items': o.items.map(i => `${i.name || i.menuItem?.name || 'Item'} (${i.quantity})`).join(', '),
+      'Type': sanitizeValue(o.orderType.toUpperCase()),
+      'Source': sanitizeValue(o.orderSource.toUpperCase()),
+      'Status': sanitizeValue(o.orderStatus.toUpperCase()),
+      'Items': sanitizeValue(o.items.map(i => `${i.name || i.menuItem?.name || 'Item'} (${i.quantity})`).join(', ')),
       'Revenue': o.totalAmount
     }));
 
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, activeTab === 'summary' ? 'Item Sales' : 'Orders');
-    XLSX.writeFile(wb, `Sales_Report_${filters.startDate}_to_${filters.endDate}.xlsx`);
+    if (dataToExport.length === 0) {
+      showToast('info', 'No data to export');
+      return;
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet(activeTab === 'summary' ? 'Item Sales' : 'Orders');
+
+    const headers = Object.keys(dataToExport[0]);
+    sheet.columns = headers.map(header => ({ header, key: header, width: 20 }));
+    
+    
+    sheet.getRow(1).font = { bold: true };
+
+    sheet.addRows(dataToExport);
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `Sales_Report_${filters.startDate}_to_${filters.endDate}.xlsx`);
   };
 
   const exportToPDF = () => {
@@ -166,11 +189,11 @@ const SalesSection = () => {
   const getFriendlyStatus = (order) => {
     if (!order) return { label: 'Unknown', color: 'bg-background-muted/10 text-text-muted border-border-light' };
     
-    // Terminal States
+    
     if (order.orderStatus === 'cancelled') return { label: 'Cancelled', color: 'bg-status-off/10 text-status-unavailable border-status-off/20' };
     if (order.orderStatus === 'delivered' || order.orderStatus === 'completed') return { label: 'Delivered', color: 'bg-primary/10 text-primary border-primary/20' };
     
-    // Active States
+    
     if (order.orderStatus === 'placed') return { label: 'New Order', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' };
     if (order.orderStatus === 'out-for-delivery') return { label: 'Out for Delivery', color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' };
 
@@ -188,7 +211,7 @@ const SalesSection = () => {
     return { label: order.orderStatus, color: 'bg-background-muted/10 text-text-muted border-border-light' };
   };
 
-  // StatCard removed as part of layout redesign
+  
 
   const handleSort = (key) => {
     let direction = 'desc';
@@ -216,7 +239,7 @@ const SalesSection = () => {
 
   const sortedItems = getSortedItems();
 
-  // Pagination logic
+  
   const getPaginatedData = (data) => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return data.slice(startIndex, startIndex + itemsPerPage);
@@ -255,7 +278,7 @@ const SalesSection = () => {
         </div>
       </div>
 
-      {/* Filters Bar */}
+      {}
       <div className="bg-background-card p-6 rounded-[2.5rem] border border-border/40 shadow-sm">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="space-y-1.5">
@@ -324,11 +347,11 @@ const SalesSection = () => {
         </div>
       </div>
 
-      {/* Revenue Section Layout */}
+      {}
       <div className="space-y-4">
         <h3 className="text-xl font-black text-text-primary tracking-tight">Revenue</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Column 1: Today & Week */}
+          {}
           <div className="flex flex-col gap-4">
             {[
               { label: 'Today', data: periodicData.daily, color: 'text-blue-500' },
@@ -344,7 +367,7 @@ const SalesSection = () => {
             ))}
           </div>
 
-          {/* Column 2: Total Orders */}
+          {}
           <div className="bg-background-card p-5 rounded-3xl border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)] transition-all relative overflow-hidden group flex flex-col justify-between min-h-[160px]">
             <div className="flex items-center justify-between">
               <div className="p-2.5 bg-purple-500/10 text-purple-500 rounded-xl group-hover:scale-110 transition-transform">
@@ -358,7 +381,7 @@ const SalesSection = () => {
             <div className="absolute top-0 right-0 w-24 h-24 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-125 opacity-5 bg-purple-500" />
           </div>
 
-          {/* Column 3: Month & Year */}
+          {}
           <div className="flex flex-col gap-4">
             {[
               { label: 'This Month', data: periodicData.monthly, color: 'text-orange-500' },
@@ -376,7 +399,7 @@ const SalesSection = () => {
         </div>
       </div>
 
-      {/* Tabs for detailed view */}
+      {}
       <div className="bg-background-card rounded-[2.5rem] border border-border/40 shadow-sm overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border-light bg-background-muted/20 px-6 gap-4">
           <div className="flex items-center">

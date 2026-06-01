@@ -24,7 +24,7 @@ const createRazorpayOrder = async (req, res) => {
     });
 
     const options = {
-      amount: Math.round(amount * 100), // amount in the smallest currency unit
+      amount: Math.round(amount * 100), 
       currency,
       receipt,
     };
@@ -55,7 +55,7 @@ const verifyPayment = async (req, res) => {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
-      orderId // The DB Order ID
+      orderId 
     } = req.body;
 
     const body = razorpay_order_id + "|" + razorpay_payment_id;
@@ -68,7 +68,7 @@ const verifyPayment = async (req, res) => {
     const isAuthentic = expectedSignature === razorpay_signature;
 
     if (isAuthentic) {
-      // Payment is verified, update the order in database
+      
       const order = await Order.findById(orderId);
       if (!order) {
         return res.status(404).json({ success: false, message: 'Order not found' });
@@ -80,7 +80,7 @@ const verifyPayment = async (req, res) => {
       order.razorpayPaymentId = razorpay_payment_id;
       await order.save();
       
-      // Notify Admin after payment success
+      
       getIO().emit('newOrder', {
         order: order,
         message: `🔔 New ${order.orderType.toUpperCase()} Order Received! (#${order.orderNumber})`

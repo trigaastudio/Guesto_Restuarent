@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import socketPlugin from '../plugins/socketPlugin.js';
 
-// Apply socket.io plugin globally to all schemas BEFORE they are loaded
+
 mongoose.plugin(socketPlugin);
 
 import Menu from '../models/menuSchema.js';
@@ -15,7 +15,7 @@ const connectDB = async () => {
     const conn = await mongoose.connect(process.env.MONGODB_URI);
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
 
-    // Run price migration
+    
     try {
       const items = await Menu.find({});
       let count = 0;

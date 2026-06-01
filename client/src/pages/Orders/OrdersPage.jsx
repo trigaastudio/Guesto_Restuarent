@@ -30,7 +30,7 @@ const OrdersPage = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
 
-    // Load Razorpay Script
+    
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.async = true;
@@ -167,7 +167,7 @@ const OrdersPage = () => {
   const handleRepayment = async (order) => {
     try {
       setLoading(true);
-      // 1. Create Razorpay Order
+      
       const { data: { data: razorpayOrder } } = await api.post('/api/payments/create-order', {
         amount: order.totalAmount,
         currency: 'INR',
@@ -183,7 +183,7 @@ const OrdersPage = () => {
         image: `${window.location.origin}${settings?.branding?.logoGold || '/logo-golden.png'}`,
         order_id: razorpayOrder.id,
         handler: async function (paymentResponse) {
-          // 2. Verify Payment and Update Order
+          
           try {
             const verificationData = {
               razorpay_order_id: paymentResponse.razorpay_order_id,
@@ -221,7 +221,7 @@ const OrdersPage = () => {
         },
         modal: {
           ondismiss: function () {
-            // Just refresh the orders to show latest status
+            
             fetchOrders();
           }
         },
@@ -320,7 +320,7 @@ const OrdersPage = () => {
             </div>
           ) : orders.length === 0 ? (
             <div className="flex flex-col items-center justify-center w-full py-10 px-10 text-center space-y-10 relative overflow-hidden animate-in fade-in zoom-in duration-1000">
-              {/* Background Cinematic Effects */}
+              {}
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[120px] pointer-events-none animate-pulse"></div>
 
               <div className="relative">
@@ -351,7 +351,7 @@ const OrdersPage = () => {
             </div>
           ) : (
             <div className="max-w-6xl mx-auto w-full space-y-6 relative z-10">
-              {/* Orders List */}
+              {}
               <div className="space-y-8 relative z-10">
                 <div className="bg-background-card rounded-[2.5rem] p-6 md:p-8 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.03)] min-h-[400px] flex flex-col relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
@@ -383,10 +383,10 @@ const OrdersPage = () => {
                         }}
                         className="bg-background rounded-xl border border-border/60 hover:shadow-md transition-all duration-300 overflow-hidden group cursor-pointer active:scale-[0.99]"
                       >
-                        {/* Each order is a clean row on desktop */}
+                        {}
                         <div className="p-5 md:p-6 flex flex-col md:flex-row items-start md:items-center gap-6">
 
-                          {/* 1. Item Image (First item) */}
+                          {}
                           <div className="w-20 h-20 md:w-24 md:h-24 bg-background-muted/30 rounded-lg p-2 border border-border/20 flex-shrink-0 flex items-center justify-center relative">
                             <img
                               src={order.items[0]?.image || order.items[0]?.menuItem?.image || '/placeholder-food.jpg'}
@@ -400,7 +400,7 @@ const OrdersPage = () => {
                             )}
                           </div>
 
-                          {/* 2. Order Info & Items */}
+                          {}
                           <div className="flex-1 min-w-0 space-y-1">
                             <div className="space-y-0.5">
                               <h4 className="text-sm md:text-base font-black text-text-primary tracking-tight truncate capitalize group-hover:text-primary transition-colors">
@@ -430,7 +430,7 @@ const OrdersPage = () => {
                             </p>
                           </div>
 
-                          {/* 3. Price Section */}
+                          {}
                           <div className="w-full md:w-auto md:min-w-[120px] md:text-center">
                             <p className="text-lg font-black text-text-primary tracking-tighter">₹{(order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0)}</p>
                             <div className="flex items-center gap-1.5 md:justify-center mt-0.5">
@@ -442,7 +442,7 @@ const OrdersPage = () => {
                             </div>
                           </div>
 
-                          {/* 4. Status Section */}
+                          {}
                           <div className="w-full md:w-auto md:min-w-[200px] space-y-1.5">
                             <div className="flex items-center gap-2">
                               <div className={`w-2.5 h-2.5 rounded-full ${order.orderStatus === 'delivered' ? 'bg-emerald-500' :
@@ -470,11 +470,11 @@ const OrdersPage = () => {
                             </div>
                           </div>
 
-                          {/* 5. Primary Actions Section */}
+                          {}
                           <div className="w-full md:w-auto flex items-center justify-end gap-4 min-w-[150px]">
                             {order.orderStatus !== 'cancelled' && (
                               <div className="flex items-center gap-3 w-full justify-end">
-                                {/* Cancel button removed */}
+                                {}
 
                                 <button
                                   onClick={(e) => { e.stopPropagation(); navigate(`/track-order/${order._id}`); }}
@@ -486,7 +486,7 @@ const OrdersPage = () => {
                               </div>
                             )}
 
-                            {/* Try Again button removed as per user request */}
+                            {}
                           </div>
                         </div>
                       </div>
@@ -509,7 +509,7 @@ const OrdersPage = () => {
           )}
         </main>
       </div>
-      {/* Order Details Modal */}
+      {}
       {showDetailsModal && selectedOrder && (
         <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 md:p-6 animate-in fade-in duration-300">
           <div
@@ -517,7 +517,7 @@ const OrdersPage = () => {
             onClick={() => setShowDetailsModal(false)}
           />
           <div className="relative w-full max-w-xl bg-white dark:bg-background-card rounded-[2.5rem] shadow-[0_30px_100px_rgba(0,0,0,0.4)] overflow-hidden animate-in zoom-in-95 duration-300">
-            {/* Modal Header */}
+            {}
             <div className="p-6 md:p-8 border-b border-border/10 flex items-center justify-between">
               <div className="space-y-1">
                 <p className="text-[10px] font-black text-primary uppercase tracking-widest">Order Details</p>
@@ -531,7 +531,7 @@ const OrdersPage = () => {
               </button>
             </div>
 
-            {/* Modal Content */}
+            {}
             <div className="p-6 md:p-8 max-h-[60vh] overflow-y-auto custom-scrollbar space-y-6">
               <div className="space-y-4">
                 {selectedOrder.items.map((item, idx) => (

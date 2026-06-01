@@ -6,7 +6,11 @@ export const createOffer = async (req, res) => {
   try {
     const offerData = { ...req.body };
     
-    // Parse JSON strings from FormData
+    
+    delete offerData.cloudinaryPublicId;
+    delete offerData.bannerImage;
+    
+    
     if (typeof offerData.specificDays === 'string') offerData.specificDays = JSON.parse(offerData.specificDays);
     if (typeof offerData.applicableItems === 'string') offerData.applicableItems = JSON.parse(offerData.applicableItems);
     if (typeof offerData.applicableCategories === 'string') offerData.applicableCategories = JSON.parse(offerData.applicableCategories);
@@ -45,13 +49,17 @@ export const updateOffer = async (req, res) => {
   try {
     const offerData = { ...req.body };
 
-    // Parse JSON strings from FormData
+    
+    delete offerData.cloudinaryPublicId;
+    delete offerData.bannerImage;
+
+    
     if (typeof offerData.specificDays === 'string') offerData.specificDays = JSON.parse(offerData.specificDays);
     if (typeof offerData.applicableItems === 'string') offerData.applicableItems = JSON.parse(offerData.applicableItems);
     if (typeof offerData.applicableCategories === 'string') offerData.applicableCategories = JSON.parse(offerData.applicableCategories);
 
     if (req.file) {
-      // Delete old image if exists
+      
       const oldOffer = await Offer.findById(req.params.id);
       if (oldOffer?.cloudinaryPublicId) {
         await cloudinary.uploader.destroy(oldOffer.cloudinaryPublicId);
@@ -74,7 +82,7 @@ export const deleteOffer = async (req, res) => {
     const offer = await Offer.findById(req.params.id);
     if (!offer) return res.status(404).json({ success: false, message: 'Offer not found' });
 
-    // Delete image from Cloudinary
+    
     if (offer.cloudinaryPublicId) {
       await cloudinary.uploader.destroy(offer.cloudinaryPublicId);
     }

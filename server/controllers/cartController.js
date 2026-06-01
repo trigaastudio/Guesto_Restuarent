@@ -25,11 +25,11 @@ class CartController {
 
         return {
           ...menuData,
-          menuItemId: menuData._id, // Keep menu ID separate
+          menuItemId: menuData._id, 
           quantity: item.quantity,
           selectedSize: item.size,
           bogoItem: item.bogoItem,
-          _id: item._id // This is the unique ID for this cart entry
+          _id: item._id 
         };
       });
   }
@@ -37,12 +37,12 @@ class CartController {
   async addToCart(req, res) {
     try {
       const { menuItemId, quantity, size, selectedSize } = req.body;
-      const finalSize = size || selectedSize; // Support both names
+      const finalSize = size || selectedSize; 
       const userId = req.user._id;
 
       let cart = await Cart.findOne({ user: userId });
       
-      // Fetch menu item to check for BOGO
+      
       const menuItem = await Menu.findById(menuItemId);
       const variant = menuItem?.variants?.find(v => v.size === finalSize);
       
@@ -136,7 +136,7 @@ class CartController {
   async updateQuantity(req, res) {
     try {
       const { quantity } = req.body;
-      const itemId = req.params.id; // Cart Item ID
+      const itemId = req.params.id; 
       const userId = req.user._id;
 
       const cart = await Cart.findOne({ user: userId });

@@ -143,12 +143,12 @@ const StaffManagement = () => {
 
     const payload = { ...currentStaff };
     if (!isEditing && payload.role === 'delivery' && !payload.password) {
-      payload.password = 'delivery123'; // Default password for delivery staff
+      payload.password = 'delivery123'; 
     }
 
     try {
       if (isEditing) {
-        // If password is empty, don't update it
+        
         const updateData = { ...currentStaff };
         if (!updateData.password) delete updateData.password;
 
@@ -186,7 +186,7 @@ const StaffManagement = () => {
   const handleToggleStatus = useCallback(async (staff) => {
     const newIsActive = !staff.isActive;
     
-    // Optimistic UI update
+    
     setStaffList(prevList => 
       prevList.map(s => 
         s._id === staff._id ? { ...s, isActive: newIsActive } : s
@@ -198,7 +198,7 @@ const StaffManagement = () => {
       await api.put(`/api/staff/${staff._id}`, updateData);
       showToast('success', `Staff ${newIsActive ? 'activated' : 'deactivated'} successfully`);
     } catch (error) {
-      // Revert on error
+      
       setStaffList(prevList => 
         prevList.map(s => 
           s._id === staff._id ? { ...s, isActive: !newIsActive } : s
@@ -345,7 +345,7 @@ const StaffManagement = () => {
         />
       </div>
 
-      {/* Staff Modal */}
+      {}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-hidden">
           <div className="bg-background-card w-full max-w-lg rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">

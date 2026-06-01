@@ -2,10 +2,7 @@ import React from 'react';
 import { Clock, Moon, Zap, AlertTriangle } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 
-/**
- * StoreStatusBanner — Floating side badge.
- * Sticky and compact, no close button.
- */
+
 const StoreStatusBanner = () => {
   const { settings, checkStoreStatus } = useCart();
 
@@ -17,7 +14,7 @@ const StoreStatusBanner = () => {
   const { isBusyMode, busyModeExtraTime, businessHours } = operationalSettings;
   const storeStatus = checkStoreStatus();
 
-  // If everything is normal and open, show nothing
+  
   if (storeStatus.isOpen && !isBusyMode) return null;
 
   let icon = <Clock size={16} className="text-white" />;
