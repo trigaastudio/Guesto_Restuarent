@@ -17,3 +17,5 @@ export default defineConfig({
     include: ['jspdf', 'jspdf-autotable', 'exceljs', 'file-saver'],
   },
 })
+
+

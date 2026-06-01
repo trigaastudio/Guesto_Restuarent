@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Package, CheckCircle2, Truck, Timer, MapPin,
   Phone, ChevronRight, Clock, Star,
-  Home, HelpCircle, XCircle, Info
+  Home, HelpCircle, XCircle, Info, RefreshCw
 } from 'lucide-react';
 import api from '../../api/axiosInstance';
 import Navbar from '../../components/Navbar/Navbar';
@@ -52,12 +52,16 @@ const TrackOrderPage = () => {
     };
     document.addEventListener('mousedown', handleClickOutside);
 
+    const refreshTimer = setInterval(() => {
+      fetchOrderDetails();
+    }, 60000);
+
     return () => {
-      socket.emit('leaveOrder', orderId);
       socket.off('connect', onConnect);
       socket.off('orderStatusUpdated', onOrderStatusUpdate);
       socket.disconnect();
       document.removeEventListener('mousedown', handleClickOutside);
+      clearInterval(refreshTimer);
     };
   }, [orderId]);
 
@@ -230,22 +234,33 @@ const TrackOrderPage = () => {
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-12 relative">
         {}
-        <button
-          onClick={() => navigate('/my-orders')}
-          className="flex items-center gap-2 text-[11px] font-bold text-text-muted hover:text-primary mb-8 transition-all"
-        >
-          <ArrowLeft size={14} />
-          Back to all orders
-        </button>
+        <div className="flex justify-between items-center mb-8">
+          <button
+            onClick={() => navigate('/my-orders')}
+            className="flex items-center gap-2 text-[11px] font-bold text-text-muted hover:text-primary transition-all"
+          >
+            <ArrowLeft size={14} />
+            Back to all orders
+          </button>
+          
+          <button
+            onClick={fetchOrderDetails}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background-card border border-border/40 text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-primary hover:border-primary/30 transition-all active:scale-95 shadow-sm"
+            title="Refresh Order Details"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin text-primary' : ''} />
+            Refresh
+          </button>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-          {}
+          {/* LEFT COLUMN: Tracking & Items */}
           <div className="lg:col-span-8 space-y-6">
 
-            {}
+            {/* Product & Tracking Card */}
             <div className="bg-background-card rounded-2xl border border-border/60 shadow-sm overflow-hidden">
-              {}
+              {/* Product Header */}
               <div className="p-6 border-b border-border/40 flex flex-col sm:flex-row gap-6">
                 <div className="w-24 h-24 sm:w-20 sm:h-20 bg-background rounded-lg border border-border/40 p-2 flex-shrink-0">
                   <img
@@ -311,7 +326,7 @@ const TrackOrderPage = () => {
                           </p>
                           {step.id === 'out-for-delivery' && order.assignedDeliveryBoy && isActive && (
                             <div className="mt-4 pt-3 border-t border-border/10">
-                              <span className="block text-[9px] font-black uppercase tracking-widest text-primary mb-2">Assigned Delivery Partner</span>
+                              <span className="block text-[9px] font-black uppercase tracking-widest text-primary mb-2">Assigned Delivery Boy</span>
                               <div className="flex items-center gap-2">
                                 <div className="w-7 h-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
                                   <Truck size={12} className="text-primary" />
@@ -434,6 +449,18 @@ const TrackOrderPage = () => {
                                   {ci.quantity || 1}x {ci.name}
                                 </span>
                               ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* BOGO Items */}
+                        {item.bogoItem && (
+                          <div className="mt-1.5 space-y-1 pl-2 border-l-2 border-emerald-500/30">
+                            <span className="text-[8px] font-bold text-emerald-600 uppercase tracking-wider block">Free Add-on:</span>
+                            <div className="flex flex-wrap gap-1">
+                              <span className="inline-flex items-center text-text-muted text-[9px] font-semibold">
+                                🎁 {item.bogoItem.quantity || item.quantity}x {item.bogoItem.name} {item.bogoItem.size ? `(${item.bogoItem.size})` : ''}
+                              </span>
                             </div>
                           </div>
                         )}

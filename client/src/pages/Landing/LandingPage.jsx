@@ -277,7 +277,7 @@ const LandingPage = () => {
             <OffersCarousel
               onOfferClick={(offer) => {
                 setSelectedCategory('all');
-                setOfferFilter(offer._id);
+                setOfferFilter(offer.offerType);
                 setOfferName(offer.title);
                 setPage(1);
                 setHasMore(true);
@@ -440,6 +440,7 @@ const LandingPage = () => {
               offerFilter={offerFilter}
               handlePromoFilterToggle={handlePromoFilterToggle}
               onClearAll={clearAllFilters}
+              hideNameSort={true}
               onAddClick={(menu) => {
                 setSelectedMenu(menu);
                 setIsModalOpen(true);

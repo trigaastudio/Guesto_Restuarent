@@ -395,6 +395,7 @@ const ProfilePage = () => {
                           onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
                           className="w-full pl-14 pr-5 py-4 bg-background border border-border/40 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary/20 transition-all shadow-sm text-text-primary"
                           placeholder="Enter your phone number"
+                          maxLength={10}
                         />
                       </div>
                     </div>

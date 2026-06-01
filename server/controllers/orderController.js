@@ -114,6 +114,23 @@ const checkStockAvailability = async (items) => {
         }
       }
     }
+
+    if (variant && variant.isBOGO && variant.bogoItem) {
+      const bogoDoc = await Menu.findById(variant.bogoItem).populate('category');
+      if (bogoDoc) {
+        const bogoVariant = bogoDoc.variants?.find(v => v.size === variant.bogoVariant);
+        const bogoMultiplier = bogoVariant && bogoVariant.stockValue ? bogoVariant.stockValue : 1;
+        const bogoAmountNeeded = item.quantity * bogoMultiplier;
+
+        if (bogoDoc.category && bogoDoc.category.stockactive) {
+          if (bogoDoc.category.totalStock < bogoAmountNeeded) {
+            return { available: false, itemName: `${bogoDoc.name} (Free Item)` };
+          }
+        } else if (bogoDoc.totalStock < bogoAmountNeeded) {
+          return { available: false, itemName: `${bogoDoc.name} (Free Item)` };
+        }
+      }
+    }
   }
   return { available: true };
 };
@@ -237,6 +254,40 @@ const handleStock = async (items, type = 'reduce') => {
                 message: `ALERT: ${updatedIncluded.name} (ingredient) is running low (${updatedIncluded.totalStock} left)`
               });
             }
+          }
+        }
+      }
+
+      // Update BOGO item stock
+      if (variant && variant.isBOGO && variant.bogoItem) {
+        const bogoDoc = await Menu.findById(variant.bogoItem).populate('category');
+        if (bogoDoc) {
+          const bogoVariant = bogoDoc.variants?.find(v => v.size === variant.bogoVariant);
+          const bogoMultiplier = bogoVariant && bogoVariant.stockValue ? bogoVariant.stockValue : 1;
+          const bogoReduction = item.quantity * bogoMultiplier;
+          
+          if (bogoDoc.category && bogoDoc.category.stockactive) {
+            const updatedBogoCat = await Category.findByIdAndUpdate(
+              bogoDoc.category._id,
+              { $inc: { totalStock: factor * bogoReduction } },
+              { returnDocument: 'after' }
+            );
+            if (updatedBogoCat && updatedBogoCat.totalStock < 0) {
+              await Category.findByIdAndUpdate(bogoDoc.category._id, { totalStock: 0 });
+              updatedBogoCat.totalStock = 0;
+            }
+            if (updatedBogoCat) emitCategoryStockUpdate(updatedBogoCat._id, updatedBogoCat.totalStock);
+          } else {
+            const updatedBogoMenu = await Menu.findByIdAndUpdate(
+              variant.bogoItem,
+              { $inc: { totalStock: factor * bogoReduction } },
+              { returnDocument: 'after' }
+            );
+            if (updatedBogoMenu && updatedBogoMenu.totalStock < 0) {
+              await Menu.findByIdAndUpdate(variant.bogoItem, { totalStock: 0 });
+              updatedBogoMenu.totalStock = 0;
+            }
+            if (updatedBogoMenu) emitStockUpdate(updatedBogoMenu._id, updatedBogoMenu.totalStock);
           }
         }
       }
@@ -584,8 +635,9 @@ class OrderController {
           order: newOrder,
           message: `🔔 New ${newOrder.orderType.toUpperCase()} Order Received! (#${newOrder.orderNumber})`
         });
-        getIO().emit('ordersUpdated');
       }
+      getIO().emit('ordersUpdated');
+      getIO().emit('orderUpdated', newOrder);
     } catch (error) {
       console.error('Order Error Details:', error);
       res.status(500).json({
@@ -649,6 +701,7 @@ class OrderController {
       await order.save();
 
       getIO().emit('ordersUpdated');
+      getIO().emit('orderUpdated', order);
 
       res.status(200).json({
         success: true,
@@ -751,6 +804,7 @@ class OrderController {
         message: `🔔 New ${newOrder.orderType.toUpperCase()} Order Received! (#${newOrder.orderNumber})`
       });
       getIO().emit('ordersUpdated');
+      getIO().emit('orderUpdated', newOrder);
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }
@@ -951,6 +1005,7 @@ class OrderController {
       await order.populate('items.menuItem', 'name image');
 
       getIO().emit('ordersUpdated');
+      getIO().emit('orderUpdated', order);
       res.json({ success: true, data: order });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -987,6 +1042,7 @@ class OrderController {
       await order.populate('items.menuItem', 'name image');
 
       getIO().emit('ordersUpdated');
+      getIO().emit('orderUpdated', order);
       res.json({ success: true, data: order });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -1031,6 +1087,7 @@ class OrderController {
 
       await order.populate('items.menuItem', 'name image');
       getIO().emit('ordersUpdated');
+      getIO().emit('orderUpdated', order);
       res.json({ success: true, data: order });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -1061,6 +1118,7 @@ class OrderController {
       }
 
       getIO().emit('ordersUpdated');
+      getIO().emit('orderUpdated', order);
       res.json({ success: true, data: order });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -1102,6 +1160,7 @@ class OrderController {
       await order.populate('items.menuItem', 'name image');
 
       getIO().emit('ordersUpdated');
+      getIO().emit('orderUpdated', order);
       res.json({ success: true, data: order });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -1178,6 +1237,7 @@ class OrderController {
 
       await order.populate('items.menuItem', 'name image');
       getIO().emit('ordersUpdated');
+      getIO().emit('orderUpdated', order);
       res.json({ success: true, data: order });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });

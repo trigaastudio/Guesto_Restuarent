@@ -292,6 +292,10 @@ const CartPage = () => {
           setDeliveryAddress(defaultAddr);
           localStorage.setItem('selectedDeliveryAddressId', defaultAddr._id);
           localStorage.setItem('selectedDeliveryAddressObj', JSON.stringify(defaultAddr));
+        } else {
+          setDeliveryAddress(null);
+          localStorage.removeItem('selectedDeliveryAddressId');
+          localStorage.removeItem('selectedDeliveryAddressObj');
         }
       }
     } catch (error) { console.error('Error fetching addresses:', error); }
@@ -410,7 +414,14 @@ const CartPage = () => {
       });
       return;
     }
-    if (!dineInTableId && !deliveryAddress) { Swal.fire({ title: 'Missing Address', text: 'Please select a delivery address.', icon: 'warning', confirmButtonColor: '#B91C1C' }); return; }
+    if (!dineInTableId && !deliveryAddress) { 
+      if (savedAddresses && savedAddresses.length > 0) {
+        setIsAddressListOpen(true);
+      } else {
+        setIsAddressModalOpen(true);
+      }
+      return; 
+    }
 
     setIsValidating(true);
     try {

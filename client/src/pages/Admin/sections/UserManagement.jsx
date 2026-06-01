@@ -411,6 +411,7 @@ const UserManagement = () => {
                           : 'border-border-main focus:border-primary'
                       }`}
                       placeholder="10-digit number"
+                      maxLength={10}
                     />
                   </div>
                 </div>

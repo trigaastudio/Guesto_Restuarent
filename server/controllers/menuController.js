@@ -112,13 +112,75 @@ export const getMenus = async (req, res) => {
     } else if (sortBy === 'name-az') {
       sortOption = { name: 1 };
     } else if (sortBy === 'rating') {
-      sortOption = { rating: -1 };
+      // Handled custom below
     }
 
     if (page && limit) {
+      if (sortBy === 'rating') {
+        const Order = mongoose.model('Order');
+        const topDishesRaw = await Order.aggregate([
+          { $match: { orderStatus: { $ne: 'cancelled' } } },
+          { $unwind: '$items' },
+          {
+            $group: {
+              _id: '$items.menuItem',
+              orders: { $sum: '$items.quantity' }
+            }
+          },
+          { $sort: { orders: -1 } }
+        ]);
+
+        const topDishMap = {};
+        topDishesRaw.forEach((d, index) => {
+          if (d._id) topDishMap[d._id.toString()] = index;
+        });
+
+        const allMenus = await menuRepository.getAll(filter, 0, 0, {});
+        
+        allMenus.sort((a, b) => {
+          const indexA = topDishMap[a._id.toString()] ?? Infinity;
+          const indexB = topDishMap[b._id.toString()] ?? Infinity;
+          return indexA - indexB;
+        });
+
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const paginatedMenus = allMenus.slice(skip, skip + parseInt(limit));
+        return res.status(200).json(paginatedMenus);
+      }
+
       const skip = (parseInt(page) - 1) * parseInt(limit);
       const menus = await menuRepository.getAll(filter, skip, parseInt(limit), sortOption);
       return res.status(200).json(menus);
+    }
+
+    if (sortBy === 'rating') {
+        const Order = mongoose.model('Order');
+        const topDishesRaw = await Order.aggregate([
+          { $match: { orderStatus: { $ne: 'cancelled' } } },
+          { $unwind: '$items' },
+          {
+            $group: {
+              _id: '$items.menuItem',
+              orders: { $sum: '$items.quantity' }
+            }
+          },
+          { $sort: { orders: -1 } }
+        ]);
+
+        const topDishMap = {};
+        topDishesRaw.forEach((d, index) => {
+          if (d._id) topDishMap[d._id.toString()] = index;
+        });
+
+        const menus = await menuRepository.getAll(filter, 0, 0, {});
+        
+        menus.sort((a, b) => {
+          const indexA = topDishMap[a._id.toString()] ?? Infinity;
+          const indexB = topDishMap[b._id.toString()] ?? Infinity;
+          return indexA - indexB;
+        });
+
+        return res.status(200).json(menus);
     }
 
     const menus = await menuRepository.getAll(filter, 0, 0, sortOption);
