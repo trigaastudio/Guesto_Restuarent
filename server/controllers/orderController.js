@@ -538,47 +538,63 @@ class OrderController {
         }
       }
 
+      const processedItems = await Promise.all(items.map(async item => {
+        const menuDoc = await Menu.findById(item.menuItem);
+        const variant = menuDoc?.variants?.find(v => v.size === item.size);
+
+        let comboItems = [];
+        if (menuDoc?.isCombo && menuDoc.comboItems) {
+          comboItems = await Promise.all(menuDoc.comboItems.map(async ci => {
+            const subDoc = await Menu.findById(ci.menuItem);
+            return { name: subDoc?.name || 'Combo Item', quantity: ci.quantity, price: ci.price };
+          }));
+        }
+
+        let includedItems = [];
+        if (variant?.includedItems) {
+          includedItems = await Promise.all(variant.includedItems.map(async ii => {
+            const incDoc = await Menu.findById(ii.menuItem);
+            return { name: incDoc?.name || 'Add-on Item', quantity: ii.quantity };
+          }));
+        }
+
+        const actualPrice = variant ? variant.price : (menuDoc?.hasOffer && menuDoc?.offerPrice != null ? menuDoc.offerPrice : menuDoc?.price || 0);
+        const calculatedTotalPrice = actualPrice * item.quantity;
+
+        return {
+          menuItem: item.menuItem,
+          name: menuDoc?.name || item.name || 'Unknown Item',
+          image: menuDoc?.image || item.image || '',
+          size: item.size,
+          quantity: item.quantity,
+          price: actualPrice,
+          unitPrice: actualPrice,
+          costPrice: variant?.costPrice || 0,
+          totalPrice: calculatedTotalPrice,
+          kitchenStatus: 'placed',
+          bogoItem: item.bogoItem || null,
+          comboItems,
+          includedItems
+        };
+      }));
+
+      const calculatedSubtotal = processedItems.reduce((sum, item) => sum + item.totalPrice, 0);
+      const actualDeliveryFee = deliveryFee || req.body.deliveryFee || 0;
+      const actualPlatformFee = req.body.platformFee || 0;
+      const actualTax = tax || 0;
+      const actualDiscount = discount || 0;
+      const actualTotalAmount = calculatedSubtotal + actualDeliveryFee + actualPlatformFee + actualTax - actualDiscount;
+
+      if (paymentMethod === 'online' && Math.abs(req.body.totalAmount - actualTotalAmount) > 1) {
+        return res.status(400).json({ success: false, message: 'Price mismatch detected. Order rejected due to tampered total amount.' });
+      }
+
       const newOrder = new Order({
         customer: req.user._id,
         orderNumber,
         orderType: finalOrderType,
         orderSource: finalOrderSource,
-        items: await Promise.all(items.map(async item => {
-          const menuDoc = await Menu.findById(item.menuItem);
-          const variant = menuDoc?.variants?.find(v => v.size === item.size);
-
-          let comboItems = [];
-          if (menuDoc?.isCombo && menuDoc.comboItems) {
-            comboItems = await Promise.all(menuDoc.comboItems.map(async ci => {
-              const subDoc = await Menu.findById(ci.menuItem);
-              return { name: subDoc?.name || 'Combo Item', quantity: ci.quantity, price: ci.price };
-            }));
-          }
-
-          let includedItems = [];
-          if (variant?.includedItems) {
-            includedItems = await Promise.all(variant.includedItems.map(async ii => {
-              const incDoc = await Menu.findById(ii.menuItem);
-              return { name: incDoc?.name || 'Add-on Item', quantity: ii.quantity };
-            }));
-          }
-
-          return {
-            menuItem: item.menuItem,
-            name: menuDoc?.name || item.name || 'Unknown Item',
-            image: menuDoc?.image || item.image || '',
-            size: item.size,
-            quantity: item.quantity,
-            price: item.price,
-            unitPrice: item.price,
-            costPrice: variant?.costPrice || 0,
-            totalPrice: item.price * item.quantity,
-            kitchenStatus: 'placed',
-            bogoItem: item.bogoItem || null,
-            comboItems,
-            includedItems
-          };
-        })),
+        items: processedItems,
         customerDetails: {
           name: address.recipientName || address.name || req.user.name,
           phone: address.mobile || address.phone || req.user.phone,
@@ -593,12 +609,12 @@ class OrderController {
           location: address.location || ''
         },
         paymentMethod: paymentMethod || 'cod',
-        subtotal,
-        deliveryFee: deliveryFee || req.body.deliveryFee || 0,
-        platformFee: req.body.platformFee || 0,
-        discount: discount || 0,
-        tax: tax || 0,
-        totalAmount: subtotal + (deliveryFee || req.body.deliveryFee || 0) + (req.body.platformFee || 0) + (tax || 0),
+        subtotal: calculatedSubtotal,
+        deliveryFee: actualDeliveryFee,
+        platformFee: actualPlatformFee,
+        discount: actualDiscount,
+        tax: actualTax,
+        totalAmount: actualTotalAmount,
         orderStatus: 'placed',
         kitchenStatus: 'placed',
         paymentStatus: paymentMethod === 'online' ? 'paid' : 'unpaid',
@@ -731,8 +747,58 @@ class OrderController {
 
       const orderNumber = await getNextOrderNumber();
 
+      const processedItems = await Promise.all(items.map(async item => {
+        const menuDoc = await Menu.findById(item.menuItem);
+        const variant = menuDoc?.variants?.find(v => v.size === item.size);
+
+        let comboItems = [];
+        if (menuDoc?.isCombo && menuDoc.comboItems) {
+          comboItems = await Promise.all(menuDoc.comboItems.map(async ci => {
+            const subDoc = await Menu.findById(ci.menuItem);
+            return { name: subDoc?.name || 'Combo Item', quantity: ci.quantity, price: ci.price };
+          }));
+        }
+
+        let includedItems = [];
+        if (variant?.includedItems) {
+          includedItems = await Promise.all(variant.includedItems.map(async ii => {
+            const incDoc = await Menu.findById(ii.menuItem);
+            return { name: incDoc?.name || 'Add-on Item', quantity: ii.quantity };
+          }));
+        }
+
+        // Admin POS already computes discounts accurately, trust the unitPrice
+        const actualPrice = item.unitPrice !== undefined ? item.unitPrice : (variant ? variant.price : (menuDoc?.hasOffer && menuDoc?.offerPrice != null ? menuDoc.offerPrice : menuDoc?.price || 0));
+        const calculatedTotalPrice = item.totalPrice !== undefined ? item.totalPrice : actualPrice * item.quantity;
+
+        return {
+          ...item,
+          price: actualPrice,
+          unitPrice: actualPrice,
+          totalPrice: calculatedTotalPrice,
+          name: menuDoc?.name || item.name,
+          image: menuDoc?.image || item.image,
+          costPrice: variant?.costPrice || 0,
+          kitchenStatus: 'placed',
+          bogoItem: item.bogoItem || null,
+          comboItems,
+          includedItems
+        };
+      }));
+
+      const calculatedSubtotal = processedItems.reduce((sum, item) => sum + item.totalPrice, 0);
+      const actualDeliveryFee = deliveryFee || 0;
+      const actualTax = tax || 0;
+      // Trust the discount computed by the admin frontend
+      const actualDiscount = discount || req.body.discount || 0;
+      const actualTotalAmount = calculatedSubtotal + actualDeliveryFee + actualTax - actualDiscount;
+
+      if ((paymentMethod === 'online' || paymentMethod === 'upi/card') && Math.abs(req.body.totalAmount - actualTotalAmount) > 1) {
+        return res.status(400).json({ success: false, message: 'Price mismatch detected. Order rejected due to tampered total amount.' });
+      }
+
       let paymentStatus = req.body.paymentStatus || 'unpaid';
-      if ((paymentMethod === 'cash' || paymentMethod === 'upi/card') && cashReceived >= totalAmount) {
+      if ((paymentMethod === 'cash' || paymentMethod === 'upi/card') && cashReceived >= actualTotalAmount) {
         paymentStatus = 'paid';
       }
 
@@ -748,42 +814,12 @@ class OrderController {
           address: customerDetails?.address,
           location: customerDetails?.location,
         },
-        items: await Promise.all(items.map(async item => {
-          const menuDoc = await Menu.findById(item.menuItem);
-          const variant = menuDoc?.variants?.find(v => v.size === item.size);
-
-          let comboItems = [];
-          if (menuDoc?.isCombo && menuDoc.comboItems) {
-            comboItems = await Promise.all(menuDoc.comboItems.map(async ci => {
-              const subDoc = await Menu.findById(ci.menuItem);
-              return { name: subDoc?.name || 'Combo Item', quantity: ci.quantity, price: ci.price };
-            }));
-          }
-
-          let includedItems = [];
-          if (variant?.includedItems) {
-            includedItems = await Promise.all(variant.includedItems.map(async ii => {
-              const incDoc = await Menu.findById(ii.menuItem);
-              return { name: incDoc?.name || 'Add-on Item', quantity: ii.quantity };
-            }));
-          }
-
-          return {
-            ...item,
-            name: menuDoc?.name || item.name,
-            image: menuDoc?.image || item.image,
-            costPrice: variant?.costPrice || 0,
-            kitchenStatus: 'placed',
-            bogoItem: item.bogoItem || null,
-            comboItems,
-            includedItems
-          };
-        })),
-        subtotal,
-        tax,
-        deliveryFee: deliveryFee || 0,
-        discount,
-        totalAmount,
+        items: processedItems,
+        subtotal: calculatedSubtotal,
+        tax: actualTax,
+        deliveryFee: actualDeliveryFee,
+        discount: actualDiscount,
+        totalAmount: actualTotalAmount,
         paymentMethod,
         cashReceived: cashReceived || 0,
         balance: balance || 0,
@@ -840,7 +876,8 @@ class OrderController {
 
         query.$or = [
           { createdAt: { $gte: todayStart } },
-          { orderStatus: { $in: ['placed', 'processing', 'out-for-delivery'] } }
+          { orderStatus: { $nin: ['cancelled', 'completed', 'delivered', 'billed'] } },
+          { orderStatus: { $in: ['delivered', 'billed'] }, paymentStatus: { $ne: 'paid' } }
         ];
       }
 

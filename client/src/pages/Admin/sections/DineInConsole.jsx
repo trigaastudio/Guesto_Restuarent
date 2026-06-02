@@ -1182,18 +1182,6 @@ const WaiterDashboard = () => {
                             </div>
                           )}
 
-                          {/* BOGO Item */}
-                          {item.bogoItem && (
-                            <div className="mt-1.5 pl-2 border-l border-emerald-500/30">
-                              <span className="text-[9px] font-black text-emerald-500 uppercase tracking-wider block mb-0.5">Free Item:</span>
-                              <div className="flex flex-wrap gap-1">
-                                <span className="inline-flex items-center text-text-muted text-[10px] font-bold">
-                                  {item.bogoItem.quantity || item.quantity || 1}x {item.bogoItem.name || 'BOGO Item'}
-                                </span>
-                              </div>
-                            </div>
-                          )}
-
                           {/* Included Items (Add-ons) */}
                           {item.includedItems?.length > 0 && (
                             <div className="mt-1.5 pl-2 border-l border-primary/30">
@@ -1201,7 +1189,7 @@ const WaiterDashboard = () => {
                               <div className="flex flex-wrap gap-1">
                                 {item.includedItems.map((ii, iIdx) => (
                                   <span key={iIdx} className="inline-flex items-center text-text-muted text-[10px] font-bold">
-                                    {ii.quantity || 1}x {ii.name}
+                                    {ii.quantity || 1}x {ii.menuItem?.name || ii.name || 'Add-on'}
                                   </span>
                                 ))}
                               </div>

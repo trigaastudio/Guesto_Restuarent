@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { ArrowLeft, CreditCard, Banknote, MapPin, ChevronRight, CheckCircle2, ShieldCheck, Info, Clock, UtensilsCrossed } from 'lucide-react';
@@ -15,9 +15,9 @@ const PaymentPage = () => {
   const [loading, setLoading] = useState(false);
   const [isOrderSuccess, setIsOrderSuccess] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
-  const dropdownRef = React.useRef(null);
+  const dropdownRef = useRef(null);
 
-    const handleLogout = React.useCallback(() => {
+    const handleLogout = useCallback(() => {
     const currentUser = JSON.parse(localStorage.getItem('user') || localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || '{}');
     if (currentUser.role === 'admin') {
       localStorage.removeItem('admin_token');
@@ -523,7 +523,7 @@ const PaymentPage = () => {
                             <div className="flex flex-wrap gap-1.5">
                               {item.comboItems.map((ci, idx) => (
                                 <span key={idx} className="inline-flex items-center bg-primary/5 text-primary text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-primary/10">
-                                  {ci.quantity || 1}x {ci.menuItem?.name || 'Item'}
+                                  {ci.quantity || 1}x {ci.menuItem?.name || ci.name || 'Item'}
                                 </span>
                               ))}
                             </div>
@@ -537,7 +537,7 @@ const PaymentPage = () => {
                             <div className="flex flex-wrap gap-1.5">
                               {item.variants.find(v => v.size === item.selectedSize).includedItems.map((ii, idx) => (
                                 <span key={idx} className="inline-flex items-center bg-primary/5 text-primary text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-primary/10">
-                                  {ii.quantity || 1}x {ii.menuItem?.name || 'Item'}
+                                  {ii.quantity || 1}x {ii.menuItem?.name || ii.name || 'Item'}
                                 </span>
                               ))}
                             </div>

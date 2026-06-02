@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Search, User, Mail, Phone, Power, Loader2, ArrowUpDown, XCircle, Ban, CheckCircle, CheckCircle2, MapPin, ExternalLink, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import api from '../../../api/axiosInstance';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
-import Loader from '../../../components/Loader/Loader';
+import TableSkeleton from '../../../components/Skeleton/TableSkeleton';
 import Pagination from '../../../components/Pagination/Pagination';
 
 const UserManagement = () => {
@@ -270,11 +270,8 @@ const UserManagement = () => {
             <tbody className="divide-y divide-border-light">
               {isLoading ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-20 text-center">
-                    <div className="flex flex-col items-center justify-center space-y-6">
-                      <Loader size="large" />
-                      <p className="text-text-secondary text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Loading users...</p>
-                    </div>
+                  <td colSpan="6" className="px-6 py-10">
+                    <TableSkeleton columns={6} rows={5} />
                   </td>
                 </tr>
               ) : filteredUsers.length === 0 ? (

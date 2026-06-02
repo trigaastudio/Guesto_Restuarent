@@ -5,13 +5,14 @@ import {
   ShoppingCart, User, Phone, CreditCard, ChevronRight,
   MoreVertical, Printer, Package, Utensils, RotateCcw,
   Copy, MapPin, ExternalLink, Minus, Truck, X, ChevronLeft,
-  Zap, Banknote, Smartphone, IndianRupee
+  Zap, Banknote, Smartphone, IndianRupee, Store
 } from 'lucide-react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import { getEffectiveStock } from '../../../utils/stockHelpers';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 import Swal from 'sweetalert2';
+import TableSkeleton from '../../../components/Skeleton/TableSkeleton';
 import Loader from '../../../components/Loader/Loader';
 import Pagination from '../../../components/Pagination/Pagination';
 import TableSection from './TableSection';
@@ -26,7 +27,8 @@ const OrderSection = () => {
     const itemsText = order.items.map(item => {
       const name = item.name || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Menu Item');
       const price = item.unitPrice || item.price || 0;
-      return `- ${name} (${item.size}) x${item.quantity}`;
+      const sizeText = !item.size || item.size === 'null' || item.size === 'undefined' ? 'Piece' : item.size;
+      return `- ${name} (${sizeText}) x${item.quantity}`;
     }).join('\n');
 
     
@@ -132,8 +134,10 @@ const OrderSection = () => {
   const [allUsers, setAllUsers] = useState([]);
   const [deliveryStaff, setDeliveryStaff] = useState([]);
   const [errors, setErrors] = useState({});
+  const [selectedItemToView, setSelectedItemToView] = useState(null);
+  const [viewItemQuantity, setViewItemQuantity] = useState(1);
+  const [viewItemSelectedSize, setViewItemSelectedSize] = useState(null);
   const socketRef = useRef();
-
   useEffect(() => {
     fetchMenu();
     fetchDeliveryStaff();
@@ -175,13 +179,8 @@ const OrderSection = () => {
       }));
     });
 
-    const refreshTimer = setInterval(() => {
-      fetchOrders();
-    }, 60000);
-
     return () => {
       if (socketRef.current) socketRef.current.disconnect();
-      clearInterval(refreshTimer);
     };
   }, []);
 
@@ -500,7 +499,7 @@ const OrderSection = () => {
             newAddresses.push({ address: deliveryAddress, location: deliveryLocation, type: 'home', isDefault: true });
           }
 
-          await axios.put(`${API_BASE_URL}/users/${selectedUserId}`, {
+          await api.put(`/api/users/${selectedUserId}`, {
             addresses: newAddresses
           });
         }
@@ -530,6 +529,11 @@ const OrderSection = () => {
       const dFee = posOrderType === 'delivery' ? (parseFloat(deliveryFee) || 0) : 0;
       const totalAmount = subtotal + dFee;
 
+      const discountAmount = cart.reduce((acc, item) => {
+        const original = item.originalPrice || item.unitPrice;
+        return acc + ((original - item.unitPrice) * item.quantity);
+      }, 0);
+
       if (paymentMethod === 'cash') {
         const received = parseFloat(cashReceived) || 0;
         if (received < totalAmount) {
@@ -557,11 +561,11 @@ const OrderSection = () => {
         subtotal,
         deliveryFee: dFee,
         tax: 0,
-        discount: 0,
+        discount: discountAmount,
         totalAmount,
         cashReceived: received,
         balance: bal,
-        orderStatus: 'processing'
+        orderStatus: 'processing',
       };
 
       const response = await axios.post(`${API_BASE_URL}/orders/counter`, orderData);
@@ -570,7 +574,7 @@ const OrderSection = () => {
         setIsModalOpen(false);
         setCart([]);
         setCustomer({ name: 'Walk-in', phone: '' });
-        fetchOrders();
+        fetchOrders(true);
       }
     } catch (error) {
       console.error('Error creating order:', error);
@@ -952,7 +956,7 @@ const OrderSection = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/users`);
+      const response = await api.get(`/api/users`);
       setAllUsers(response.data.data || []);
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -1016,6 +1020,7 @@ const OrderSection = () => {
 
   const handleOpenModal = (order = null) => {
     fetchMenu();
+    fetchTables();
     fetchUsers();
     if (order) {
       setSelectedOrder(order);
@@ -1025,6 +1030,8 @@ const OrderSection = () => {
       setCustomer({ name: 'Walk-in', phone: '' });
       setSelectedUserId(null);
       setUpdateProfile(false);
+      setSelectedTableId('');
+      setGuestCount(1);
     }
     setIsModalOpen(true);
   };
@@ -1056,7 +1063,7 @@ const OrderSection = () => {
     }
   };
 
-  const addToCart = (item, variant) => {
+  const addToCart = (item, variant, qty = 1) => {
     
     if (item.isCombo && item.comboItems?.length > 0) {
       const outOfStockItems = [];
@@ -1079,7 +1086,7 @@ const OrderSection = () => {
         .filter(c => c.menuItem === item._id && c.size === (variant?.size || 'Standard'))
         .reduce((acc, c) => acc + c.quantity, 0);
 
-      if (currentInCart + 1 > effectiveVariantStock) {
+      if (currentInCart + qty > effectiveVariantStock) {
         showToast('error', `Out of stock: Only ${effectiveVariantStock} portions of ${variant?.size || 'Standard'} are available`);
         return;
       }
@@ -1088,10 +1095,16 @@ const OrderSection = () => {
     const sizeName = variant.size || 'Standard';
 
     const bogoInfo = (variant?.isBOGO && variant?.bogoItem) ? {
-      name: menuItems.find(m => m._id.toString() === variant.bogoItem.toString())?.name || 'Free Item',
+      name: variant.bogoItem.name || menuItems.find(m => m._id.toString() === (variant.bogoItem._id?.toString() || variant.bogoItem.toString()))?.name || 'Free Item',
       size: variant.bogoVariant || '',
-      quantity: 1
+      quantity: qty
     } : null;
+
+    const menuDiscount = item.discountPercentage || 0;
+    const categoryDiscount = item.category?.discountPercentage || 0;
+    const discountPercent = Math.max(menuDiscount, categoryDiscount);
+    const basePrice = variant.price || item.price || 0;
+    const currentPrice = item.isCombo ? basePrice : Math.round(discountPercent > 0 ? basePrice * (1 - discountPercent / 100) : basePrice);
 
     setCart(prevCart => {
       const existingIndex = prevCart.findIndex(c => c.menuItem === item._id && c.size === sizeName);
@@ -1099,7 +1112,7 @@ const OrderSection = () => {
       if (existingIndex > -1) {
         return prevCart.map((c, idx) => {
           if (idx === existingIndex) {
-            const newQty = c.quantity + 1;
+            const newQty = c.quantity + qty;
             const updatedItem = {
               ...c,
               quantity: newQty,
@@ -1126,12 +1139,15 @@ const OrderSection = () => {
           name: item.name,
           image: item.image || '',
           size: sizeName,
-          quantity: 1,
-          unitPrice: variant.price,
-          totalPrice: variant.price,
+          quantity: qty,
+          unitPrice: currentPrice,
+          originalPrice: basePrice,
+          totalPrice: currentPrice * qty,
           bogoItem: bogoInfo,
           comboItems: item.comboItems || [],
-          includedItems: variant.includedItems || item.includedItems || []
+          includedItems: variant.includedItems || item.includedItems || [],
+          discountPercent: discountPercent,
+          isCombo: item.isCombo
         }];
       }
     });
@@ -1427,33 +1443,29 @@ const OrderSection = () => {
 
         let matchesDate = true;
         if (sDate || eDate) {
-          if (sDate) matchesDate = matchesDate && orderDate >= new Date(sDate);
-          if (eDate) {
-            const end = new Date(eDate);
-            end.setHours(23, 59, 59, 999);
-            matchesDate = matchesDate && orderDate <= end;
-          }
-        } else {
-          
-          matchesDate = orderDate >= todayStart;
+          const start = sDate ? new Date(sDate).setHours(0, 0, 0, 0) : null;
+          const end = eDate ? new Date(eDate).setHours(23, 59, 59, 999) : null;
+          if (start && end) matchesDate = orderDate >= start && orderDate <= end;
+          else if (start) matchesDate = orderDate >= start;
+          else if (end) matchesDate = orderDate <= end;
         }
 
         matchesType = matchesHistType && matchesDate;
       } else {
         
-        if (orderDate < todayStart) return false;
+        if (orderDate < todayStart && isHistoryOrder) return false;
 
         if (tabId === 'all') {
-          matchesType = !isHistoryOrder;
+          matchesType = true;
         } else if (tabId === 'dine-in') {
           matchesType = (o.orderType === 'dine-in' || o.orderType === 'dining') && !isHistoryOrder;
         } else {
           if (isHistoryOrder) {
             matchesType = false;
           } else if (tabId === 'delivery') {
-            matchesType = (o.orderType === 'delivery' || o.orderType === 'online') && o.orderSource !== 'admin';
+            matchesType = (o.orderType === 'delivery' || o.orderType === 'online');
           } else if (tabId === 'takeaway') {
-            matchesType = o.orderType === 'takeaway' || o.orderType === 'take-away' || o.orderType === 'counter' || o.orderSource === 'admin';
+            matchesType = o.orderType === 'takeaway' || o.orderType === 'take-away' || o.orderType === 'counter';
           } else {
             matchesType = o.orderType === tabId;
           }
@@ -1534,10 +1546,12 @@ const OrderSection = () => {
             >
               <tab.icon size={14} />
               <span>{tab.label}</span>
-              <span className={`ml-1.5 px-2 py-0.5 rounded-full text-[9px] font-black ${activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'
-                }`}>
-                {applyFilters(orders, tab.id).length}
-              </span>
+              {tab.id !== 'history' && (
+                <span className={`ml-1.5 px-2 py-0.5 rounded-full text-[9px] font-black ${activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'
+                  }`}>
+                  {applyFilters(orders, tab.id).length}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -1765,11 +1779,8 @@ const OrderSection = () => {
               <tbody className="divide-y divide-border-light">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={activeTab === 'history' ? 10 : (activeTab === 'dine-in' ? 8 : 7)} className="px-6 py-20 text-center">
-                      <div className="flex flex-col items-center justify-center space-y-6">
-                        <Loader size="large" />
-                        <p className="text-text-secondary text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Loading orders...</p>
-                      </div>
+                    <td colSpan={activeTab === 'history' ? 10 : (activeTab === 'dine-in' ? 8 : 7)} className="px-6 py-10">
+                      <TableSkeleton columns={activeTab === 'history' ? 10 : (activeTab === 'dine-in' ? 8 : 7)} rows={5} />
                     </td>
                   </tr>
                 ) : filteredOrders.length === 0 ? (
@@ -2376,24 +2387,29 @@ const OrderSection = () => {
 
       {}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-hidden print:hidden">
-          <div className="bg-background-card w-full max-w-5xl h-[85vh] rounded-[3rem] border border-border/40 shadow-2xl flex overflow-hidden animate-in zoom-in-95 duration-300">
-            {}
-            <div className="flex-1 flex flex-col border-r border-border-light">
-              <div className="p-6 border-b border-border-light flex items-center justify-between">
-                <h3 className="text-xl font-black text-text-primary">Create Order</h3>
-                <div className="relative w-64">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={16} />
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-hidden print:hidden">
+          <div className="bg-background-card w-full max-w-6xl h-[88vh] rounded-[2.5rem] border border-border/40 shadow-[0_40px_80px_rgba(0,0,0,0.4)] flex overflow-hidden animate-in zoom-in-95 duration-300">
+
+            {/* ── COLUMN 1: Menu Listing ── */}
+            <div className="flex-1 flex flex-col border-r border-border-light/60 min-w-0">
+              {/* Header */}
+              <div className="p-5 border-b border-border-light/60 flex items-center justify-between shrink-0 bg-gradient-to-r from-background-card to-background-muted/10">
+                <div>
+                  <p className="text-[9px] font-black text-primary uppercase tracking-[0.25em] mb-0.5">Step 1</p>
+                  <h3 className="text-lg font-black text-text-primary">Menu</h3>
+                </div>
+                <div className="relative w-56">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={14} />
                   <input
                     type="text"
                     placeholder="Search menu..."
                     value={posSearchTerm}
                     onChange={(e) => setPosSearchTerm(e.target.value)}
-                    className="w-full pl-9 pr-4 py-1.5 bg-background-muted rounded-lg text-xs outline-none focus:border-primary/50 border border-transparent"
+                    className="w-full pl-9 pr-4 py-2 bg-background-muted/60 rounded-xl text-xs outline-none focus:ring-1 focus:ring-primary/50 border border-transparent focus:border-primary/30 transition-all"
                   />
                 </div>
               </div>
-              <div className="flex-1 overflow-y-auto p-6 grid grid-cols-2 lg:grid-cols-3 gap-4 no-scrollbar">
+              <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 xl:grid-cols-3 gap-3 no-scrollbar content-start">
                 {menuItems
                   .filter(item => {
                     const searchLower = (posSearchTerm || '').toLowerCase();
@@ -2416,12 +2432,40 @@ const OrderSection = () => {
                           const targetVariant = (item.variants && item.variants.length > 0)
                             ? item.variants[0]
                             : { size: 'Standard', price: item.price || 0 };
-                          addToCart(item, targetVariant);
+                          setSelectedItemToView(item);
+                          setViewItemSelectedSize(targetVariant);
+                          setViewItemQuantity(1);
                         }}
                         className={`bg-background-muted/30 p-3 rounded-2xl border border-border-light hover:border-primary/30 transition-all group relative cursor-pointer active:scale-[0.98] ${isItemOutOfStock ? 'opacity-40 grayscale pointer-events-none' : ''}`}
                       >
                         <div className="w-full aspect-square bg-background-card rounded-xl mb-3 overflow-hidden border border-border-light relative">
                           <img src={item.image || '/placeholder-dish.png'} alt={item.name} className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${isItemOutOfStock ? 'grayscale' : ''}`} />
+                          
+                          {/* Badges on Image */}
+                          <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
+                            {item.isCombo && (
+                              <span className="bg-primary/90 backdrop-blur-sm text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm border border-primary/20">Combo Deal</span>
+                            )}
+                            {(() => {
+                              const menuDiscount = item.discountPercentage || 0;
+                              const categoryDiscount = item.category?.discountPercentage || 0;
+                              const discountPercent = Math.max(menuDiscount, categoryDiscount);
+                              if (discountPercent > 0 && !item.isCombo) {
+                                return (
+                                  <span className="bg-green-500/90 backdrop-blur-sm text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm border border-green-500/20">
+                                    {discountPercent}% OFF
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
+                            {item.variants?.some(v => v.isBOGO) && (
+                              <span className="bg-status-available/90 backdrop-blur-sm text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm border border-status-available/20 flex items-center gap-0.5">
+                                <Zap size={8} className="animate-pulse"/> BOGO
+                              </span>
+                            )}
+                          </div>
+
                           {isItemOutOfStock && (
                             <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px]">
                               <span className="bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest shadow-lg">Out of Stock</span>
@@ -2431,55 +2475,88 @@ const OrderSection = () => {
                         <div className="flex flex-col mb-2">
                           <div className="flex items-center justify-between mb-1">
                             <p className="font-bold text-text-primary text-xs line-clamp-1">{item.name}</p>
-                            <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${isItemOutOfStock ? 'bg-red-500/10 text-red-500' : (item.isCombo ? 'bg-primary/10 text-primary' : (getEffectiveStock(item) > 10 ? 'bg-primary/10 text-primary' : 'bg-amber-500/10 text-amber-500'))}`}>
+                            <span className={`shrink-0 ml-2 text-[8px] font-black px-1.5 py-0.5 rounded-full ${isItemOutOfStock ? 'bg-red-500/10 text-red-500' : (item.isCombo ? 'bg-primary/10 text-primary' : (getEffectiveStock(item) > 10 ? 'bg-primary/10 text-primary' : 'bg-amber-500/10 text-amber-500'))}`}>
                               {item.isCombo ? (isItemOutOfStock ? 'Out of Stock' : 'Available') : `${getEffectiveStock(item)} Left`}
                             </span>
                           </div>
-                          {item.isCombo && item.comboItems && item.comboItems.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mb-2">
-                              {item.comboItems.map((ci, idx) => (
-                                <span key={idx} className="text-[7px] font-black text-text-muted bg-background-muted px-1.5 py-0.5 rounded-md uppercase tracking-tighter border border-border-light">
-                                  {ci.menuItem?.name || ci.name || 'Item'}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                          {item.isCombo ? (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const targetVariant = (item.variants && item.variants.length > 0)
-                                  ? item.variants[0]
-                                  : { size: 'Standard', price: item.price || 0 };
-                                addToCart(item, targetVariant);
-                              }}
-                              className="w-full py-2 bg-primary text-white text-[10px] font-black rounded-xl uppercase tracking-widest hover:bg-primary-light transition-all shadow-lg shadow-primary/20 mt-1"
-                            >
-                              Add to Cart
-                            </button>
-                          ) : (
-                            <div className="flex flex-wrap gap-1">
-                              {item.variants && item.variants.map((v, idx) => {
-                                const isOutOfStock = isItemOutOfStock;
+
+                          {/* Price Display */}
+                          <div className="flex items-center gap-1.5 mb-1.5">
+                            {(() => {
+                              const menuDiscount = item.discountPercentage || 0;
+                              const categoryDiscount = item.category?.discountPercentage || 0;
+                              const discountPercent = Math.max(menuDiscount, categoryDiscount);
+                              const basePrice = item.price > 0 ? item.price : (item.variants?.[0]?.price || 0);
+                              
+                              if (discountPercent > 0 && !item.isCombo && basePrice > 0) {
+                                const currentPrice = Math.round(basePrice * (1 - discountPercent / 100));
                                 return (
-                                  <button
-                                    key={idx}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (!isOutOfStock) addToCart(item, v);
-                                    }}
-                                    disabled={isOutOfStock}
-                                    className={`px-2 py-1 text-[9px] font-black rounded-lg transition-all ${isOutOfStock
-                                      ? 'bg-background-muted text-text-muted cursor-not-allowed border border-border-light'
-                                      : 'bg-primary text-white hover:bg-primary-light shadow-sm active:scale-95'
-                                      }`}
-                                  >
-                                    {v.size}: ₹{v.price}
-                                  </button>
+                                  <>
+                                    <span className="text-[10px] line-through text-text-muted font-bold">₹{basePrice}</span>
+                                    <span className="text-[11px] font-black text-status-available">₹{currentPrice} {item.variants?.length > 1 && <span className="text-[8px] text-text-muted ml-0.5">onwards</span>}</span>
+                                  </>
                                 );
-                              })}
-                            </div>
-                          )}
+                              }
+                              return <span className="text-[11px] font-black text-text-primary">₹{basePrice} {item.variants?.length > 1 && <span className="text-[8px] text-text-muted ml-0.5">onwards</span>}</span>;
+                            })()}
+                          </div>
+
+                          {/* Extras Details */}
+                          <div className="flex flex-col gap-1 mb-2">
+                            {item.isCombo && item.comboItems?.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                <span className="text-[7px] font-black text-primary uppercase mt-0.5">Combo:</span>
+                                {item.comboItems.map((ci, idx) => (
+                                  <span key={idx} className="text-[7px] font-bold text-text-muted bg-primary/5 px-1 rounded border border-primary/10">
+                                    {ci.quantity || 1}x {ci.name || ci.menuItem?.name || 'Item'}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {(() => {
+                              const allIncluded = item.variants?.flatMap(v => v.includedItems || []) || [];
+                              if (allIncluded.length > 0) {
+                                const groupedAddons = {};
+                                allIncluded.forEach(a => {
+                                  const name = a.name || a.menuItem?.name || menuItems.find(m => m._id === (a.menuItem?._id || a.menuItem))?.name || 'Add-on';
+                                  if (!groupedAddons[name]) groupedAddons[name] = 0;
+                                  groupedAddons[name] += (a.quantity || 1);
+                                });
+                                return (
+                                  <div className="flex flex-wrap gap-1">
+                                    <span className="text-[7px] font-black text-amber-500 uppercase mt-0.5">Add-ons:</span>
+                                    {Object.entries(groupedAddons).map(([name, qty], idx) => (
+                                      <span key={idx} className="text-[7px] font-bold text-text-muted bg-amber-500/5 px-1 rounded border border-amber-500/10">
+                                        {qty}x {name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+
+                            {(() => {
+                              const bogoVariants = item.variants?.filter(v => v.isBOGO) || [];
+                              if (bogoVariants.length > 0) {
+                                return (
+                                  <div className="flex flex-wrap gap-1">
+                                    <span className="text-[7px] font-black text-status-available uppercase mt-0.5 flex items-center"><Zap size={6} className="mr-0.5"/> Free:</span>
+                                    {bogoVariants.map((v, idx) => {
+                                      const freeItemName = menuItems.find(m => m._id === (v.bogoItem?._id || v.bogoItem))?.name || 'Item';
+                                      return (
+                                        <span key={idx} className="text-[7px] font-bold text-status-available bg-status-available/10 px-1 rounded border border-status-available/20">
+                                          {v.size} ➔ {freeItemName} {v.bogoVariant ? `(${v.bogoVariant})` : ''}
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
                         </div>
                       </div>
                     );
@@ -2487,393 +2564,372 @@ const OrderSection = () => {
               </div>
             </div>
 
-            {}
-            <div className="w-96 flex flex-col bg-background-muted/10">
-              <div className="p-6 border-b border-border-light">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-black text-text-primary uppercase tracking-wider text-xs">
-                    {selectedOrder ? `Adding to ${selectedOrder.orderNumber}` : 'Current Cart'}
+            {/* ── COLUMN 2: Cart Items + Totals ── */}
+            <div className="w-[300px] shrink-0 flex flex-col border-r border-border-light bg-background-muted/40 dark:bg-[#0d0d0d]">
+              {/* Header */}
+              <div className="p-5 border-b border-border-light/30 shrink-0">
+                <p className="text-[9px] font-black text-primary uppercase tracking-[0.25em] mb-0.5">Step 2</p>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-black text-text-primary flex items-center gap-2">
+                    <ShoppingCart size={16} className="text-primary"/>
+                    {selectedOrder ? `Order ${selectedOrder.orderNumber}` : 'Cart'}
                   </h3>
-                  <button onClick={() => setIsModalOpen(false)}><XCircle size={20} className="text-text-muted hover:text-status-unavailable" /></button>
-                </div>
-
-                {selectedOrder && (
-                  <div className="mb-4 p-3 bg-amber-500/5 rounded-xl border border-amber-500/10">
-                    <p className="text-[10px] font-black text-amber-500 uppercase mb-1">Editing Order Mode</p>
-                    <p className="text-[9px] text-text-muted font-medium italic">You can add, remove, or change quantities below.</p>
-                  </div>
-                )}
-
-
-
-                <div className="space-y-2 relative">
-                  {posOrderType === 'delivery' && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className={`flex flex-col gap-1`}>
-                        <div className={`flex items-center space-x-2 bg-background-card p-2 rounded-xl border transition-all ${errors.customerName ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'border-border-light'
-                          }`}>
-                          <User size={12} className={errors.customerName ? 'text-primary' : 'text-text-muted'} />
-                          <input
-                            type="text"
-                            placeholder="Name"
-                            value={customer.name}
-                            onChange={e => {
-                              handleCustomerSearch('name', e.target.value);
-                              if (errors.customerName) setErrors({ ...errors, customerName: false });
-                            }}
-                            onFocus={() => customer.name.length > 1 && setShowSuggestions(true)}
-                            className="bg-transparent text-[10px] font-bold text-text-primary outline-none w-full"
-                          />
-                        </div>
-                        {errors.customerName && <p className="text-[9px] font-bold text-primary px-1">Name is required</p>}
-                      </div>
-
-                      <div className={`flex flex-col gap-1`}>
-                        <div className={`flex items-center space-x-2 bg-background-card p-2 rounded-xl border transition-all ${errors.customerPhone ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'border-border-light'
-                          }`}>
-                          <Phone size={12} className={errors.customerPhone ? 'text-primary' : 'text-text-muted'} />
-                          <input
-                            type="text"
-                            placeholder="Phone"
-                            value={customer.phone}
-                            onChange={e => {
-                              handleCustomerSearch('phone', e.target.value);
-                              if (errors.customerPhone) setErrors({ ...errors, customerPhone: false });
-                            }}
-                            onFocus={() => customer.phone.length > 1 && setShowSuggestions(true)}
-                            className="bg-transparent text-[10px] font-bold text-text-primary outline-none w-full"
-                          />
-                        </div>
-                        {errors.customerPhone && <p className="text-[9px] font-bold text-primary px-1">Phone is required</p>}
-                      </div>
-                    </div>
-                  )}
-
-                  {showSuggestions && (
-                    <div className="absolute top-full left-0 right-0 z-[500] mt-2 bg-background-card border-2 border-primary/20 rounded-[1.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
-                      <div className="p-3 border-b border-border-light bg-primary/5 flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <p className="text-[10px] font-black text-primary uppercase tracking-widest">Customer Suggestions</p>
-                          {userSuggestions.length > 0 && <span className="text-[9px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-bold">{userSuggestions.length} Found</span>}
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowSuggestions(false);
-                          }}
-                          className="p-1 hover:bg-primary/10 rounded-full text-text-muted hover:text-primary transition-colors"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-
-                      <div className="max-h-60 overflow-y-auto no-scrollbar">
-                        {userSuggestions.length === 0 ? (
-                          <div className="p-6 text-center">
-                            <User size={24} className="mx-auto text-text-muted/30 mb-2" />
-                            <p className="text-[10px] text-text-muted font-bold">No matching customers found</p>
-                            <p className="text-[8px] text-text-muted/50 mt-1">Creating as a new walk-in customer</p>
-                          </div>
-                        ) : (
-                          userSuggestions.map(user => (
-                            <button
-                              key={user._id}
-                              onClick={() => selectUserSuggestion(user)}
-                              className="w-full p-4 flex items-center justify-between hover:bg-primary/10 active:bg-primary/20 transition-all border-b border-border-light last:border-0 group"
-                            >
-                              <div className="flex items-center space-x-3">
-                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-xs group-hover:bg-primary group-hover:text-white transition-colors">
-                                  {user.name.charAt(0).toUpperCase()}
-                                </div>
-                                <div className="flex flex-col items-start text-left">
-                                  <span className="text-xs font-black text-text-primary group-hover:text-primary transition-colors">{user.name}</span>
-                                  <div className="flex items-center space-x-1 text-text-muted">
-                                    <Phone size={8} />
-                                    <span className="text-[9px] font-bold">{user.phone || 'No phone'}</span>
-                                  </div>
-                                </div>
-                              </div>
-                              {user.addresses?.[0]?.address && (
-                                <div className="flex flex-col items-end max-w-[150px]">
-                                  <span className="text-[8px] text-primary/70 font-black uppercase tracking-tighter">Saved Address</span>
-                                  <span className="text-[9px] text-text-muted font-medium truncate w-full text-right">{user.addresses[0].address}</span>
-                                </div>
-                              )}
-                            </button>
-                          ))
-                        )}
-                      </div>
-                      <div className="p-2 bg-background-muted/30 border-t border-border-light text-center">
-                        <p className="text-[8px] text-text-muted font-bold">Press ESC to close suggestions</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {posOrderType === 'delivery' && (
-                    <div className="space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-300">
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="relative group/field flex items-center bg-primary/[0.03] px-3 py-2 rounded-xl border border-primary/20 focus-within:border-primary transition-all">
-                          <Truck size={12} className="text-primary mr-2" />
-                          <div className="flex-1">
-                            <input
-                              id="pos-distance-input"
-                              type="number"
-                              placeholder="Distance (KM)"
-                              onChange={(e) => {
-                                const dist = parseFloat(e.target.value) || 0;
-                                const freeLimit = settings.deliverySettings?.freeDistanceLimit || 5;
-                                const rate = settings.deliverySettings?.chargePerExtraKm || 10;
-                                setDeliveryFee(dist <= freeLimit ? '0' : ((dist - freeLimit) * rate).toFixed(0));
-                              }}
-                              className="bg-transparent text-[10px] font-black text-primary outline-none w-full placeholder:text-primary/30"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className={`relative group/field flex items-center px-3 py-2 rounded-xl border transition-all ${errors.deliveryLocation ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'bg-primary/[0.03] border-primary/20 focus-within:border-primary'
-                          }`}>
-                          <ExternalLink size={12} className="text-primary mr-2" />
-                          <div className="flex-1">
-                            <input
-                              type="text"
-                              placeholder="Maps Link"
-                              value={deliveryLocation}
-                              onChange={e => {
-                                handleLocationLinkChange(e.target.value);
-                                if (errors.deliveryLocation) setErrors({ ...errors, deliveryLocation: false, deliveryAddress: false });
-                              }}
-                              className="bg-transparent text-[10px] font-black text-primary outline-none w-full placeholder:text-primary/30"
-                            />
-                          </div>
-                          <button
-                            onClick={() => handleLocationLinkChange(deliveryLocation)}
-                            className="p-1 hover:bg-primary/10 rounded-lg text-primary disabled:opacity-30"
-                            disabled={isResolvingLink}
-                          >
-                            <Loader2 size={12} className={isResolvingLink ? 'animate-spin' : ''} />
-                          </button>
-                        </div>
-
-                        <div className={`relative px-3 py-2 rounded-xl border transition-all shadow-sm ${errors.deliveryAddress ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'bg-background-card border-border-main focus-within:border-primary'
-                          }`}>
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="flex items-center space-x-1.5">
-                              <MapPin size={10} className="text-primary" />
-                              <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Delivery Address</p>
-                            </div>
-
-                            {selectedUserId && (
-                              <button
-                                type="button"
-                                onClick={() => setUpdateProfile(!updateProfile)}
-                                className="flex items-center space-x-1.5 group cursor-pointer"
-                              >
-                                <div className={`w-3 h-3 rounded-[4px] border flex items-center justify-center transition-all ${updateProfile ? 'bg-primary border-primary' : 'bg-transparent border-border-main'}`}>
-                                  {updateProfile && <CheckCircle2 size={8} className="text-white" />}
-                                </div>
-                                <span className={`text-[8px] font-black uppercase tracking-widest ${updateProfile ? 'text-primary' : 'text-text-muted'}`}>Update Profile</span>
-                              </button>
-                            )}
-                          </div>
-                          <textarea
-                            placeholder="Building, Street, Area Details..."
-                            value={deliveryAddress}
-                            onChange={e => {
-                              setDeliveryAddress(e.target.value);
-                              if (errors.deliveryAddress) setErrors({ ...errors, deliveryAddress: false, deliveryLocation: false });
-                            }}
-                            className="bg-transparent text-[10px] font-bold text-text-primary outline-none w-full h-12 resize-none placeholder:text-text-muted/20"
-                          />
-                        </div>
-                        {(errors.deliveryAddress || errors.deliveryLocation) && <p className="text-[9px] font-bold text-primary px-1">Either Address or Maps Link is required</p>}
-                      </div>
-                    </div>
+                  {cart.length > 0 && (
+                    <span className="text-[9px] font-black bg-primary/20 text-primary px-2.5 py-1 rounded-full border border-primary/20">
+                      {cart.reduce((a, i) => a + i.quantity, 0)} item{cart.reduce((a, i) => a + i.quantity, 0) !== 1 ? 's' : ''}
+                    </span>
                   )}
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-4 no-scrollbar">
+              {selectedOrder && (
+                <div className="mx-4 mt-3 p-3 bg-amber-500/10 rounded-xl border border-amber-500/20 shrink-0">
+                  <p className="text-[9px] font-black text-amber-500 uppercase mb-0.5">Editing Order Mode</p>
+                  <p className="text-[8px] text-text-muted font-medium">Add, remove, or adjust quantities.</p>
+                </div>
+              )}
+
+              {/* Cart Items List */}
+              <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-2">
                 {cart.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-text-muted opacity-50">
-                    <ShoppingCart size={48} className="mb-2" />
-                    <p className="text-xs font-bold uppercase tracking-widest">Cart Empty</p>
+                  <div className="flex flex-col items-center justify-center h-full text-text-muted/50">
+                    <div className="w-16 h-16 bg-background-muted rounded-full flex items-center justify-center mb-3 border border-border-light">
+                      <ShoppingCart size={24} />
+                    </div>
+                    <p className="text-[10px] font-black uppercase tracking-widest">Cart is Empty</p>
+                    <p className="text-[9px] font-bold mt-1 text-center max-w-[160px] opacity-70">Select items from the menu to add them here.</p>
                   </div>
                 ) : (
                   cart.map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between group">
-                      <div className="flex-1">
-                        <p className="font-bold text-text-primary text-xs">{item.name}</p>
-                        <p className="text-[10px] text-text-muted font-bold uppercase">{item.size} • ₹{item.unitPrice}</p>
-                        {item.bogoItem && (item.menuItem?.variants || item.menuItem?.sizes || [])?.find(v => (v.size || 'Standard') === (item.size || 'Standard'))?.isBOGO && (
-                          <p className="text-[9px] font-black text-status-available uppercase tracking-tighter">
-                            + free: {item.bogoItem.name} {item.bogoItem.size && `(${item.bogoItem.size})`} x {item.bogoItem.quantity}
-                          </p>
-                        )}
-
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <div className="flex items-center space-x-2 bg-background-card px-2 py-1 rounded-lg border border-border-light">
-                          <button onClick={() => updateCartQuantity(idx, -1)} disabled={item.quantity <= 1} className="text-text-muted hover:text-primary font-black disabled:opacity-30">-</button>
-                          <input
-                            type="number"
-                            min="1"
-                            value={item.quantity}
-                            onChange={(e) => setCartQuantity(idx, e.target.value)}
-                            onBlur={() => handleCartQuantityBlur(idx)}
-                            className="w-10 text-center font-black text-xs bg-transparent border-none outline-none appearance-none [-moz-appearance:_textfield] [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none"
-                          />
-                          <button onClick={() => updateCartQuantity(idx, 1)} className="text-text-muted hover:text-primary font-black">+</button>
+                    <div key={idx} className="flex items-start gap-3 group p-3 bg-background-card hover:bg-background-muted/40 rounded-2xl border border-border-light hover:border-border transition-all duration-300">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-black text-text-primary text-[11px] leading-tight mb-0.5 truncate">{item.name}</p>
+                        <p className="text-[9px] text-text-muted font-bold uppercase mb-1.5">{item.size} · ₹{item.unitPrice}</p>
+                        <div className="flex flex-wrap gap-1">
+                          {item.comboItems?.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {item.comboItems.map((ci, idx) => (
+                                <span key={idx} className="inline-flex items-center text-[7px] font-black uppercase text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
+                                  {ci.menuItem?.name || ci.name || 'Combo Item'}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {item.includedItems?.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {item.includedItems.map((ii, idx) => (
+                                <span key={idx} className="inline-flex items-center text-[7px] font-black uppercase text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                                  + {ii.menuItem?.name || ii.name || 'Add-on'} (x{ii.quantity || 1})
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {item.bogoItem && (
+                            <span className="inline-flex items-center text-[7px] font-black uppercase text-status-available bg-status-available/10 px-1.5 py-0.5 rounded border border-status-available/20">
+                              <Zap size={7} className="mr-0.5"/> Free: {item.bogoItem.name || 'Item'}
+                            </span>
+                          )}
+                          {item.discountPercent > 0 && !item.isCombo && (
+                            <span className="inline-flex items-center text-[7px] font-black uppercase text-green-600 bg-green-500/10 px-1.5 py-0.5 rounded border border-green-500/20">{item.discountPercent}% OFF</span>
+                          )}
                         </div>
-                        <p className="font-black text-xs w-12 text-right">₹{item.totalPrice}</p>
-                        <button onClick={() => removeFromCart(idx)} className="text-text-muted hover:text-status-unavailable opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Trash2 size={14} />
-                        </button>
+                      </div>
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        <p className="font-black text-[11px] text-text-primary">₹{item.totalPrice}</p>
+                        <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1 bg-background-card px-2 py-1 rounded-lg border border-border-light">
+                            <button onClick={() => updateCartQuantity(idx, -1)} disabled={item.quantity <= 1} className="text-text-muted hover:text-primary font-black text-xs disabled:opacity-30 w-4 h-4 flex items-center justify-center">−</button>
+                            <input
+                              type="number"
+                              min="1"
+                              value={item.quantity}
+                              onChange={(e) => setCartQuantity(idx, e.target.value)}
+                              onBlur={() => handleCartQuantityBlur(idx)}
+                              className="w-7 text-center font-black text-[11px] bg-transparent border-none outline-none appearance-none [-moz-appearance:_textfield] [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                            <button onClick={() => updateCartQuantity(idx, 1)} className="text-text-muted hover:text-primary font-black text-xs w-4 h-4 flex items-center justify-center">+</button>
+                          </div>
+                          <button onClick={() => removeFromCart(idx)} className="text-text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-1 rounded-lg hover:bg-red-500/10">
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))
                 )}
               </div>
 
-              <div className="p-4 bg-background-card border-t border-border-light space-y-3">
-                <div className="space-y-2">
-                  {posOrderType === 'delivery' && !settings.deliverySettings?.pricingType === 'distance' && (
-                    <div className="flex items-center justify-between p-2 bg-primary/5 rounded-xl border border-primary/10 mb-2">
-                      <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Manual Delivery Fee</span>
-                      <div className="relative w-24">
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-primary/60 text-[10px]">₹</span>
-                        <input
-                          type="number"
-                          placeholder="0"
-                          value={deliveryFee}
-                          onChange={e => setDeliveryFee(e.target.value)}
-                          className="w-full bg-white/50 border border-primary/20 rounded-lg py-1 pl-5 pr-2 text-xs font-black text-primary outline-none focus:ring-1 focus:ring-primary"
-                        />
-                      </div>
+              {/* Totals Footer */}
+              <div className="p-4 border-t border-border-light space-y-2 shrink-0 bg-background-card">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-text-muted/60 text-[10px] font-bold">
+                    <span>Listing Price</span>
+                    <span>₹{cart.reduce((acc, item) => acc + ((item.originalPrice || item.unitPrice) * item.quantity), 0)}</span>
+                  </div>
+                  {cart.reduce((acc, item) => acc + (Math.max(0, (item.originalPrice || item.unitPrice) - item.unitPrice) * item.quantity), 0) > 0 && (
+                    <div className="flex items-center justify-between text-status-available text-[10px] font-black">
+                      <span className="flex items-center gap-1"><Zap size={9}/> Savings</span>
+                      <span>-₹{cart.reduce((acc, item) => acc + (Math.max(0, (item.originalPrice || item.unitPrice) - item.unitPrice) * item.quantity), 0)}</span>
                     </div>
                   )}
+                  <div className="flex items-center justify-between text-primary text-[10px] font-black bg-primary/10 -mx-4 px-4 py-1.5 border-y border-primary/10">
+                    <span>Items Total</span>
+                    <span>₹{cart.reduce((acc, i) => acc + i.totalPrice, 0)}</span>
+                  </div>
+                  {posOrderType === 'delivery' && (
+                    <div className="flex items-center justify-between text-text-primary text-[10px] font-bold">
+                      <span>Delivery Fee</span>
+                      <span>₹{parseFloat(deliveryFee) || 0}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-end justify-between pt-1 border-t border-border-light/20">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">Grand Total</span>
+                  <span className="text-2xl font-black tracking-tighter leading-none">
+                    <span className="text-base opacity-70">₹</span>{cart.reduce((acc, i) => acc + i.totalPrice, 0) + (posOrderType === 'delivery' ? (parseFloat(deliveryFee) || 0) : 0)}
+                  </span>
+                </div>
+                {selectedOrder && selectedOrder.paidAmount > 0 && (
+                  <div className="flex items-center justify-between p-2.5 bg-amber-500/10 rounded-xl border border-amber-500/20 mt-2">
+                    <div>
+                      <p className="text-[8px] font-black text-amber-500 uppercase">Already Paid</p>
+                      <p className="text-[11px] font-bold text-amber-500/70">₹{selectedOrder.paidAmount}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[8px] font-black text-status-unavailable uppercase">Balance</p>
+                      <p className="text-base font-black text-status-unavailable">₹{Math.max(0, cart.reduce((acc, i) => acc + i.totalPrice, 0) - selectedOrder.paidAmount)}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
 
-                  <div className="space-y-1 border-b border-border-light pb-2">
-                    <div className="flex items-center justify-between text-text-muted text-[10px] font-bold uppercase tracking-widest">
-                      <span>Listing Price</span>
-                      <span>₹{cart.reduce((acc, i) => acc + i.totalPrice, 0) + cart.reduce((acc, item) => {
-                        const menuItem = menuItems.find(m => m._id === item.menuItem);
-                        if (!menuItem) return acc;
-                        if (menuItem.isCombo && menuItem.comboItems) {
-                          const sumOfItems = menuItem.comboItems.reduce((sum, ci) => sum + (ci.price || 0), 0);
-                          return acc + (Math.max(0, sumOfItems - item.unitPrice) * item.quantity);
-                        }
-                        if (menuItem.hasOffer && menuItem.price > item.unitPrice) {
-                          return acc + ((menuItem.price - item.unitPrice) * item.quantity);
-                        }
-                        return acc;
-                      }, 0)}</span>
+            {/* ── COLUMN 3: Order Details + Place Order ── */}
+            <div className="w-[280px] shrink-0 flex flex-col bg-background-card">
+              {/* Header */}
+              <div className="p-5 border-b border-border-light/60 shrink-0 flex items-start justify-between">
+                <div>
+                  <p className="text-[9px] font-black text-primary uppercase tracking-[0.25em] mb-0.5">Step 3</p>
+                  <h3 className="text-lg font-black text-text-primary">Order Details</h3>
+                </div>
+                <button onClick={() => setIsModalOpen(false)} className="p-1.5 bg-white/5 hover:bg-red-500/10 rounded-full text-text-muted hover:text-red-500 transition-all mt-1">
+                  <X size={14} strokeWidth={3} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto no-scrollbar p-5 space-y-5">
+
+                {/* Order Type Selector */}
+                {!selectedOrder && (
+                  <div>
+                    <label className="text-[9px] font-black text-text-muted/70 uppercase tracking-widest mb-2 block">Order Type</label>
+                    <div className="bg-background-muted p-1.5 rounded-[1.25rem] flex gap-1.5 border border-border-light">
+                      {[
+                        { id: 'takeaway', label: 'Counter', icon: Store },
+                        { id: 'delivery', label: 'Delivery', icon: Truck },
+                      ].map(({ id, label, icon: Icon }) => (
+                        <button
+                          key={id}
+                          onClick={() => setPosOrderType(id)}
+                          className={`flex-1 py-3 flex flex-col items-center gap-1 rounded-[0.875rem] transition-all duration-300 ${posOrderType === id ? 'bg-gradient-to-b from-primary/90 to-primary text-white shadow-lg shadow-primary/20 scale-[1.02]' : 'text-text-muted hover:bg-background-card hover:text-text-primary'}`}
+                        >
+                          <Icon size={14} />
+                          <span className="text-[8px] font-black uppercase tracking-wider">{label}</span>
+                        </button>
+                      ))}
                     </div>
-                    {cart.reduce((acc, item) => {
-                      const menuItem = menuItems.find(m => m._id === item.menuItem);
-                      if (!menuItem) return acc;
-                      if (menuItem.isCombo && menuItem.comboItems) {
-                        const sumOfItems = menuItem.comboItems.reduce((sum, ci) => sum + (ci.price || 0), 0);
-                        return acc + (Math.max(0, sumOfItems - item.unitPrice) * item.quantity);
-                      }
-                      if (menuItem.hasOffer && menuItem.price > item.unitPrice) {
-                        return acc + ((menuItem.price - item.unitPrice) * item.quantity);
-                      }
-                      return acc;
-                    }, 0) > 0 && (
-                        <div className="flex items-center justify-between text-status-available text-[10px] font-bold uppercase tracking-widest">
-                          <span>Total Savings</span>
-                          <span>-₹{cart.reduce((acc, item) => {
-                            const menuItem = menuItems.find(m => m._id === item.menuItem);
-                            if (!menuItem) return acc;
-                            if (menuItem.isCombo && menuItem.comboItems) {
-                              const sumOfItems = menuItem.comboItems.reduce((sum, ci) => sum + (ci.price || 0), 0);
-                              return acc + (Math.max(0, sumOfItems - item.unitPrice) * item.quantity);
-                            }
-                            if (menuItem.hasOffer && menuItem.price > item.unitPrice) {
-                              return acc + ((menuItem.price - item.unitPrice) * item.quantity);
-                            }
-                            return acc;
-                          }, 0)}</span>
-                        </div>
-                      )}
-                    <div className="flex items-center justify-between text-primary text-[10px] font-bold uppercase tracking-widest bg-primary/5 -mx-4 px-4 py-1.5 rounded-lg mt-1 mb-1">
-                      <span>Final Price (Items)</span>
-                      <span>₹{cart.reduce((acc, i) => acc + i.totalPrice, 0)}</span>
+                  </div>
+                )}
+
+                {selectedOrder && (
+                  <div className="p-3 bg-amber-500/5 rounded-xl border border-amber-500/10">
+                    <p className="text-[9px] font-black text-amber-500 uppercase mb-0.5">Editing Order</p>
+                    <p className="text-[8px] text-text-muted italic">Updating {selectedOrder.orderNumber}</p>
+                  </div>
+                )}
+
+                {/* Customer Info */}
+                <div className="space-y-2">
+                  <label className="text-[9px] font-black text-text-muted/70 uppercase tracking-widest block">Customer Info</label>
+                  <div className="relative">
+                    <div className={`flex items-center gap-2 bg-background-muted/40 p-3 rounded-xl border transition-all ${errors.customerName ? 'border-primary ring-1 ring-primary/30' : 'border-border-light focus-within:border-primary/50'}`}>
+                      <User size={13} className={errors.customerName ? 'text-primary' : 'text-text-muted'} />
+                      <input
+                        type="text"
+                        placeholder="Customer Name (optional)"
+                        value={customer.name}
+                        onChange={e => {
+                          handleCustomerSearch('name', e.target.value);
+                          if (errors.customerName) setErrors({ ...errors, customerName: false });
+                        }}
+                        onFocus={() => customer.name.length > 1 && setShowSuggestions(true)}
+                        className="bg-transparent text-[11px] font-bold text-text-primary outline-none w-full placeholder:text-text-muted/40"
+                      />
                     </div>
-                    {posOrderType === 'delivery' && (
-                      <div className="flex items-center justify-between text-primary text-[10px] font-bold uppercase tracking-widest">
-                        <span>Delivery Fee</span>
-                        <span>₹{parseFloat(deliveryFee) || 0}</span>
+                    {errors.customerName && <p className="text-[9px] font-bold text-primary px-1 mt-0.5">Name is required</p>}
+                  </div>
+
+                  <div className={`flex items-center gap-2 bg-background-muted/40 p-3 rounded-xl border transition-all ${errors.customerPhone ? 'border-primary ring-1 ring-primary/30' : 'border-border-light focus-within:border-primary/50'}`}>
+                    <Phone size={13} className={errors.customerPhone ? 'text-primary' : 'text-text-muted'} />
+                    <input
+                      type="text"
+                      placeholder="Phone Number (optional)"
+                      value={customer.phone}
+                      onChange={e => {
+                        handleCustomerSearch('phone', e.target.value);
+                        if (errors.customerPhone) setErrors({ ...errors, customerPhone: false });
+                      }}
+                      onFocus={() => customer.phone.length > 1 && setShowSuggestions(true)}
+                      className="bg-transparent text-[11px] font-bold text-text-primary outline-none w-full placeholder:text-text-muted/40"
+                    />
+                  </div>
+                  {errors.customerPhone && <p className="text-[9px] font-bold text-primary px-1">Phone is required</p>}
+
+                  {/* Customer Suggestions Dropdown */}
+                  {showSuggestions && (
+                    <div className="bg-background-card border border-primary/20 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="p-3 border-b border-border-light bg-primary/5 flex items-center justify-between">
+                        <p className="text-[10px] font-black text-primary uppercase tracking-widest">Suggestions</p>
+                        <button onClick={(e) => { e.stopPropagation(); setShowSuggestions(false); }} className="p-1 hover:bg-primary/10 rounded-full text-text-muted hover:text-primary transition-colors">
+                          <X size={12} />
+                        </button>
                       </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between text-text-primary">
-                    <span className="font-bold text-xs uppercase tracking-wider text-text-muted">Total Amount</span>
-                    <span className="text-xl font-black">
-                      ₹{cart.reduce((acc, i) => acc + i.totalPrice, 0) + (posOrderType === 'delivery' ? (parseFloat(deliveryFee) || 0) : 0)}
-                    </span>
-                  </div>
-
-                  {selectedOrder && selectedOrder.paidAmount > 0 && (
-                    <div className="animate-in slide-in-from-bottom-2 duration-500">
-                      <div className="flex items-center justify-between p-2.5 bg-amber-500/5 rounded-xl border border-amber-500/20">
-                        <div className="space-y-0.5">
-                          <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest">Payment Summary</p>
-                          <p className="text-[11px] font-bold text-text-muted">Already Paid: ₹{selectedOrder.paidAmount}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[9px] font-black text-status-unavailable uppercase tracking-widest">Balance Due</p>
-                          <p className="text-lg font-black text-status-unavailable">
-                            ₹{Math.max(0, cart.reduce((acc, i) => acc + i.totalPrice, 0) - selectedOrder.paidAmount)}
-                          </p>
-                        </div>
+                      <div className="max-h-44 overflow-y-auto no-scrollbar">
+                        {userSuggestions.length === 0 ? (
+                          <div className="p-4 text-center">
+                            <p className="text-[10px] text-text-muted font-bold">No matching customers</p>
+                          </div>
+                        ) : (
+                          userSuggestions.map(user => (
+                            <button
+                              key={user._id}
+                              onClick={() => selectUserSuggestion(user)}
+                              className="w-full px-4 py-3 flex items-center gap-3 hover:bg-primary/10 transition-all border-b border-border-light last:border-0"
+                            >
+                              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-xs shrink-0">
+                                {user.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="flex flex-col items-start text-left min-w-0">
+                                <span className="text-xs font-black text-text-primary truncate w-full">{user.name}</span>
+                                <span className="text-[9px] font-bold text-text-muted">{user.phone || 'No phone'}</span>
+                              </div>
+                            </button>
+                          ))
+                        )}
                       </div>
                     </div>
                   )}
                 </div>
 
+                {/* Delivery Details */}
+                {posOrderType === 'delivery' && (
+                  <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <label className="text-[9px] font-black text-text-muted/70 uppercase tracking-widest block">Delivery Details</label>
+
+                    <div className="flex items-center gap-2 bg-primary/[0.04] px-3 py-2.5 rounded-xl border border-primary/20 focus-within:border-primary transition-all">
+                      <Truck size={12} className="text-primary shrink-0" />
+                      <input
+                        id="pos-distance-input"
+                        type="number"
+                        placeholder="Distance (KM)"
+                        onChange={(e) => {
+                          const dist = parseFloat(e.target.value) || 0;
+                          const freeLimit = settings.deliverySettings?.freeDistanceLimit || 5;
+                          const rate = settings.deliverySettings?.chargePerExtraKm || 10;
+                          setDeliveryFee(dist <= freeLimit ? '0' : ((dist - freeLimit) * rate).toFixed(0));
+                        }}
+                        className="bg-transparent text-[11px] font-black text-primary outline-none w-full placeholder:text-primary/30"
+                      />
+                    </div>
+
+                    <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all ${errors.deliveryLocation ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'bg-primary/[0.04] border-primary/20 focus-within:border-primary'}`}>
+                      <ExternalLink size={12} className="text-primary shrink-0" />
+                      <input
+                        type="text"
+                        placeholder="Google Maps Link"
+                        value={deliveryLocation}
+                        onChange={e => {
+                          handleLocationLinkChange(e.target.value);
+                          if (errors.deliveryLocation) setErrors({ ...errors, deliveryLocation: false, deliveryAddress: false });
+                        }}
+                        className="bg-transparent text-[11px] font-black text-primary outline-none w-full placeholder:text-primary/30"
+                      />
+                      <button onClick={() => handleLocationLinkChange(deliveryLocation)} className="p-1 hover:bg-primary/10 rounded-lg text-primary disabled:opacity-30" disabled={isResolvingLink}>
+                        <Loader2 size={11} className={isResolvingLink ? 'animate-spin' : ''} />
+                      </button>
+                    </div>
+
+                    <div className={`px-3 py-2.5 rounded-xl border transition-all ${errors.deliveryAddress ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'bg-background-muted/30 border-border-light focus-within:border-primary/50'}`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-1.5">
+                          <MapPin size={10} className="text-primary" />
+                          <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Delivery Address</p>
+                        </div>
+                        {selectedUserId && (
+                          <button type="button" onClick={() => setUpdateProfile(!updateProfile)} className="flex items-center gap-1.5">
+                            <div className={`w-3 h-3 rounded-[4px] border flex items-center justify-center transition-all ${updateProfile ? 'bg-primary border-primary' : 'bg-transparent border-border-main'}`}>
+                              {updateProfile && <CheckCircle2 size={8} className="text-white" />}
+                            </div>
+                            <span className={`text-[8px] font-black uppercase ${updateProfile ? 'text-primary' : 'text-text-muted'}`}>Update Profile</span>
+                          </button>
+                        )}
+                      </div>
+                      <textarea
+                        placeholder="Building, Street, Area..."
+                        value={deliveryAddress}
+                        onChange={e => {
+                          setDeliveryAddress(e.target.value);
+                          if (errors.deliveryAddress) setErrors({ ...errors, deliveryAddress: false, deliveryLocation: false });
+                        }}
+                        className="bg-transparent text-[11px] font-bold text-text-primary outline-none w-full h-16 resize-none placeholder:text-text-muted/30"
+                      />
+                    </div>
+                    {(errors.deliveryAddress || errors.deliveryLocation) && <p className="text-[9px] font-bold text-primary">Either Address or Maps Link is required</p>}
+                  </div>
+                )}
+
+              </div>
+
+              {/* Place Order Button */}
+              <div className="p-5 border-t border-border-light shrink-0">
                 <button
                   onClick={() => {
-                    const cartItemsHtml = cart.map(i => `<div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>${i.name}</span><span>x${i.quantity}</span></div>`).join('');
+                    const cartItemsHtml = cart.map(i => `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>${i.name}</span><span>x${i.quantity}</span></div>`).join('');
                     const isEdit = !!selectedOrder;
-
                     Swal.fire({
                       title: isEdit ? 'Confirm Updates' : 'Confirm Order',
-                      html: `
-                        <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.02); padding: 12px; border-radius: 12px; border: 1px solid #e5e7eb; font-size: 14px; text-align: left; margin-bottom: 16px;">
-                          ${cartItemsHtml}
-                        </div>
-                        <p style="font-weight: bold; margin: 0;">${isEdit ? 'Send updated items to the kitchen?' : 'Send this order to the kitchen?'}</p>
-                      `,
+                      html: `<div style="max-height:150px;overflow-y:auto;background:rgba(0,0,0,0.02);padding:12px;border-radius:12px;border:1px solid #e5e7eb;font-size:14px;text-align:left;margin-bottom:16px">${cartItemsHtml}</div><p style="font-weight:bold;margin:0">${isEdit ? 'Send updated items to the kitchen?' : 'Send this order to the kitchen?'}</p>`,
                       icon: 'question',
                       showCancelButton: true,
                       confirmButtonColor: '#10b981',
                       cancelButtonColor: '#6b7280',
                       confirmButtonText: 'Yes, Send to Kitchen',
-                      customClass: {
-                        popup: 'rounded-[2rem]',
-                        confirmButton: 'rounded-xl px-6 py-3 font-black tracking-widest uppercase',
-                        cancelButton: 'rounded-xl px-6 py-3 font-black tracking-widest uppercase text-white'
-                      }
+                      customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-6 py-3 font-black tracking-widest uppercase', cancelButton: 'rounded-xl px-6 py-3 font-black tracking-widest uppercase text-white' }
                     }).then((result) => {
-                      if (result.isConfirmed) {
-                        handleCreateOrder();
-                      }
+                      if (result.isConfirmed) handleCreateOrder();
                     });
                   }}
                   disabled={isSubmitting || cart.length === 0}
-                  className={`w-full py-3 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl transition-all ${isSubmitting || cart.length === 0
-                    ? 'bg-background-muted text-text-muted cursor-not-allowed opacity-50'
-                    : 'bg-primary text-white shadow-primary/20 hover:scale-[1.02] active:scale-95'
-                    }`}
+                  className={`w-full py-4 rounded-[1.25rem] font-black text-[13px] uppercase tracking-[0.2em] transition-all duration-300 relative overflow-hidden group ${isSubmitting || cart.length === 0
+                    ? 'bg-background-muted text-text-muted/60 cursor-not-allowed border border-border-light'
+                    : 'bg-primary text-white hover:scale-[1.01] active:scale-[0.98] shadow-[0_12px_30px_rgba(239,68,68,0.35)] border border-primary/50'}`}
                 >
-                  NEXT
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    {isSubmitting ? 'Placing Order...' : (selectedOrder ? 'Update Order' : 'Place Order')}
+                    {!isSubmitting && cart.length > 0 && <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />}
+                  </span>
+                  {!isSubmitting && cart.length > 0 && (
+                    <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:animate-[shimmer_2s_infinite]" />
+                  )}
                 </button>
+                {cart.length > 0 && (
+                  <p className="text-center text-[9px] text-text-muted/50 font-bold mt-2.5 uppercase tracking-wider">
+                    {cart.reduce((a, i) => a + i.quantity, 0)} items · ₹{cart.reduce((acc, i) => acc + i.totalPrice, 0) + (posOrderType === 'delivery' ? (parseFloat(deliveryFee) || 0) : 0)} total
+                  </p>
+                )}
               </div>
             </div>
+
           </div>
         </div>
       )}
@@ -3079,7 +3135,177 @@ const OrderSection = () => {
           </div>
         );
       })()}
+      {selectedItemToView && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+          {(() => {
+            const item = selectedItemToView;
+            const menuDiscount = item.discountPercentage || 0;
+            const categoryDiscount = item.category?.discountPercentage || 0;
+            const discountPercent = Math.max(menuDiscount, categoryDiscount);
+            
+            const basePrice = viewItemSelectedSize?.price || item.price || 0;
+            const currentPrice = item.isCombo ? basePrice : Math.round(discountPercent > 0 ? basePrice * (1 - discountPercent / 100) : basePrice);
+            const hasSavings = discountPercent > 0 && !item.isCombo && basePrice > currentPrice;
 
+            const availableStock = getEffectiveStock(item);
+            const variantMult = viewItemSelectedSize?.stockValue || 1;
+            const effectiveStock = Math.floor(availableStock / variantMult);
+
+            return (
+              <div className="bg-background-card w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row relative animate-scale-in">
+                <button onClick={() => setSelectedItemToView(null)} className="absolute top-4 right-4 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full z-10 transition-all">
+                  <X size={20} />
+                </button>
+                
+                <div className="w-full md:w-2/5 h-48 md:h-auto bg-background-muted relative">
+                  <img src={item.image || '/placeholder-dish.png'} alt={item.name} className="w-full h-full object-cover" />
+                  {hasSavings && (
+                    <div className="absolute top-4 left-4 bg-green-500 text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-lg">
+                      {discountPercent}% OFF
+                    </div>
+                  )}
+                  {effectiveStock <= 0 && (
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                      <span className="bg-red-500 text-white text-xs font-black px-3 py-1.5 rounded-lg uppercase tracking-widest shadow-lg">Out of Stock</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="w-full md:w-3/5 p-6 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border ${item.foodType === 'veg' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}`}>
+                        {item.foodType === 'veg' ? 'Veg' : 'Non-Veg'}
+                      </span>
+                      {item.isCombo && (
+                        <span className="bg-primary/10 text-primary text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest border border-primary/20">Combo</span>
+                      )}
+                    </div>
+                    <h2 className="text-xl font-black text-text-primary uppercase tracking-wider leading-tight mb-2">{item.name}</h2>
+                    <p className="text-xs font-bold text-text-muted opacity-70 mb-4 line-clamp-2">{item.description || 'No description available.'}</p>
+
+                    {item.variants && item.variants.length > 0 && !item.isCombo && (
+                      <div className="mb-4">
+                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2">Select Size</p>
+                        <div className="flex flex-wrap gap-2">
+                          {item.variants.map((v, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => setViewItemSelectedSize(v)}
+                              className={`px-3 py-1.5 rounded-xl border text-[10px] font-black transition-all ${viewItemSelectedSize?.size === v.size ? 'bg-primary/10 border-primary text-primary shadow-sm' : 'bg-transparent border-border-light text-text-muted hover:border-primary/50'}`}
+                            >
+                              {v.size}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {item.isCombo && item.comboItems?.length > 0 && (
+                      <div className="mb-4">
+                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2">Combo Contains</p>
+                        <div className="flex flex-wrap gap-2">
+                          {item.comboItems.map((ci, idx) => (
+                            <span key={idx} className="bg-primary/5 text-primary border border-primary/20 px-2 py-1 rounded-lg text-[9px] font-bold">
+                              {ci.quantity || 1}x {ci.name || ci.menuItem?.name || 'Item'}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {(() => {
+                      const addons = viewItemSelectedSize?.includedItems || [];
+                      if (addons.length > 0) {
+                        return (
+                          <div className="mb-4">
+                            <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2">Included Add-ons</p>
+                            <div className="flex flex-wrap gap-2">
+                              {addons.map((a, idx) => {
+                                const name = a.name || a.menuItem?.name || menuItems.find(m => m._id === (a.menuItem?._id || a.menuItem))?.name || 'Add-on';
+                                return (
+                                  <span key={idx} className="bg-amber-500/10 text-amber-600 border border-amber-500/20 px-2 py-1 rounded-lg text-[9px] font-bold flex items-center">
+                                    <Plus size={10} className="mr-1" /> {a.quantity || 1}x {name}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                    {viewItemSelectedSize?.isBOGO && viewItemSelectedSize.bogoItem && (
+                      <div className="mb-4">
+                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2">Free Bonus (BOGO)</p>
+                        <div className="flex items-center gap-2 bg-status-available/10 border border-status-available/20 px-3 py-1.5 rounded-xl w-fit">
+                          <Zap size={12} className="text-status-available animate-pulse" />
+                          <span className="text-[10px] font-black text-status-available uppercase tracking-wider">
+                            1x {menuItems.find(m => m._id === (viewItemSelectedSize.bogoItem?._id || viewItemSelectedSize.bogoItem))?.name || 'Free Item'} {viewItemSelectedSize.bogoVariant ? `(${viewItemSelectedSize.bogoVariant})` : ''}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-4 border-t border-border-light mt-4">
+                    <div className="flex items-end justify-between mb-4">
+                      <div>
+                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">Total Price</p>
+                        <div className="flex flex-col">
+                          {hasSavings && (
+                            <span className="text-xs font-black text-text-muted line-through opacity-50">₹{basePrice * viewItemQuantity}</span>
+                          )}
+                          <span className="text-2xl font-black text-primary leading-none">₹{currentPrice * viewItemQuantity}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center bg-background-muted rounded-xl p-1 border border-border-light">
+                        <button onClick={() => setViewItemQuantity(Math.max(1, (parseInt(viewItemQuantity) || 1) - 1))} className="w-8 h-8 flex items-center justify-center text-text-muted hover:text-primary transition-colors"><Minus size={14}/></button>
+                        <input 
+                          type="number"
+                          min="1"
+                          value={viewItemQuantity}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === '') {
+                              setViewItemQuantity('');
+                            } else {
+                              const newQ = parseInt(val);
+                              if (newQ > 0) setViewItemQuantity(newQ);
+                            }
+                          }}
+                          onBlur={() => {
+                            if (!viewItemQuantity || parseInt(viewItemQuantity) < 1) {
+                              setViewItemQuantity(1);
+                            }
+                          }}
+                          className="w-10 text-center font-black text-sm bg-transparent border-none focus:outline-none p-0 no-spinners text-text"
+                        />
+                        <button onClick={() => setViewItemQuantity((parseInt(viewItemQuantity) || 0) + 1)} className="w-8 h-8 flex items-center justify-center text-text-muted hover:text-primary transition-colors"><Plus size={14}/></button>
+                      </div>
+                    </div>
+
+                    <button
+                      disabled={effectiveStock <= 0}
+                      onClick={() => {
+                        if (effectiveStock <= 0) return;
+                        addToCart(item, viewItemSelectedSize || { size: 'Standard', price: item.price }, viewItemQuantity);
+                        setSelectedItemToView(null);
+                      }}
+                      className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg flex items-center justify-center gap-2 ${effectiveStock <= 0 ? 'bg-background-muted text-text-muted cursor-not-allowed shadow-none' : 'bg-primary text-white hover:bg-primary-light shadow-primary/20 hover:-translate-y-0.5'}`}
+                    >
+                      <ShoppingCart size={16} />
+                      {effectiveStock <= 0 ? 'Out of Stock' : `Add ${viewItemQuantity} to Cart`}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
     </div>
   );
 };

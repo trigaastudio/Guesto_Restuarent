@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { ShoppingBag, ChevronRight, Plus, Minus, Trash2, X } from 'lucide-react';
@@ -12,7 +12,7 @@ const FloatingCart = () => {
   
   const [isMinimized, setIsMinimized] = useState(true);
 
-  const originalTotal = React.useMemo(() => {
+  const originalTotal = useMemo(() => {
     return cartItems.reduce((sum, item) => {
       let basePrice = 0;
       if (item.isCombo) {
@@ -63,7 +63,7 @@ const FloatingCart = () => {
 const QuantityInput = ({ item, updateQuantity }) => {
   const [localValue, setLocalValue] = useState(item.quantity);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setLocalValue(item.quantity);
   }, [item.quantity]);
 
@@ -172,7 +172,7 @@ const QuantityInput = ({ item, updateQuantity }) => {
                     <div className="mt-1 flex flex-wrap gap-1">
                       {item.comboItems.map((ci, cIdx) => (
                         <span key={cIdx} className="inline-flex items-center bg-primary/5 text-primary text-[8px] font-bold px-1.5 py-0.5 rounded border border-primary/10">
-                          {ci.quantity || 1}x {ci.menuItem?.name || 'Item'}
+                          {ci.quantity || 1}x {ci.menuItem?.name || ci.name || 'Item'}
                         </span>
                       ))}
                     </div>
@@ -183,7 +183,7 @@ const QuantityInput = ({ item, updateQuantity }) => {
                     <div className="mt-1 flex flex-wrap gap-1">
                       {item.variants.find(v => v.size === item.selectedSize).includedItems.map((ii, iIdx) => (
                         <span key={iIdx} className="inline-flex items-center bg-primary/5 text-primary text-[8px] font-bold px-1.5 py-0.5 rounded border border-primary/10">
-                          {ii.quantity || 1}x {ii.menuItem?.name || 'Item'}
+                          {ii.quantity || 1}x {ii.menuItem?.name || ii.name || 'Item'}
                         </span>
                       ))}
                     </div>

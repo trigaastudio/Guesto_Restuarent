@@ -17,7 +17,7 @@ const orderSchema = new mongoose.Schema({
   },
   orderSource: {
     type: String,
-    enum: ["admin", "waiter", "user"],
+    enum: ["admin", "waiter", "user", "admin-dine-in"],
     required: true
   },
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Lock, ArrowRight, Eye, EyeOff, Sun, Moon, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
@@ -16,7 +16,7 @@ const AdminLogin = () => {
   const [settings, setSettings] = useState(null);
   const isDarkMode = theme === 'dark';
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetchSettings();
     const originalTheme = document.documentElement.getAttribute('data-theme') || 'light';
     document.documentElement.setAttribute('data-theme', 'dark');
@@ -42,7 +42,7 @@ const AdminLogin = () => {
   };
 
   
-  React.useEffect(() => {
+  useEffect(() => {
     const adminToken = localStorage.getItem('admin_token');
     const adminUser = JSON.parse(localStorage.getItem('admin_user') || '{}');
 

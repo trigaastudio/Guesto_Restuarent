@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { Fragment, useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { showToast } from '../../utils/sweetAlert';
 import api from '../../api/axiosInstance';
@@ -49,7 +49,8 @@ import SettingsSection from './sections/SettingsSection';
 import OfferSection from './sections/OfferSection';
 import SalesSection from './sections/SalesSection';
 import StockSection from './sections/StockSection';
-import Loader from '../../components/Loader/Loader';
+import DineInSection from './sections/DineInSection';
+import CardSkeleton from '../../components/Skeleton/CardSkeleton';
 
 const AdminDashboard = () => {
   const { theme, toggleTheme } = useTheme();
@@ -295,6 +296,7 @@ const AdminDashboard = () => {
                   { name: 'Overview', icon: LayoutDashboard },
                   { name: 'Sales', icon: LineChart },
                   { name: 'Orders', icon: ShoppingCart },
+                  { name: 'Dine-In', icon: UtensilsCrossed },
                 ]
               },
               {
@@ -520,13 +522,14 @@ const AdminDashboard = () => {
         <div className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-8">
           {activeTab === 'Overview' && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-              {isStatsLoading && !stats ? (
-                <div className="flex flex-col items-center justify-center h-96 space-y-6">
-                  <Loader size="large" />
-                  <p className="text-text-secondary text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Loading real-time analytics...</p>
-                </div>
+                {isStatsLoading && !stats ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <CardSkeleton key={i} />
+                    ))}
+                  </div>
               ) : stats ? (
-                <React.Fragment>
+                <Fragment>
                   <div className="flex justify-between items-center">
                     <div>
                       <h2 className="text-3xl font-black text-text-primary tracking-tight">Dashboard</h2>
@@ -889,12 +892,13 @@ const AdminDashboard = () => {
                       </div>
                     </div>
                   </div>
-                </React.Fragment>
+                </Fragment>
               ) : null}
             </div>
           )}
 
           {activeTab === 'Orders' && <OrderSection key={`order-${refreshKey}`} />}
+          {activeTab === 'Dine-In' && <DineInSection key={`dinein-${refreshKey}`} />}
           {activeTab === 'Categories' && <CategorySection refreshKey={refreshKey} />}
           {activeTab === 'Stock' && <StockSection refreshKey={refreshKey} />}
           {activeTab === 'Menu' && <MenuSection key={`menu-${refreshKey}`} />}

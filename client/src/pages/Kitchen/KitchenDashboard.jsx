@@ -11,7 +11,7 @@ import api from '../../api/axiosInstance';
 import { useTheme } from '../../context/ThemeContext';
 import { useCart } from '../../context/CartContext';
 import { showToast, showAlert } from '../../utils/sweetAlert';
-import Loader from '../../components/Loader/Loader';
+import ListSkeleton from '../../components/Skeleton/ListSkeleton';
 import { logoutStaff } from '../../utils/auth';
 
 const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:5000/api`;
@@ -26,52 +26,39 @@ const KITCHEN_STATUSES = [
   { value: 'delayed', label: 'Delayed', bg: 'bg-red-500/10', text: 'text-red-600', border: 'border-red-400/40', dot: 'bg-red-500' },
 ];
 
-const StatusDropdown = ({ value, onChange }) => {
-  const [open, setOpen] = React.useState(false);
-  const ref = React.useRef(null);
-  const current = KITCHEN_STATUSES.find(s => s.value === value) || KITCHEN_STATUSES[0];
-
-  React.useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  return (
-    <div ref={ref} className="relative shrink-0">
-      <button
-        onClick={() => setOpen(o => !o)}
-        className={`flex items-center space-x-2 px-3 py-2 rounded-xl border font-black text-[10px] uppercase tracking-widest transition-all hover:opacity-90 active:scale-95 ${current.bg} ${current.text} ${current.border}`}
-      >
-        <span className={`w-2 h-2 rounded-full shrink-0 ${current.dot}`} />
-        <span>{current.label}</span>
-        <svg className={`w-3 h-3 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
+const ItemStatusActions = ({ value, onChange }) => {
+  if (value === 'placed') {
+    return (
+      <button onClick={() => onChange('preparing')} className="flex items-center space-x-1 bg-blue-500/10 text-blue-600 border border-blue-500/30 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-500/20 transition-all">
+        <ChefHat size={12} />
+        <span>Start</span>
       </button>
-
-      {open && (
-        <div className="absolute right-0 top-[calc(100%+6px)] z-[100] bg-background-card border border-border-light rounded-2xl shadow-2xl overflow-hidden w-44 animate-in slide-in-from-top-1 duration-150">
-          {KITCHEN_STATUSES.map(s => (
-            <button
-              key={s.value}
-              onClick={() => { onChange(s.value); setOpen(false); }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 text-[11px] font-black uppercase tracking-widest transition-all hover:bg-background-muted/50 ${s.value === value ? `${s.bg} ${s.text}` : 'text-text-secondary'
-                }`}
-            >
-              <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${s.dot}`} />
-              <span>{s.label}</span>
-              {s.value === value && (
-                <svg className="w-3 h-3 ml-auto" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+    );
+  }
+  if (value === 'preparing' || value === 'delayed') {
+    return (
+      <div className="flex items-center space-x-2">
+        {value === 'preparing' && (
+          <button onClick={() => onChange('delayed')} className="p-1.5 bg-amber-500/10 text-amber-600 border border-amber-500/30 rounded-lg hover:bg-amber-500/20 transition-colors" title="Mark Delayed">
+            <AlertTriangle size={14} />
+          </button>
+        )}
+        <button onClick={() => onChange('ready')} className="flex items-center space-x-1 bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500/20 hover:scale-105 transition-all shadow-sm">
+          <CheckCircle2 size={12} />
+          <span>Ready</span>
+        </button>
+      </div>
+    );
+  }
+  if (value === 'ready') {
+    return (
+      <span className="flex items-center space-x-1 text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg text-[10px] font-black uppercase">
+        <CheckCircle2 size={12} />
+        <span>Done</span>
+      </span>
+    );
+  }
+  return null;
 };
 
 const TABS = [
@@ -600,9 +587,9 @@ const KitchenDashboard = () => {
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-8">
+        <div className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-6">
           {/* Status Filter Bar */}
-          <div className="flex items-center space-x-3 bg-background-card p-1.5 rounded-[1.5rem] border border-border-light w-fit shadow-sm flex-wrap gap-y-1">
+          <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-md pb-4 pt-1 -mt-1 flex items-center space-x-3 flex-wrap gap-y-2">
             {[
               { id: 'new', label: 'New Orders', icon: Bell, filterKey: 'placed' },
               { id: 'preparing', label: 'Preparing', icon: ChefHat, filterKey: 'preparing' },
@@ -632,20 +619,23 @@ const KitchenDashboard = () => {
                 >
                   <filter.icon size={14} className={activeStatusFilter === filter.id ? 'animate-pulse' : ''} />
                   <span>{filter.label}</span>
-                  <span className={`ml-2 px-2 py-0.5 rounded-full text-[9px] ${activeStatusFilter === filter.id ? 'bg-white/20 text-white' :
-                    isDelayed && count > 0 ? 'bg-red-500/10 text-red-500' : 'bg-primary/10 text-primary'
-                    }`}>
-                    {count}
-                  </span>
+                  {count > 0 && (
+                    <span className={`ml-2 px-2 py-0.5 rounded-full text-[9px] ${activeStatusFilter === filter.id ? 'bg-white/20 text-white' :
+                      isDelayed ? 'bg-red-500/10 text-red-500' : 'bg-primary/10 text-primary'
+                      }`}>
+                      {count}
+                    </span>
+                  )}
                 </button>
               );
             })}
           </div>
 
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-[60vh] space-y-6">
-              <Loader size="large" />
-              <p className="text-text-secondary text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Loading Orders...</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <ListSkeleton key={i} />
+              ))}
             </div>
           ) : filteredOrders.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-[60vh] space-y-6 text-center animate-in fade-in zoom-in duration-500">
@@ -666,10 +656,14 @@ const KitchenDashboard = () => {
                 return (
                   <div
                     key={order._id}
-                    className={`bg-background-card rounded-[2.5rem] border shadow-sm flex flex-col hover:shadow-xl transition-all duration-300 relative
-                      ${allReady ? 'border-status-on/30' : 'border-border-light hover:border-primary/20'}
+                    className={`bg-background-card/80 backdrop-blur-sm rounded-[2.5rem] border flex flex-col transition-all duration-300 relative overflow-hidden
+                      ${allReady ? 'border-status-on/30 shadow-emerald-500/5' : order.kitchenStatus === 'delayed' ? 'border-red-500/40 shadow-red-500/10 shadow-[0_8px_30px_rgb(0,0,0,0.12)]' : 'border-border-light shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:border-primary/30'}
                     `}
                   >
+                    {/* Delayed Glow Effect */}
+                    {order.kitchenStatus === 'delayed' && (
+                      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500/0 via-red-500 to-red-500/0 animate-pulse" />
+                    )}
                     {/* Order Header */}
                     <div className={`p-4 border-b border-border-light flex items-center justify-between rounded-t-[2.5rem] ${allReady ? 'bg-status-on/5' : 'bg-background-muted/20'}`}>
                       <div className="flex items-center space-x-3">
@@ -714,17 +708,31 @@ const KitchenDashboard = () => {
 
 
 
-                    {/* Overall Bulk Status Setter */}
+                    {/* Progress Bar & Actions */}
                     {activeStatusFilter !== 'new' && (
-                      <div className="px-4 py-2.5 border-b border-border-light flex items-center justify-between">
-                        <span className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Overall Status</span>
-                        <StatusDropdown
-                          value={(() => {
-                            const statuses = order.items?.map(i => i.kitchenStatus || 'placed') || [];
-                            return statuses.length > 0 && statuses.every(s => s === statuses[0]) ? statuses[0] : 'preparing';
-                          })()}
-                          onChange={(newStatus) => handleBulkUpdateOrderItems(order._id, newStatus, order.orderNumber)}
-                        />
+                      <div className="px-5 py-3 border-b border-border-light bg-background-muted/10 flex flex-col space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black text-text-primary uppercase tracking-[0.1em]">Order Progress</span>
+                          <span className="text-[10px] font-bold text-text-muted">
+                            {order.items?.filter(i => i.kitchenStatus === 'ready').length || 0} / {order.items?.length || 0} Ready
+                          </span>
+                        </div>
+                        <div className="w-full h-1.5 bg-background-muted rounded-full overflow-hidden flex">
+                          <div 
+                            className="h-full bg-emerald-500 transition-all duration-500 ease-out" 
+                            style={{ width: `${((order.items?.filter(i => i.kitchenStatus === 'ready').length || 0) / (order.items?.length || 1)) * 100}%` }} 
+                          />
+                        </div>
+                        {order.items?.some(i => i.kitchenStatus !== 'ready') && (
+                          <div className="pt-2 flex justify-end">
+                            <button
+                              onClick={() => handleBulkUpdateOrderItems(order._id, 'ready', order.orderNumber)}
+                              className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[9px] font-black uppercase tracking-widest rounded-xl transition-all shadow-sm shadow-emerald-500/20 active:scale-95"
+                            >
+                              Mark All Ready
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -816,10 +824,10 @@ const KitchenDashboard = () => {
 
                             </div>
 
-                            {/* Column 3: Status (Hidden in 'new' view) */}
+                            {/* Column 3: Status Actions */}
                             {activeStatusFilter !== 'new' && (
-                              <div className="flex justify-end">
-                                <StatusDropdown
+                              <div className="flex justify-end pr-1">
+                                <ItemStatusActions
                                   value={status}
                                   onChange={(newStatus) => handleUpdateItemStatus(
                                     order._id,

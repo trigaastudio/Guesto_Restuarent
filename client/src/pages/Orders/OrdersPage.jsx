@@ -7,7 +7,7 @@ import Navbar from '../../components/Navbar/Navbar';
 import { useCart } from '../../context/CartContext';
 import { useTheme } from '../../context/ThemeContext';
 import Swal from 'sweetalert2';
-import Loader from '../../components/Loader/Loader';
+import ListSkeleton from '../../components/Skeleton/ListSkeleton';
 import { logoutToLanding } from '../../utils/auth';
 import socket from '../../services/socket';
 import Pagination from '../../components/Pagination/Pagination';
@@ -312,11 +312,12 @@ const OrdersPage = () => {
 
         <main className={`max-w-7xl mx-auto px-6 pt-24 md:pt-32 ${hasOrders ? '' : 'min-h-[70vh] flex items-center justify-center'} relative z-10 pb-24`}>
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 w-full">
-              <Loader size="large" />
-              <p className="mt-6 text-[10px] font-black uppercase tracking-[0.3em] text-primary animate-pulse">
-                Fetching your orders...
-              </p>
+            <div className="max-w-6xl mx-auto w-full space-y-6 relative z-10 pt-10">
+              <div className="grid grid-cols-1 gap-6">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <ListSkeleton key={i} />
+                ))}
+              </div>
             </div>
           ) : orders.length === 0 ? (
             <div className="flex flex-col items-center justify-center w-full py-10 px-10 text-center space-y-10 relative overflow-hidden animate-in fade-in zoom-in duration-1000">

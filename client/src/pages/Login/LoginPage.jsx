@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useGoogleLogin } from '@react-oauth/google';
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
@@ -29,9 +29,9 @@ const LoginPage = () => {
   const { theme } = useTheme();
   const { settings } = useCart();
   const logoSrc = settings?.branding?.logoGold || '/logo-golden.png';
-  const containerRef = React.useRef(null);
+  const containerRef = useRef(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     window.scrollTo(0, 0);
     if (containerRef.current) {
       containerRef.current.scrollTop = 0;
@@ -50,7 +50,7 @@ const LoginPage = () => {
     };
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) navigate('/home', { replace: true });
   }, [navigate]);

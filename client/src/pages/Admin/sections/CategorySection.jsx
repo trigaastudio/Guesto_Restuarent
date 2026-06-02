@@ -6,7 +6,7 @@ const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:500
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 import Swal from 'sweetalert2';
 import ImageCropper from '../../../components/ImageCropper/ImageCropper';
-import Loader from '../../../components/Loader/Loader';
+import TableSkeleton from '../../../components/Skeleton/TableSkeleton';
 import Pagination from '../../../components/Pagination/Pagination';
 
 const CategorySection = ({ refreshKey }) => {
@@ -25,7 +25,7 @@ const CategorySection = ({ refreshKey }) => {
 
   const [editingDiscountId, setEditingDiscountId] = useState(null);
   const [discountValue, setDiscountValue] = useState('');
-  const socketRef = React.useRef();
+  const socketRef = useRef();
 
   const [showCropper, setShowCropper] = useState(false);
   const [imageToCrop, setImageToCrop] = useState(null);
@@ -404,15 +404,12 @@ const CategorySection = ({ refreshKey }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
-              {isLoading ? (
-                <tr>
-                  <td colSpan="7" className="px-6 py-20 text-center">
-                    <div className="flex flex-col items-center justify-center space-y-6">
-                      <Loader size="large" />
-                      <p className="text-text-secondary text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Loading categories...</p>
-                    </div>
-                  </td>
-                </tr>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan="7" className="px-6 py-10">
+                      <TableSkeleton columns={7} rows={5} />
+                    </td>
+                  </tr>
               ) : filteredCategories.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="px-6 py-12 text-center">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Lock, Loader2, ArrowRight, Sun, Moon, ChefHat } from 'lucide-react';
 import axios from 'axios';
@@ -18,7 +18,7 @@ const StaffLogin = () => {
   const { settings } = useCart();
   const isDarkMode = theme === 'dark';
 
-  React.useEffect(() => {
+  useEffect(() => {
     const originalTheme = document.documentElement.getAttribute('data-theme') || 'light';
     document.documentElement.setAttribute('data-theme', 'dark');
     document.documentElement.classList.add('dark');
@@ -34,7 +34,7 @@ const StaffLogin = () => {
   }, []);
 
   
-  React.useEffect(() => {
+  useEffect(() => {
     const token = localStorage.getItem('staff_token');
     const user = JSON.parse(localStorage.getItem('staff_user') || '{}');
     if (token && user.role === 'kitchen') navigate('/kitchen/dashboard', { replace: true });

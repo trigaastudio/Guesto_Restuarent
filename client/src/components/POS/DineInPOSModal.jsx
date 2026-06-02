@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Minus, X, ShoppingCart, User, Phone, CheckCircle2 } from 'lucide-react';
+import { Search, Plus, Minus, X, ShoppingCart, User, Phone, CheckCircle2, Zap } from 'lucide-react';
 import { io } from 'socket.io-client';
 import { getEffectiveStock } from '../../utils/stockHelpers';
 import api from '../../api/axiosInstance';
 import { showToast } from '../../utils/sweetAlert';
+import MenuModal from '../Menu/MenuModal';
 
 const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, orderSource = 'admin', occupiedSeats }) => {
   const [menuItems, setMenuItems] = useState([]);
@@ -13,6 +14,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [existingItems, setExistingItems] = useState([]);
+  const [selectedItemForModal, setSelectedItemForModal] = useState(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -128,18 +130,43 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
     }
 
     const sizeName = variant.size || 'Standard';
+    const qty = 1;
+
+    const bogoInfo = (variant?.isBOGO && variant?.bogoItem) ? {
+      name: variant.bogoItem.name || menuItems.find(m => m._id.toString() === (variant.bogoItem._id?.toString() || variant.bogoItem.toString()))?.name || 'Free Item',
+      size: variant.bogoVariant || '',
+      quantity: qty
+    } : null;
+
+    const menuDiscount = item.discountPercentage || 0;
+    const categoryDiscount = item.category?.discountPercentage || 0;
+    const discountPercent = Math.max(menuDiscount, categoryDiscount);
+    const basePrice = variant.price || item.price || 0;
+    const currentPrice = item.isCombo ? basePrice : Math.round(discountPercent > 0 ? basePrice * (1 - discountPercent / 100) : basePrice);
 
     setCart(prevCart => {
       const existingIndex = prevCart.findIndex(c => c.menuItem === item._id && c.size === sizeName);
       if (existingIndex > -1) {
         return prevCart.map((c, idx) => {
           if (idx === existingIndex) {
-            const newQty = c.quantity + 1;
-            return {
+            const newQty = c.quantity + qty;
+            const updatedItem = {
               ...c,
               quantity: newQty,
               totalPrice: newQty * c.unitPrice
             };
+            if (bogoInfo) {
+              updatedItem.bogoItem = {
+                ...bogoInfo,
+                quantity: newQty
+              };
+            } else if (c.bogoItem) {
+              updatedItem.bogoItem = {
+                ...c.bogoItem,
+                quantity: newQty
+              };
+            }
+            return updatedItem;
           }
           return c;
         });
@@ -149,12 +176,24 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
           name: item.name,
           image: item.image || '',
           size: sizeName,
-          quantity: 1,
-          unitPrice: variant.price,
-          totalPrice: variant.price
+          quantity: qty,
+          unitPrice: currentPrice,
+          originalPrice: basePrice,
+          totalPrice: currentPrice * qty,
+          bogoItem: bogoInfo,
+          comboItems: item.comboItems || [],
+          includedItems: variant.includedItems || item.includedItems || [],
+          discountPercent: discountPercent,
+          isCombo: item.isCombo
         }];
       }
     });
+  };
+
+  const handleModalAddToCart = (menuItem, quantity, selectedSize) => {
+    const variants = menuItem.variants || menuItem.sizes || [];
+    const variant = variants.find(v => v.size === selectedSize) || { size: 'Standard', price: menuItem.price || 0 };
+    addToCart(menuItem, variant, quantity);
   };
 
   const updateCartQuantity = (index, delta) => {
@@ -306,6 +345,10 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
       }
 
       const subtotal = cart.reduce((acc, item) => acc + item.totalPrice, 0);
+      const discountAmount = cart.reduce((acc, item) => {
+        const original = item.originalPrice || item.unitPrice;
+        return acc + ((original - item.unitPrice) * item.quantity);
+      }, 0);
 
       if (editingOrder) {
         
@@ -342,7 +385,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
           subtotal,
           deliveryFee: 0,
           tax: 0,
-          discount: 0,
+          discount: discountAmount,
           totalAmount: subtotal,
           cashReceived: 0,
           balance: 0,
@@ -417,6 +460,29 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                 >
                   <div className="w-full aspect-square bg-background-card rounded-xl mb-3 overflow-hidden border border-border-light relative">
                     <img src={item.image || '/placeholder-dish.png'} alt={item.name} className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${isFullyOutOfStock ? 'grayscale' : ''}`} />
+                    <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
+                      {item.isCombo && (
+                        <span className="bg-primary/90 backdrop-blur-sm text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm border border-primary/20">Combo Deal</span>
+                      )}
+                      {(() => {
+                        const menuDiscount = item.discountPercentage || 0;
+                        const categoryDiscount = item.category?.discountPercentage || 0;
+                        const discountPercent = Math.max(menuDiscount, categoryDiscount);
+                        if (discountPercent > 0 && !item.isCombo) {
+                          return (
+                            <span className="bg-green-500/90 backdrop-blur-sm text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm border border-green-500/20">
+                              {discountPercent}% OFF
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
+                      {item.variants?.some(v => v.isBOGO) && (
+                        <span className="bg-status-available/90 backdrop-blur-sm text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm border border-status-available/20 flex items-center gap-0.5">
+                          <Zap size={8} className="animate-pulse"/> BOGO
+                        </span>
+                      )}
+                    </div>
                     {isFullyOutOfStock && (
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px]">
                         <span className="bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest shadow-lg">Out of Stock</span>
@@ -439,42 +505,15 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                         ))}
                       </div>
                     )}
-                    {item.isCombo ? (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const targetVariant = (item.variants && item.variants.length > 0)
-                            ? item.variants[0]
-                            : { size: 'Standard', price: item.price || 0 };
-                          addToCart(item, targetVariant);
-                        }}
-                        className="w-full py-2.5 md:py-3 bg-primary text-white text-[11px] md:text-xs font-black rounded-xl uppercase tracking-widest hover:bg-primary-light transition-all shadow-lg shadow-primary/20 mt-2"
-                      >
-                        Add to Cart
-                      </button>
-                    ) : (
-                      <div className="flex flex-wrap gap-1.5 mt-1">
-                        {item.variants && item.variants.map((v, idx) => {
-                          const isVariantOut = item.totalStock !== undefined && !canAddVariant(item, v);
-                          return (
-                            <button
-                              key={idx}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (!isVariantOut) addToCart(item, v);
-                              }}
-                              disabled={isVariantOut}
-                              className={`px-2.5 md:px-3 py-1.5 md:py-2 text-[10px] md:text-[11px] font-black rounded-lg transition-all ${isVariantOut
-                                ? 'bg-background-muted text-text-muted cursor-not-allowed border border-border-light'
-                                : 'bg-primary text-white hover:bg-primary-light shadow-sm active:scale-95'
-                                }`}
-                            >
-                              {v.size}: ₹{v.price}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedItemForModal(item);
+                      }}
+                      className="w-full py-2.5 md:py-3 bg-primary text-white text-[11px] md:text-xs font-black rounded-xl uppercase tracking-widest hover:bg-primary-light transition-all shadow-lg shadow-primary/20 mt-2"
+                    >
+                      {item.isCombo || (item.variants && item.variants.length > 0) ? 'Select Options' : 'Add to Cart'}
+                    </button>
                   </div>
                 </div>
               );
@@ -519,27 +558,60 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
               </div>
             ) : (
               cart.map((item, index) => (
-                <div key={`${item.menuItem}-${item.size}-${index}`} className="flex items-center gap-3 p-3 bg-background-card rounded-2xl border border-border-light shadow-sm">
+                <div key={`${item.menuItem}-${item.size}-${index}`} className="flex items-start gap-3 p-3 bg-background-card rounded-2xl border border-border-light shadow-sm hover:bg-background-muted/40 transition-all duration-300">
                   <div className="flex-1 min-w-0 pr-2">
                     <p className="font-black text-text-primary text-sm md:text-base truncate">{item.name}</p>
-                    <p className="text-[10px] md:text-[11px] font-bold text-text-muted uppercase tracking-wider mt-0.5">₹{item.unitPrice} • {item.size}</p>
+                    <p className="text-[10px] md:text-[11px] font-bold text-text-muted uppercase tracking-wider mt-0.5">{item.size} · ₹{item.unitPrice}</p>
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {item.comboItems?.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {item.comboItems.map((ci, idx) => (
+                            <span key={idx} className="inline-flex items-center text-[7px] font-black uppercase text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
+                              {ci.menuItem?.name || ci.name || 'Combo Item'}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {item.includedItems?.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {item.includedItems.map((ii, idx) => (
+                            <span key={idx} className="inline-flex items-center text-[7px] font-black uppercase text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                              + {ii.menuItem?.name || ii.name || 'Add-on'} (x{ii.quantity || 1})
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {item.bogoItem && (
+                        <span className="inline-flex items-center text-[7px] font-black uppercase text-status-available bg-status-available/10 px-1.5 py-0.5 rounded border border-status-available/20">
+                          <Zap size={7} className="mr-0.5"/> Free: {item.bogoItem.name || 'Item'}
+                        </span>
+                      )}
+                      {item.discountPercent > 0 && !item.isCombo && (
+                        <span className="inline-flex items-center text-[7px] font-black uppercase text-green-600 bg-green-500/10 px-1.5 py-0.5 rounded border border-green-500/20">{item.discountPercent}% OFF</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center bg-background border border-border-light rounded-xl overflow-hidden shadow-inner">
-                    <button onClick={() => updateCartQuantity(index, -1)} className="p-2.5 hover:bg-background-muted text-text-secondary transition-colors"><Minus size={16} /></button>
-                    <input
-                      type="number"
-                      min="1"
-                      value={item.quantity}
-                      onChange={(e) => setCartQuantity(index, e.target.value)}
-                      onBlur={() => handleCartQuantityBlur(index)}
-                      className="w-10 text-center font-black text-sm md:text-base bg-transparent border-none outline-none appearance-none"
-                      style={{ MozAppearance: 'textfield' }}
-                    />
-                    <button onClick={() => updateCartQuantity(index, 1)} className="p-2.5 hover:bg-background-muted text-text-secondary transition-colors"><Plus size={16} /></button>
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <p className="font-black text-[13px] md:text-sm text-text-primary">₹{item.totalPrice}</p>
+                    <div className="flex items-center gap-1.5">
+                      <div className="flex items-center bg-background border border-border-light rounded-xl overflow-hidden shadow-inner">
+                        <button onClick={() => updateCartQuantity(index, -1)} className="p-2 hover:bg-background-muted text-text-secondary transition-colors"><Minus size={14} /></button>
+                        <input
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) => setCartQuantity(index, e.target.value)}
+                          onBlur={() => handleCartQuantityBlur(index)}
+                          className="w-8 text-center font-black text-xs md:text-sm bg-transparent border-none outline-none appearance-none"
+                          style={{ MozAppearance: 'textfield' }}
+                        />
+                        <button onClick={() => updateCartQuantity(index, 1)} className="p-2 hover:bg-background-muted text-text-secondary transition-colors"><Plus size={14} /></button>
+                      </div>
+                      <button onClick={() => removeFromCart(index)} className="p-2 text-status-unavailable/50 hover:text-status-unavailable hover:bg-status-off/10 rounded-xl transition-all">
+                        <X size={16} />
+                      </button>
+                    </div>
                   </div>
-                  <button onClick={() => removeFromCart(index)} className="p-2.5 text-status-unavailable/50 hover:text-status-unavailable hover:bg-status-off/10 rounded-xl transition-all">
-                    <X size={18} />
-                  </button>
                 </div>
               ))
             )}
@@ -633,6 +705,13 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
         )}
 
       </div>
+      <MenuModal
+        isOpen={!!selectedItemForModal}
+        onClose={() => setSelectedItemForModal(null)}
+        menu={selectedItemForModal}
+        onAction={handleModalAddToCart}
+        viewOnly={false}
+      />
     </div>
   );
 };

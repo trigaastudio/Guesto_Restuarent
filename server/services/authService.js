@@ -6,21 +6,10 @@ import Settings from '../models/settingsSchema.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import OTP from '../models/otpSchema.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-const otps = new Map();
-
-
-setInterval(() => {
-  const now = Date.now();
-  for (const [email, data] of otps.entries()) {
-    if (now > data.expiresAt) {
-      otps.delete(email);
-    }
-  }
-}, 5 * 60 * 1000);
 
 class AuthService {
   generateToken(id) {
@@ -111,8 +100,11 @@ class AuthService {
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + 5 * 60 * 1000;
-    otps.set(email.toLowerCase(), { otp, expiresAt });
+    await OTP.updateOne(
+      { email: email.toLowerCase() },
+      { $set: { otp, createdAt: Date.now() } },
+      { upsert: true }
+    );
 
     const settings = await Settings.getSettings();
     const restaurantName = settings.restaurantDetails.name || "GuestO";
@@ -129,14 +121,11 @@ class AuthService {
   }
 
   async verifyOTP(email, otp) {
-    const data = otps.get(email.toLowerCase());
+    const data = await OTP.findOne({ email: email.toLowerCase() });
     if (!data) return false;
-    if (Date.now() > data.expiresAt) {
-      otps.delete(email.toLowerCase());
-      return false;
-    }
+    
     if (data.otp.toString().trim() === otp.toString().trim()) {
-      otps.delete(email.toLowerCase());
+      await OTP.deleteOne({ email: email.toLowerCase() });
       return true;
     }
     return false;
@@ -149,8 +138,11 @@ class AuthService {
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + 5 * 60 * 1000;
-    otps.set(email.toLowerCase(), { otp, expiresAt });
+    await OTP.updateOne(
+      { email: email.toLowerCase() },
+      { $set: { otp, createdAt: Date.now() } },
+      { upsert: true }
+    );
 
     const settings = await Settings.getSettings();
     const restaurantName = settings.restaurantDetails.name || "GuestO";
@@ -173,8 +165,11 @@ class AuthService {
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + 5 * 60 * 1000;
-    otps.set(newEmail.toLowerCase(), { otp, expiresAt });
+    await OTP.updateOne(
+      { email: newEmail.toLowerCase() },
+      { $set: { otp, createdAt: Date.now() } },
+      { upsert: true }
+    );
 
     const settings = await Settings.getSettings();
     const restaurantName = settings.restaurantDetails.name || "GuestO";
@@ -192,8 +187,11 @@ class AuthService {
 
   async sendChangePasswordOTP(email) {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + 5 * 60 * 1000;
-    otps.set(email.toLowerCase(), { otp, expiresAt });
+    await OTP.updateOne(
+      { email: email.toLowerCase() },
+      { $set: { otp, createdAt: Date.now() } },
+      { upsert: true }
+    );
 
     const settings = await Settings.getSettings();
     const restaurantName = settings.restaurantDetails.name || "GuestO";

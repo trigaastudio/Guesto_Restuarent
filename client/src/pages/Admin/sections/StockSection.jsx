@@ -3,7 +3,7 @@ import { Package, Search, Filter, Plus, Edit2, Trash2, RotateCcw } from 'lucide-
 import api from '../../../api/axiosInstance';
 import { showToast } from '../../../utils/sweetAlert';
 import Swal from 'sweetalert2';
-import Loader from '../../../components/Loader/Loader';
+import TableSkeleton from '../../../components/Skeleton/TableSkeleton';
 import Pagination from '../../../components/Pagination/Pagination';
 
 const StockSection = ({ refreshKey }) => {
@@ -165,8 +165,8 @@ const StockSection = ({ refreshKey }) => {
             <tbody className="divide-y divide-border-light">
               {isLoading ? (
                 <tr>
-                  <td colSpan="4" className="px-6 py-20 text-center">
-                    <Loader size="large" />
+                  <td colSpan="4" className="px-6 py-10">
+                    <TableSkeleton columns={4} rows={5} />
                   </td>
                 </tr>
               ) : paginated.length === 0 ? (
@@ -256,8 +256,8 @@ const StockSection = ({ refreshKey }) => {
             <tbody className="divide-y divide-border-light">
               {isLoading ? (
                 <tr>
-                  <td colSpan="4" className="px-6 py-20 text-center">
-                    <Loader size="large" />
+                  <td colSpan="4" className="px-6 py-10">
+                    <TableSkeleton columns={4} rows={5} />
                   </td>
                 </tr>
               ) : paginated.length === 0 ? (

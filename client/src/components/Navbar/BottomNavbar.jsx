@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { logoutToLanding } from '../../utils/auth';
 import { Home, Utensils, ShoppingCart, User, MapPin, LogOut, Package, X } from 'lucide-react';
@@ -8,12 +8,12 @@ const BottomNavbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { cartItems } = useCart();
-  const [showProfileOptions, setShowProfileOptions] = React.useState(false);
-  const [activeSection, setActiveSection] = React.useState('hero'); 
+  const [showProfileOptions, setShowProfileOptions] = useState(false);
+  const [activeSection, setActiveSection] = useState('hero'); 
 
-  const [isVisible, setIsVisible] = React.useState(true); 
+  const [isVisible, setIsVisible] = useState(true); 
 
-  React.useEffect(() => {
+  useEffect(() => {
     let ticking = false;
     const handleScroll = () => {
       if (!ticking) {

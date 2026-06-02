@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useGoogleLogin } from '@react-oauth/google';
 import api from '../../api/axiosInstance';
@@ -23,7 +23,7 @@ const RegisterPage = () => {
   const { theme } = useTheme();
   const { settings } = useCart();
   const logoSrc = settings?.branding?.logoGold || '/logo-golden.png';
-  const containerRef = React.useRef(null);
+  const containerRef = useRef(null);
 
   const [fields, setFields] = useState({ name: '', email: '', phone: '', password: '', confirmPassword: '' });
   const [errors, setErrors] = useState({});
@@ -57,7 +57,7 @@ const RegisterPage = () => {
     onError: () => setApiError('Google signup failed. Please try again.')
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
     window.scrollTo(0, 0);
     if (containerRef.current) {
       containerRef.current.scrollTop = 0;
@@ -76,7 +76,7 @@ const RegisterPage = () => {
     };
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) navigate('/home', { replace: true });
   }, [navigate]);

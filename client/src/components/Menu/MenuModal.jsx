@@ -118,7 +118,7 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
                   <div key={idx} className="flex items-center justify-between bg-background-muted/40 p-2.5 rounded-xl border border-border/5">
                     <div className="flex items-center gap-2">
                       <div className="w-1.5 h-1.5 rounded-full bg-primary/40"></div>
-                      <span className="text-[11px] font-bold text-text-primary">{item.menuItem?.name || 'Item'}</span>
+                      <span className="text-[11px] font-bold text-text-primary">{item.menuItem?.name || item.name || 'Item'}</span>
                     </div>
                     <span className="text-[10px] font-black text-text-muted opacity-50">₹{item.price}</span>
                   </div>

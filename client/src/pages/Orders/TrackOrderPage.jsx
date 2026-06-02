@@ -9,10 +9,10 @@ import api from '../../api/axiosInstance';
 import Navbar from '../../components/Navbar/Navbar';
 import StoreStatusBanner from '../../components/StoreStatus/StoreStatusBanner';
 import Footer from '../../components/Footer/Footer';
+import Loader from '../../components/Loader/Loader';
 import { useCart } from '../../context/CartContext';
 import { useTheme } from '../../context/ThemeContext';
 import socket from '../../services/socket';
-import Loader from '../../components/Loader/Loader';
 import Swal from 'sweetalert2';
 
 const TrackOrderPage = () => {

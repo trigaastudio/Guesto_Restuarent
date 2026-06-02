@@ -7,7 +7,7 @@ import Footer from '../../components/Footer/Footer';
 import CategorySection from '../../components/Category/CategorySection';
 import MenuSection from '../../components/Menu/MenuSection';
 import MenuModal from '../../components/Menu/MenuModal';
-import Loader from '../../components/Loader/Loader';
+import PageSkeleton from '../../components/Skeleton/PageSkeleton';
 import { useCart } from '../../context/CartContext';
 import StoreStatusBanner from '../../components/StoreStatus/StoreStatusBanner';
 import OffersCarousel from '../../components/Offers/OffersCarousel';
@@ -204,7 +204,7 @@ const DigitalMenu = () => {
   };
 
   if (loading && menus.length === 0 && categories.length === 0) {
-    return <Loader fullPage={true} />;
+    return <PageSkeleton />;
   }
 
   const restaurantName = restaurantSettings?.restaurantDetails?.name || 'GUESTO RESTAURANT';

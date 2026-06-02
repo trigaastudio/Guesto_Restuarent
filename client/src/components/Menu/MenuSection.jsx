@@ -1,6 +1,6 @@
 import React from 'react';
-import { LayoutGrid, UtensilsCrossed, Plus } from 'lucide-react';
-import Loader from '../Loader/Loader';
+import { LayoutGrid, UtensilsCrossed, Plus, Loader2 } from 'lucide-react';
+import CardSkeleton from '../Skeleton/CardSkeleton';
 import { useCart } from '../../context/CartContext';
 import { getEffectiveStock } from '../../utils/stockHelpers';
 
@@ -99,8 +99,10 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
         </div>
 
         {loading ? (
-          <div className="min-h-[400px] flex items-center justify-center">
-            <Loader size="medium" />
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6 animate-fade-in">
+            {Array.from({ length: 10 }).map((_, i) => (
+              <CardSkeleton key={i} />
+            ))}
           </div>
         ) : (!filteredMenus || filteredMenus.length === 0) ? (
           <div className="py-20 text-center space-y-6 animate-fade-in bg-background-muted/50 rounded-[3rem] border border-dashed border-border/60">
@@ -243,7 +245,7 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
         <div ref={observerTarget} className="h-10 flex items-center justify-center mt-2">
           {loadingMore && (
             <div className="flex items-center gap-3">
-              <Loader size="small" />
+              <Loader2 size={16} className="animate-spin text-primary" />
               <span className="text-[10px] font-black tracking-widest text-primary opacity-60">Loading more dishes...</span>
             </div>
           )}

@@ -12,7 +12,7 @@ import CategorySection from '../../components/Category/CategorySection';
 import MenuSection from '../../components/Menu/MenuSection';
 import MenuModal from '../../components/Menu/MenuModal';
 import StoreStatusBanner from '../../components/StoreStatus/StoreStatusBanner';
-import Loader from '../../components/Loader/Loader';
+import PageSkeleton from '../../components/Skeleton/PageSkeleton';
 import OffersCarousel from '../../components/Offers/OffersCarousel';
 import socket from '../../services/socket';
 import { getEffectiveStock } from '../../utils/stockHelpers';
@@ -330,7 +330,7 @@ const HomePage = () => {
 
 
   if (loading && menus.length === 0 && categories.length === 0) {
-    return <Loader fullPage={true} />;
+    return <PageSkeleton />;
   }
 
   return (

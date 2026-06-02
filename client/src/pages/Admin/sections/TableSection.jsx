@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../../../api/axiosInstance';
 import { Plus, Edit2, Trash2, RefreshCw, Users, Hash, Search, RotateCcw, XCircle } from 'lucide-react';
-import Loader from '../../../components/Loader/Loader';
+import TableSkeleton from '../../../components/Skeleton/TableSkeleton';
 import { showToast } from '../../../utils/sweetAlert';
 import Swal from 'sweetalert2';
 
@@ -230,15 +230,12 @@ const TableSection = ({ refreshKey }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
-              {isLoading ? (
-                <tr>
-                  <td colSpan="4" className="px-6 py-20 text-center">
-                    <div className="flex flex-col items-center justify-center space-y-6">
-                      <Loader size="large" />
-                      <p className="text-text-secondary text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Loading tables...</p>
-                    </div>
-                  </td>
-                </tr>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan="4" className="px-6 py-10">
+                      <TableSkeleton columns={4} rows={5} />
+                    </td>
+                  </tr>
               ) : filteredTables.length === 0 ? (
                 <tr>
                   <td colSpan="4" className="px-6 py-12 text-center text-text-muted italic">No tables found</td>

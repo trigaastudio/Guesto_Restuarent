@@ -47,7 +47,7 @@ class CartController {
       const variant = menuItem?.variants?.find(v => v.size === finalSize);
       
       const bogoInfo = (variant?.isBOGO && variant?.bogoItem) ? {
-        name: (await Menu.findById(variant.bogoItem))?.name || 'Free Item',
+        name: variant.bogoItem?.name || (await Menu.findById(variant.bogoItem?._id || variant.bogoItem))?.name || 'Free Item',
         size: variant.bogoVariant || '',
         quantity: quantity || 1
       } : null;

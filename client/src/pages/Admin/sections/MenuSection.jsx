@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { Fragment, useState, useEffect, useRef } from 'react';
 import { Plus, Edit2, Trash2, Search, Image as ImageIcon, Filter, CheckCircle2, XCircle, AlertCircle, Loader2, ArrowUpDown, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
 import axios from 'axios';
 import api from '../../../api/axiosInstance';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 import ImageCropper from '../../../components/ImageCropper/ImageCropper';
-import Loader from '../../../components/Loader/Loader';
+import TableSkeleton from '../../../components/Skeleton/TableSkeleton';
 import Pagination from '../../../components/Pagination/Pagination';
 
 const STANDARD_VARIANTS = ['Piece', 'Quarter', 'Half', 'Full'];
@@ -555,11 +555,8 @@ const MenuSection = () => {
             <tbody className="divide-y divide-border-light">
               {isLoading ? (
                 <tr>
-                  <td colSpan="8" className="px-6 py-20 text-center">
-                    <div className="flex flex-col items-center justify-center space-y-6">
-                      <Loader size="large" />
-                      <p className="text-text-secondary text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Loading menu items...</p>
-                    </div>
+                  <td colSpan="8" className="px-6 py-10">
+                    <TableSkeleton columns={8} rows={5} />
                   </td>
                 </tr>
               ) : paginatedMenus.length === 0 ? (
@@ -855,6 +852,19 @@ const MenuSection = () => {
                     {errors.totalStock && <p className="text-[10px] font-bold text-primary mt-1">{typeof errors.totalStock === 'string' ? errors.totalStock : 'Stock is required'}</p>}
                   </div>
                 )}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-text-secondary">Food Type</label>
+                  <div className="flex items-center justify-around h-[42px] bg-background-muted/50 px-4 rounded-xl border border-border-main">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="foodType" value="veg" checked={currentMenu.foodType === 'veg'} onChange={() => setCurrentMenu({ ...currentMenu, foodType: 'veg' })} className="accent-green-500 w-4 h-4" />
+                      <span className="text-xs font-black text-green-500 uppercase tracking-wider">Veg</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="foodType" value="non-veg" checked={currentMenu.foodType === 'non-veg'} onChange={() => setCurrentMenu({ ...currentMenu, foodType: 'non-veg' })} className="accent-red-500 w-4 h-4" />
+                      <span className="text-xs font-black text-red-500 uppercase tracking-wider">Non-Veg</span>
+                    </label>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-1.5">
@@ -1004,7 +1014,7 @@ const MenuSection = () => {
                                     >
                                       <option value="" className="bg-background-card text-text-primary">Select an item and variant...</option>
                                       {menus.map(m => (
-                                        <React.Fragment key={m._id}>
+                                        <Fragment key={m._id}>
                                           {m.variants?.length > 0 ? (
                                             m.variants.map((v, vIdx) => (
                                               <option key={`${m._id}-${vIdx}`} value={`${m._id}|${v.size}`} className="bg-background-card text-text-primary">
@@ -1016,7 +1026,7 @@ const MenuSection = () => {
                                               {m.name}
                                             </option>
                                           )}
-                                        </React.Fragment>
+                                        </Fragment>
                                       ))}
                                     </select>
                                     <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted">

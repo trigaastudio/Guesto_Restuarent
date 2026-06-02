@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useCart } from '../../context/CartContext';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar/Navbar';
@@ -73,7 +73,7 @@ const AddressListModal = ({ isOpen, onClose, addresses, onSelect, onAddAddress }
 const QuantityInput = ({ item, updateQuantity, getStock }) => {
   const [localValue, setLocalValue] = useState(item.quantity);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setLocalValue(item.quantity);
   }, [item.quantity]);
 
@@ -148,7 +148,7 @@ const CartPage = () => {
   const [calculatedDistance, setCalculatedDistance] = useState(null);
   const [isCalculatingFee, setIsCalculatingFee] = useState(false);
   const platformFee = settings?.operationalSettings?.platformFee || 0;
-  const originalTotal = React.useMemo(() => {
+  const originalTotal = useMemo(() => {
     return cartItems.reduce((sum, item) => {
       let basePrice = 0;
       if (item.isCombo) {
@@ -197,7 +197,7 @@ const CartPage = () => {
       return;
     }
 
-    
+
     if (pricingType === 'distance' && settings.restaurantDetails?.location?.lat) {
       try {
         setIsCalculatingFee(true);
@@ -316,7 +316,7 @@ const CartPage = () => {
     } catch (error) { Swal.fire('Error', error.response?.data?.message || 'Failed to save address', 'error'); } finally { setLoading(false); }
   };
 
-    const handleLogout = React.useCallback(() => {
+  const handleLogout = useCallback(() => {
     const currentUser = JSON.parse(localStorage.getItem('user') || localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || '{}');
     if (currentUser.role === 'admin') {
       localStorage.removeItem('admin_token');
@@ -332,17 +332,17 @@ const CartPage = () => {
       navigate('/login', { replace: true });
     }
   }, [navigate]);
-  const handleSelectAddress = (address) => { 
-    setDeliveryAddress(address); 
+  const handleSelectAddress = (address) => {
+    setDeliveryAddress(address);
     if (address?._id) {
       localStorage.setItem('selectedDeliveryAddressId', address._id);
       localStorage.setItem('selectedDeliveryAddressObj', JSON.stringify(address));
     }
   };
-  const getStock = React.useCallback((item) => {
+  const getStock = useCallback((item) => {
     if (!item) return 0;
 
-    
+
     const rawStock = getEffectiveStock(item);
 
     if (item.isCombo) {
@@ -351,10 +351,10 @@ const CartPage = () => {
         return !menuItem || menuItem.isBlocked || getEffectiveStock(menuItem) <= 0;
       });
       if (isAnyComboItemOutOfStock) return 0;
-      return Infinity; 
+      return Infinity;
     }
 
-    
+
     if (item.selectedSize) {
       const variants = Array.isArray(item.variants) ? item.variants : (Array.isArray(item.sizes) ? item.sizes : []);
       const variant = variants.find(v => v.size === item.selectedSize);
@@ -367,7 +367,7 @@ const CartPage = () => {
     return rawStock;
   }, []);
 
-  const hasOutOfStockItems = React.useMemo(() => {
+  const hasOutOfStockItems = useMemo(() => {
     return (cartItems || []).some(item => (getStock(item) < (item.quantity || 0)) || item.isBlocked);
   }, [cartItems, getStock]);
 
@@ -414,13 +414,13 @@ const CartPage = () => {
       });
       return;
     }
-    if (!dineInTableId && !deliveryAddress) { 
+    if (!dineInTableId && !deliveryAddress) {
       if (savedAddresses && savedAddresses.length > 0) {
         setIsAddressListOpen(true);
       } else {
         setIsAddressModalOpen(true);
       }
-      return; 
+      return;
     }
 
     setIsValidating(true);
@@ -440,8 +440,8 @@ const CartPage = () => {
           confirmButtonColor: '#B91C1C',
           customClass: { popup: 'rounded-[2rem] bg-background text-text-primary' }
         });
-        
-        
+
+
         if (fetchCart) await fetchCart();
         return;
       }
@@ -470,7 +470,7 @@ const CartPage = () => {
                 <div className="absolute inset-0 bg-primary/10 rounded-[3rem] blur-2xl group-hover:bg-primary/20 transition-all duration-700"></div>
                 <div className="relative w-36 h-36 bg-background-card rounded-[3rem] flex items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.03)] border border-border/10 group-hover:scale-105 transition-transform duration-700">
                   <div className="w-24 h-24 bg-primary/5 rounded-full flex items-center justify-center overflow-hidden relative">
-                     <ShoppingBag size={42} strokeWidth={1.5} className="text-primary/40" />
+                    <ShoppingBag size={42} strokeWidth={1.5} className="text-primary/40" />
                   </div>
                 </div>
                 <div className="absolute -bottom-4 -right-4 w-16 h-16 bg-primary rounded-[1.5rem] flex items-center justify-center text-white shadow-[0_15px_40px_rgba(185,28,28,0.4)] animate-bounce border-[3px] border-background z-10">
@@ -483,12 +483,12 @@ const CartPage = () => {
               <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.25em] mb-10 opacity-60">
                 Hungry? Your next great meal is just a click away!
               </p>
-              <button 
-                onClick={() => navigate('/home')} 
+              <button
+                onClick={() => navigate('/home')}
                 className="group bg-primary hover:bg-primary-dark text-white px-10 py-4 rounded-full font-black text-[10px] tracking-[0.2em] uppercase transition-all shadow-[0_10px_30px_rgba(185,28,28,0.2)] hover:shadow-[0_15px_40px_rgba(185,28,28,0.3)] hover:-translate-y-1 active:scale-95 flex items-center gap-3"
               >
                 <span className="bg-white/20 p-1.5 rounded-full group-hover:-translate-x-1 transition-transform">
-                  <ArrowLeft size={16} strokeWidth={3} /> 
+                  <ArrowLeft size={16} strokeWidth={3} />
                 </span>
                 Browse Our Menu
               </button>
@@ -544,7 +544,7 @@ const CartPage = () => {
                 </div>
               )}
 
-              {}
+              { }
               <div className="bg-background-card rounded-2xl border border-border/20 shadow-sm overflow-hidden">
                 <div className="p-4 md:p-6 border-b border-border/10">
                   <h2 className="text-lg font-black text-text-primary lowercase flex items-center gap-2">
@@ -575,15 +575,15 @@ const CartPage = () => {
                     };
 
                     const basePrice = getBasePrice();
-                    
+
                     const menuDiscount = item.discountPercentage || 0;
                     const categoryDiscount = item.category?.discountPercentage || 0;
                     const computedDiscountPercent = Math.max(menuDiscount, categoryDiscount);
-                    
-                    const finalPrice = item.isCombo 
+
+                    const finalPrice = item.isCombo
                       ? (item.price || basePrice)
                       : Math.round(computedDiscountPercent > 0 ? basePrice * (1 - computedDiscountPercent / 100) : basePrice);
-                      
+
                     const discountPercent = computedDiscountPercent;
 
                     const sameItemQty = cartItems
@@ -611,35 +611,35 @@ const CartPage = () => {
                                   {item.selectedSize ? `size: ${item.selectedSize}` : (item.category?.name || 'Main Course')}
                                 </p>
 
-                                {}
+                                { }
                                 {item.isCombo && item.comboItems?.length > 0 && (
                                   <div className="mt-2 space-y-1 pl-2 border-l border-primary/30">
                                     <span className="text-[8px] font-black text-primary uppercase tracking-wider block">Combo includes:</span>
                                     <div className="flex flex-wrap gap-1.5">
                                       {item.comboItems.map((ci, idx) => (
                                         <span key={idx} className="inline-flex items-center bg-primary/5 text-primary text-[9px] font-bold px-2 py-0.5 rounded-lg border border-primary/10">
-                                          {ci.quantity || 1}x {ci.menuItem?.name || 'Item'}
+                                          {ci.quantity || 1}x {ci.menuItem?.name || ci.name || 'Item'}
                                         </span>
                                       ))}
                                     </div>
                                   </div>
                                 )}
 
-                                {}
+                                { }
                                 {!item.isCombo && item.variants?.find(v => v.size === item.selectedSize)?.includedItems?.length > 0 && (
                                   <div className="mt-2 space-y-1 pl-2 border-l border-primary/30">
                                     <span className="text-[8px] font-black text-primary uppercase tracking-wider block">Includes Add-ons:</span>
                                     <div className="flex flex-wrap gap-1.5">
                                       {item.variants.find(v => v.size === item.selectedSize).includedItems.map((ii, idx) => (
                                         <span key={idx} className="inline-flex items-center bg-primary/5 text-primary text-[9px] font-bold px-2 py-0.5 rounded-lg border border-primary/10">
-                                          {ii.quantity || 1}x {ii.menuItem?.name || 'Item'}
+                                          {ii.quantity || 1}x {ii.menuItem?.name || ii.name || 'Item'}
                                         </span>
                                       ))}
                                     </div>
                                   </div>
                                 )}
 
-                                {}
+                                { }
                                 {item.bogoItem && item.variants?.find(v => v.size === item.selectedSize)?.isBOGO && (
                                   <div className="mt-2 space-y-1 pl-2 border-l border-emerald-500/30">
                                     <span className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">Buy 1 Get 1 Free Add-on:</span>
@@ -701,7 +701,7 @@ const CartPage = () => {
                 ></textarea>
               </div>
             </div>
-            {}
+            { }
             <div className="w-full lg:w-[450px] sticky top-32">
               <div className="bg-background-card rounded-[3rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-border/20 p-8 md:p-12 space-y-10 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
@@ -773,8 +773,8 @@ const CartPage = () => {
                   onClick={handleCheckout}
                   disabled={loading || hasOutOfStockItems || isValidating}
                   className={`w-full font-black py-5 rounded-2xl transition-all shadow-2xl uppercase tracking-[0.2em] flex items-center justify-center gap-4 text-xs ${hasOutOfStockItems || isValidating
-                      ? 'bg-background-muted text-text-muted/30 cursor-not-allowed border border-border/10 grayscale opacity-50'
-                      : 'bg-primary text-white hover:bg-primary-dark active:scale-[0.98] shadow-primary/20'
+                    ? 'bg-background-muted text-text-muted/30 cursor-not-allowed border border-border/10 grayscale opacity-50'
+                    : 'bg-primary text-white hover:bg-primary-dark active:scale-[0.98] shadow-primary/20'
                     }`}
                 >
                   {isValidating ? (

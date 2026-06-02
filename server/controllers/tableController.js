@@ -81,7 +81,7 @@ export const getTables = async (req, res) => {
 
 export const updateTable = async (req, res) => {
   try {
-    const table = await Table.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const table = await Table.findByIdAndUpdate(req.params.id, req.body, { returnDocument: 'after' });
     if (!table) return res.status(404).json({ message: 'Table not found' });
     
     await logAdminAction(req, 'UPDATE_TABLE', 'Table', table._id, { updatedFields: Object.keys(req.body) });

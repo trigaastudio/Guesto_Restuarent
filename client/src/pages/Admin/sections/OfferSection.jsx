@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import api from '../../../api/axiosInstance';
 import { showToast } from '../../../utils/sweetAlert';
-import Loader from '../../../components/Loader/Loader';
+import CardSkeleton from '../../../components/Skeleton/CardSkeleton';
 
 const OfferSection = () => {
   const [offers, setOffers] = useState([]);
@@ -236,7 +236,13 @@ const OfferSection = () => {
     currentPage * itemsPerPage
   );
 
-  if (loading && offers.length === 0) return <Loader />;
+  if (loading && offers.length === 0) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-10">
+        {Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} />)}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">

@@ -1,77 +1,107 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import {
-  LogOut, RefreshCw, Bell, Sun, Moon, Plus, Edit2, Trash2,
-  UtensilsCrossed, X, ChevronRight, ChevronDown, Menu, Users, ShoppingCart, Hash, GitMerge, AlertCircle, CheckCircle2, Printer
+  RefreshCw, Plus, Edit2, Trash2, UtensilsCrossed, X, ChevronRight, Hash, GitMerge, CheckCircle2, ShoppingCart, Users, Receipt
 } from 'lucide-react';
-import api from '../../api/axiosInstance';
-import { useTheme } from '../../context/ThemeContext';
-import { useCart } from '../../context/CartContext';
-import { showToast } from '../../utils/sweetAlert';
+import api from '../../../api/axiosInstance';
+import { showToast } from '../../../utils/sweetAlert';
 import Swal from 'sweetalert2';
-import CardSkeleton from '../../components/Skeleton/CardSkeleton';
-import DineInPOSModal from '../../components/POS/DineInPOSModal';
-import { logoutStaff } from '../../utils/auth';
+import Pagination from '../../../components/Pagination/Pagination';
+import CardSkeleton from '../../../components/Skeleton/CardSkeleton';
+import DineInPOSModal from '../../../components/POS/DineInPOSModal';
+import { useCart } from '../../../context/CartContext';
 
 const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
 
-const WaiterDashboard = () => {
+const DineInSection = () => {
   const [tables, setTables] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isFetched, setIsFetched] = useState(false);
   const [isPOSModalOpen, setIsPOSModalOpen] = useState(false);
   const [selectedTable, setSelectedTable] = useState(null);
   const [selectedOrderForEdit, setSelectedOrderForEdit] = useState(null);
   const [selectedOrderSeats, setSelectedOrderSeats] = useState(0);
-  const [expandedOrders, setExpandedOrders] = useState([]);
   const [selectedViewTableId, setSelectedViewTableId] = useState(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedOrderForView, setSelectedOrderForView] = useState(null);
   const [isMergeMode, setIsMergeMode] = useState(false);
+  const [isMerging, setIsMerging] = useState(false);
   const [selectedMergeTableNumbers, setSelectedMergeTableNumbers] = useState([]);
 
-  const staff = JSON.parse(localStorage.getItem('staff_user') || '{}');
-  const navigate = useNavigate();
-  const { theme, toggleTheme } = useTheme();
   const { settings } = useCart();
-  const isDarkMode = theme === 'dark';
   const socketRef = useRef();
+  const fetchInProgressRef = useRef(false);
+
+  const handleUnmerge = async (tableNumber) => {
+    const confirmResult = await Swal.fire({
+      title: '<div style="font-size:20px; font-weight:800; color:var(--color-text-primary); letter-spacing:-0.5px;">Unmerge Tables?</div>',
+      text: `Are you sure you want to split and unmerge Table ${tableNumber} and its grouped tables?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Unmerge',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: 'var(--color-primary)',
+      cancelButtonColor: '#9ca3af',
+      customClass: {
+        popup: 'rounded-3xl border border-border-light shadow-2xl p-6 bg-background-card',
+        confirmButton: 'px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider text-white bg-primary hover:bg-primary-light transition-all',
+        cancelButton: 'px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider text-text-secondary bg-background-muted border border-border-light transition-all'
+      }
+    });
+
+    if (confirmResult.isConfirmed) {
+      fetchInProgressRef.current = true;
+      try {
+        await api.post('/api/tables/coshare-unmerge', { tableNumber });
+        const response = await api.get('/api/tables');
+        // Batch: tables + isFetched in one render; socket fetch is blocked by ref
+        setTables(response.data);
+        setIsFetched(true);
+        showToast('success', 'Tables successfully unmerged!');
+      } catch (error) {
+        console.error('Error unmerging tables:', error);
+        showToast('error', error.response?.data?.message || 'Failed to unmerge tables');
+      } finally {
+        fetchInProgressRef.current = false;
+      }
+    }
+  };
 
   const fetchTables = async (silent = false) => {
+    // Block duplicate silent fetches (e.g. socket event racing with explicit fetch)
+    if (silent && fetchInProgressRef.current) return;
     if (!silent) setIsLoading(true);
     try {
       const response = await api.get('/api/tables');
-      setTables(response.data);
+      // Skip state update if data hasn't actually changed — prevents ghost re-renders
+      setTables(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(response.data)) return prev;
+        return response.data;
+      });
+      setIsFetched(true);
     } catch (error) {
       console.error('Error fetching tables:', error);
       if (!silent) showToast('error', 'Failed to fetch tables');
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
   useEffect(() => {
     fetchTables();
-    document.title = 'Waiter | Dashboard';
 
-    
     socketRef.current = io(SOCKET_URL);
 
-    
     socketRef.current.on('ordersUpdated', () => {
       fetchTables(true);
     });
 
-    
     socketRef.current.on('tablesUpdated', () => {
       fetchTables(true);
     });
 
     const handleDbChange = (event) => {
       const data = event.detail;
-      
       if (['Table', 'tables', 'Order', 'orders'].includes(data.collection)) {
         fetchTables(true);
       }
@@ -92,11 +122,6 @@ const WaiterDashboard = () => {
       actualStatus = 'processing';
     }
     return (actualStatus === 'processing' && isReady) ? 'ready' : actualStatus;
-  };
-
-
-  const handleLogout = () => {
-    logoutStaff(navigate);
   };
 
   const handleTakeOrder = async (table) => {
@@ -162,11 +187,9 @@ const WaiterDashboard = () => {
       didOpen: () => {
         window.selectedSwalSeatsVal = 0;
         window.clickedSeatIndex = 0;
-
         window.selectSwalSeats = (num) => {
           window.selectedSwalSeatsVal = num - currentOccupied;
           window.clickedSeatIndex = num;
-
           for (let i = currentOccupied + 1; i <= capacity; i++) {
             const btn = document.getElementById(`swal-seat-btn-${i}`);
             if (btn) {
@@ -205,12 +228,6 @@ const WaiterDashboard = () => {
     }
   };
 
-  const handleEditOrder = (table, order) => {
-    setSelectedTable(table);
-    setSelectedOrderForEdit(order);
-    setIsPOSModalOpen(true);
-  };
-
   const handleStartMergeMode = () => {
     setIsMergeMode(true);
     setSelectedMergeTableNumbers([]);
@@ -224,63 +241,24 @@ const WaiterDashboard = () => {
 
   const handleSaveMerge = async () => {
     if (selectedMergeTableNumbers.length < 2) return;
-    setIsLoading(true);
+    setIsMerging(true);
+    fetchInProgressRef.current = true; // Block socket-triggered fetches during this operation
     try {
       await api.post('/api/tables/coshare-merge', { tableNumbers: selectedMergeTableNumbers });
-      showToast('success', `Tables ${selectedMergeTableNumbers.join(', ')} merged successfully!`);
-      await fetchTables();
+      const response = await api.get('/api/tables');
+      // All 4 updates happen in one synchronous React 18 batch → single render, zero flash
+      setTables(response.data);
       setIsMergeMode(false);
       setSelectedMergeTableNumbers([]);
+      setIsFetched(true);
+      showToast('success', `Tables ${selectedMergeTableNumbers.join(', ')} merged successfully!`);
     } catch (error) {
       console.error('Error merging tables:', error);
       showToast('error', error.response?.data?.message || 'Failed to merge tables');
     } finally {
-      setIsLoading(false);
+      setIsMerging(false);
+      fetchInProgressRef.current = false;
     }
-  };
-
-  const handleUnmerge = async (tableNumber) => {
-    const confirmResult = await Swal.fire({
-      title: '<div style="font-size:20px; font-weight:800; color:var(--color-text-primary); letter-spacing:-0.5px;">Unmerge Tables?</div>',
-      text: `Are you sure you want to split and unmerge Table ${tableNumber} and its grouped tables?`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, Unmerge',
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: 'var(--color-primary)',
-      cancelButtonColor: '#9ca3af',
-      customClass: {
-        popup: 'rounded-3xl border border-border-light shadow-2xl p-6 bg-white dark:bg-gray-900',
-        confirmButton: 'px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider text-white bg-primary hover:bg-primary-light transition-all',
-        cancelButton: 'px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider text-text-secondary bg-background-muted border border-border-light transition-all'
-      }
-    });
-
-    if (confirmResult.isConfirmed) {
-      setIsLoading(true);
-      try {
-        await api.post('/api/tables/coshare-unmerge', { tableNumber });
-        showToast('success', 'Tables successfully unmerged!');
-        await fetchTables();
-        setSelectedViewTableId(null);
-      } catch (error) {
-        console.error('Error unmerging tables:', error);
-        showToast('error', error.response?.data?.message || 'Failed to unmerge tables');
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  };
-
-
-
-  const toggleOrderExpansion = (e, orderId) => {
-    e.stopPropagation();
-    setExpandedOrders(prev =>
-      prev.includes(orderId)
-        ? prev.filter(id => id !== orderId)
-        : [...prev, orderId]
-    );
   };
 
   const handleUpdateOrderStatus = async (orderId, newStatus, forceSilent = false) => {
@@ -424,7 +402,7 @@ const WaiterDashboard = () => {
   const handlePrintKOT = (order) => {
     const printWindow = window.open('', '_blank');
 
-    
+
     const aggregatedItems = [];
     order.items.forEach(item => {
       const itemId = item.menuItem?._id || item.menuItem;
@@ -478,7 +456,7 @@ const WaiterDashboard = () => {
     const restaurantPhone = settings?.restaurantDetails?.contactNumber || '7034805085';
     const monochromeLogo = settings?.branding?.logoMonochrome || null;
 
-    
+
     let qrCodeUrl = '';
     const showQR = settings?.printingSettings?.showKOTQRCode && (order.orderType === 'delivery' || order.orderSource === 'online' || order.orderType === 'online');
 
@@ -605,366 +583,324 @@ const WaiterDashboard = () => {
   };
 
   return (
-    <div className="flex h-screen bg-background text-text-primary overflow-hidden transition-colors duration-300">
-      {}
-      <main className="flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out">
-        <header className="h-20 bg-background-card border-b border-border-main flex items-center justify-between px-4 lg:px-8 shrink-0">
-          <div className="flex items-center space-x-4">
-            <img
-              src={isDarkMode ? (settings?.branding?.logoGold || '/logo-golden.png') : (settings?.branding?.logoDark || '/logo-dark.png')}
-              alt="Logo"
-              className="h-10 w-auto transition-all duration-500 mr-2"
-            />
-            <div className="border-l border-border-light pl-4">
-              <h1 className="text-lg font-black text-text-primary tracking-tight">Waiter Dashboard</h1>
-              <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest hidden sm:block">
-                Table & Dine-in Management
-              </p>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-black text-text-primary tracking-tight">Dine-In Management</h2>
+          <p className="text-text-secondary text-sm">Manage live dine-in orders and table occupancy</p>
+        </div>
+        <button
+          onClick={() => fetchTables()}
+          className="bg-background-card border border-border-light text-text-secondary hover:text-primary px-4 py-2 rounded-xl transition-all shadow-sm flex items-center space-x-2"
+        >
+          <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
+          <span className="font-bold text-xs uppercase tracking-wider">Refresh</span>
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto space-y-8">
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <CardSkeleton key={i} />
+            ))}
+          </div>
+        ) : isFetched && tables.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-64 space-y-6 text-center">
+            <div className="w-28 h-28 bg-background-muted/50 rounded-full flex items-center justify-center border-2 border-dashed border-border-light">
+              <Hash size={40} className="text-text-muted opacity-30" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-text-primary">No Tables Available!</h2>
+              <p className="text-text-secondary font-medium mt-1">Please configure tables in Table Inventory.</p>
             </div>
           </div>
+        ) : selectedViewTableId ? (
+          (() => {
+            const currentTable = tables.find(t => t._id === selectedViewTableId);
+            if (!currentTable) {
+              setSelectedViewTableId(null);
+              return null;
+            }
+            const isOccupied = currentTable.status === 'occupied';
 
-          <div className="flex items-center space-x-2 sm:space-x-4">
-            <button onClick={toggleTheme} className="p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all">
-              {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-            <button onClick={() => fetchTables()} className="p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all group">
-              <RefreshCw size={20} className={`${isLoading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
-            </button>
-            <div className="flex items-center space-x-3 border-l border-r pr-4 sm:pr-6 pl-4 sm:pl-6 border-border-light">
-              <div className="hidden sm:block text-right">
-                <p className="text-sm font-bold text-text-primary">{staff.name || 'User'}</p>
-                <p className="text-[10px] text-text-secondary uppercase tracking-wider">{staff.employeeId || 'Staff'}</p>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-purple-500/20 border-2 border-purple-500/10 flex items-center justify-center text-purple-500 font-black shrink-0 text-sm">
-                {staff.name?.charAt(0) || 'W'}
-              </div>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="p-2 text-status-unavailable hover:bg-status-off/5 rounded-lg transition-all flex items-center space-x-1.5"
-              title="Logout"
-            >
-              <LogOut size={20} />
-              <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Logout</span>
-            </button>
-          </div>
-        </header>
-
-        <div className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-8">
-          {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <CardSkeleton key={i} />
-              ))}
-            </div>
-          ) : tables.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-[60vh] space-y-6 text-center animate-in fade-in zoom-in duration-500">
-              <div className="w-28 h-28 bg-background-muted/50 rounded-full flex items-center justify-center border-2 border-dashed border-border-light">
-                <Hash size={40} className="text-text-muted opacity-30" />
-              </div>
+            return (
               <div>
-                <h2 className="text-2xl font-black text-text-primary">No Tables Available!</h2>
-                <p className="text-text-secondary font-medium mt-1">Please ask an admin to configure tables.</p>
-              </div>
-            </div>
-          ) : selectedViewTableId ? (
-            (() => {
-              const currentTable = tables.find(t => t._id === selectedViewTableId);
-              if (!currentTable) {
-                setSelectedViewTableId(null);
-                return null;
-              }
-              const isOccupied = currentTable.status === 'occupied';
+                <div className="flex items-center justify-between mb-6">
+                  <button
+                    onClick={() => setSelectedViewTableId(null)}
+                    className="flex items-center space-x-2 px-4 py-2.5 bg-background-card hover:bg-background-muted border border-border-light rounded-xl transition-all text-text-secondary hover:text-primary shadow-sm font-bold text-xs uppercase tracking-wider group"
+                  >
+                    <ChevronRight className="rotate-180 group-hover:-translate-x-1 transition-transform" size={16} strokeWidth={3} />
+                    <span>Back to Tables</span>
+                  </button>
 
-              return (
-                <div className="animate-in fade-in slide-in-from-right-8 duration-500">
-                  {}
-                  <div className="flex items-center justify-between mb-6">
-                    <button
-                      onClick={() => setSelectedViewTableId(null)}
-                      className="flex items-center space-x-2 px-4 py-2.5 bg-background-card hover:bg-background-muted border border-border-light rounded-xl transition-all text-text-secondary hover:text-primary shadow-sm font-bold text-xs uppercase tracking-wider group"
-                    >
-                      <ChevronRight className="rotate-180 group-hover:-translate-x-1 transition-transform" size={16} strokeWidth={3} />
-                      <span>Back to Tables</span>
-                    </button>
+                  <span className="text-xs font-black text-text-muted uppercase tracking-[0.2em] bg-background-muted/80 px-4 py-2 rounded-full border border-border-light">
+                    Dine-in Console
+                  </span>
+                </div>
 
-                    <span className="text-xs font-black text-text-muted uppercase tracking-[0.2em] bg-background-muted/80 px-4 py-2 rounded-full border border-border-light">
-                      Dine-in Console
-                    </span>
-                  </div>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                  <div className="lg:col-span-4 bg-background-card border border-border-light rounded-[2.5rem] p-6 lg:p-8 shadow-md flex flex-col items-center relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+                    <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary-light/5 rounded-full blur-3xl pointer-events-none" />
 
-                  {}
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-
-                    {}
-                    <div className="lg:col-span-4 bg-background-card border border-border-light rounded-[2.5rem] p-6 lg:p-8 shadow-md flex flex-col items-center relative overflow-hidden">
-                      {}
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-                      <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary-light/5 rounded-full blur-3xl pointer-events-none" />
-
-                      <div className="w-full aspect-[4/3] max-w-[200px] mb-6 flex items-center justify-center p-2 relative bg-background-muted/30 rounded-3xl border border-border-light/60 overflow-hidden shadow-inner group">
-                        <img
-                          src="/table_pic.png"
-                          alt={`Table ${currentTable.tableNumber}`}
-                          className="w-full h-full object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-300"
-                        />
-                      </div>
-
-                      <div className="text-center w-full mb-6">
-                        <h2 className="text-3xl font-black text-text-primary tracking-tight">Table {currentTable.tableNumber}</h2>
-                        {currentTable.mergedGroup && currentTable.mergedGroup.length > 0 && (
-                          <div className="mt-2 flex flex-col items-center gap-2 animate-in fade-in duration-300">
-                            <div className="inline-flex items-center gap-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-3.5 py-1.5 rounded-2xl border border-amber-500/20 text-[10px] font-black uppercase tracking-wider">
-                              <GitMerge size={12} strokeWidth={3} />
-                              <span>Merged Group ({currentTable.mergedGroup.join(" + ")})</span>
-                            </div>
-                            <button onClick={() => handleUnmerge(currentTable.tableNumber)} className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl text-[9px] font-black uppercase tracking-wider border border-red-500/20 transition-all active:scale-95">
-                              Unmerge Tables
-                            </button>
-                          </div>
-                        )}
-
-                        {(() => {
-                          const curCapacity = currentTable.capacity || 4;
-                          const curOccupied = currentTable.occupiedSeats || 0;
-                          const isCurFullyOccupied = curOccupied >= curCapacity;
-                          const isCurPartiallyOccupied = curOccupied > 0 && curOccupied < curCapacity;
-
-                          return (
-                            <div className="flex flex-col items-center mt-3 space-y-2">
-                              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${isCurFullyOccupied
-                                ? 'bg-red-500/10 text-red-600 border border-red-500/20'
-                                : isCurPartiallyOccupied
-                                  ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
-                                  : 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
-                                }`}>
-                                <span className={`w-2 h-2 rounded-full ${isCurFullyOccupied ? 'bg-red-500' : isCurPartiallyOccupied ? 'bg-amber-500' : 'bg-emerald-500'
-                                  } animate-pulse`} />
-                                {isCurFullyOccupied ? 'Fully Seated' : isCurPartiallyOccupied ? 'Partially Occupied' : 'Available'}
-                              </span>
-
-                              {}
-                              <div className="w-full max-w-[240px] mt-4">
-                                <div className="flex justify-between text-[10px] font-black text-text-muted uppercase tracking-widest mb-1.5">
-                                  <span>Seating Status</span>
-                                  <span>{curOccupied} / {curCapacity} Seats</span>
-                                </div>
-                                <div className="w-full h-2.5 bg-background-muted rounded-full overflow-hidden border border-border-light shadow-inner">
-                                  <div
-                                    className={`h-full rounded-full transition-all duration-500 ${isCurFullyOccupied ? 'bg-red-500' : isCurPartiallyOccupied ? 'bg-amber-500' : 'bg-emerald-500'
-                                      }`}
-                                    style={{ width: `${(curOccupied / curCapacity) * 100}%` }}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </div>
-
-                      <div className="w-full border-t border-border-light pt-6 space-y-3">
-
-                        <button
-                          onClick={() => handleTakeOrder(currentTable)}
-                          disabled={currentTable.activeOrders?.length >= 4}
-                          className={`w-full flex items-center justify-center space-x-2.5 py-4 rounded-2xl font-black text-sm transition-all duration-300 ${currentTable.activeOrders?.length >= 4
-                            ? 'bg-background-muted border border-border-light text-text-muted cursor-not-allowed opacity-60'
-                            : 'bg-primary hover:bg-primary-light text-white shadow-xl shadow-primary/25 hover:shadow-primary/35 hover:-translate-y-0.5 active:scale-98'
-                            }`}
-                          title={currentTable.activeOrders?.length >= 4 ? "Maximum 4 orders allowed per table" : ""}
-                        >
-                          <Plus size={18} strokeWidth={2.5} />
-                          <span>{currentTable.activeOrders?.length >= 4 ? 'Table Full' : 'Create Order'}</span>
-                        </button>
-                      </div>
+                    <div className="w-full aspect-[4/3] max-w-[200px] mb-6 flex items-center justify-center p-2 relative bg-background-muted/30 rounded-3xl border border-border-light/60 overflow-hidden shadow-inner group">
+                      <img
+                        src="/table_pic.png"
+                        alt={`Table ${currentTable.tableNumber}`}
+                        className="w-full h-full object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-300"
+                      />
                     </div>
 
-                    {/* Right Column: Active Orders Area */}
-                    <div className="lg:col-span-8 bg-background-card border border-border-light rounded-[2.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.02)] p-6 lg:p-8 flex flex-col min-h-[55vh]">
-                      {isOccupied ? (
-                        <div className="space-y-6 flex-1 flex flex-col">
-                          <div className="flex items-center justify-between text-[11px] font-black text-text-muted uppercase tracking-[0.2em] opacity-90 border-b border-border-light pb-4">
-                            <span>Active Orders ({currentTable.activeOrders?.length || 0})</span>
-                            <span className="text-[10px] text-primary lowercase tracking-normal bg-primary/5 px-2.5 py-0.5 rounded-full font-bold">co-sharing enabled</span>
+                    <div className="text-center w-full mb-6">
+                      <h2 className="text-3xl font-black text-text-primary tracking-tight">Table {currentTable.tableNumber}</h2>
+                      {currentTable.mergedGroup && currentTable.mergedGroup.length > 0 && (
+                        <div className="mt-2 flex flex-col items-center gap-2">
+                          <div className="inline-flex items-center gap-1.5 bg-amber-500/10 text-amber-600 px-3.5 py-1.5 rounded-2xl border border-amber-500/20 text-[10px] font-black uppercase tracking-wider">
+                            <GitMerge size={12} strokeWidth={3} />
+                            <span>Merged Group ({currentTable.mergedGroup.join(" + ")})</span>
                           </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {currentTable.activeOrders?.map(order => {
-                              const currentStatus = getComputedOrderStatus(order);
-                              const isReady = currentStatus === 'ready';
-                              const isWaitingApproval = currentStatus === 'placed';
-                              const isPreparing = currentStatus === 'processing';
-                              const cardStatusStyle = isReady
-                                ? 'bg-emerald-50/40 dark:bg-emerald-500/5 border-emerald-500/30'
-                                : 'bg-background border-border-light/60';
-
-                              return (
-                                <div
-                                  key={order._id}
-                                  onClick={() => {
-                                    setSelectedTable(currentTable);
-                                    setSelectedOrderForView(order);
-                                    setIsDetailsModalOpen(true);
-                                  }}
-                                  className={`rounded-3xl border transition-all duration-300 shadow-sm hover:shadow-lg ${cardStatusStyle} group/order overflow-hidden flex flex-col cursor-pointer hover:border-primary/30`}
-                                >
-                                  <div className="flex items-center justify-between px-5 pt-5 pb-2">
-                                    <div className="flex items-center gap-3">
-                                      <span className="text-xs md:text-sm font-black text-primary uppercase tracking-wider bg-primary/5 px-3 py-1.5 rounded-full">{order.orderNumber?.toUpperCase()}</span>
-                                    </div>
-                                    {isReady ? (
-                                      <div className="flex items-center gap-1.5 bg-emerald-500/10 px-2.5 py-1 rounded-full">
-                                        <CheckCircle2 size={12} className="text-emerald-500" strokeWidth={3} />
-                                        <span className="text-[10px] md:text-xs font-black text-emerald-500 capitalize tracking-wider">Ready</span>
-                                      </div>
-                                    ) : isWaitingApproval ? (
-                                      <div className="flex items-center gap-1.5 bg-amber-500/10 px-2.5 py-1 rounded-full">
-                                        <div className="flex space-x-1">
-                                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-bounce" />
-                                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-bounce [animation-delay:-0.15s]" />
-                                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-bounce [animation-delay:-0.3s]" />
-                                        </div>
-                                        <span className="text-[10px] md:text-xs font-black text-amber-500 capitalize tracking-wider">Waiting Approval</span>
-                                      </div>
-                                    ) : isPreparing ? (
-                                      <div className="flex items-center gap-1.5 bg-blue-500/10 px-2.5 py-1 rounded-full">
-                                        <div className="flex space-x-1">
-                                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                                        </div>
-                                        <span className="text-[10px] md:text-xs font-black text-blue-500 capitalize tracking-wider">Preparing</span>
-                                      </div>
-                                    ) : null}
-                                  </div>
-
-                                  <div className="flex items-center justify-between px-5 pb-4">
-                                    <div className="flex items-center space-x-3">
-                                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary flex items-center justify-center font-black text-lg shrink-0 shadow-sm border border-primary/10">
-                                        {order.customerDetails?.name?.charAt(0) || 'C'}
-                                      </div>
-                                      <div className="min-w-0">
-                                        <p className="text-base md:text-lg font-extrabold text-text-primary truncate leading-tight">{order.customerDetails?.name || 'Walk-in'}</p>
-                                        <p className="text-xs md:text-sm text-text-muted font-bold tracking-wide mt-0.5">₹{order.totalAmount} • {order.items?.length || 0} items</p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="px-5 pb-4 space-y-2 border-t border-border-light/50 pt-4 bg-background-muted/30 flex-1">
-                                    {order.items && order.items.slice(0, 3).map((item, idx) => {
-                                      const ks = item.kitchenStatus || 'placed';
-                                      const ksColor = ks === 'ready' ? 'text-emerald-500' : ks === 'preparing' ? 'text-blue-500' : ks === 'delayed' ? 'text-red-500' : 'text-amber-500';
-                                      const ksBg = ks === 'ready' ? 'bg-emerald-500' : ks === 'preparing' ? 'bg-blue-500' : ks === 'delayed' ? 'bg-red-500' : 'bg-amber-500';
-                                      const isLastSlotAndMore = idx === 2 && order.items.length > 3;
-
-                                      return (
-                                        <div key={idx} className="flex items-center justify-between bg-white dark:bg-black/20 p-2.5 rounded-xl border border-border-light/50 shadow-[0_2px_10px_rgba(0,0,0,0.02)] h-[52px]">
-                                          <div className="min-w-0 flex-1 pr-2 pl-1">
-                                            <div className="text-xs md:text-sm font-extrabold text-text-primary truncate capitalize tracking-normal flex items-center gap-1.5">
-                                              <span className="truncate">{item.name || 'Item'} {item.size ? `(${item.size})` : ''}</span>
-                                              {isLastSlotAndMore && (
-                                                <span className="bg-primary/10 text-primary text-[8px] font-black px-1.5 py-0.5 rounded-full shrink-0">
-                                                  +{order.items.length - 3} more
-                                                </span>
-                                              )}
-                                            </div>
-                                            <div className="text-[10px] md:text-xs font-bold text-text-muted mt-0.5">Quantity: {item.quantity}</div>
-                                          </div>
-                                          <div className={`flex items-center space-x-1.5 px-2 py-1 rounded-lg border ${ksColor.replace('text-', 'border-').replace('500', '500/30')} ${ksColor.replace('text-', 'bg-').replace('500', '500/10')} shrink-0`}>
-                                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${ksBg}`} />
-                                            <span className={`text-[10px] md:text-xs font-black capitalize tracking-wider ${ksColor}`}>{ks}</span>
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="w-full flex-1 flex flex-col items-center justify-center text-center py-10 animate-in fade-in duration-500 my-auto">
-                          <div className="w-20 h-20 rounded-3xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center mb-6 shadow-inner border border-emerald-500/20">
-                            <CheckCircle2 size={32} strokeWidth={2.5} />
-                          </div>
-                          <h3 className="text-2xl font-black text-text-primary tracking-tight mb-2">
-                            Table is Vacant
-                          </h3>
-                          <p className="text-sm font-bold text-text-secondary max-w-sm mx-auto mb-8 leading-relaxed">
-                            There are currently no active orders on this table. Seating capacity is completely vacant and available for guest seating.
-                          </p>
-                          <button
-                            onClick={() => handleTakeOrder(currentTable)}
-                            className="flex items-center space-x-2.5 bg-primary hover:bg-primary-light text-white px-8 py-4 rounded-2xl font-black text-sm transition-all duration-300 shadow-xl shadow-primary/25 hover:shadow-primary/35 hover:-translate-y-0.5 active:scale-98"
-                          >
-                            <ShoppingCart size={18} strokeWidth={2.5} />
-                            <span>Start Serving Guests</span>
+                          <button onClick={() => handleUnmerge(currentTable.tableNumber)} className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl text-[9px] font-black uppercase tracking-wider border border-red-500/20 transition-all active:scale-95">
+                            Unmerge Tables
                           </button>
                         </div>
                       )}
+
+                      {(() => {
+                        const curCapacity = currentTable.capacity || 4;
+                        const curOccupied = currentTable.occupiedSeats || 0;
+                        const isCurFullyOccupied = curOccupied >= curCapacity;
+                        const isCurPartiallyOccupied = curOccupied > 0 && curOccupied < curCapacity;
+
+                        return (
+                          <div className="flex flex-col items-center mt-3 space-y-2">
+                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${isCurFullyOccupied
+                              ? 'bg-red-500/10 text-red-600 border border-red-500/20'
+                              : isCurPartiallyOccupied
+                                ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
+                                : 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                              }`}>
+                              <span className={`w-2 h-2 rounded-full ${isCurFullyOccupied ? 'bg-red-500' : isCurPartiallyOccupied ? 'bg-amber-500' : 'bg-emerald-500'
+                                } animate-pulse`} />
+                              {isCurFullyOccupied ? 'Fully Seated' : isCurPartiallyOccupied ? 'Partially Occupied' : 'Available'}
+                            </span>
+
+                            <div className="w-full max-w-[240px] mt-4">
+                              <div className="flex justify-between text-[10px] font-black text-text-muted uppercase tracking-widest mb-1.5">
+                                <span>Seating Status</span>
+                                <span>{curOccupied} / {curCapacity} Seats</span>
+                              </div>
+                              <div className="w-full h-2.5 bg-background-muted rounded-full overflow-hidden border border-border-light shadow-inner">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-500 ${isCurFullyOccupied ? 'bg-red-500' : isCurPartiallyOccupied ? 'bg-amber-500' : 'bg-emerald-500'
+                                    }`}
+                                  style={{ width: `${(curOccupied / curCapacity) * 100}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
 
-                  </div>
-                </div>
-              );
-            })()
-          ) : (
-            <div className="space-y-6">
-              {}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-background-card border border-border-light rounded-3xl p-5 shadow-sm">
-                <div>
-                  <h2 className="text-xl font-black text-text-primary tracking-tight">
-                    {isMergeMode ? 'Merge Tables Mode' : 'Select a Table to Manage'}
-                  </h2>
-                  <p className="text-xs font-bold text-text-secondary mt-1">
-                    {isMergeMode
-                      ? 'Select multiple tables below to link them in a shared dining group.'
-                      : 'Select any table to view orders, seat guests, or manage table status.'}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  {isMergeMode ? (
-                    <>
+                    <div className="w-full border-t border-border-light pt-6 space-y-3">
                       <button
-                        onClick={handleCancelMerge}
-                        className="px-5 py-2.5 bg-background border border-border-light text-text-secondary hover:text-primary hover:bg-background-muted rounded-xl font-black text-xs uppercase tracking-wider transition-all"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleSaveMerge}
-                        disabled={selectedMergeTableNumbers.length < 2}
-                        className={`px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider text-white transition-all shadow-md ${selectedMergeTableNumbers.length < 2
-                          ? 'bg-background-muted text-text-muted border border-border-light cursor-not-allowed opacity-60'
-                          : 'bg-primary hover:bg-primary-light shadow-primary/25'
+                        onClick={() => handleTakeOrder(currentTable)}
+                        disabled={currentTable.activeOrders?.length >= 4}
+                        className={`w-full flex items-center justify-center space-x-2.5 py-4 rounded-2xl font-black text-sm transition-all duration-300 ${currentTable.activeOrders?.length >= 4
+                          ? 'bg-background-muted border border-border-light text-text-muted cursor-not-allowed opacity-60'
+                          : 'bg-primary hover:bg-primary-light text-white shadow-xl shadow-primary/25 hover:shadow-primary/35 hover:-translate-y-0.5 active:scale-98'
                           }`}
                       >
-                        Merge Selected ({selectedMergeTableNumbers.length})
+                        <Plus size={18} strokeWidth={2.5} />
+                        <span>{currentTable.activeOrders?.length >= 4 ? 'Table Full' : 'Create Order'}</span>
                       </button>
-                    </>
-                  ) : (
-                    <button
-                      onClick={handleStartMergeMode}
-                      className="px-5 py-2.5 bg-primary hover:bg-primary-light text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-primary/20 hover:shadow-primary/30 flex items-center gap-2"
-                    >
-                      <GitMerge size={14} strokeWidth={3} />
-                      <span>Merge Tables</span>
-                    </button>
-                  )}
+                    </div>
+                  </div>
+
+                  <div className="lg:col-span-8 bg-background-card border border-border-light rounded-[2.5rem] shadow-sm p-6 lg:p-8 flex flex-col min-h-[55vh]">
+                    {isOccupied ? (
+                      <div className="space-y-6 flex-1 flex flex-col">
+                        <div className="flex items-center justify-between text-[11px] font-black text-text-muted uppercase tracking-[0.2em] opacity-90 border-b border-border-light pb-4">
+                          <span>Active Orders ({currentTable.activeOrders?.length || 0})</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {currentTable.activeOrders?.map(order => {
+                            const currentStatus = getComputedOrderStatus(order);
+                            const isReady = currentStatus === 'ready';
+                            const isWaitingApproval = currentStatus === 'placed';
+                            const isPreparing = currentStatus === 'processing';
+                            const cardStatusStyle = isReady
+                              ? 'bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.05)]'
+                              : 'bg-background border-border-light/60';
+
+                            return (
+                              <div
+                                key={order._id}
+                                onClick={() => {
+                                  setSelectedTable(currentTable);
+                                  setSelectedOrderForView(order);
+                                  setIsDetailsModalOpen(true);
+                                }}
+                                className={`rounded-3xl border transition-all duration-300 shadow-sm hover:shadow-lg ${cardStatusStyle} group/order overflow-hidden flex flex-col cursor-pointer hover:border-primary/30`}
+                              >
+                                <div className="flex items-center justify-between px-5 pt-5 pb-2">
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-xs md:text-sm font-black text-primary uppercase tracking-wider bg-primary/5 px-3 py-1.5 rounded-full">{order.orderNumber?.toUpperCase()}</span>
+                                  </div>
+                                  {isReady ? (
+                                    <div className="flex items-center gap-1.5 bg-emerald-500/10 px-2.5 py-1 rounded-full">
+                                      <CheckCircle2 size={12} className="text-emerald-500" strokeWidth={3} />
+                                      <span className="text-[10px] md:text-xs font-black text-emerald-500 capitalize tracking-wider">Ready</span>
+                                    </div>
+                                  ) : isWaitingApproval ? (
+                                    <div className="flex items-center gap-1.5 bg-amber-500/10 px-2.5 py-1 rounded-full">
+                                      <div className="flex space-x-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-bounce" />
+                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-bounce [animation-delay:-0.15s]" />
+                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-bounce [animation-delay:-0.3s]" />
+                                      </div>
+                                      <span className="text-[10px] md:text-xs font-black text-amber-500 capitalize tracking-wider">Waiting Approval</span>
+                                    </div>
+                                  ) : isPreparing ? (
+                                    <div className="flex items-center gap-1.5 bg-blue-500/10 px-2.5 py-1 rounded-full">
+                                      <div className="flex space-x-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                                      </div>
+                                      <span className="text-[10px] md:text-xs font-black text-blue-500 capitalize tracking-wider">Preparing</span>
+                                    </div>
+                                  ) : null}
+                                </div>
+
+                                <div className="flex items-center justify-between px-5 pb-4">
+                                  <div className="flex items-center space-x-3">
+                                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary flex items-center justify-center font-black text-lg shrink-0 shadow-sm border border-primary/10">
+                                      {order.customerDetails?.name?.charAt(0) || 'C'}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="text-base md:text-lg font-extrabold text-text-primary truncate leading-tight">{order.customerDetails?.name || 'Walk-in'}</p>
+                                      <p className="text-xs md:text-sm text-text-muted font-bold tracking-wide mt-0.5">₹{order.totalAmount} • {order.items?.length || 0} items</p>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="px-5 pb-4 space-y-2 border-t border-border-light/50 pt-4 bg-background-muted/30 flex-1">
+                                  {order.items && order.items.slice(0, 3).map((item, idx) => {
+                                    const ks = item.kitchenStatus || 'placed';
+                                    const ksColor = ks === 'ready' ? 'text-emerald-500' : ks === 'preparing' ? 'text-blue-500' : ks === 'delayed' ? 'text-red-500' : 'text-amber-500';
+                                    const ksBg = ks === 'ready' ? 'bg-emerald-500' : ks === 'preparing' ? 'bg-blue-500' : ks === 'delayed' ? 'bg-red-500' : 'bg-amber-500';
+                                    const isLastSlotAndMore = idx === 2 && order.items.length > 3;
+
+                                    return (
+                                      <div key={idx} className="flex items-center justify-between bg-white dark:bg-black/20 p-2.5 rounded-xl border border-border-light/50 shadow-[0_2px_10px_rgba(0,0,0,0.02)] h-[52px]">
+                                        <div className="min-w-0 flex-1 pr-2 pl-1">
+                                          <div className="text-xs md:text-sm font-extrabold text-text-primary truncate capitalize tracking-normal flex items-center gap-1.5">
+                                            <span className="truncate">{item.name || 'Item'} {item.size ? `(${item.size})` : ''}</span>
+                                            {isLastSlotAndMore && (
+                                              <span className="bg-primary/10 text-primary text-[8px] font-black px-1.5 py-0.5 rounded-full shrink-0">
+                                                +{order.items.length - 3} more
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div className="text-[10px] md:text-xs font-bold text-text-muted mt-0.5">Quantity: {item.quantity}</div>
+                                        </div>
+                                        <div className={`flex items-center space-x-1.5 px-2 py-1 rounded-lg border ${ksColor.replace('text-', 'border-').replace('500', '500/30')} ${ksColor.replace('text-', 'bg-').replace('500', '500/10')} shrink-0`}>
+                                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${ksBg}`} />
+                                          <span className={`text-[10px] md:text-xs font-black capitalize tracking-wider ${ksColor}`}>{ks}</span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-full flex-1 flex flex-col items-center justify-center text-center py-10 my-auto">
+                        <div className="w-20 h-20 rounded-3xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center mb-6 shadow-inner border border-emerald-500/20">
+                          <CheckCircle2 size={32} strokeWidth={2.5} />
+                        </div>
+                        <h3 className="text-2xl font-black text-text-primary tracking-tight mb-2">Table is Vacant</h3>
+                        <button
+                          onClick={() => handleTakeOrder(currentTable)}
+                          className="flex items-center space-x-2.5 bg-primary hover:bg-primary-light text-white px-8 py-4 rounded-2xl font-black text-sm transition-all shadow-xl shadow-primary/25 hover:shadow-primary/35 mt-4"
+                        >
+                          <ShoppingCart size={18} strokeWidth={2.5} />
+                          <span>Start Serving Guests</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
+            );
+          })()
+        ) : (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-background-card border border-border-light rounded-3xl p-5 shadow-sm">
+              <div>
+                <h2 className="text-xl font-black text-text-primary tracking-tight">
+                  {isMergeMode ? 'Merge Tables Mode' : 'Select a Table to Manage'}
+                </h2>
+                <p className="text-xs font-bold text-text-secondary mt-1">
+                  {isMergeMode
+                    ? 'Select multiple tables below to link them in a shared dining group.'
+                    : 'Select any table to view orders, seat guests, or manage table status.'}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                {isMergeMode ? (
+                  <>
+                    <button
+                      onClick={handleCancelMerge}
+                      className="px-5 py-2.5 bg-background border border-border-light text-text-secondary hover:text-primary rounded-xl font-black text-xs uppercase tracking-wider"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveMerge}
+                      disabled={selectedMergeTableNumbers.length < 2 || isMerging}
+                      className={`px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider text-white transition-all shadow-md flex items-center gap-2 ${selectedMergeTableNumbers.length < 2 || isMerging
+                        ? 'bg-background-muted text-text-muted border border-border-light cursor-not-allowed opacity-60'
+                        : 'bg-primary hover:bg-primary-light shadow-primary/25'
+                        }`}
+                    >
+                      {isMerging ? (
+                        <>
+                          <span className="w-3 h-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                          Merging...
+                        </>
+                      ) : (
+                        `Merge Selected (${selectedMergeTableNumbers.length})`
+                      )}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleStartMergeMode}
+                    className="px-5 py-2.5 bg-primary hover:bg-primary-light text-white rounded-xl font-black text-xs uppercase tracking-wider shadow-md shadow-primary/20 flex items-center gap-2"
+                  >
+                    <GitMerge size={14} strokeWidth={3} />
+                    <span>Merge Tables</span>
+                  </button>
+                )}
+              </div>
+            </div>
 
-              {}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                {(() => {
-                  const displayTables = tables.filter(table => {
-                    if (table.mergedGroup && table.mergedGroup.length > 0) {
-                      const sortedGroup = [...table.mergedGroup].sort((a, b) => parseInt(a) - parseInt(b));
-                      return table.tableNumber.toString() === sortedGroup[0].toString();
-                    }
-                    return true;
-                  });
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {(() => {
+                const displayTables = tables.filter(table => {
+                  if (table.mergedGroup && table.mergedGroup.length > 0) {
+                    const sortedGroup = [...table.mergedGroup].sort((a, b) => parseInt(a) - parseInt(b));
+                    return table.tableNumber.toString() === sortedGroup[0].toString();
+                  }
+                  return true;
+                });
 
-                  return displayTables.map((table) => {
-                  const isOccupied = table.status === 'occupied';
+                return displayTables.map((table) => {
                   const isSelectedForMerge = isMergeMode && selectedMergeTableNumbers.includes(table.tableNumber);
                   const hasMergedGroup = table.mergedGroup && table.mergedGroup.length > 0;
 
@@ -993,25 +929,19 @@ const WaiterDashboard = () => {
                           : 'border border-border-light hover:-translate-y-0.5 active:scale-98'
                         }`}
                     >
-                      {}
                       {isSelectedForMerge && (
-                        <div className="absolute top-3.5 left-3.5 bg-primary text-white p-1.5 rounded-xl z-20 shadow-md flex items-center justify-center animate-in zoom-in-50 duration-200">
+                        <div className="absolute top-3.5 left-3.5 bg-primary text-white p-1.5 rounded-xl z-20 shadow-md flex items-center justify-center">
                           <CheckCircle2 size={14} strokeWidth={3} />
                         </div>
                       )}
 
                       <div className="aspect-[4/3] w-full overflow-hidden bg-gradient-to-b from-gray-50 to-gray-200 dark:from-gray-800 dark:to-gray-950 flex items-center justify-center p-2">
-                        <img
-                          src="/table_pic.png"
-                          alt={`Table ${table.tableNumber}`}
-                          className="w-full h-full object-contain drop-shadow-lg"
-                        />
+                        <img src="/table_pic.png" alt={`Table ${table.tableNumber}`} className="w-full h-full object-contain drop-shadow-lg" />
                       </div>
 
-                      {}
                       <div className="absolute top-3.5 right-3.5 flex items-center gap-2 z-10">
                         {hasMergedGroup && (
-                          <div className="flex items-center gap-1 bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-lg border border-amber-500/20 text-[9px] font-black uppercase tracking-wider">
+                          <div className="flex items-center gap-1 bg-amber-500/10 text-amber-600 px-2 py-0.5 rounded-lg border border-amber-500/20 text-[9px] font-black uppercase tracking-wider">
                             <GitMerge size={10} strokeWidth={3} />
                             <span>Merged</span>
                           </div>
@@ -1032,7 +962,6 @@ const WaiterDashboard = () => {
                         })()}
                       </div>
 
-                      {}
                       <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/95 via-black/70 to-transparent">
                         <div className="flex justify-between items-end">
                           <div>
@@ -1051,39 +980,26 @@ const WaiterDashboard = () => {
                             const occupied = table.occupiedSeats || 0;
                             const isFullyOccupied = occupied >= capacity;
                             const isPartiallyOccupied = occupied > 0 && occupied < capacity;
-                            const isFree = occupied === 0;
 
                             if (isFullyOccupied) {
-                              return (
-                                <div className="bg-red-600/90 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-xl backdrop-blur-sm shadow-md">
-                                  Fully Seated
-                                </div>
-                              );
+                              return <div className="bg-red-600/90 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-xl backdrop-blur-sm shadow-md">Fully Seated</div>;
                             } else if (isPartiallyOccupied) {
                               const remaining = capacity - occupied;
-                              return (
-                                <div className="bg-amber-500/90 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-xl backdrop-blur-sm shadow-md">
-                                  {remaining} Seat{remaining > 1 ? 's' : ''} Available
-                                </div>
-                              );
+                              return <div className="bg-amber-500/90 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-xl backdrop-blur-sm shadow-md">{remaining} Seat{remaining > 1 ? 's' : ''} Avail</div>;
                             } else {
-                              return (
-                                <div className="bg-emerald-500/90 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-xl backdrop-blur-sm shadow-md">
-                                  Available
-                                </div>
-                              );
+                              return <div className="bg-emerald-500/90 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-xl backdrop-blur-sm shadow-md">Available</div>;
                             }
                           })()}
                         </div>
                       </div>
                     </div>
                   );
-                })})()}
-              </div>
+                });
+              })()}
             </div>
-          )}
-        </div>
-      </main>
+          </div>
+        )}
+      </div>
 
       <DineInPOSModal
         isOpen={isPOSModalOpen}
@@ -1091,7 +1007,7 @@ const WaiterDashboard = () => {
         table={selectedTable}
         fetchTables={fetchTables}
         editingOrder={selectedOrderForEdit}
-        orderSource={staff.role || "waiter"}
+        orderSource="admin-dine-in"
         occupiedSeats={selectedOrderSeats}
       />
 
@@ -1102,7 +1018,6 @@ const WaiterDashboard = () => {
             setSelectedOrderForView(null);
           }}></div>
           <div className="bg-background-card w-full max-w-lg max-h-[80vh] rounded-[2.5rem] shadow-2xl relative z-10 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 border border-border-light">
-            {/* Header */}
             <div className="p-6 border-b border-border-light flex justify-between items-center bg-background-card">
               <div>
                 <h3 className="text-xl font-black text-text-primary tracking-tight">Order Details</h3>
@@ -1121,7 +1036,6 @@ const WaiterDashboard = () => {
               </button>
             </div>
 
-            {/* Content */}
             <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-background">
               {/* Meta Info */}
               <div className="grid grid-cols-2 gap-4">
@@ -1136,13 +1050,12 @@ const WaiterDashboard = () => {
                   {(() => {
                     const status = getComputedOrderStatus(selectedOrderForView);
                     return (
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mt-1 ${
-                        status === 'completed' || status === 'delivered' || status === 'ready'
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mt-1 ${status === 'completed' || status === 'delivered' || status === 'ready'
                           ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
                           : status === 'placed'
                             ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
                             : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
-                      }`}>
+                        }`}>
                         {status}
                       </span>
                     );
@@ -1150,7 +1063,6 @@ const WaiterDashboard = () => {
                 </div>
               </div>
 
-              {}
               <div className="space-y-3">
                 <p className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">Items, Quantity & Status</p>
                 <div className="space-y-2">
@@ -1167,7 +1079,7 @@ const WaiterDashboard = () => {
                           <p className="text-xs font-bold text-text-muted mt-1 uppercase tracking-wider">
                             Quantity: {item.quantity}
                           </p>
-                          
+
                           {/* Combo Items */}
                           {item.comboItems?.length > 0 && (
                             <div className="mt-1.5 pl-2 border-l border-primary/30">
@@ -1219,7 +1131,6 @@ const WaiterDashboard = () => {
               </div>
             </div>
 
-            {/* Footer */}
             <div className="p-6 bg-background-card border-t border-border-light flex justify-between items-center shrink-0 gap-3">
               <div className="flex gap-2">
                 <button
@@ -1244,8 +1155,8 @@ const WaiterDashboard = () => {
                   disabled={selectedOrderForView.kitchenStatus !== 'ready'}
                   title={selectedOrderForView.kitchenStatus !== 'ready' ? 'Kitchen has not marked this order as Ready yet' : 'Print Bill'}
                   className={`px-4 py-3 rounded-2xl font-black uppercase tracking-wider text-xs transition-all shadow-sm flex items-center gap-2 ${selectedOrderForView.kitchenStatus !== 'ready'
-                      ? 'bg-background-muted border border-border-light text-text-muted cursor-not-allowed opacity-60'
-                      : 'bg-background border border-border-light text-text-secondary hover:text-primary hover:border-primary/50 hover:bg-primary/5 active:scale-95'
+                    ? 'bg-background-muted border border-border-light text-text-muted cursor-not-allowed opacity-60'
+                    : 'bg-background border border-border-light text-text-secondary hover:text-primary hover:border-primary/50 hover:bg-primary/5 active:scale-95'
                     }`}
                 >
                   <span>Print</span>
@@ -1265,9 +1176,8 @@ const WaiterDashboard = () => {
         </div>
       )}
 
-
     </div>
   );
 };
 
-export default WaiterDashboard;
+export default DineInSection;
