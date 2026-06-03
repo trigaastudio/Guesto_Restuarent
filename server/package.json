@@ -13,8 +13,8 @@
   "description": "",
   "dependencies": {
     "bcrypt": "^6.0.0",
-    "bcryptjs": "^3.0.3",
     "cloudinary": "^2.10.0",
+    "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
@@ -34,7 +34,6 @@
     "nodemon": "^3.1.14",
     "qs": "^6.15.2",
     "razorpay": "^2.9.6",
-    "socket.io": "^4.8.3",
-    "xss-clean": "^0.1.4"
+    "socket.io": "^4.8.3"
   }
 }

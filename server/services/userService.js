@@ -1,5 +1,5 @@
 import User from '../models/userSchema.js';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 
 class UserService {
   async getAllUsers() {

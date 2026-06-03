@@ -1,24 +1,45 @@
 import authService from '../services/authService.js';
 
+// Helper to set the correct auth cookie
+// HIGH-7 FIX: sameSite changed from 'lax' to 'strict'
+// HIGH-7 FIX: Admin tokens expire in 8h, user tokens in 7 days (was 30 days for all)
+const setAuthCookie = (res, role, token) => {
+  const cookieName = role === 'admin' ? 'admin_token' : role === 'staff' ? 'staff_token' : 'token';
+  const isAdmin = role === 'admin' || role === 'staff';
+
+  res.cookie(cookieName, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',                                      // HIGH-7 FIX: was 'lax'
+    maxAge: isAdmin
+      ? 8 * 60 * 60 * 1000                                  // Admin/Staff: 8 hours
+      : 7 * 24 * 60 * 60 * 1000                             // User: 7 days (was 30 days)
+  });
+
+  return cookieName;
+};
+
 class AuthController {
   async logout(req, res) {
-    res.clearCookie('token');
-    res.clearCookie('admin_token');
-    res.clearCookie('staff_token');
+    // Clear all possible auth cookies
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict'
+    };
+    res.clearCookie('token', cookieOptions);
+    res.clearCookie('admin_token', cookieOptions);
+    res.clearCookie('staff_token', cookieOptions);
     res.status(200).json({ success: true, message: 'Logged out successfully' });
   }
 
   async register(req, res) {
     try {
       const user = await authService.register(req.body);
+      // CRIT-3 FIX: Was using undefined variable 'token' as fallback
+      // Now uses a single clearly-named variable with no ambiguous ternary
       const jwtToken = authService.generateToken(user._id);
-      const cookieName = user.role === 'admin' ? 'admin_token' : user.role === 'staff' ? 'staff_token' : 'token';
-      res.cookie(cookieName, typeof jwtToken !== 'undefined' ? jwtToken : token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 30 * 24 * 60 * 60 * 1000
-      });
+      setAuthCookie(res, user.role, jwtToken);
 
       res.status(201).json({
         success: true,
@@ -45,15 +66,9 @@ class AuthController {
     try {
       const { email, password } = req.body;
       const user = await authService.login(email, password, 'user');
-      
+      // CRIT-3 FIX: Was using undefined variable 'jwtToken' as condition
       const token = authService.generateToken(user._id);
-      const cookieName = user.role === 'admin' ? 'admin_token' : user.role === 'staff' ? 'staff_token' : 'token';
-      res.cookie(cookieName, typeof jwtToken !== 'undefined' ? jwtToken : token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 30 * 24 * 60 * 60 * 1000
-      });
+      setAuthCookie(res, user.role, token);
 
       res.status(200).json({
         success: true,
@@ -81,15 +96,9 @@ class AuthController {
     try {
       const { email, password } = req.body;
       const user = await authService.login(email, password, 'admin');
-      
+      // CRIT-3 FIX: Was using undefined variable 'jwtToken' as condition
       const token = authService.generateToken(user._id);
-      const cookieName = user.role === 'admin' ? 'admin_token' : user.role === 'staff' ? 'staff_token' : 'token';
-      res.cookie(cookieName, typeof jwtToken !== 'undefined' ? jwtToken : token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 30 * 24 * 60 * 60 * 1000
-      });
+      setAuthCookie(res, user.role, token);
 
       res.status(200).json({
         success: true,
@@ -115,22 +124,13 @@ class AuthController {
 
   async googleLogin(req, res) {
     try {
-      console.log('📬 Received Google login request...');
       const { token } = req.body;
       if (!token) {
-        console.error('❌ No token provided in request body');
         return res.status(400).json({ success: false, message: 'No token provided' });
       }
       const user = await authService.googleLogin(token);
-
       const jwtToken = authService.generateToken(user._id);
-      const cookieName = user.role === 'admin' ? 'admin_token' : user.role === 'staff' ? 'staff_token' : 'token';
-      res.cookie(cookieName, jwtToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 30 * 24 * 60 * 60 * 1000
-      });
+      setAuthCookie(res, user.role, jwtToken);
 
       res.status(200).json({
         success: true,
@@ -157,7 +157,6 @@ class AuthController {
   async sendOTP(req, res) {
     try {
       const { email, phone } = req.body;
-
       await authService.sendOTP(email, phone);
       res.status(200).json({
         success: true,
@@ -184,14 +183,9 @@ class AuthController {
       }
 
       const user = await authService.register(userData);
+      // CRIT-3 FIX: Was using undefined variable 'jwtToken' as fallback
       const token = authService.generateToken(user._id);
-      const cookieName = user.role === 'admin' ? 'admin_token' : user.role === 'staff' ? 'staff_token' : 'token';
-      res.cookie(cookieName, typeof jwtToken !== 'undefined' ? jwtToken : token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 30 * 24 * 60 * 60 * 1000
-      });
+      setAuthCookie(res, user.role, token);
 
       res.status(201).json({
         success: true,
@@ -223,16 +217,19 @@ class AuthController {
         message: 'OTP sent successfully'
       });
     } catch (error) {
-      res.status(400).json({ success: false, message: error.message });
+      // MED-8 FIX: Don't reveal whether an email exists — use generic message
+      res.status(200).json({ success: true, message: 'If this email is registered, an OTP will be sent.' });
     }
   }
 
   async verifyPasswordResetOTP(req, res) {
     try {
       const { email, otp } = req.body;
-      const isValid = await authService.verifyOTP(email, otp);
-      if (isValid) {
-        res.status(200).json({ success: true, message: 'OTP verified' });
+      // MED-8 FIX: After OTP verification, generate a short-lived signed reset token
+      // This links the OTP verification step to the actual password reset — prevents bypassing OTP
+      const resetToken = await authService.verifyOTPAndGetResetToken(email, otp);
+      if (resetToken) {
+        res.status(200).json({ success: true, message: 'OTP verified', resetToken });
       } else {
         res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
       }
@@ -243,8 +240,10 @@ class AuthController {
 
   async resetPassword(req, res) {
     try {
-      const { email, newPassword } = req.body;
-      await authService.resetPassword(email, newPassword);
+      const { email, newPassword, resetToken } = req.body;
+      // MED-8 FIX: Now requires a valid resetToken issued after OTP verification
+      // Previously, this endpoint could be called directly without OTP verification
+      await authService.resetPasswordWithToken(email, newPassword, resetToken);
       res.status(200).json({ success: true, message: 'Password reset successful' });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });

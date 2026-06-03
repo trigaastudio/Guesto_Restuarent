@@ -1,7 +1,7 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import userController from '../controllers/userController.js';
-import { protect } from '../middleware/authMiddleware.js';
+import { protect, admin } from '../middleware/authMiddleware.js';
 import { upload } from '../config/cloudinaryConfig.js';
 
 const router = express.Router();
@@ -14,6 +14,7 @@ const otpLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// ─── CUSTOMER SELF-SERVICE ROUTES ────────────────────────────────────────────
 router.get('/profile', protect, userController.getProfile);
 router.put('/profile', protect, userController.updateProfile);
 router.post('/avatar', protect, upload.single('avatar'), userController.updateAvatar);
@@ -27,11 +28,14 @@ router.put('/change-email', protect, userController.changeEmail);
 router.put('/change-password', protect, userController.changePassword);
 router.delete('/address/:addressId', protect, userController.deleteAddress);
 
+// ─── ADMIN USER MANAGEMENT ROUTES ────────────────────────────────────────────
+// HIGH-1 FIX: All user CRUD routes now require admin role
+// Previously only required 'protect' — any logged-in user could manage all users
 
-router.get('/', protect, userController.getAllUsers);
-router.post('/', protect, userController.createUser);
-router.put('/:id', protect, userController.updateUser);
-router.delete('/:id', protect, userController.deleteUser);
-router.patch('/:id/toggle-status', protect, userController.toggleUserStatus);
+router.get('/', protect, admin, userController.getAllUsers);
+router.post('/', protect, admin, userController.createUser);
+router.put('/:id', protect, admin, userController.updateUser);
+router.delete('/:id', protect, admin, userController.deleteUser);
+router.patch('/:id/toggle-status', protect, admin, userController.toggleUserStatus);
 
 export default router;

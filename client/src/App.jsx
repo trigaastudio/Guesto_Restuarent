@@ -39,7 +39,7 @@ const PageLoader = () => (
 
 function App() {
   return (
-    <GoogleOAuthProvider clientId="791498024436-f3oa2eu8g31hpkieajgi2ma3vndvp0bc.apps.googleusercontent.com">
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
       <ThemeProvider>
         <CartProvider>
           <BrowserRouter>

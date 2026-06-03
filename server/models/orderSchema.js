@@ -128,6 +128,20 @@ const orderSchema = new mongoose.Schema({
   isLocked: { type: Boolean, default: false },
 }, { timestamps: true, strict: true });
 
+// PERF-2 OPTIMIZATION: Indexes for faster querying
+orderSchema.index({ customer: 1 });
+orderSchema.index({ table: 1 });
+orderSchema.index({ createdAt: -1 });
+orderSchema.index({ orderStatus: 1 });
+
+// PERF-1 OPTIMIZATION: Setup state for salesCount synchronization
+orderSchema.pre('save', async function () {
+  this._wasNew = this.isNew;
+  if (!this.isNew && this.isModified('orderStatus') && this.orderStatus === 'cancelled') {
+    this._wasCancelledNow = true;
+  }
+});
+
 // Pre-validation hook: Data Consistency & Calculations
 orderSchema.pre('validate', async function () {
   
@@ -207,7 +221,7 @@ orderSchema.post('save', async function (doc) {
   try {
     if (doc._id) {
       // General update for all listeners
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
 
       // Specific status update for tracking
       if (doc.orderStatus) {
@@ -217,6 +231,22 @@ orderSchema.post('save', async function (doc) {
       // Sync Table occupiedSeats & status
       if (doc.table && doc.orderType === 'dine-in') {
         await updateTableOccupancy(doc.table);
+      }
+
+      // PERF-1 OPTIMIZATION: Sync Menu salesCount
+      const Menu = mongoose.model('Menu');
+      if (doc._wasNew && doc.orderStatus !== 'cancelled') {
+        for (const item of doc.items) {
+          if (item.menuItem) {
+            await Menu.findByIdAndUpdate(item.menuItem, { $inc: { salesCount: item.quantity } }).catch(e => console.error("Sales count sync error", e));
+          }
+        }
+      } else if (doc._wasCancelledNow) {
+        for (const item of doc.items) {
+          if (item.menuItem) {
+            await Menu.findByIdAndUpdate(item.menuItem, { $inc: { salesCount: -item.quantity } }).catch(e => console.error("Sales count sync error", e));
+          }
+        }
       }
     }
   } catch (err) {

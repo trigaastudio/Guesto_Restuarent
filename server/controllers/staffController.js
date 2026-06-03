@@ -7,6 +7,16 @@ class StaffController {
       const { employeeId, password } = req.body;
       const staff = await staffService.login(employeeId, password);
       
+      // HIGH-4 FIX: Token is now set as httpOnly cookie, not returned in response body
+      // Previously token was in localStorage (vulnerable to XSS theft)
+      const token = staffService.generateToken(staff._id);
+      res.cookie('staff_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 8 * 60 * 60 * 1000 // 8 hours
+      });
+
       res.status(200).json({
         success: true,
         message: 'Login successful',
@@ -14,8 +24,8 @@ class StaffController {
           id: staff._id,
           name: staff.name,
           employeeId: staff.employeeId,
-          role: staff.role,
-          token: staffService.generateToken(staff._id)
+          role: staff.role
+          // Token intentionally NOT included in response body
         }
       });
     } catch (error) {

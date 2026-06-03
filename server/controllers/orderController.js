@@ -8,6 +8,7 @@ import Category from '../models/categorySchema.js';
 import Settings from '../models/settingsSchema.js';
 import Table from '../models/tableSchema.js';
 import { getIO, emitStockUpdate, emitCategoryStockUpdate, emitTablesUpdated } from '../socket.js';
+import { logAdminAction } from '../services/auditService.js'; // LOW-7 FIX: Added audit logging
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; 
@@ -647,12 +648,12 @@ class OrderController {
 
       
       if (newOrder.paymentMethod === 'cod' || newOrder.paymentStatus === 'paid') {
-        getIO().emit('newOrder', {
+        getIO().to('staff_room').emit('newOrder', {
           order: newOrder,
           message: `🔔 New ${newOrder.orderType.toUpperCase()} Order Received! (#${newOrder.orderNumber})`
         });
       }
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
       getIO().emit('orderUpdated', newOrder);
     } catch (error) {
       console.error('Order Error Details:', error);
@@ -716,7 +717,7 @@ class OrderController {
       order.orderStatus = 'cancelled';
       await order.save();
 
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
       getIO().emit('orderUpdated', order);
 
       res.status(200).json({
@@ -835,11 +836,11 @@ class OrderController {
 
       res.status(201).json({ success: true, data: newOrder });
 
-      getIO().emit('newOrder', {
+      getIO().to('staff_room').emit('newOrder', {
         order: newOrder,
         message: `🔔 New ${newOrder.orderType.toUpperCase()} Order Received! (#${newOrder.orderNumber})`
       });
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
       getIO().emit('orderUpdated', newOrder);
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -963,6 +964,14 @@ class OrderController {
       }
 
       const order = await originalOrder.save();
+
+      // LOW-7 FIX: Audit log order status changes
+      await logAdminAction(req, 'UPDATE_ORDER_STATUS', 'Order', order._id, {
+        previousStatus: originalOrder.orderStatus,
+        newStatus: updateData.orderStatus,
+        orderNumber: order.orderNumber
+      });
+
       await order.populate([
         { path: 'items.menuItem', select: 'name image' },
         { path: 'table', select: 'tableNumber mergedGroup' }
@@ -995,7 +1004,7 @@ class OrderController {
         await order.populate('assignedDeliveryBoy', 'name phoneNumber');
       }
 
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
       getIO().emit('orderUpdated', order);
       res.json({ success: true, data: order });
     } catch (error) {
@@ -1014,7 +1023,7 @@ class OrderController {
       }
 
       await Order.findByIdAndDelete(id);
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
       res.json({ success: true, message: 'Order deleted and stock restored' });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -1041,7 +1050,7 @@ class OrderController {
       await order.save();
       await order.populate('items.menuItem', 'name image');
 
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
       getIO().emit('orderUpdated', order);
       res.json({ success: true, data: order });
     } catch (error) {
@@ -1078,7 +1087,7 @@ class OrderController {
 
       await order.populate('items.menuItem', 'name image');
 
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
       getIO().emit('orderUpdated', order);
       res.json({ success: true, data: order });
     } catch (error) {
@@ -1123,7 +1132,7 @@ class OrderController {
       await handleStock(items, 'reduce');
 
       await order.populate('items.menuItem', 'name image');
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
       getIO().emit('orderUpdated', order);
       res.json({ success: true, data: order });
     } catch (error) {
@@ -1154,7 +1163,7 @@ class OrderController {
         await order.populate('items.menuItem', 'name image');
       }
 
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
       getIO().emit('orderUpdated', order);
       res.json({ success: true, data: order });
     } catch (error) {
@@ -1196,7 +1205,7 @@ class OrderController {
       await order.save();
       await order.populate('items.menuItem', 'name image');
 
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
       getIO().emit('orderUpdated', order);
       res.json({ success: true, data: order });
     } catch (error) {
@@ -1273,7 +1282,7 @@ class OrderController {
       await handleStock(order.items, 'reduce');
 
       await order.populate('items.menuItem', 'name image');
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
       getIO().emit('orderUpdated', order);
       res.json({ success: true, data: order });
     } catch (error) {
@@ -1313,7 +1322,7 @@ class OrderController {
       }
 
       const result = await Order.deleteMany(query);
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
       res.json({ success: true, message: `${result.deletedCount} orders cleared`, deletedCount: result.deletedCount });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });

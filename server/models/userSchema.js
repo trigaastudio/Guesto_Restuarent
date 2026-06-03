@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt"; // LOW-4 FIX: Standardized to 'bcrypt' (native), removed 'bcryptjs' dual-dependency
 
 const userSchema = new mongoose.Schema({
 

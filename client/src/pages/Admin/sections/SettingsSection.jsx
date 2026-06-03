@@ -393,7 +393,7 @@ const SettingsSection = () => {
                               try {
                                 setIsResolving(true);
                                 showToast('info', 'Expanding link...');
-                                const res = await axios.post(`${API_BASE_URL}/utils/expand-url`, { url });
+                                const res = await api.post(`${API_BASE_URL}/utils/expand-url`, { url });
                                 url = res.data.expandedUrl;
                               } catch (err) {
                                 console.error('Failed to expand URL:', err);
