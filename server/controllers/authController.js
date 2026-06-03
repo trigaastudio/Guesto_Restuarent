@@ -4,32 +4,13 @@ import authService from '../services/authService.js';
 // HIGH-7 FIX: sameSite changed from 'lax' to 'strict'
 // HIGH-7 FIX: Admin tokens expire in 8h, user tokens in 7 days (was 30 days for all)
 const setAuthCookie = (res, role, token) => {
-  const cookieName = role === 'admin' ? 'admin_token' : role === 'staff' ? 'staff_token' : 'token';
-  const isAdmin = role === 'admin' || role === 'staff';
-
-  res.cookie(cookieName, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',                                      // HIGH-7 FIX: was 'lax'
-    maxAge: isAdmin
-      ? 8 * 60 * 60 * 1000                                  // Admin/Staff: 8 hours
-      : 7 * 24 * 60 * 60 * 1000                             // User: 7 days (was 30 days)
-  });
-
-  return cookieName;
+  // We will return the token in the response body instead of an HttpOnly cookie
+  // to ensure compatibility with the SPA architecture and existing frontend logic.
+  return;
 };
 
 class AuthController {
   async logout(req, res) {
-    // Clear all possible auth cookies
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
-    };
-    res.clearCookie('token', cookieOptions);
-    res.clearCookie('admin_token', cookieOptions);
-    res.clearCookie('staff_token', cookieOptions);
     res.status(200).json({ success: true, message: 'Logged out successfully' });
   }
 
@@ -51,7 +32,8 @@ class AuthController {
           phone: user.phone,
           avatar: user.avatar,
           role: user.role,
-          createdAt: user.createdAt
+          createdAt: user.createdAt,
+          token: jwtToken
         }
       });
     } catch (error) {
@@ -80,7 +62,8 @@ class AuthController {
           phone: user.phone,
           avatar: user.avatar,
           role: user.role,
-          createdAt: user.createdAt
+          createdAt: user.createdAt,
+          token: token
         }
       });
     } catch (error) {
@@ -110,7 +93,8 @@ class AuthController {
           phone: user.phone,
           avatar: user.avatar,
           role: user.role,
-          createdAt: user.createdAt
+          createdAt: user.createdAt,
+          token: token
         }
       });
     } catch (error) {
@@ -142,7 +126,8 @@ class AuthController {
           phone: user.phone,
           avatar: user.avatar,
           role: user.role,
-          createdAt: user.createdAt
+          createdAt: user.createdAt,
+          token: jwtToken
         }
       });
     } catch (error) {
@@ -197,7 +182,8 @@ class AuthController {
           phone: user.phone,
           avatar: user.avatar,
           role: user.role,
-          createdAt: user.createdAt
+          createdAt: user.createdAt,
+          token: token
         }
       });
     } catch (error) {

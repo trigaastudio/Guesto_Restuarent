@@ -64,6 +64,7 @@ const LoginPage = () => {
         if (res.data.success) {
           const u = res.data.data;
           localStorage.setItem('user', JSON.stringify(u));
+          if (u.token) localStorage.setItem('token', u.token);
           window.dispatchEvent(new Event('storage'));
           window.dispatchEvent(new Event('cart-refresh'));
           navigate('/home', { replace: true });
@@ -112,6 +113,7 @@ const LoginPage = () => {
       if (res.data.success) {
         const u = res.data.data;
         localStorage.setItem('user', JSON.stringify(u));
+        if (u.token) localStorage.setItem('token', u.token);
         window.dispatchEvent(new Event('storage'));
         window.dispatchEvent(new Event('cart-refresh'));
         navigate('/home', { replace: true });

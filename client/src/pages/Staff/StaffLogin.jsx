@@ -63,6 +63,7 @@ const StaffLogin = () => {
         }
 
         localStorage.setItem('staff_user', JSON.stringify(staffData));
+        if (staffData.token) localStorage.setItem('staff_token', staffData.token);
         
         localStorage.removeItem('admin_token');
         localStorage.removeItem('admin_user');
