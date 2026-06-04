@@ -1051,10 +1051,10 @@ const DineInSection = () => {
                     const status = getComputedOrderStatus(selectedOrderForView);
                     return (
                       <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mt-1 ${status === 'completed' || status === 'delivered' || status === 'ready'
-                          ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-                          : status === 'placed'
-                            ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                            : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                        ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                        : status === 'placed'
+                          ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                          : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
                         }`}>
                         {status}
                       </span>

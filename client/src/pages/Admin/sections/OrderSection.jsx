@@ -23,7 +23,7 @@ const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:500
 
 const OrderSection = () => {
   const handleCopyForWhatsApp = (order) => {
-    
+
     const itemsText = order.items.map(item => {
       const name = item.name || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Menu Item');
       const price = item.unitPrice || item.price || 0;
@@ -31,7 +31,7 @@ const OrderSection = () => {
       return `- ${name} (${sizeText}) x${item.quantity}`;
     }).join('\n');
 
-    
+
     const name = (order.orderSource === 'online' || order.orderSource === 'user')
       ? (order.address?.recipientName || order.customerDetails?.name || 'Walk-in')
       : (order.customerDetails?.name || order.address?.recipientName || 'Walk-in');
@@ -39,7 +39,7 @@ const OrderSection = () => {
     const address = order.customerDetails?.address || order.address?.address || 'N/A';
     const location = order.customerDetails?.location || order.address?.location;
 
-    
+
     let locationUrl = '';
     const locToUse = location || address;
 
@@ -73,7 +73,7 @@ const OrderSection = () => {
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  
+
   const [paymentModal, setPaymentModal] = useState({ open: false, order: null });
   const [payMethod, setPayMethod] = useState('');
   const [cashInput, setCashInput] = useState('');
@@ -111,12 +111,12 @@ const OrderSection = () => {
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     localStorage.setItem('orderActiveTab', tab);
-    setSelectedOrderIds([]); 
-    setCurrentPage(1); 
+    setSelectedOrderIds([]);
+    setCurrentPage(1);
   };
   const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
 
-  
+
   const [cart, setCart] = useState([]);
   const [customer, setCustomer] = useState({ name: 'Walk-in', phone: '' });
   const [paymentMethod, setPaymentMethod] = useState('Not Specified');
@@ -145,7 +145,7 @@ const OrderSection = () => {
     // Socket Setup for Real-time updates
     socketRef.current = io(SOCKET_URL);
     socketRef.current.on('ordersUpdated', () => {
-      
+
     });
     socketRef.current.on('orderUpdated', (updatedOrder) => {
       setOrders(prev => prev.map(o => o._id === updatedOrder._id ? updatedOrder : o));
@@ -226,7 +226,7 @@ const OrderSection = () => {
     const restaurantPhone = settings?.restaurantDetails?.contactNumber || '7034805085';
     const monochromeLogo = settings?.branding?.logoMonochrome || null;
 
-    
+
     let qrCodeUrl = '';
     const showQR = settings?.printingSettings?.showKOTQRCode && (order.orderType === 'delivery' || order.orderSource === 'online' || order.orderType === 'online');
 
@@ -477,7 +477,7 @@ const OrderSection = () => {
 
     setIsSubmitting(true);
     try {
-      
+
       if (updateProfile && selectedUserId) {
         const currentUserData = allUsers.find(u => u._id === selectedUserId);
         if (currentUserData) {
@@ -485,17 +485,17 @@ const OrderSection = () => {
           const defaultIdx = newAddresses.findIndex(a => a.isDefault);
 
           if (defaultIdx > -1) {
-            
+
             newAddresses[defaultIdx] = {
               ...newAddresses[defaultIdx],
               address: deliveryAddress,
               location: deliveryLocation
             };
           } else if (newAddresses.length > 0) {
-            
+
             newAddresses[0] = { ...newAddresses[0], address: deliveryAddress, location: deliveryLocation, isDefault: true };
           } else {
-            
+
             newAddresses.push({ address: deliveryAddress, location: deliveryLocation, type: 'home', isDefault: true });
           }
 
@@ -508,7 +508,7 @@ const OrderSection = () => {
       const subtotal = cart.reduce((acc, item) => acc + item.totalPrice, 0);
 
       if (selectedOrder) {
-        
+
         const response = await api.patch(`${API_BASE_URL}/orders/${selectedOrder._id}/items`, {
           items: cart,
           cashReceived: parseFloat(cashReceived) || selectedOrder.cashReceived || 0,
@@ -858,7 +858,7 @@ const OrderSection = () => {
       const response = await api.patch(`${API_BASE_URL}/orders/${orderId}/items/${itemId}/status`, { kitchenStatus: newStatus });
       if (response.data.success) {
         showToast('success', 'Status updated');
-        
+
         const updatedOrder = response.data.data;
         setOrders(orders.map(o => o._id === orderId ? updatedOrder : o));
         if (selectedOrder?._id === orderId) setSelectedOrder(updatedOrder);
@@ -871,10 +871,10 @@ const OrderSection = () => {
   const handleUpdatePaymentStatus = async (orderId, newStatus) => {
     try {
       const updateData = { paymentStatus: newStatus };
-      
+
       if (newStatus === 'paid') {
         updateData.orderStatus = 'delivered';
-        
+
         const orderToUpdate = orders.find(o => o._id === orderId);
         if (orderToUpdate) {
           updateData.paidAmount = orderToUpdate.totalAmount;
@@ -979,7 +979,7 @@ const OrderSection = () => {
 
     if (allUsers.length === 0) fetchUsers();
 
-    
+
     if (window.searchTimer) clearTimeout(window.searchTimer);
 
     window.searchTimer = setTimeout(() => {
@@ -995,7 +995,7 @@ const OrderSection = () => {
       } else {
         setShowSuggestions(false);
       }
-    }, 150); 
+    }, 150);
   };
 
   const selectUserSuggestion = (user) => {
@@ -1064,7 +1064,7 @@ const OrderSection = () => {
   };
 
   const addToCart = (item, variant, qty = 1) => {
-    
+
     if (item.isCombo && item.comboItems?.length > 0) {
       const outOfStockItems = [];
       for (const ci of item.comboItems) {
@@ -1236,9 +1236,9 @@ const OrderSection = () => {
     setSortConfig({ key, direction });
   };
 
-  
+
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371; 
+    const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a =
@@ -1246,18 +1246,18 @@ const OrderSection = () => {
       Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
       Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const d = R * c; 
+    const d = R * c;
     return d;
   };
 
-  
+
   const handleLocationLinkChange = async (url) => {
     setDeliveryLocation(url);
     if (!url) return;
 
     let targetUrl = url;
 
-    
+
     const extractCoords = (text) => {
       if (!text) return null;
       const coordRegex = /([-.\d]+),([-.\d]+)/g;
@@ -1272,7 +1272,7 @@ const OrderSection = () => {
       return null;
     };
 
-    
+
     if (url.includes('maps.app.goo.gl') || url.includes('share.google') || !extractCoords(url)) {
       try {
         setIsResolvingLink(true);
@@ -1295,7 +1295,7 @@ const OrderSection = () => {
 
       let roundedDist = Math.ceil(calculateDistance(restLat, restLng, destLat, destLng) * 10) / 10;
 
-      
+
       try {
         const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${restLng},${restLat};${destLng},${destLat}?overview=false`;
         const osrmRes = await axios.get(osrmUrl);
@@ -1307,7 +1307,7 @@ const OrderSection = () => {
         console.error('OSRM failed, falling back to straight line:', osrmErr);
       }
 
-      
+
       const distInput = document.getElementById('pos-distance-input');
       if (distInput) distInput.value = roundedDist;
 
@@ -1321,11 +1321,11 @@ const OrderSection = () => {
   const getFriendlyStatus = (order) => {
     if (!order) return { label: 'Unknown', color: 'bg-background-muted/10 text-text-muted border-border-light' };
 
-    
+
     if (order.orderStatus === 'cancelled') return { label: 'Cancelled', color: 'bg-status-off/10 text-status-unavailable border-status-off/20' };
     if (order.orderStatus === 'delivered' || order.orderStatus === 'completed') return { label: 'Delivered', color: 'bg-primary/10 text-primary border-primary/20' };
 
-    
+
     if (order.orderType === 'dine-in' || order.orderType === 'dining') {
       const items = order.items || [];
       const isReady = items.length > 0 && items.every(i => i.kitchenStatus === 'ready');
@@ -1343,7 +1343,7 @@ const OrderSection = () => {
       if (currentStatus === 'billed') return { label: 'Billed', color: 'bg-purple-500/10 text-purple-500 border-purple-500/20' };
     }
 
-    
+
     if (order.orderStatus === 'placed') return { label: 'New Order', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' };
     if (order.orderStatus === 'out-for-delivery') return { label: 'Out for Delivery', color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' };
     if (order.orderStatus === 'billed') return { label: 'Billed', color: 'bg-purple-500/10 text-purple-500 border-purple-500/20' };
@@ -1364,16 +1364,16 @@ const OrderSection = () => {
 
   const getSortedData = (data) => {
     return [...data].sort((a, b) => {
-      
+
       if (a.orderStatus === 'placed' && b.orderStatus !== 'placed') return -1;
       if (a.orderStatus !== 'placed' && b.orderStatus === 'placed') return 1;
 
-      
+
       if (a.orderStatus === 'placed' && b.orderStatus === 'placed') {
         return new Date(b.createdAt) - new Date(a.createdAt);
       }
 
-      
+
       let valA, valB;
 
       switch (sortConfig.key) {
@@ -1452,7 +1452,7 @@ const OrderSection = () => {
 
         matchesType = matchesHistType && matchesDate;
       } else {
-        
+
         if (orderDate < todayStart && isHistoryOrder) return false;
 
         if (tabId === 'all') {
@@ -1867,7 +1867,7 @@ const OrderSection = () => {
                                   : (order.customerDetails?.name || order.address?.recipientName || 'Walk-in')
                                 }
                               </span>
-                              {}
+                              { }
                               {(order.orderSource === 'online' || order.orderSource === 'user') ? (
                                 <span className="flex h-2 w-2 rounded-full bg-blue-500" title="Online Order"></span>
                               ) : (
@@ -1997,7 +1997,7 @@ const OrderSection = () => {
         </div>
       </div>
 
-      {}
+      { }
       {isDetailsModalOpen && selectedOrder && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-hidden print:hidden">
           <div className="bg-background-card w-full max-w-2xl h-[85vh] rounded-[2.5rem] border border-border-light shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
@@ -2026,7 +2026,7 @@ const OrderSection = () => {
               </div>
             </div>
             <div className="p-6 space-y-6 flex-1 overflow-y-auto no-scrollbar">
-              {}
+              { }
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-border-light pb-2">
                   <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Ordered Items</p>
@@ -2045,7 +2045,7 @@ const OrderSection = () => {
                           setDeliveryLocation(selectedOrder.address?.location || (typeof selectedOrder.customerDetails?.location === 'string' ? selectedOrder.customerDetails.location : ''));
                           setPosOrderType(selectedOrder.orderType);
                           setPaymentMethod(selectedOrder.paymentMethod || 'Not Specified');
-                          
+
                           setCart(selectedOrder.items.map(item => ({
                             ...item,
                             menuItem: item.menuItem?._id || item.menuItem,
@@ -2092,7 +2092,7 @@ const OrderSection = () => {
                             <p className="text-[9px] text-text-muted font-bold uppercase">
                               {item?.size} • ₹{item?.unitPrice || item?.price} x {item?.quantity}
                             </p>
-                            {}
+                            { }
                             {item?.bogoItem && (
                               <div className="mt-1 pl-2 border-l border-emerald-500/30">
                                 <span className="text-[8px] font-black text-emerald-600 uppercase tracking-wider block">Free Add-on:</span>
@@ -2177,7 +2177,7 @@ const OrderSection = () => {
                 </div>
               </div>
 
-              {}
+              { }
               {selectedOrder.orderType === 'delivery' && selectedOrder.assignedDeliveryBoy && (
                 <div className="p-4 bg-primary/10 rounded-3xl border border-primary/20 overflow-hidden flex items-center gap-4">
                   <div className="w-10 h-10 rounded-full bg-background-card border border-primary/30 flex items-center justify-center shrink-0">
@@ -2197,7 +2197,7 @@ const OrderSection = () => {
                 </div>
               )}
 
-              {}
+              { }
               {selectedOrder.orderType === 'delivery' && (selectedOrder.customerDetails?.address || selectedOrder.address?.address) && (
                 <div className="p-4 bg-primary/5 rounded-3xl border border-primary/10 overflow-hidden">
                   <div className="flex flex-col space-y-4">
@@ -2263,7 +2263,7 @@ const OrderSection = () => {
                 </div>
               )}
 
-              {}
+              { }
               {selectedOrder.remarks && (
                 <div className="p-4 bg-amber-500/5 rounded-3xl border border-amber-500/20">
                   <div className="flex items-start gap-3">
@@ -2385,7 +2385,7 @@ const OrderSection = () => {
         </div>
       )}
 
-      {}
+      { }
       {isModalOpen && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-hidden print:hidden">
           <div className="bg-background-card w-full max-w-6xl h-[88vh] rounded-[2.5rem] border border-border/40 shadow-[0_40px_80px_rgba(0,0,0,0.4)] flex overflow-hidden animate-in zoom-in-95 duration-300">
@@ -2440,7 +2440,7 @@ const OrderSection = () => {
                       >
                         <div className="w-full aspect-square bg-background-card rounded-xl mb-3 overflow-hidden border border-border-light relative">
                           <img src={item.image || '/placeholder-dish.png'} alt={item.name} className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${isItemOutOfStock ? 'grayscale' : ''}`} />
-                          
+
                           {/* Badges on Image */}
                           <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
                             {item.isCombo && (
@@ -2461,7 +2461,7 @@ const OrderSection = () => {
                             })()}
                             {item.variants?.some(v => v.isBOGO) && (
                               <span className="bg-status-available/90 backdrop-blur-sm text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm border border-status-available/20 flex items-center gap-0.5">
-                                <Zap size={8} className="animate-pulse"/> BOGO
+                                <Zap size={8} className="animate-pulse" /> BOGO
                               </span>
                             )}
                           </div>
@@ -2487,7 +2487,7 @@ const OrderSection = () => {
                               const categoryDiscount = item.category?.discountPercentage || 0;
                               const discountPercent = Math.max(menuDiscount, categoryDiscount);
                               const basePrice = item.price > 0 ? item.price : (item.variants?.[0]?.price || 0);
-                              
+
                               if (discountPercent > 0 && !item.isCombo && basePrice > 0) {
                                 const currentPrice = Math.round(basePrice * (1 - discountPercent / 100));
                                 return (
@@ -2542,7 +2542,7 @@ const OrderSection = () => {
                               if (bogoVariants.length > 0) {
                                 return (
                                   <div className="flex flex-wrap gap-1">
-                                    <span className="text-[7px] font-black text-status-available uppercase mt-0.5 flex items-center"><Zap size={6} className="mr-0.5"/> Free:</span>
+                                    <span className="text-[7px] font-black text-status-available uppercase mt-0.5 flex items-center"><Zap size={6} className="mr-0.5" /> Free:</span>
                                     {bogoVariants.map((v, idx) => {
                                       const freeItemName = menuItems.find(m => m._id === (v.bogoItem?._id || v.bogoItem))?.name || 'Item';
                                       return (
@@ -2571,7 +2571,7 @@ const OrderSection = () => {
                 <p className="text-[9px] font-black text-primary uppercase tracking-[0.25em] mb-0.5">Step 2</p>
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-black text-text-primary flex items-center gap-2">
-                    <ShoppingCart size={16} className="text-primary"/>
+                    <ShoppingCart size={16} className="text-primary" />
                     {selectedOrder ? `Order ${selectedOrder.orderNumber}` : 'Cart'}
                   </h3>
                   {cart.length > 0 && (
@@ -2626,7 +2626,7 @@ const OrderSection = () => {
                           )}
                           {item.bogoItem && (
                             <span className="inline-flex items-center text-[7px] font-black uppercase text-status-available bg-status-available/10 px-1.5 py-0.5 rounded border border-status-available/20">
-                              <Zap size={7} className="mr-0.5"/> Free: {item.bogoItem.name || 'Item'}
+                              <Zap size={7} className="mr-0.5" /> Free: {item.bogoItem.name || 'Item'}
                             </span>
                           )}
                           {item.discountPercent > 0 && !item.isCombo && (
@@ -2668,7 +2668,7 @@ const OrderSection = () => {
                   </div>
                   {cart.reduce((acc, item) => acc + (Math.max(0, (item.originalPrice || item.unitPrice) - item.unitPrice) * item.quantity), 0) > 0 && (
                     <div className="flex items-center justify-between text-status-available text-[10px] font-black">
-                      <span className="flex items-center gap-1"><Zap size={9}/> Savings</span>
+                      <span className="flex items-center gap-1"><Zap size={9} /> Savings</span>
                       <span>-₹{cart.reduce((acc, item) => acc + (Math.max(0, (item.originalPrice || item.unitPrice) - item.unitPrice) * item.quantity), 0)}</span>
                     </div>
                   )}
@@ -3142,7 +3142,7 @@ const OrderSection = () => {
             const menuDiscount = item.discountPercentage || 0;
             const categoryDiscount = item.category?.discountPercentage || 0;
             const discountPercent = Math.max(menuDiscount, categoryDiscount);
-            
+
             const basePrice = viewItemSelectedSize?.price || item.price || 0;
             const currentPrice = item.isCombo ? basePrice : Math.round(discountPercent > 0 ? basePrice * (1 - discountPercent / 100) : basePrice);
             const hasSavings = discountPercent > 0 && !item.isCombo && basePrice > currentPrice;
@@ -3156,7 +3156,7 @@ const OrderSection = () => {
                 <button onClick={() => setSelectedItemToView(null)} className="absolute top-4 right-4 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full z-10 transition-all">
                   <X size={20} />
                 </button>
-                
+
                 <div className="w-full md:w-2/5 h-48 md:h-auto bg-background-muted relative">
                   <img src={item.image || '/placeholder-dish.png'} alt={item.name} className="w-full h-full object-cover" />
                   {hasSavings && (
@@ -3260,10 +3260,10 @@ const OrderSection = () => {
                           <span className="text-2xl font-black text-primary leading-none">₹{currentPrice * viewItemQuantity}</span>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center bg-background-muted rounded-xl p-1 border border-border-light">
-                        <button onClick={() => setViewItemQuantity(Math.max(1, (parseInt(viewItemQuantity) || 1) - 1))} className="w-8 h-8 flex items-center justify-center text-text-muted hover:text-primary transition-colors"><Minus size={14}/></button>
-                        <input 
+                        <button onClick={() => setViewItemQuantity(Math.max(1, (parseInt(viewItemQuantity) || 1) - 1))} className="w-8 h-8 flex items-center justify-center text-text-muted hover:text-primary transition-colors"><Minus size={14} /></button>
+                        <input
                           type="number"
                           min="1"
                           value={viewItemQuantity}
@@ -3283,7 +3283,7 @@ const OrderSection = () => {
                           }}
                           className="w-10 text-center font-black text-sm bg-transparent border-none focus:outline-none p-0 no-spinners text-text"
                         />
-                        <button onClick={() => setViewItemQuantity((parseInt(viewItemQuantity) || 0) + 1)} className="w-8 h-8 flex items-center justify-center text-text-muted hover:text-primary transition-colors"><Plus size={14}/></button>
+                        <button onClick={() => setViewItemQuantity((parseInt(viewItemQuantity) || 0) + 1)} className="w-8 h-8 flex items-center justify-center text-text-muted hover:text-primary transition-colors"><Plus size={14} /></button>
                       </div>
                     </div>
 
