@@ -88,7 +88,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
     }
   };
 
-  
+
   const getConsumedStock = (item) =>
     cart
       .filter(c => c.menuItem === item._id)
@@ -98,11 +98,11 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
         return acc + (c.quantity * stockValue);
       }, 0);
 
-  
+
   const getDynamicRawStock = (item) =>
     Math.max(0, getEffectiveStock(item) - getConsumedStock(item));
 
-  
+
   const canAddVariant = (item, variant) => {
     const stockValue = variant?.stockValue || 1;
     return getDynamicRawStock(item) >= stockValue;
@@ -297,7 +297,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
       const response = await api.get('/api/menus');
       const latestMenu = response.data.filter(m => !m.isBlocked);
 
-      
+
       setMenuItems(latestMenu);
 
       for (const cartItem of cart) {
@@ -351,7 +351,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
       }, 0);
 
       if (editingOrder) {
-        
+
         const mergedItems = [...existingItems, ...cart];
 
         const updateData = {
@@ -422,7 +422,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose}></div>
       <div className="bg-background-card w-full max-w-6xl h-[85vh] rounded-[2.5rem] shadow-2xl relative z-10 flex overflow-hidden animate-in zoom-in-95 duration-200">
 
-        {}
+        { }
         <div className="flex-1 flex flex-col border-r border-border-light bg-background">
           <div className="p-6 border-b border-border-light bg-background-card">
             <div className="flex justify-between items-center mb-4">
@@ -479,7 +479,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                       })()}
                       {item.variants?.some(v => v.isBOGO) && (
                         <span className="bg-status-available/90 backdrop-blur-sm text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm border border-status-available/20 flex items-center gap-0.5">
-                          <Zap size={8} className="animate-pulse"/> BOGO
+                          <Zap size={8} className="animate-pulse" /> BOGO
                         </span>
                       )}
                     </div>
@@ -521,7 +521,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
           </div>
         </div>
 
-        {}
+        { }
         <div className="w-[40%] min-w-[340px] max-w-[450px] flex flex-col bg-background-card flex-shrink-0 overflow-hidden">
           <div className="p-5 md:p-6 border-b border-border-light flex justify-between items-center shrink-0 bg-background-muted/30">
             <div className="flex items-center gap-2.5">
@@ -583,7 +583,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                       )}
                       {item.bogoItem && (
                         <span className="inline-flex items-center text-[7px] font-black uppercase text-status-available bg-status-available/10 px-1.5 py-0.5 rounded border border-status-available/20">
-                          <Zap size={7} className="mr-0.5"/> Free: {item.bogoItem.name || 'Item'}
+                          <Zap size={7} className="mr-0.5" /> Free: {item.bogoItem.name || 'Item'}
                         </span>
                       )}
                       {item.discountPercent > 0 && !item.isCombo && (
@@ -651,7 +651,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
           </div>
         </div>
 
-        {}
+        { }
         {showConfirmModal && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px] animate-in fade-in duration-200">
             <div className="bg-background-card w-full max-w-md md:max-w-lg lg:max-w-xl p-6 md:p-8 rounded-[2rem] shadow-2xl animate-in zoom-in-95 duration-200 m-4">
