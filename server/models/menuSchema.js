@@ -140,7 +140,7 @@ const menuSchema = new mongoose.Schema({
     max: 100
   },
 
-  // PERF-1 OPTIMIZATION: Denormalized sales count to avoid expensive aggregates on Order collection
+  
   salesCount: {
     type: Number,
     default: 0,
@@ -149,7 +149,7 @@ const menuSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
-// PERF-2 OPTIMIZATION: Indexes for category filtering and sorting
+
 menuSchema.index({ category: 1 });
 menuSchema.index({ salesCount: -1 });
 

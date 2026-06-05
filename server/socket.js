@@ -14,11 +14,11 @@ export const initSocket = (httpServer) => {
     }
   });
 
-  // MED-7 FIX: Socket.io now requires authentication via JWT
-  // Previously any unauthenticated WebSocket client could join any order or user room
+  
+  
   io.use(async (socket, next) => {
     try {
-      // Accept token from either auth.token or handshake cookies
+      
       const token =
         socket.handshake.auth?.token ||
         socket.handshake.headers?.cookie
@@ -28,8 +28,8 @@ export const initSocket = (httpServer) => {
           ?.split('=')[1];
 
       if (!token) {
-        // Allow unauthenticated connections for public-facing sockets (e.g., real-time menu updates)
-        // but mark them so rooms with sensitive data can be restricted
+        
+        
         socket.isAuthenticated = false;
         socket.userId = null;
         socket.userRole = null;
@@ -54,7 +54,7 @@ export const initSocket = (httpServer) => {
       socket.userRole = user.role;
       next();
     } catch {
-      // Invalid token — allow connection as unauthenticated
+      
       socket.isAuthenticated = false;
       socket.userId = null;
       socket.userRole = null;
@@ -67,15 +67,15 @@ export const initSocket = (httpServer) => {
       socket.join('staff_room');
     }
     
-    // Joining an order room requires authentication — users can only join their own orders
+    
     socket.on('joinOrder', (orderId) => {
       if (!socket.isAuthenticated) return;
-      // Staff and admin can join any order room for monitoring
+      
       const isStaff = ['admin', 'staff', 'waiter', 'kitchen', 'cashier', 'delivery'].includes(socket.userRole);
       if (isStaff) {
         socket.join(orderId);
       } else {
-        // Regular users — join only (ownership verified in the controller)
+        
         socket.join(orderId);
       }
     });
@@ -84,11 +84,11 @@ export const initSocket = (httpServer) => {
       socket.leave(orderId);
     });
 
-    // Joining a user room requires authentication and matching userId
+    
     socket.on('joinUser', (userId) => {
       if (!socket.isAuthenticated) return;
       const isStaff = ['admin', 'staff', 'waiter', 'kitchen', 'cashier', 'delivery'].includes(socket.userRole);
-      // Users can only join their own room; staff can join any
+      
       if (isStaff || socket.userId === userId.toString()) {
         socket.join(userId);
       }
@@ -99,7 +99,7 @@ export const initSocket = (httpServer) => {
     });
 
     socket.on('disconnect', () => {
-      // cleanup handled automatically by socket.io
+      
     });
   });
 

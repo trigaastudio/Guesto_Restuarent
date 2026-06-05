@@ -1182,7 +1182,7 @@ const WaiterDashboard = () => {
                             </div>
                           )}
 
-                          {/* Included Items (Add-ons) */}
+                          {}
                           {item.includedItems?.length > 0 && (
                             <div className="mt-1.5 pl-2 border-l border-primary/30">
                               <span className="text-[9px] font-black text-primary uppercase tracking-wider block mb-0.5">Includes Add-ons:</span>
@@ -1207,7 +1207,7 @@ const WaiterDashboard = () => {
               </div>
             </div>
 
-            {/* Footer */}
+            {}
             <div className="p-6 bg-background-card border-t border-border-light flex justify-between items-center shrink-0 gap-3">
               <div className="flex gap-2">
                 <button

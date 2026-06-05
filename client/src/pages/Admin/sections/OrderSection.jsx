@@ -2390,9 +2390,9 @@ const OrderSection = () => {
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-hidden print:hidden">
           <div className="bg-background-card w-full max-w-6xl h-[88vh] rounded-[2.5rem] border border-border/40 shadow-[0_40px_80px_rgba(0,0,0,0.4)] flex overflow-hidden animate-in zoom-in-95 duration-300">
 
-            {/* ── COLUMN 1: Menu Listing ── */}
+            {}
             <div className="flex-1 flex flex-col border-r border-border-light/60 min-w-0">
-              {/* Header */}
+              {}
               <div className="p-5 border-b border-border-light/60 flex items-center justify-between shrink-0 bg-gradient-to-r from-background-card to-background-muted/10">
                 <div>
                   <p className="text-[9px] font-black text-primary uppercase tracking-[0.25em] mb-0.5">Step 1</p>
@@ -2441,7 +2441,7 @@ const OrderSection = () => {
                         <div className="w-full aspect-square bg-background-card rounded-xl mb-3 overflow-hidden border border-border-light relative">
                           <img src={item.image || '/placeholder-dish.png'} alt={item.name} className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${isItemOutOfStock ? 'grayscale' : ''}`} />
 
-                          {/* Badges on Image */}
+                          {}
                           <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
                             {item.isCombo && (
                               <span className="bg-primary/90 backdrop-blur-sm text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm border border-primary/20">Combo Deal</span>
@@ -2480,7 +2480,7 @@ const OrderSection = () => {
                             </span>
                           </div>
 
-                          {/* Price Display */}
+                          {}
                           <div className="flex items-center gap-1.5 mb-1.5">
                             {(() => {
                               const menuDiscount = item.discountPercentage || 0;
@@ -2501,7 +2501,7 @@ const OrderSection = () => {
                             })()}
                           </div>
 
-                          {/* Extras Details */}
+                          {}
                           <div className="flex flex-col gap-1 mb-2">
                             {item.isCombo && item.comboItems?.length > 0 && (
                               <div className="flex flex-wrap gap-1">
@@ -2659,7 +2659,7 @@ const OrderSection = () => {
                 )}
               </div>
 
-              {/* Totals Footer */}
+              {}
               <div className="p-4 border-t border-border-light space-y-2 shrink-0 bg-background-card">
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-text-muted/60 text-[10px] font-bold">
@@ -2704,9 +2704,9 @@ const OrderSection = () => {
               </div>
             </div>
 
-            {/* ── COLUMN 3: Order Details + Place Order ── */}
+            {}
             <div className="w-[280px] shrink-0 flex flex-col bg-background-card">
-              {/* Header */}
+              {}
               <div className="p-5 border-b border-border-light/60 shrink-0 flex items-start justify-between">
                 <div>
                   <p className="text-[9px] font-black text-primary uppercase tracking-[0.25em] mb-0.5">Step 3</p>
@@ -2719,7 +2719,7 @@ const OrderSection = () => {
 
               <div className="flex-1 overflow-y-auto no-scrollbar p-5 space-y-5">
 
-                {/* Order Type Selector */}
+                {}
                 {!selectedOrder && (
                   <div>
                     <label className="text-[9px] font-black text-text-muted/70 uppercase tracking-widest mb-2 block">Order Type</label>
@@ -2748,7 +2748,7 @@ const OrderSection = () => {
                   </div>
                 )}
 
-                {/* Customer Info */}
+                {}
                 <div className="space-y-2">
                   <label className="text-[9px] font-black text-text-muted/70 uppercase tracking-widest block">Customer Info</label>
                   <div className="relative">
@@ -2785,7 +2785,7 @@ const OrderSection = () => {
                   </div>
                   {errors.customerPhone && <p className="text-[9px] font-bold text-primary px-1">Phone is required</p>}
 
-                  {/* Customer Suggestions Dropdown */}
+                  {}
                   {showSuggestions && (
                     <div className="bg-background-card border border-primary/20 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
                       <div className="p-3 border-b border-border-light bg-primary/5 flex items-center justify-between">
@@ -2821,7 +2821,7 @@ const OrderSection = () => {
                   )}
                 </div>
 
-                {/* Delivery Details */}
+                {}
                 {posOrderType === 'delivery' && (
                   <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
                     <label className="text-[9px] font-black text-text-muted/70 uppercase tracking-widest block">Delivery Details</label>

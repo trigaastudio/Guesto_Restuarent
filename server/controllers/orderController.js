@@ -8,7 +8,7 @@ import Category from '../models/categorySchema.js';
 import Settings from '../models/settingsSchema.js';
 import Table from '../models/tableSchema.js';
 import { getIO, emitStockUpdate, emitCategoryStockUpdate, emitTablesUpdated } from '../socket.js';
-import { logAdminAction } from '../services/auditService.js'; // LOW-7 FIX: Added audit logging
+import { logAdminAction } from '../services/auditService.js'; 
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; 
@@ -259,7 +259,7 @@ const handleStock = async (items, type = 'reduce') => {
         }
       }
 
-      // Update BOGO item stock
+      
       if (variant && variant.isBOGO && variant.bogoItem) {
         const bogoDoc = await Menu.findById(variant.bogoItem).populate('category');
         if (bogoDoc) {
@@ -768,7 +768,7 @@ class OrderController {
           }));
         }
 
-        // Admin POS already computes discounts accurately, trust the unitPrice
+        
         const actualPrice = item.unitPrice !== undefined ? item.unitPrice : (variant ? variant.price : (menuDoc?.hasOffer && menuDoc?.offerPrice != null ? menuDoc.offerPrice : menuDoc?.price || 0));
         const calculatedTotalPrice = item.totalPrice !== undefined ? item.totalPrice : actualPrice * item.quantity;
 
@@ -790,7 +790,7 @@ class OrderController {
       const calculatedSubtotal = processedItems.reduce((sum, item) => sum + item.totalPrice, 0);
       const actualDeliveryFee = deliveryFee || 0;
       const actualTax = tax || 0;
-      // Trust the discount computed by the admin frontend
+      
       const actualDiscount = discount || req.body.discount || 0;
       const actualTotalAmount = calculatedSubtotal + actualDeliveryFee + actualTax - actualDiscount;
 
@@ -965,7 +965,7 @@ class OrderController {
 
       const order = await originalOrder.save();
 
-      // LOW-7 FIX: Audit log order status changes
+      
       await logAdminAction(req, 'UPDATE_ORDER_STATUS', 'Order', order._id, {
         previousStatus: originalOrder.orderStatus,
         newStatus: updateData.orderStatus,

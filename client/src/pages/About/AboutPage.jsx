@@ -49,13 +49,13 @@ const AboutPage = () => {
       />
 
       <main className="flex-grow pt-28 pb-20 relative overflow-hidden flex flex-col items-center justify-center">
-        {/* Background Accents */}
+        {}
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[120px] -translate-y-1/2 pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[120px] translate-y-1/2 pointer-events-none"></div>
 
         <div className="max-w-6xl mx-auto px-6 w-full relative z-10">
           
-          {/* Header */}
+          {}
           <div className="text-center mb-16 animate-in fade-in slide-in-from-bottom-8 duration-700">
             <h1 className="text-5xl md:text-7xl font-black text-text-primary tracking-tighter mb-4">
               Our <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-hover italic">Story</span>
@@ -67,7 +67,7 @@ const AboutPage = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center bg-background-card p-6 md:p-10 rounded-[2.5rem] border border-border-light shadow-2xl hover:shadow-[0_20px_50px_-20px_rgba(0,0,0,0.15)] transition-all duration-700">
             
-            {/* Image Section */}
+            {}
             <div className="relative group overflow-hidden rounded-[2rem] shadow-xl aspect-square md:aspect-[4/3] animate-in fade-in slide-in-from-left-12 duration-1000">
               <img 
                 src="/restaurant_pic.jpeg" 
@@ -76,7 +76,7 @@ const AboutPage = () => {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-80 group-hover:opacity-60 transition-opacity duration-700"></div>
               
-              {/* Overlay Badge */}
+              {}
               <div className="absolute bottom-6 left-6 right-6 p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-lg translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center shrink-0">
@@ -89,7 +89,7 @@ const AboutPage = () => {
               </div>
             </div>
 
-            {/* Info Section */}
+            {}
             <div className="space-y-8 animate-in fade-in slide-in-from-right-12 duration-1000 delay-150">
               
               <div>
@@ -104,7 +104,7 @@ const AboutPage = () => {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4">
-                {/* Info Card 1 */}
+                {}
                 <div className="p-5 rounded-2xl bg-background border border-border-light flex gap-4 items-start hover:border-primary/50 transition-colors group">
                   <MapPin size={24} className="text-primary mt-1 group-hover:scale-110 transition-transform" />
                   <div>
@@ -115,7 +115,7 @@ const AboutPage = () => {
                   </div>
                 </div>
 
-                {/* Info Card 2 */}
+                {}
                 <div className="p-5 rounded-2xl bg-background border border-border-light flex gap-4 items-start hover:border-primary/50 transition-colors group">
                   <Clock size={24} className="text-primary mt-1 group-hover:scale-110 transition-transform" />
                   <div>
@@ -126,7 +126,7 @@ const AboutPage = () => {
                   </div>
                 </div>
 
-                {/* Info Card 3 */}
+                {}
                 <div className="p-5 rounded-2xl bg-background border border-border-light flex gap-4 items-start hover:border-primary/50 transition-colors group">
                   <Phone size={24} className="text-primary mt-1 group-hover:scale-110 transition-transform" />
                   <div>
@@ -137,7 +137,7 @@ const AboutPage = () => {
                   </div>
                 </div>
 
-                {/* Info Card 4 */}
+                {}
                 <div className="p-5 rounded-2xl bg-background border border-border-light flex gap-4 items-start hover:border-primary/50 transition-colors group">
                   <ChefHat size={24} className="text-primary mt-1 group-hover:scale-110 transition-transform" />
                   <div>

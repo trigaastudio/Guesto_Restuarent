@@ -14,8 +14,8 @@ export const CartProvider = ({ children }) => {
   const pendingUpdatesRef = useRef({});
 
   useEffect(() => {
-    // Skip cart fetch for staff/admin users or if we are on a staff/admin portal page
-    // This prevents the 401 Unauthorized errors in the console when visiting these pages
+    
+    
     const isStaffUser = !!(localStorage.getItem('staff_user') || localStorage.getItem('admin_user'));
     const isStaffPath = window.location.pathname.startsWith('/admin') || 
                         window.location.pathname.startsWith('/staff') || 

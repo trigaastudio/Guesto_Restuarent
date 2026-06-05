@@ -142,7 +142,7 @@ orderSchema.pre('save', async function () {
   }
 });
 
-// Pre-validation hook: Data Consistency & Calculations
+
 orderSchema.pre('validate', async function () {
   
   if (this.isModified('items') || this.isModified('tax') || this.isModified('discount') || this.isModified('deliveryFee') || this.isModified('platformFee')) {
@@ -254,7 +254,7 @@ orderSchema.post('save', async function (doc) {
   }
 });
 
-// Post-findOneAndDelete hook to clean up Table occupancy when an order is deleted
+
 orderSchema.post('findOneAndDelete', async function (doc) {
   try {
     if (doc && doc.table && doc.orderType === 'dine-in') {

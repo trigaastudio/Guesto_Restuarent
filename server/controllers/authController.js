@@ -1,11 +1,11 @@
 import authService from '../services/authService.js';
 
-// Helper to set the correct auth cookie
-// HIGH-7 FIX: sameSite changed from 'lax' to 'strict'
-// HIGH-7 FIX: Admin tokens expire in 8h, user tokens in 7 days (was 30 days for all)
+
+
+
 const setAuthCookie = (res, role, token) => {
-  // We will return the token in the response body instead of an HttpOnly cookie
-  // to ensure compatibility with the SPA architecture and existing frontend logic.
+  
+  
   return;
 };
 
@@ -17,8 +17,8 @@ class AuthController {
   async register(req, res) {
     try {
       const user = await authService.register(req.body);
-      // CRIT-3 FIX: Was using undefined variable 'token' as fallback
-      // Now uses a single clearly-named variable with no ambiguous ternary
+      
+      
       const jwtToken = authService.generateToken(user._id);
       setAuthCookie(res, user.role, jwtToken);
 
@@ -48,7 +48,7 @@ class AuthController {
     try {
       const { email, password } = req.body;
       const user = await authService.login(email, password, 'user');
-      // CRIT-3 FIX: Was using undefined variable 'jwtToken' as condition
+      
       const token = authService.generateToken(user._id);
       setAuthCookie(res, user.role, token);
 
@@ -79,7 +79,7 @@ class AuthController {
     try {
       const { email, password } = req.body;
       const user = await authService.login(email, password, 'admin');
-      // CRIT-3 FIX: Was using undefined variable 'jwtToken' as condition
+      
       const token = authService.generateToken(user._id);
       setAuthCookie(res, user.role, token);
 
@@ -168,7 +168,7 @@ class AuthController {
       }
 
       const user = await authService.register(userData);
-      // CRIT-3 FIX: Was using undefined variable 'jwtToken' as fallback
+      
       const token = authService.generateToken(user._id);
       setAuthCookie(res, user.role, token);
 
@@ -203,7 +203,7 @@ class AuthController {
         message: 'OTP sent successfully'
       });
     } catch (error) {
-      // MED-8 FIX: Don't reveal whether an email exists — use generic message
+      
       res.status(200).json({ success: true, message: 'If this email is registered, an OTP will be sent.' });
     }
   }
@@ -211,8 +211,8 @@ class AuthController {
   async verifyPasswordResetOTP(req, res) {
     try {
       const { email, otp } = req.body;
-      // MED-8 FIX: After OTP verification, generate a short-lived signed reset token
-      // This links the OTP verification step to the actual password reset — prevents bypassing OTP
+      
+      
       const resetToken = await authService.verifyOTPAndGetResetToken(email, otp);
       if (resetToken) {
         res.status(200).json({ success: true, message: 'OTP verified', resetToken });
@@ -227,8 +227,8 @@ class AuthController {
   async resetPassword(req, res) {
     try {
       const { email, newPassword, resetToken } = req.body;
-      // MED-8 FIX: Now requires a valid resetToken issued after OTP verification
-      // Previously, this endpoint could be called directly without OTP verification
+      
+      
       await authService.resetPasswordWithToken(email, newPassword, resetToken);
       res.status(200).json({ success: true, message: 'Password reset successful' });
     } catch (error) {

@@ -15,8 +15,8 @@ const router = express.Router();
 router.post("/", protect, admin, createTable);
 router.get("/", getTables); 
 router.post("/merge", protect, admin, mergeTables); 
-router.post("/coshare-merge", protect, coshareMergeTables);  // HIGH-2 FIX: was unauthenticated
-router.post("/coshare-unmerge", protect, coshareUnmergeTables); // HIGH-2 FIX: was unauthenticated
+router.post("/coshare-merge", protect, coshareMergeTables);  
+router.post("/coshare-unmerge", protect, coshareUnmergeTables); 
 router.put("/:id", protect, admin, updateTable);
 router.delete("/:id", protect, admin, deleteTable);
 

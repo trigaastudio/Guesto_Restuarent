@@ -54,7 +54,7 @@ const DineInSection = () => {
       try {
         await api.post('/api/tables/coshare-unmerge', { tableNumber });
         const response = await api.get('/api/tables');
-        // Batch: tables + isFetched in one render; socket fetch is blocked by ref
+        
         setTables(response.data);
         setIsFetched(true);
         showToast('success', 'Tables successfully unmerged!');
@@ -68,12 +68,12 @@ const DineInSection = () => {
   };
 
   const fetchTables = async (silent = false) => {
-    // Block duplicate silent fetches (e.g. socket event racing with explicit fetch)
+    
     if (silent && fetchInProgressRef.current) return;
     if (!silent) setIsLoading(true);
     try {
       const response = await api.get('/api/tables');
-      // Skip state update if data hasn't actually changed — prevents ghost re-renders
+      
       setTables(prev => {
         if (JSON.stringify(prev) === JSON.stringify(response.data)) return prev;
         return response.data;
@@ -242,11 +242,11 @@ const DineInSection = () => {
   const handleSaveMerge = async () => {
     if (selectedMergeTableNumbers.length < 2) return;
     setIsMerging(true);
-    fetchInProgressRef.current = true; // Block socket-triggered fetches during this operation
+    fetchInProgressRef.current = true; 
     try {
       await api.post('/api/tables/coshare-merge', { tableNumbers: selectedMergeTableNumbers });
       const response = await api.get('/api/tables');
-      // All 4 updates happen in one synchronous React 18 batch → single render, zero flash
+      
       setTables(response.data);
       setIsMergeMode(false);
       setSelectedMergeTableNumbers([]);
@@ -1094,7 +1094,7 @@ const DineInSection = () => {
                             </div>
                           )}
 
-                          {/* BOGO Item */}
+                          {}
                           {item.bogoItem && (
                             <div className="mt-1.5 pl-2 border-l border-emerald-500/30">
                               <span className="text-[9px] font-black text-emerald-500 uppercase tracking-wider block mb-0.5">Free Item:</span>
@@ -1106,7 +1106,7 @@ const DineInSection = () => {
                             </div>
                           )}
 
-                          {/* Included Items (Add-ons) */}
+                          {}
                           {item.includedItems?.length > 0 && (
                             <div className="mt-1.5 pl-2 border-l border-primary/30">
                               <span className="text-[9px] font-black text-primary uppercase tracking-wider block mb-0.5">Includes Add-ons:</span>

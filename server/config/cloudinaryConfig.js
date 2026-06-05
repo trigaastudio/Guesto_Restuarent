@@ -32,13 +32,13 @@ const storage = new CloudinaryStorage({
   },
 });
 
-// MED-9 FIX: Added fileFilter to validate MIME types before uploading to Cloudinary
-// Previously any file type could be uploaded (SVG with XSS, HTML files, executables, etc.)
+
+
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
 
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 3 * 1024 * 1024 }, // 3 MB max
+  limits: { fileSize: 3 * 1024 * 1024 }, 
   fileFilter: (req, file, cb) => {
     if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
       return cb(

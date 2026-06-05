@@ -14,7 +14,7 @@ const otpLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// ─── CUSTOMER SELF-SERVICE ROUTES ────────────────────────────────────────────
+
 router.get('/profile', protect, userController.getProfile);
 router.put('/profile', protect, userController.updateProfile);
 router.post('/avatar', protect, upload.single('avatar'), userController.updateAvatar);
@@ -28,9 +28,9 @@ router.put('/change-email', protect, userController.changeEmail);
 router.put('/change-password', protect, userController.changePassword);
 router.delete('/address/:addressId', protect, userController.deleteAddress);
 
-// ─── ADMIN USER MANAGEMENT ROUTES ────────────────────────────────────────────
-// HIGH-1 FIX: All user CRUD routes now require admin role
-// Previously only required 'protect' — any logged-in user could manage all users
+
+
+
 
 router.get('/', protect, admin, userController.getAllUsers);
 router.post('/', protect, admin, userController.createUser);

@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 import { logAdminAction } from '../services/auditService.js';
 import NodeCache from 'node-cache';
 
-const cache = new NodeCache({ stdTTL: 120, useClones: false }); // Cache for 2 minutes since menus update often
+const cache = new NodeCache({ stdTTL: 120, useClones: false }); 
 
 export const createMenu = async (req, res) => {
   try {

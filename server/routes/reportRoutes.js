@@ -4,8 +4,8 @@ import { protect, admin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// CRIT-5 FIX: All report endpoints now require admin authentication
-// Previously completely unauthenticated — exposed full financial data to anyone
+
+
 
 router.get('/sales', protect, admin, async (req, res) => {
   try {

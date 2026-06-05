@@ -12,14 +12,14 @@ api.interceptors.request.use((config) => {
   const path = window.location.pathname;
   let token;
 
-  // Portal-aware token selection
+  
   if (path.startsWith('/admin')) {
     token = localStorage.getItem('admin_token');
   } else if (path.startsWith('/kitchen') || path.startsWith('/waiter') || path.startsWith('/staff')) {
     token = localStorage.getItem('staff_token');
   } else {
-    // Fallback for other paths (like home or general user pages)
-    // Staff token is explicitly ignored here so they cannot access user endpoints
+    
+    
     token = localStorage.getItem('token') || localStorage.getItem('admin_token');
   }
 

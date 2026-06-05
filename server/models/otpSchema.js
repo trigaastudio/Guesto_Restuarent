@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
-// MED-5 FIX: Added 'attempts' field to track failed OTP verification attempts
-// After 3 failures the OTP is invalidated to prevent brute-force attacks
+
+
 const otpSchema = new mongoose.Schema({
   email: {
     type: String,
@@ -22,7 +22,7 @@ const otpSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now,
-    expires: 60 * 5, // TTL: 5 minutes
+    expires: 60 * 5, 
   },
 });
 

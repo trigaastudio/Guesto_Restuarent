@@ -33,11 +33,11 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// PERF-4 FIX: Enable gzip compression for all responses larger than 1kb
+
 app.use(compression({ threshold: 1024 }));
 
-// LOW-6 FIX: Trust reverse proxy so req.ip reflects the real client IP
-// Required for rate limiting and audit logging to work correctly
+
+
 app.set('trust proxy', 1);
 
 app.set('query parser', function (str) {
@@ -61,8 +61,8 @@ app.use(cors({
 }));
 
 
-// HIGH-9 FIX: Removed 'unsafe-inline' from script-src — it negated XSS protection
-// If you need inline scripts for Razorpay, move them to an external file or use nonces
+
+
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -76,7 +76,7 @@ app.use(helmet({
           ? process.env.BACKEND_URL || ''
           : "http://localhost:5000"
       ].filter(Boolean),
-      "img-src": ["'self'", "data:", "blob:", "https://res.cloudinary.com"]
+      "img-src": ["'self'", "data:", "blob:", "https://res.cloudinary.com"],
     },
   },
   crossOriginResourcePolicy: { policy: "cross-origin" },
@@ -95,13 +95,13 @@ app.use('/api/', limiter);
 
 connectDB();
 
-// MED-3 FIX: Added 50kb body size limit to prevent oversized payload DoS attacks
+
 app.use(express.json({ limit: '50kb' }));
 app.use(express.urlencoded({ extended: true, limit: '50kb' }));
 app.use(cookieParser());
 
-// MED-6 FIX: express-mongo-sanitize middleware causes "Cannot set property query" in Express 5
-// Using the .sanitize() method directly mutates in-place and avoids the Express 5 getter error.
+
+
 app.use((req, res, next) => {
   if (req.body) mongoSanitize.sanitize(req.body, { replaceWith: '_' });
   if (req.query) mongoSanitize.sanitize(req.query, { replaceWith: '_' });
@@ -141,7 +141,7 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK' });
 });
 
-// LOW-2 FIX: Global error handler — never leak stack traces to clients in production
+
 app.use((err, req, res, next) => {
   const isDev = process.env.NODE_ENV !== 'production';
   const status = err.status || err.statusCode || 500;

@@ -18,8 +18,8 @@ const createRazorpayOrder = async (req, res) => {
       });
     }
 
-    // HIGH-8 FIX: Compute amount server-side from the user's actual cart
-    // Previously the client could send any 'amount' — allowing payments of ₹0.01
+    
+    
     const cart = await Cart.findOne({ customer: req.user._id }).populate({
       path: 'items.menuItem',
       select: 'price variants'
@@ -29,7 +29,7 @@ const createRazorpayOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Your cart is empty' });
     }
 
-    // Compute server-side cart total
+    
     let serverTotal = 0;
     for (const item of cart.items) {
       const menuItem = item.menuItem;
@@ -51,7 +51,7 @@ const createRazorpayOrder = async (req, res) => {
     const razorpay = new Razorpay({ key_id, key_secret });
 
     const options = {
-      amount: serverTotal * 100, // Convert to paise
+      amount: serverTotal * 100, 
       currency,
       receipt: receipt || `rcpt_${Date.now()}`,
     };
@@ -65,7 +65,7 @@ const createRazorpayOrder = async (req, res) => {
     res.status(200).json({
       success: true,
       data: order,
-      serverTotal // Send back for client-side display
+      serverTotal 
     });
   } catch (error) {
     const isDev = process.env.NODE_ENV !== 'production';
@@ -96,7 +96,7 @@ const verifyPayment = async (req, res) => {
       .update(body.toString())
       .digest("hex");
 
-    // Constant-time comparison to prevent timing attacks
+    
     const isAuthentic = crypto.timingSafeEqual(
       Buffer.from(expectedSignature, 'hex'),
       Buffer.from(razorpay_signature, 'hex')
@@ -108,7 +108,7 @@ const verifyPayment = async (req, res) => {
         return res.status(404).json({ success: false, message: 'Order not found' });
       }
 
-      // Verify the order belongs to this user (prevent other users verifying your orders)
+      
       if (order.customer && order.customer.toString() !== req.user._id.toString()) {
         return res.status(403).json({ success: false, message: 'Unauthorized' });
       }

@@ -98,7 +98,7 @@ class AuthService {
       }
     }
 
-    // MED-4 FIX: Use crypto.randomInt() instead of Math.random() for cryptographic randomness
+    
     const otp = crypto.randomInt(100000, 999999).toString();
     await OTP.updateOne(
       { email: email.toLowerCase() },
@@ -124,7 +124,7 @@ class AuthService {
     const data = await OTP.findOne({ email: email.toLowerCase() });
     if (!data) return false;
 
-    // MED-5 FIX: Enforce attempt limit — invalidate OTP after 3 wrong attempts
+    
     if (data.attempts >= 3) {
       await OTP.deleteOne({ email: email.toLowerCase() });
       throw new Error('OTP invalidated due to too many failed attempts. Please request a new OTP.');
@@ -135,18 +135,18 @@ class AuthService {
       return true;
     }
 
-    // Increment attempt counter on failure
+    
     await OTP.updateOne({ email: email.toLowerCase() }, { $inc: { attempts: 1 } });
     return false;
   }
 
-  // MED-8 FIX: After OTP verification for password reset, issue a short-lived signed token
-  // This token MUST be provided when calling resetPassword — prevents bypassing OTP step
+  
+  
   async verifyOTPAndGetResetToken(email, otp) {
     const isValid = await this.verifyOTP(email, otp);
     if (!isValid) return null;
 
-    // Issue a 10-minute signed JWT as a one-time reset token
+    
     const resetToken = jwt.sign(
       { email: email.toLowerCase(), purpose: 'password_reset' },
       process.env.JWT_SECRET,
@@ -158,11 +158,11 @@ class AuthService {
   async sendPasswordResetOTP(email) {
     const user = await userRepository.findByEmail(email.toLowerCase().trim());
     if (!user) {
-      // Don't throw — silently succeed to prevent email enumeration
+      
       return true;
     }
 
-    // MED-4 FIX: Use crypto.randomInt() instead of Math.random()
+    
     const otp = crypto.randomInt(100000, 999999).toString();
     await OTP.updateOne(
       { email: email.toLowerCase() },
@@ -190,7 +190,7 @@ class AuthService {
       throw new Error('User with this email already exists');
     }
 
-    // MED-4 FIX: Use crypto.randomInt() instead of Math.random()
+    
     const otp = crypto.randomInt(100000, 999999).toString();
     await OTP.updateOne(
       { email: newEmail.toLowerCase() },
@@ -213,7 +213,7 @@ class AuthService {
   }
 
   async sendChangePasswordOTP(email) {
-    // MED-4 FIX: Use crypto.randomInt() instead of Math.random()
+    
     const otp = crypto.randomInt(100000, 999999).toString();
     await OTP.updateOne(
       { email: email.toLowerCase() },
@@ -237,11 +237,11 @@ class AuthService {
 
   async googleLogin(token) {
     try {
-      // HIGH-5 NOTE: The client uses useGoogleLogin which provides an access_token.
-      // We validate it by calling Google's userinfo endpoint (server-to-server).
-      // This is the correct flow for the OAuth2 implicit grant.
-      // If you switch the client to use GoogleLogin component (which gives an ID token),
-      // change this to: client.verifyIdToken({ idToken: token, audience: GOOGLE_CLIENT_ID })
+      
+      
+      
+      
+      
       const oauth2Client = new OAuth2Client();
       oauth2Client.setCredentials({ access_token: token });
 
@@ -348,8 +348,8 @@ class AuthService {
     return user;
   }
 
-  // MED-8 FIX: resetPassword now requires a valid signed resetToken from verifyOTPAndGetResetToken()
-  // Previously, anyone could call this endpoint directly without OTP verification
+  
+  
   async resetPasswordWithToken(email, newPassword, resetToken) {
     if (!resetToken) {
       throw new Error('Reset token is required');
@@ -381,7 +381,7 @@ class AuthService {
     return true;
   }
 
-  // Kept for backward compatibility with userController.changePassword and changeEmail flows
+  
   async resetPassword(email, newPassword) {
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&^#()_+\-=\[\]{};':\"\\|,.<>\/?]).{8,64}$/;
 
