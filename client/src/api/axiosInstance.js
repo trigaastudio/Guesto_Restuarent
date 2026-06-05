@@ -1,38 +1,66 @@
 import axios from 'axios';
 
-const BASE_URL = 'http://localhost:5000';
+const BASE_URL = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:5000`;
 
 
-
-const noCacheHeaders = {
-  'Cache-Control': 'no-cache, no-store, must-revalidate',
-  'Pragma': 'no-cache',
-  'Expires': '0',
-};
 
 const api = axios.create({
   baseURL: BASE_URL,
-  headers: noCacheHeaders,
+  withCredentials: true,
 });
-
-
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const path = window.location.pathname;
+  let token;
+
+  // Portal-aware token selection
+  if (path.startsWith('/admin')) {
+    token = localStorage.getItem('admin_token');
+  } else if (path.startsWith('/kitchen') || path.startsWith('/waiter') || path.startsWith('/staff')) {
+    token = localStorage.getItem('staff_token');
+  } else {
+    // Fallback for other paths (like home or general user pages)
+    // Staff token is explicitly ignored here so they cannot access user endpoints
+    token = localStorage.getItem('token') || localStorage.getItem('admin_token');
+  }
+
   if (token) {
     config.headers['Authorization'] = `Bearer ${token}`;
   }
   return config;
 });
-
-
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      const path = window.location.pathname;
+      const isLoginRequest = error.config?.url?.includes('/api/auth/login');
+      const publicPaths = ['/', '/login', '/register', '/admin/login', '/staff/login', '/about', '/digital-menu'];
 
-      window.location.replace('/login');
+      
+      if (isLoginRequest || publicPaths.includes(path)) {
+        return Promise.reject(error);
+      }
+
+      if (path.startsWith('/admin')) {
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_user');
+        window.location.replace('/admin/login');
+      } else if (path.startsWith('/kitchen') || path.startsWith('/waiter') || path.startsWith('/staff')) {
+        localStorage.removeItem('staff_token');
+        localStorage.removeItem('staff_user');
+        window.location.replace('/staff/login');
+      } else {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.replace('/login');
+      }
+    } else if (error.response?.status >= 500 || (!error.response && !axios.isCancel(error))) {
+      
+      const path = window.location.pathname;
+      if (path !== '/error') {
+        const message = error.response?.data?.message || error.message || 'Unable to connect to the server.';
+        window.location.replace(`/error?type=server&message=${encodeURIComponent(message)}`);
+      }
     }
     return Promise.reject(error);
   }

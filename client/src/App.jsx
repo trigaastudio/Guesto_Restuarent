@@ -1,41 +1,126 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import AdminLogin from './pages/Admin/AdminLogin';
-import AdminDashboard from './pages/Admin/AdminDashboard';
-import RegisterPage from './pages/Register/RegisterPage';
-import LoginPage from './pages/Login/LoginPage';
-import HomePage from './pages/Home/HomePage';
-import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
-import { ThemeProvider } from './context/ThemeContext';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import './index.css';
+
+
+const AdminLogin = lazy(() => import('./pages/Admin/AdminLogin'));
+const AdminDashboard = lazy(() => import('./pages/Admin/AdminDashboard'));
+const RegisterPage = lazy(() => import('./pages/Register/RegisterPage'));
+const LoginPage = lazy(() => import('./pages/Login/LoginPage'));
+const HomePage = lazy(() => import('./pages/Home/HomePage'));
+const LandingPage = lazy(() => import('./pages/Landing/LandingPage'));
+const CartPage = lazy(() => import('./pages/Cart/CartPage'));
+const PaymentPage = lazy(() => import('./pages/Payment/PaymentPage'));
+const ProfilePage = lazy(() => import('./pages/Profile/ProfilePage'));
+const OrdersPage = lazy(() => import('./pages/Orders/OrdersPage'));
+const TrackOrderPage = lazy(() => import('./pages/Orders/TrackOrderPage'));
+const MenuDetailPage = lazy(() => import('./pages/Menu/MenuDetailPage'));
+const StaffLogin = lazy(() => import('./pages/Staff/StaffLogin'));
+const KitchenDashboard = lazy(() => import('./pages/Kitchen/KitchenDashboard'));
+const WaiterDashboard = lazy(() => import('./pages/Waiter/WaiterDashboard'));
+const AboutPage = lazy(() => import('./pages/About/AboutPage'));
+const DigitalMenu = lazy(() => import('./pages/Menu/DigitalMenu'));
+const ErrorPage = lazy(() => import('./pages/Error/ErrorPage'));
+
+import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
+import { ThemeProvider } from './context/ThemeContext';
+import { CartProvider } from './context/CartContext';
+import BottomNavbar from './components/Navbar/BottomNavbar';
+import FloatingCart from './components/Cart/FloatingCart';
+
+import Loader from './components/Loader/Loader';
+import GlobalSocketListener from './components/GlobalSocketListener/GlobalSocketListener';
+
+const PageLoader = () => (
+  <Loader fullPage={true} />
+);
 
 function App() {
   return (
-    <ThemeProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Admin Routes */}
-          <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin/dashboard" element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <AdminDashboard />
-            </ProtectedRoute>
-          } />
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+      <ThemeProvider>
+        <CartProvider>
+          <BrowserRouter>
+            <GlobalSocketListener />
+            <ErrorBoundary>
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  {}
+                  <Route path="/admin/login" element={<AdminLogin />} />
+                  <Route path="/admin/dashboard" element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  } />
 
-          {/* General Routes */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/login" element={<LoginPage />} />
+                  {}
+                  <Route path="/staff/login" element={<StaffLogin />} />
+                  <Route path="/kitchen/dashboard" element={
+                    <ProtectedRoute allowedRoles={['kitchen']}>
+                      <KitchenDashboard />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/waiter/dashboard" element={
+                    <ProtectedRoute allowedRoles={['waiter']}>
+                      <WaiterDashboard />
+                    </ProtectedRoute>
+                  } />
 
-          {/* Protected Routes */}
-          <Route path="/home" element={
-            <ProtectedRoute>
-              <HomePage />
-            </ProtectedRoute>
-          } />
-        </Routes>
-      </BrowserRouter>
-    </ThemeProvider>
+                  {}
+                  <Route path="/" element={<LandingPage />} />
+                  <Route path="/register" element={<RegisterPage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/error" element={<ErrorPage />} />
+
+                  {}
+                  <Route path="/home" element={
+                    <ProtectedRoute>
+                      <HomePage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/cart" element={
+                    <ProtectedRoute>
+                      <CartPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/payment" element={
+                    <ProtectedRoute>
+                      <PaymentPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/profile" element={
+                    <ProtectedRoute>
+                      <ProfilePage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/my-orders" element={
+                    <ProtectedRoute>
+                      <OrdersPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/track-order/:orderId" element={
+                    <ProtectedRoute>
+                      <TrackOrderPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/menu/:id" element={
+                    <ProtectedRoute>
+                      <MenuDetailPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/about" element={<AboutPage />} />
+                  <Route path="/digital-menu" element={<DigitalMenu />} />
+                </Routes>
+              </Suspense>
+            </ErrorBoundary>
+            <FloatingCart />
+            <BottomNavbar />
+          </BrowserRouter>
+        </CartProvider>
+      </ThemeProvider>
+    </GoogleOAuthProvider>
   );
 }
 

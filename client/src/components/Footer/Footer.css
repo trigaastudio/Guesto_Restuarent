@@ -1,0 +1,40 @@
+
+footer {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+
+.footer-icon-glow {
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.footer-icon-glow:hover {
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+  transform: translateY(-5px);
+}
+
+
+.lucide {
+  transition: transform 0.3s ease;
+}
+
+
+footer a {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+
+.footer-nav-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.1); }
+}
+
+.footer-glow-anim {
+  animation: pulse-slow 8s ease-in-out infinite;
+}

@@ -1,19 +1,50 @@
 import { Navigate } from 'react-router-dom';
 
-
 const ProtectedRoute = ({ children, allowedRoles }) => {
-  const token = localStorage.getItem('token');
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const path = window.location.pathname;
+  let hasAuth = false;
+  let user;
 
-  if (!token) {
-    // If not logged in, redirect to appropriate login page
-    const isRootAdmin = window.location.pathname.startsWith('/admin');
-    return <Navigate to={isRootAdmin ? "/admin/login" : "/login"} replace />;
+  if (path.startsWith('/admin')) {
+    
+    hasAuth = !!localStorage.getItem('admin_user');
+    user = JSON.parse(localStorage.getItem('admin_user') || '{}');
+  } else if (path.startsWith('/kitchen') || path.startsWith('/waiter')) {
+    
+    hasAuth = !!localStorage.getItem('staff_user');
+    user = JSON.parse(localStorage.getItem('staff_user') || '{}');
+  } else {
+    
+    const customerAuth = !!localStorage.getItem('user');
+    const adminAuth = !!localStorage.getItem('admin_user');
+
+    if (customerAuth) {
+      
+      hasAuth = customerAuth;
+      user = JSON.parse(localStorage.getItem('user') || '{}');
+    } else if (adminAuth) {
+      
+      hasAuth = adminAuth;
+      user = JSON.parse(localStorage.getItem('admin_user') || '{}');
+    } else {
+      
+      return <Navigate to="/login" replace />;
+    }
+  }
+
+  if (!hasAuth) {
+    
+    if (path.startsWith('/admin')) return <Navigate to="/admin/login" replace />;
+    if (path.startsWith('/kitchen') || path.startsWith('/waiter')) return <Navigate to="/staff/login" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    // If logged in but role not allowed, redirect to a safe page or login
-    return <Navigate to={user.role === 'admin' ? "/admin/dashboard" : "/home"} replace />;
+    
+    if (user.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
+    if (user.role === 'kitchen') return <Navigate to="/kitchen/dashboard" replace />;
+    if (user.role === 'waiter') return <Navigate to="/waiter/dashboard" replace />;
+    return <Navigate to="/home" replace />;
   }
 
   return children;

@@ -1,0 +1,110 @@
+import Swal from 'sweetalert2';
+
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 1200, 
+  timerProgressBar: true,
+  showClass: {
+    popup: 'animate__animated animate__fadeInRight animate__faster'
+  },
+  hideClass: {
+    popup: 'animate__animated animate__fadeOutRight animate__faster'
+  },
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer);
+    toast.addEventListener('mouseleave', Swal.resumeTimer);
+  }
+});
+
+const themeColors = {
+  primary: '#B91C1C',
+  secondary: '#DA9133',
+  background: '#FAF9F6',
+  text: '#1A1A1A',
+  error: '#B91C1C',
+  success: '#16A34A',
+  warning: '#DA9133'
+};
+
+export const showAlert = (options) => {
+  return Swal.fire({
+    icon: options.icon || 'info',
+    title: options.title || '',
+    text: options.text || '',
+    confirmButtonColor: themeColors.primary,
+    iconColor: options.icon === 'error' ? themeColors.error :
+      options.icon === 'success' ? themeColors.success :
+        themeColors.primary,
+    scrollbarPadding: false,
+    heightAuto: false,
+    customClass: {
+      popup: 'rounded-[2.5rem] border-none shadow-2xl max-w-[400px] bg-background-card text-text-primary',
+      title: 'text-xl font-black tracking-tight pt-6 text-text-primary',
+      htmlContainer: 'text-[11px] font-bold opacity-60 px-6 pb-2 text-text-muted',
+      confirmButton: 'rounded-xl px-8 py-3 font-black uppercase tracking-widest text-[9px] shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all mb-6'
+    },
+    ...options
+  });
+};
+
+export const showToast = (icon, title) => {
+  return Toast.fire({
+    icon,
+    title,
+    timer: 1200, 
+    iconColor: icon === 'error' ? themeColors.error :
+      icon === 'success' ? themeColors.success :
+        themeColors.primary,
+    customClass: {
+      popup: 'rounded-xl font-black text-[9px] tracking-widest uppercase px-6 bg-background-card text-text-primary shadow-xl border border-border/40'
+    }
+  });
+};
+
+export const showCartToast = (item) => {
+  return Toast.fire({
+    timer: 1500,
+    width: 'auto',
+    padding: '0.5em',
+    html: `
+      <div class="flex items-center gap-2.5 text-left whitespace-nowrap">
+        <div class="w-9 h-9 rounded-[8px] overflow-hidden flex-shrink-0 shadow-md">
+          <img src="${item.image || '/placeholder-food.jpg'}" alt="${item.name}" class="w-full h-full object-cover" />
+        </div>
+        <div class="flex flex-col min-w-0 leading-tight">
+          <span class="text-[10px] font-black uppercase tracking-wider text-text-primary truncate max-w-[140px] block">${item.name}</span>
+          <span class="text-[7px] font-black text-primary uppercase tracking-[0.1em] mt-0.5 block">Added to Feast</span>
+        </div>
+      </div>
+    `,
+    customClass: {
+      popup: 'rounded-xl bg-background-card text-text-primary shadow-lg border border-border/40 !p-2',
+      htmlContainer: '!m-0 !p-0',
+      icon: 'hidden'
+    }
+  });
+};
+
+export const showDeleteConfirmation = (title = 'Are you sure?', text = "You won't be able to revert this!") => {
+  return Swal.fire({
+    title,
+    text,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: themeColors.primary,
+    cancelButtonColor: '#9CA3AF',
+    confirmButtonText: 'Yes, proceed',
+    cancelButtonText: 'Cancel',
+    scrollbarPadding: false,
+    heightAuto: false,
+    customClass: {
+      popup: 'rounded-[2.5rem] border-none shadow-2xl p-6 max-w-[400px] bg-background-card text-text-primary',
+      title: 'text-xl font-black tracking-tight text-text-primary',
+      htmlContainer: 'text-[10px] font-bold opacity-60 text-text-muted',
+      confirmButton: 'rounded-xl px-6 py-3 font-black uppercase tracking-widest text-[9px] shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all',
+      cancelButton: 'rounded-xl px-6 py-3 font-black uppercase tracking-widest text-[9px] bg-background text-text-muted hover:bg-background-muted transition-all'
+    }
+  });
+};

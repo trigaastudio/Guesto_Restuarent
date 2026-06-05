@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Lock, ArrowRight, Eye, EyeOff, Sun, Moon, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../api/axiosInstance';
+import Loader from '../../components/Loader/Loader';
 
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -12,13 +13,40 @@ const AdminLogin = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [settings, setSettings] = useState(null);
   const isDarkMode = theme === 'dark';
 
-  // Prevent accessing login if already logged in as admin
-  React.useEffect(() => {
-    const token = localStorage.getItem('token');
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (token && user.role === 'admin') {
+  useEffect(() => {
+    fetchSettings();
+    const originalTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    document.documentElement.setAttribute('data-theme', 'dark');
+    document.documentElement.classList.add('dark');
+
+    return () => {
+      document.documentElement.setAttribute('data-theme', originalTheme);
+      if (originalTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    };
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const response = await api.get('/api/settings');
+      setSettings(response.data.data);
+    } catch (err) {
+      console.error('Error fetching settings:', err);
+    }
+  };
+
+  
+  useEffect(() => {
+    const adminToken = localStorage.getItem('admin_token');
+    const adminUser = JSON.parse(localStorage.getItem('admin_user') || '{}');
+
+    if (adminToken && (adminUser.role === 'admin' || adminUser.role === 'staff')) {
       navigate('/admin/dashboard', { replace: true });
     }
   }, [navigate]);
@@ -32,9 +60,14 @@ const AdminLogin = () => {
       const response = await api.post('/api/auth/admin-login', { email, password });
 
       if (response.data.success) {
-        localStorage.setItem('token', response.data.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.data));
-        // Use replace: true to prevent going back to login
+        const userData = response.data.data;
+        localStorage.setItem('admin_user', JSON.stringify(userData));
+        if (userData.token) localStorage.setItem('admin_token', userData.token);
+
+        
+        localStorage.removeItem('staff_token');
+        localStorage.removeItem('staff_user');
+
         navigate('/admin/dashboard', { replace: true });
       }
     } catch (err) {
@@ -46,20 +79,15 @@ const AdminLogin = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative transition-colors duration-300">
-      {/* Theme Toggle */}
-      <button
-        onClick={toggleTheme}
-        className="absolute top-8 right-8 p-3 bg-background-card rounded-full border border-border-light text-text-secondary hover:text-primary transition-all shadow-sm"
-      >
-        {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-      </button>
-
-      {/* Logo Section */}
+      {}
       <div className="mb-12 text-center flex flex-col items-center animate-in fade-in slide-in-from-top-4 duration-700">
-        <img src={isDarkMode ? "/logo-light.png" : "/logo-dark.png"} alt="GuestO Logo" className="h-16 w-auto mb-2" />
+        <img
+          src={settings?.branding?.logoGold || "/logo-golden.png"}
+          alt="Restaurant Logo"
+          className="h-16 w-auto mb-2"
+        />
       </div>
 
-      {/* Login Card */}
       <div className="bg-background-card w-full max-w-md rounded-[2.5rem] p-10 shadow-xl shadow-primary/5 border border-border-light transition-all duration-500">
         <h2 className="text-xl font-medium text-text-primary text-center mb-8 italic opacity-70 border-b border-border-light pb-6">
           Admin Entrance
@@ -120,10 +148,10 @@ const AdminLogin = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-[#B15D09] to-primary hover:from-primary hover:to-primary-light text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/30 flex items-center justify-center space-x-2 transition-all active:scale-[0.98] mt-4 disabled:opacity-70 disabled:cursor-not-allowed"
+            className="w-full bg-gradient-to-r from-[#991b1b] to-primary hover:from-primary hover:to-primary-light text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/30 flex items-center justify-center space-x-2 transition-all active:scale-[0.98] mt-4 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {loading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader size="small" />
             ) : (
               <>
                 <span className="uppercase tracking-widest text-sm">Enter Dashboard</span>
@@ -131,10 +159,19 @@ const AdminLogin = () => {
               </>
             )}
           </button>
+
+          <div className="pt-4 border-t border-border-light text-center">
+            <button
+              type="button"
+              onClick={() => navigate('/staff/login')}
+              className="text-[10px] font-black text-text-muted hover:text-primary uppercase tracking-widest transition-colors"
+            >
+              Are you Kitchen or Waiter? Staff Login
+            </button>
+          </div>
         </form>
       </div>
 
-      {/* Footer */}
       <div className="mt-12 text-center">
         <div className="flex space-x-6 text-[10px] text-text-secondary font-medium mb-4">
           <a href="#" className="hover:text-primary transition-colors">Privacy Policy</a>
@@ -145,7 +182,7 @@ const AdminLogin = () => {
           GuestO Restaurant &copy; 2026
         </p>
       </div>
-    </div>
+    </div >
   );
 };
 

@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import bcrypt from "bcrypt";
+import bcrypt from "bcrypt"; // LOW-4 FIX: Standardized to 'bcrypt' (native), removed 'bcryptjs' dual-dependency
 
 const userSchema = new mongoose.Schema({
 
@@ -9,19 +9,40 @@ const userSchema = new mongoose.Schema({
     trim: true 
   },
 
+  avatar: {
+    type: String,
+    default: ""
+  },
+
   email: {
     type: String,
-    required: [true, "Email is required"],
     unique: true,
+    sparse: true,
     lowercase: true,
     trim: true,
     match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, "Please provide a valid email"]
   },
 
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
   password: {
     type: String,
-    required: [true, "Password is required"],
-    minlength: 6,
+    required: [
+      function() { return !this.googleId; },
+      "Password is required"
+    ],
+    validate: {
+      validator: function(v) {
+        
+        if (this.googleId && !v) return true;
+        
+        return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&^#()_+\-=\[\]{};':"\\|,.<>\/?]).{8,64}$/.test(v);
+      },
+      message: "Password must contain uppercase, lowercase, number, and special character"
+    },
     select: false 
   },
 
@@ -33,57 +54,28 @@ const userSchema = new mongoose.Schema({
 
   phone: { 
     type: String, 
-    trim: true 
+    unique: true,
+    sparse: true,
+    trim: true,
+    match: [/^[0-9]{10}$/, "Phone number must be exactly 10 digits"]
   },
 
-  address: {
+  addresses: [{
+    name: { type: String, trim: true },
+    phone: { type: String, trim: true },
+    address: { type: String, trim: true },
+    landmark: { type: String, trim: true },
+    location: { type: String, trim: true },
     type: {
       type: String,
-      enum: ["home", "office"],
+      enum: ["home", "office", "other"],
       default: "home"
     },
-
-    street: {
-      type: String,
-      trim: true
-    },
-
     isDefault: {
       type: Boolean,
       default: false
-    },
-  
-    area: {
-      type: String,
-      trim: true
-    },
-
-    city: {
-      type: String,
-      trim: true
-    },
-
-    state: {
-      type: String,
-      trim: true
-    },
-
-    pincode: {
-      type: String,
-      trim: true
-    },
-
-    country: {
-      type: String,
-      default: "India"
-    },
-
-
-    location: {
-      lat: Number,
-      lng: Number
     }
-  },
+  }],
 
   isActive: { 
     type: Boolean, 

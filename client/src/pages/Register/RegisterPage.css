@@ -1,124 +1,113 @@
-
 .register-page-wrapper {
   display: flex;
   min-height: 100vh;
   width: 100%;
   justify-content: center;
   align-items: center;
-  background-color: var(--bg);
-  background-image: linear-gradient(135deg, var(--bg) 0%, var(--bg-secondary) 100%);
-  padding: 16px;
+  background-color: #F8FAFC;
+  background-image: radial-gradient(circle at top right, rgba(201, 106, 10, 0.08) 0%, transparent 40%),
+                    radial-gradient(circle at bottom left, rgba(201, 106, 10, 0.05) 0%, transparent 40%);
+  padding: 40px 20px;
+  position: relative;
 }
-
 
 .register-container {
   display: flex;
-  width: 100%;
-  max-width: 1100px;
-  background: var(--card-bg);
-  border-radius: 28px;
-  overflow: hidden;
-  box-shadow: var(--shadow-lg);
-  border: 1px solid var(--card-border);
-  min-height: 600px;
-}
-
-
-.register-left {
-  flex: 1.1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  padding: 40px;
-}
-
-.hero-image-wrapper {
+  flex-direction: column;
   width: 100%;
   max-width: 520px;
+  background: white;
+  border-radius: 32px;
+  overflow: hidden;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  margin: 0 auto;
+  position: relative;
+  z-index: 10;
 }
 
-.hero-img {
+.auth-header-banner {
   width: 100%;
-  height: auto;
-  object-fit: contain;
-  filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.12));
+  background: var(--color-primary);
+  height: 100px;
+  position: relative;
 }
 
+.auth-wave-container {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.auth-wave-svg {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 40px;
+  fill: white;
+}
 
 .register-right {
   flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 36px;
-  background: transparent;
-  overflow-y: auto;
+  flex-direction: column;
+  padding: 20px 36px 48px;
 }
 
 .register-form-card {
   width: 100%;
-  max-width: 420px;
 }
 
-
-.register-form-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 18px;
-}
-
-
-.logo-container {
+.logo-container-desktop {
   display: flex;
   justify-content: center;
-  flex: 1;
+  margin-bottom: 20px;
 }
 
 .brand-logo {
-  height: 56px;
+  height: 50px;
   width: auto;
   object-fit: contain;
 }
 
-
 .form-header {
   text-align: center;
-  margin-bottom: 22px;
+  margin-bottom: 24px;
 }
 
 .form-title {
   font-size: 24px;
-  font-weight: 800;
-  color: var(--text-primary);
+  font-weight: 900;
+  color: #1A1A1A;
   margin-bottom: 4px;
+  letter-spacing: -1px;
 }
 
 .form-subtitle {
-  font-size: 13px;
-  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
 }
-
 
 .api-error-message {
   background: #fef2f2;
   color: #b91c1c;
-  padding: 10px 14px;
-  border-radius: 10px;
-  font-size: 13px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
   font-weight: 600;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
   text-align: center;
   border: 1px solid #fee2e2;
 }
-
 
 .register-form {
   display: flex;
   flex-direction: column;
 }
-
 
 .password-grid {
   display: grid;
@@ -126,20 +115,19 @@
   gap: 14px;
 }
 
-
 .terms-checkbox-group {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  margin-top: 4px;
 }
 
 .checkbox-container {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 12px;
   cursor: pointer;
-  user-select: none;
 }
 
-.checkbox-container input[type="checkbox"] {
+.checkbox-container input {
   position: absolute;
   opacity: 0;
   width: 0;
@@ -148,140 +136,121 @@
 
 .checkmark {
   flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  background: var(--bg-input);
-  border: 2px solid var(--border-input);
-  border-radius: 4px;
+  width: 20px;
+  height: 20px;
+  background: #F1F5F9;
+  border: 2px solid #E2E8F0;
+  border-radius: 6px;
   transition: all 0.2s;
   position: relative;
-  margin-top: 1px;
 }
 
 .checkbox-container:hover .checkmark {
-  border-color: #f59e0b;
+  border-color: var(--color-primary);
 }
 
-.checkbox-container input[type="checkbox"]:checked~.checkmark {
-  background: #f59e0b;
-  border-color: #f59e0b;
+.checkbox-container input:checked ~ .checkmark {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
 }
 
 .checkmark::after {
   content: '';
   position: absolute;
   display: none;
-  left: 5px;
+  left: 6px;
   top: 2px;
-  width: 4px;
-  height: 8px;
+  width: 5px;
+  height: 10px;
   border: solid white;
-  border-width: 0 2px 2px 0;
+  border-width: 0 2.5px 2.5px 0;
   transform: rotate(45deg);
 }
 
-.checkbox-container input[type="checkbox"]:checked~.checkmark::after {
+.checkbox-container input:checked ~ .checkmark::after {
   display: block;
 }
 
 .checkbox-label-text {
   font-size: 13px;
-  color: var(--text-secondary);
+  font-weight: 500;
+  color: #666;
   line-height: 1.5;
 }
 
 .checkbox-label-text a {
-  color: #f59e0b;
+  color: var(--color-primary);
   font-weight: 700;
   text-decoration: none;
 }
 
-.checkbox-label-text a:hover {
-  text-decoration: underline;
+.auth-submit-btn {
+  border-radius: 99px !important;
+  background: var(--color-primary) !important;
+  font-weight: 800 !important;
+  font-size: 17px !important;
+  padding: 15px !important;
+  box-shadow: 0 10px 25px rgba(201, 106, 10, 0.3) !important;
+  transition: all 0.3s ease !important;
+  border: none !important;
+  color: white !important;
+  width: 100% !important;
+  cursor: pointer !important;
 }
 
-.error-message {
-  font-size: 12px;
-  color: #ef4444;
-  font-weight: 600;
-  margin-top: 4px;
-  margin-left: 28px;
+.auth-submit-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 15px 35px rgba(201, 106, 10, 0.4) !important;
 }
-
 
 .auth-footer-text {
   text-align: center;
-  margin-top: 20px;
-  font-size: 13px;
-  color: var(--text-secondary);
+  margin-top: 24px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
 }
 
-.auth-footer-text a {
-  color: #f59e0b;
-  font-weight: 700;
-  text-decoration: none;
+.register-link {
+  color: var(--color-primary) !important;
+  font-weight: 800 !important;
+  text-decoration: none !important;
 }
-
-.auth-footer-text a:hover {
-  text-decoration: underline;
-}
-
-
-@media (max-width: 1024px) {
-  .register-left {
-    display: none;
-  }
-
-  .register-container {
-    max-width: 480px;
-    border-radius: 24px;
-    box-shadow: var(--shadow-md);
-  }
-
-  .register-right {
-    padding: 36px 30px;
-  }
-}
-
 
 @media (max-width: 600px) {
   .register-page-wrapper {
-    padding: 12px;
+    padding: 0;
     align-items: flex-start;
-    padding-top: 24px;
+    background: white;
   }
 
   .register-container {
-    border-radius: 20px;
+    border-radius: 0;
     max-width: 100%;
-    box-shadow: var(--shadow-sm);
+    min-height: 100vh;
+    box-shadow: none;
+    border: none;
+    margin: 0;
+  }
+
+  .auth-header-banner {
+    height: 110px;
+  }
+
+  .auth-wave-svg {
+    height: 35px;
   }
 
   .register-right {
-    padding: 28px 20px;
+    padding: 0 24px 40px;
   }
 
   .form-title {
-    font-size: 22px;
+    font-size: 24px;
   }
 
   .password-grid {
     grid-template-columns: 1fr;
     gap: 0;
-  }
-
-  .brand-logo {
-    height: 48px;
-  }
-}
-
-
-@media (max-width: 360px) {
-  .register-right {
-    padding: 20px 14px;
-  }
-
-  .form-title {
-    font-size: 20px;
   }
 }

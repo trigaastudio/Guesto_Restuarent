@@ -1,0 +1,3313 @@
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Plus, Search, Filter, Eye, Trash2, Clock, Edit2,
+  CheckCircle2, XCircle, AlertCircle, Loader2, ArrowUpDown,
+  ShoppingCart, User, Phone, CreditCard, ChevronRight,
+  MoreVertical, Printer, Package, Utensils, RotateCcw,
+  Copy, MapPin, ExternalLink, Minus, Truck, X, ChevronLeft,
+  Zap, Banknote, Smartphone, IndianRupee, Store
+} from 'lucide-react';
+import axios from 'axios';
+import { io } from 'socket.io-client';
+import { getEffectiveStock } from '../../../utils/stockHelpers';
+import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
+import Swal from 'sweetalert2';
+import TableSkeleton from '../../../components/Skeleton/TableSkeleton';
+import Loader from '../../../components/Loader/Loader';
+import Pagination from '../../../components/Pagination/Pagination';
+import TableSection from './TableSection';
+import api from '../../../api/axiosInstance';
+
+const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:5000/api`;
+const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
+
+const OrderSection = () => {
+  const handleCopyForWhatsApp = (order) => {
+
+    const itemsText = order.items.map(item => {
+      const name = item.name || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Menu Item');
+      const price = item.unitPrice || item.price || 0;
+      const sizeText = !item.size || item.size === 'null' || item.size === 'undefined' ? 'Piece' : item.size;
+      return `- ${name} (${sizeText}) x${item.quantity}`;
+    }).join('\n');
+
+
+    const name = (order.orderSource === 'online' || order.orderSource === 'user')
+      ? (order.address?.recipientName || order.customerDetails?.name || 'Walk-in')
+      : (order.customerDetails?.name || order.address?.recipientName || 'Walk-in');
+    const phone = order.customerDetails?.phone || order.address?.mobile || 'N/A';
+    const address = order.customerDetails?.address || order.address?.address || 'N/A';
+    const location = order.customerDetails?.location || order.address?.location;
+
+
+    let locationUrl = '';
+    const locToUse = location || address;
+
+    if (typeof location === 'object' && location?.lat) {
+      locationUrl = `\n📍 *Location:* https://www.google.com/maps?q=${location.lat},${location.lng}`;
+    } else if (typeof locToUse === 'string' && locToUse && locToUse !== 'N/A') {
+      const urlMatch = locToUse.match(/https?:\/\/[^\s]+/);
+      locationUrl = urlMatch
+        ? `\n📍 *Location:* ${urlMatch[0]}`
+        : `\n📍 *Location:* https://www.google.com/maps?q=${encodeURIComponent(locToUse)}`;
+    }
+
+
+
+    const text = `*ORDER: ${order.orderNumber}*\n` +
+      `--------------------------\n` +
+      `👤 *Customer:* ${name}\n` +
+      `📞 *Phone:* ${phone}\n` +
+      `🏠 *Address:* ${address}\n` +
+      `--------------------------\n` +
+      `📦 *Items:*\n${itemsText}\n` +
+      `--------------------------\n` +
+      `💰 *Total:* ₹${order.totalAmount}\n` +
+      `💳 *Payment:* ${order.paymentMethod?.toUpperCase()} (${order.paymentStatus?.toUpperCase()})\n` +
+      locationUrl;
+
+    navigator.clipboard.writeText(text);
+    showToast('success', 'Copied for WhatsApp!');
+  };
+
+  const [orders, setOrders] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+
+  const [paymentModal, setPaymentModal] = useState({ open: false, order: null });
+  const [payMethod, setPayMethod] = useState('');
+  const [cashInput, setCashInput] = useState('');
+  const [isPaymentSubmitting, setIsPaymentSubmitting] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [searchTerm, setSearchTerm] = useState(localStorage.getItem('orderSearchTerm') || '');
+  const [posSearchTerm, setPosSearchTerm] = useState('');
+  const [orderStatusFilter, setOrderStatusFilter] = useState(localStorage.getItem('orderStatusFilter') || 'all');
+  const [paymentFilter, setPaymentFilter] = useState('all');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState(localStorage.getItem('orderActiveTab') === 'all' ? 'takeaway' : (localStorage.getItem('orderActiveTab') || 'takeaway'));
+  const [historyOrderTypeFilter, setHistoryOrderTypeFilter] = useState('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const [selectedOrderIds, setSelectedOrderIds] = useState([]);
+  const [settings, setSettings] = useState(null);
+
+  const fetchSettings = async () => {
+    try {
+      const response = await api.get(`${API_BASE_URL}/settings`);
+      setSettings(response.data.data);
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    localStorage.setItem('orderActiveTab', tab);
+    setSelectedOrderIds([]);
+    setCurrentPage(1);
+  };
+  const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
+
+
+  const [cart, setCart] = useState([]);
+  const [customer, setCustomer] = useState({ name: 'Walk-in', phone: '' });
+  const [paymentMethod, setPaymentMethod] = useState('Not Specified');
+  const [cashReceived, setCashReceived] = useState('');
+  const [menuItems, setMenuItems] = useState([]);
+  const [posOrderType, setPosOrderType] = useState('takeaway');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [deliveryLocation, setDeliveryLocation] = useState('');
+  const [deliveryFee, setDeliveryFee] = useState('');
+  const [isResolvingLink, setIsResolvingLink] = useState(false);
+  const [updateProfile, setUpdateProfile] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState(null);
+  const [userSuggestions, setUserSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [allUsers, setAllUsers] = useState([]);
+  const [deliveryStaff, setDeliveryStaff] = useState([]);
+  const [errors, setErrors] = useState({});
+  const [selectedItemToView, setSelectedItemToView] = useState(null);
+  const [viewItemQuantity, setViewItemQuantity] = useState(1);
+  const [viewItemSelectedSize, setViewItemSelectedSize] = useState(null);
+  const socketRef = useRef();
+  useEffect(() => {
+    fetchMenu();
+    fetchDeliveryStaff();
+
+    // Socket Setup for Real-time updates
+    socketRef.current = io(SOCKET_URL);
+    socketRef.current.on('ordersUpdated', () => {
+
+    });
+    socketRef.current.on('orderUpdated', (updatedOrder) => {
+      setOrders(prev => prev.map(o => o._id === updatedOrder._id ? updatedOrder : o));
+    });
+    socketRef.current.on('newOrder', (data) => {
+      if (data && data.order) {
+        setOrders(prev => [data.order, ...prev]);
+      }
+    });
+
+    socketRef.current.on('stockUpdate', (data) => {
+      setMenuItems(prev => prev.map(item => item._id === data.menuItemId ? {
+        ...item,
+        totalStock: data.totalStock,
+        isBlocked: data.isBlocked
+      } : item));
+    });
+
+    socketRef.current.on('categoryStockUpdate', ({ categoryId, totalStock }) => {
+      setMenuItems(prev => prev.map(menu => {
+        if (menu.category && menu.category._id.toString() === categoryId.toString() && menu.category.isSharedStock) {
+          return {
+            ...menu,
+            category: {
+              ...menu.category,
+              totalStock: totalStock
+            }
+          };
+        }
+        return menu;
+      }));
+    });
+
+    return () => {
+      if (socketRef.current) socketRef.current.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleEsc = (event) => {
+      if (event.key === 'Escape') {
+        setShowSuggestions(false);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
+
+  const handlePrintKOT = (order) => {
+    const printWindow = window.open('', '_blank');
+    const itemsHtml = order.items.map(item => {
+      const name = item.name || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Menu Item');
+      const unitPrice = item.unitPrice || item.price || 0;
+      const totalPrice = item.totalPrice || (unitPrice * item.quantity);
+      return `
+      <tr>
+        <td colspan="4" style="text-transform: uppercase; font-weight: bold; padding-top: 8px;">${name} (${!item.size || item.size === 'null' ? 'Piece' : item.size})</td>
+      </tr>
+      ${item.bogoItem ? `
+      <tr>
+        <td colspan="4" style="text-transform: uppercase; font-size: 11px; font-weight: bold; color: #000; padding-left: 10px;">
+          * FREE: ${item.bogoItem.name || 'Free Item'} ${!item.bogoItem.size || item.bogoItem.size === 'null' ? '' : `(${item.bogoItem.size})`} x ${item.bogoItem.quantity || 1}
+        </td>
+      </tr>
+      ` : ''}
+      <tr>
+        <td style="width: 40%;"></td>
+        <td style="width: 15%; text-align: left;">${item.quantity} P</td>
+        <td style="width: 20%; text-align: right;">${unitPrice.toFixed(2)}</td>
+        <td style="width: 25%; text-align: right;">${totalPrice.toFixed(2)}</td>
+      </tr>
+    `;
+    }).join('');
+
+    // Dynamic settings for Bill
+    const restaurantName = settings?.restaurantDetails?.name || 'GUESTO RESTAURENT';
+    const restaurantAddress = settings?.restaurantDetails?.address || 'Chammannur,Athirthi';
+    const restaurantPhone = settings?.restaurantDetails?.contactNumber || '7034805085';
+    const monochromeLogo = settings?.branding?.logoMonochrome || null;
+
+
+    let qrCodeUrl = '';
+    const showQR = settings?.printingSettings?.showKOTQRCode && (order.orderType === 'delivery' || order.orderSource === 'online' || order.orderType === 'online');
+
+    if (showQR && settings.printingSettings.kotQRCodeImage) {
+      qrCodeUrl = settings.printingSettings.kotQRCodeImage;
+    }
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>RECEIPT - ${order.orderNumber}</title>
+          <style>
+            @page { margin: 0; }
+            body { 
+              font-family: 'Courier New', Courier, monospace; 
+              width: 80mm; 
+              padding: 15px; 
+              margin: 0; 
+              color: #000;
+              font-size: 14px;
+              line-height: 1.2;
+            }
+            .header { text-align: center; margin-bottom: 5px; }
+            .restaurant-name { font-size: 18px; font-weight: bold; margin-bottom: 0px; }
+            .details { font-size: 11px; margin-bottom: 0px; line-height: 1.1; }
+            .divider { border-top: 1px dashed #000; margin: 4px 0; }
+            .info-grid { display: grid; grid-template-cols: 1fr 1fr; margin-bottom: 5px; font-weight: bold; font-size: 12px; }
+            table { width: 100%; border-collapse: collapse; }
+            .total-section { font-weight: bold; font-size: 16px; display: flex; justify-content: space-between; margin-top: 5px; }
+            .payment-info { font-size: 13px; margin-top: 10px; }
+            .qr-section { text-align: center; margin-top: 20px; }
+            .qr-label { font-size: 10px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
+          </style>
+        </head>
+        <body onload="setTimeout(function() { window.print(); window.close(); }, 500);">
+          <div class="header">
+            ${monochromeLogo
+        ? `<img src="${monochromeLogo}" style="width: 45mm; height: auto; margin: 0 auto 2px auto; display: block;" />`
+        : `<div class="restaurant-name">${restaurantName}</div>`
+      }
+            <div class="details">${restaurantAddress}</div>
+            <div class="details">MOB: ${restaurantPhone}</div>
+          </div>
+          <div class="divider"></div>
+          <div class="info-grid">
+            <div>BILL NO:${order.orderNumber.split('-')[1] || order.orderNumber}</div>
+            <div style="text-align: right;">DATE: ${new Date(order.createdAt).toLocaleDateString('en-GB')}</div>
+            <div></div>
+            <div style="text-align: right;">TIME: ${new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+          </div>
+          <div class="divider"></div>
+          <table>
+            <thead>
+              <tr style="font-weight: bold;">
+                <th style="width: 40%; text-align: left;">ITEM</th>
+                <th style="width: 15%; text-align: left;">QTY</th>
+                <th style="width: 20%; text-align: right;">PRICE</th>
+                <th style="width: 25%; text-align: right;">AMOUNT</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="4"><div class="divider"></div></td></tr>
+              ${itemsHtml}
+            </tbody>
+          </table>
+          <div class="divider"></div>
+          <div style="font-size: 13px; font-weight: normal; margin-bottom: 5px;">
+            <div style="display: flex; justify-content: space-between;">
+              <span>Listing Price:</span>
+              <span>₹${((order.subtotal || 0) + (order.discount || 0)).toFixed(2)}</span>
+            </div>
+            ${order.deliveryFee > 0 ? `
+              <div style="display: flex; justify-content: space-between;">
+                <span>Delivery Fee:</span>
+                <span>${order.deliveryFee.toFixed(2)}</span>
+              </div>
+            ` : ''}
+            ${order.platformFee > 0 ? `
+              <div style="display: flex; justify-content: space-between;">
+                <span>Platform Fee:</span>
+                <span>${order.platformFee.toFixed(2)}</span>
+              </div>
+            ` : ''}
+            ${order.discount > 0 ? `
+              <div style="display: flex; justify-content: space-between; color: green; font-weight: bold;">
+                <span>Discount:</span>
+                <span>-${order.discount.toFixed(2)}</span>
+              </div>
+            ` : ''}
+          </div>
+          <div class="total-section" style="border-top: 1px dashed #000; padding-top: 5px;">
+            <span>TOTAL :</span>
+            <span>${(order.totalAmount || order.subtotal || 0).toFixed(2)}</span>
+          </div>
+          ${order.paidAmount > 0 && (order.totalAmount || order.subtotal) > order.paidAmount ? `
+            <div style="font-size: 13px; font-weight: bold; margin-top: 5px; display: flex; justify-content: space-between;">
+              <span>PAID AMOUNT:</span>
+              <span>₹${order.paidAmount.toFixed(2)}</span>
+            </div>
+            <div style="font-size: 14px; font-weight: bold; margin-top: 3px; display: flex; justify-content: space-between; border: 1px solid #000; padding: 4px;">
+              <span>BALANCE DUE:</span>
+              <span>₹${((order.totalAmount || order.subtotal) - order.paidAmount).toFixed(2)}</span>
+            </div>
+          ` : ''}
+          <div class="divider"></div>
+          <div class="payment-info">
+            ${order.paymentMethod === 'cash' ? `
+              <div style="display: flex; justify-content: space-between;">
+                <span>CASH RECEIVED :</span>
+                <span>${(order.cashReceived || order.totalAmount || order.subtotal || 0).toFixed(2)}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-top: 3px;">
+                <span>CHANGE :</span>
+                <span>${(order.balance || 0).toFixed(2)}</span>
+              </div>
+            ` : (order.orderType === 'dine-in' && order.orderStatus !== 'delivered') ? `
+              <div style="display: flex; justify-content: space-between;">
+                <span>STATUS :</span>
+                <span style="text-transform: uppercase; font-weight: bold;">BILLED</span>
+              </div>
+            ` : `
+              <div style="display: flex; justify-content: space-between;">
+                <span>PAYMENT METHOD :</span>
+                <span style="text-transform: uppercase;">${order.paymentMethod || 'Not Specified'}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-top: 3px;">
+                <span>STATUS :</span>
+                <span style="text-transform: uppercase;">${order.paymentStatus || 'pending'}</span>
+              </div>
+            `}
+          </div>
+          
+          ${qrCodeUrl ? `
+            <div class="qr-section">
+              <div class="qr-label">${settings.printingSettings.kotQRCodeType === 'upi' ? 'Scan to Pay' : 'Scan to Pay'}</div>
+              <img src="${qrCodeUrl}" style="width: 120px; height: 120px; border: 1px solid #000; padding: 5px;" />
+            </div>
+          ` : ''}
+
+          <div class="divider"></div>
+          <div style="text-align: center; font-size: 11px; margin-top: 10px;">
+            ${(order.orderType === 'delivery' || order.orderType === 'online') ? 'THANK YOU FOR ORDER!' : 'THANK YOU FOR VISITING!'}
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  useEffect(() => {
+    const scrollContainer = document.querySelector('main .overflow-y-auto');
+    if (scrollContainer) {
+      scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [currentPage]);
+
+  const fetchOrders = async (silent = false, currentTab = activeTab, start = startDate, end = endDate) => {
+    if (!silent) setIsLoading(true);
+    try {
+      const params = {};
+      if (currentTab === 'history') {
+        params.history = true;
+        if (start) params.startDate = start;
+        if (end) params.endDate = end;
+      }
+      const response = await api.get(`${API_BASE_URL}/orders`, { params });
+      setOrders(response.data.data);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      if (!silent) showToast('error', 'Failed to fetch orders');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const isFirstMount = useRef(true);
+
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      fetchOrders(false, activeTab, startDate, endDate);
+    } else {
+      fetchOrders(true, activeTab, startDate, endDate);
+    }
+  }, [activeTab, startDate, endDate]);
+
+  const handleClearHistory = async (ids = null) => {
+    const isManualSelection = Array.isArray(ids);
+    const title = isManualSelection ? `Clear ${ids.length} Selected Orders?` : 'Clear History?';
+    const text = isManualSelection
+      ? `This will permanently delete the ${ids.length} marked orders from the database.`
+      : `This will permanently delete all history orders matching current filters from the database.`;
+
+    const result = await showDeleteConfirmation(title, text);
+    if (result.isConfirmed) {
+      try {
+        const response = await api.delete(`${API_BASE_URL}/orders/clear-history`, {
+          params: {
+            orderType: historyOrderTypeFilter,
+            startDate,
+            endDate,
+            ids: isManualSelection ? ids.join(',') : undefined
+          }
+        });
+        if (response.data.success) {
+          showToast('success', response.data.message);
+          setSelectedOrderIds([]);
+        }
+      } catch (error) {
+        showToast('error', 'Failed to clear history');
+      }
+    }
+  };
+
+  const fetchMenu = async () => {
+    try {
+      const response = await api.get(`${API_BASE_URL}/menus`);
+      setMenuItems(response.data.filter(m => !m.isBlocked));
+    } catch (error) {
+      console.error('Error fetching menu:', error);
+    }
+  };
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleCreateOrder = async () => {
+    if (cart.length === 0) {
+      showToast('warning', 'Please add at least one item');
+      return;
+    }
+
+    if (posOrderType === 'delivery') {
+      const newErrors = {};
+      if (!customer.name || customer.name === 'Walk-in' || !customer.name.trim()) newErrors.customerName = true;
+      if (!customer.phone || customer.phone.trim() === '') newErrors.customerPhone = true;
+      if ((!deliveryAddress || deliveryAddress.trim() === '') && (!deliveryLocation || deliveryLocation.trim() === '')) {
+        newErrors.deliveryAddress = true;
+        newErrors.deliveryLocation = true;
+      }
+
+      if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
+        showToast('warning', 'Please fill all required delivery details');
+        return;
+      }
+    }
+    setErrors({});
+
+    setIsSubmitting(true);
+    try {
+
+      if (updateProfile && selectedUserId) {
+        const currentUserData = allUsers.find(u => u._id === selectedUserId);
+        if (currentUserData) {
+          const newAddresses = [...(currentUserData.addresses || [])];
+          const defaultIdx = newAddresses.findIndex(a => a.isDefault);
+
+          if (defaultIdx > -1) {
+
+            newAddresses[defaultIdx] = {
+              ...newAddresses[defaultIdx],
+              address: deliveryAddress,
+              location: deliveryLocation
+            };
+          } else if (newAddresses.length > 0) {
+
+            newAddresses[0] = { ...newAddresses[0], address: deliveryAddress, location: deliveryLocation, isDefault: true };
+          } else {
+
+            newAddresses.push({ address: deliveryAddress, location: deliveryLocation, type: 'home', isDefault: true });
+          }
+
+          await api.put(`/api/users/${selectedUserId}`, {
+            addresses: newAddresses
+          });
+        }
+      }
+
+      const subtotal = cart.reduce((acc, item) => acc + item.totalPrice, 0);
+
+      if (selectedOrder) {
+
+        const response = await api.patch(`${API_BASE_URL}/orders/${selectedOrder._id}/items`, {
+          items: cart,
+          cashReceived: parseFloat(cashReceived) || selectedOrder.cashReceived || 0,
+          deliveryAddress: deliveryAddress,
+          deliveryLocation: deliveryLocation,
+          customerDetails: customer
+        });
+        if (response.data.success) {
+          showToast('success', 'Order updated successfully');
+          setIsModalOpen(false);
+          setCart([]);
+          setSelectedOrder(response.data.data);
+          setOrders(orders.map(o => o._id === selectedOrder._id ? response.data.data : o));
+        }
+        return;
+      }
+
+      const dFee = posOrderType === 'delivery' ? (parseFloat(deliveryFee) || 0) : 0;
+      const totalAmount = subtotal + dFee;
+
+      const discountAmount = cart.reduce((acc, item) => {
+        const original = item.originalPrice || item.unitPrice;
+        return acc + ((original - item.unitPrice) * item.quantity);
+      }, 0);
+
+      if (paymentMethod === 'cash') {
+        const received = parseFloat(cashReceived) || 0;
+        if (received < totalAmount) {
+          showToast('warning', `Cash received (₹${received}) is less than the total amount (₹${totalAmount})`);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      const received = paymentMethod === 'cash' ? (parseFloat(cashReceived) || 0) : (paymentMethod === 'upi/card' ? totalAmount : 0);
+      const bal = paymentMethod === 'cash' ? Math.max(0, received - totalAmount) : 0;
+      const status = paymentMethod === 'Not Specified' ? 'unpaid' : 'paid';
+
+      const orderData = {
+        customerDetails: {
+          ...customer,
+          address: posOrderType === 'delivery' ? deliveryAddress : '',
+          location: posOrderType === 'delivery' ? deliveryLocation : ''
+        },
+        items: cart,
+        orderType: posOrderType,
+        orderSource: 'admin',
+        paymentMethod,
+        paymentStatus: status,
+        subtotal,
+        deliveryFee: dFee,
+        tax: 0,
+        discount: discountAmount,
+        totalAmount,
+        cashReceived: received,
+        balance: bal,
+        orderStatus: 'processing',
+      };
+
+      const response = await api.post(`${API_BASE_URL}/orders/counter`, orderData);
+      if (response.data.success) {
+        showToast('success', 'Order created successfully');
+        setIsModalOpen(false);
+        setCart([]);
+        setCustomer({ name: 'Walk-in', phone: '' });
+        fetchOrders(true);
+      }
+    } catch (error) {
+      console.error('Error creating order:', error);
+      showAlert({ icon: 'error', title: 'Order Failed', text: error.response?.data?.message || 'Failed to create order' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId, newStatus, extraData = {}) => {
+    try {
+      const orderToUpdate = orders.find(o => o._id === orderId);
+      const updateData = { orderStatus: newStatus, ...extraData };
+
+      if (['out-for-delivery', 'delivered'].includes(newStatus)) {
+        const notReadyItems = orderToUpdate.items.filter(item => {
+          const ks = item.kitchenStatus || 'placed';
+          return ks !== 'ready';
+        });
+
+        if (notReadyItems.length > 0) {
+          showToast('warning', `${notReadyItems.length} item(s) not ready from kitchen yet`);
+          return;
+        }
+      }
+
+      const response = await api.patch(`${API_BASE_URL}/orders/${orderId}/status`, updateData);
+      if (response.data.success) {
+        showToast('success', `Order marked as ${newStatus}${updateData.paymentStatus ? ' and Paid' : ''}`);
+        setOrders(orders.map(o => o._id === orderId ? response.data.data : o));
+        if (selectedOrder?._id === orderId) setSelectedOrder(response.data.data);
+      }
+    } catch (error) {
+      showToast('error', error.response?.data?.message || 'Failed to update order status');
+    }
+  };
+
+  const handleAssignDelivery = async (order) => {
+    if (deliveryStaff.length === 0) {
+      showToast('warning', 'No active delivery boys available. Please add one in Staff Management first.');
+      return;
+    }
+
+    const options = {};
+    deliveryStaff.forEach(staff => {
+      options[staff._id] = `${staff.name} (${staff.phoneNumber || 'No phone'})`;
+    });
+
+    const { value: selectedStaffId } = await Swal.fire({
+      title: 'Assign Delivery Boy',
+      text: 'Select a delivery boy for this order:',
+      input: 'select',
+      inputOptions: options,
+      inputPlaceholder: 'Select Delivery Boy',
+      showCancelButton: true,
+      buttonsStyling: false,
+      confirmButtonText: 'Assign',
+      cancelButtonText: 'Cancel',
+      customClass: {
+        popup: 'rounded-[2rem] bg-background-card text-text-primary p-8 shadow-2xl border border-border-light',
+        title: 'text-text-primary font-black text-xl mb-1 text-center',
+        htmlContainer: 'text-text-muted text-[10px] font-bold uppercase tracking-widest opacity-60 text-center mb-6',
+        actions: 'flex justify-center w-full gap-4 mt-8',
+        confirmButton: 'flex-1 bg-primary text-white rounded-xl px-4 py-3.5 text-[11px] font-black tracking-widest uppercase shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all',
+        cancelButton: 'flex-1 bg-background-muted border border-border/60 text-text-primary rounded-xl px-4 py-3.5 text-[11px] font-black tracking-widest uppercase hover:bg-background transition-all',
+        input: 'w-[90%] mx-auto block px-5 py-3.5 rounded-xl border border-border/60 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm font-bold bg-background-muted/50 hover:bg-background text-text-primary appearance-none cursor-pointer text-center'
+      },
+      didOpen: () => {
+        const select = Swal.getInput();
+        if (select) {
+          Array.from(select.options).forEach(opt => {
+            opt.style.color = '#000';
+            opt.style.backgroundColor = '#fff';
+          });
+        }
+      },
+      inputValidator: (value) => {
+        return new Promise((resolve) => {
+          if (value) {
+            resolve();
+          } else {
+            resolve('You need to select a delivery boy');
+          }
+        });
+      }
+    });
+
+    if (selectedStaffId) {
+      handleUpdateOrderStatus(order._id, 'out-for-delivery', { assignedDeliveryBoy: selectedStaffId });
+    }
+  };
+
+  const handleConfirmOrder = async (order) => {
+    const itemsHtml = order.items.map(item => `
+      <div class="flex flex-col py-2.5 border-b border-border-light/60 last:border-0">
+        <div class="text-left w-full pr-2">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-[11px] font-black text-text-primary uppercase tracking-tight">${item.name}</p>
+              <p class="text-[9px] font-bold text-text-muted uppercase opacity-80 mt-0.5">${(!item.size || item.size === 'null') ? 'Piece × ' : item.size + ' × '}${item.quantity}</p>
+            </div>
+          </div>
+        </div>
+        ${item.comboItems && item.comboItems.length > 0 ? `
+          <div class="mt-1.5 pl-2 border-l-2 border-primary/30">
+            <span class="text-[8px] font-black text-primary uppercase tracking-wider block mb-0.5">Combo includes:</span>
+            <div class="flex flex-wrap gap-1">
+              ${item.comboItems.map(ci => `<span class="inline-flex items-center bg-background-card border border-border-light text-text-muted px-1.5 py-0.5 rounded text-[8px] font-black">${ci.quantity || 1}x ${ci.name}</span>`).join('')}
+            </div>
+          </div>
+        ` : ''}
+        ${item.includedItems && item.includedItems.length > 0 ? `
+          <div class="mt-1.5 pl-2 border-l-2 border-purple-500/30">
+            <span class="text-[8px] font-black text-purple-600 uppercase tracking-wider block mb-0.5">Includes Add-ons:</span>
+            <div class="flex flex-wrap gap-1">
+              ${item.includedItems.map(ii => `<span class="inline-flex items-center bg-background-card border border-border-light text-text-muted px-1.5 py-0.5 rounded text-[8px] font-black">${ii.quantity || 1}x ${ii.name}</span>`).join('')}
+            </div>
+          </div>
+        ` : ''}
+        ${item.bogoItem ? `
+          <div class="mt-1.5 pl-2 border-l-2 border-emerald-500/30">
+            <span class="text-[8px] font-black text-emerald-600 uppercase tracking-wider block mb-0.5">Free Add-on:</span>
+            <div class="flex flex-wrap gap-1">
+              <span class="inline-flex items-center bg-background-card border border-border-light text-text-muted px-1.5 py-0.5 rounded text-[8px] font-black">
+                🎁 ${item.bogoItem.quantity || item.quantity}x ${item.bogoItem.name} ${item.bogoItem.size ? `(${item.bogoItem.size})` : ''}
+              </span>
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `).join('');
+
+    const customerName = (order.orderSource === 'online' || order.orderSource === 'user')
+      ? (order.address?.recipientName || order.customerDetails?.name || 'Walk-in')
+      : (order.customerDetails?.name || order.address?.recipientName || 'Walk-in');
+
+    const customerAddress = order.customerDetails?.address || order.address?.address || 'N/A';
+    const customerPhone = order.customerDetails?.phone || order.address?.mobile || 'N/A';
+    const paymentMethod = order.paymentMethod || 'Not Specified';
+
+    const loc = order.customerDetails?.location || order.address?.location;
+    let mapsUrl = '';
+    if (typeof loc === 'object' && loc.lat) {
+      mapsUrl = `https://www.google.com/maps?q=${loc.lat},${loc.lng}`;
+    } else if (typeof loc === 'string') {
+      const match = loc.match(/https?:\/\/[^\s]+/);
+      mapsUrl = match ? match[0] : `https://www.google.com/maps?q=${loc}`;
+    }
+
+    const result = await showAlert({
+      title: `Confirm ${order.orderType === 'takeaway' ? 'Takeaway' : 'Delivery'} Order?`,
+      html: `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2 text-left">
+          
+          <!-- Left Side: Ordered Items -->
+          <div class="flex flex-col border-r-0 md:border-r border-border-light md:pr-4 h-[340px]">
+            <div class="flex justify-between items-end mb-3 gap-2">
+               <p class="text-[11px] font-black text-primary uppercase tracking-[0.2em] whitespace-nowrap">Ordered Items</p>
+               <span class="text-[10px] font-black text-white px-3 py-1 bg-primary rounded-md shadow-sm whitespace-nowrap">${order.items.length} items</span>
+            </div>
+            <div class="flex-1 overflow-y-auto pr-2 no-scrollbar bg-primary/[0.03] rounded-xl border border-primary/10 p-3 shadow-inner">
+              ${itemsHtml}
+            </div>
+          </div>
+
+          <!-- Right Side: Details & Price -->
+          <div class="flex flex-col h-[340px]">
+            <!-- Customer Details & Payment -->
+            <div class="p-3 bg-primary/5 rounded-xl border border-primary/10">
+              <div class="flex justify-between items-start">
+                <div>
+                  <p class="text-[8px] font-black text-primary uppercase tracking-[0.2em] mb-1.5">${order.orderType === 'takeaway' ? 'Customer' : 'Delivery To'}</p>
+                  <p class="text-[12px] font-black text-text-primary">${customerName}</p>
+                  <p class="text-[10px] font-bold text-text-muted mt-0.5">${customerPhone}</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-[8px] font-black text-primary uppercase tracking-[0.2em] mb-1.5 whitespace-nowrap">Payment</p>
+                  <span class="px-2 py-1 bg-background-card border border-border-light rounded-md text-[9px] font-black text-text-primary uppercase tracking-wider shadow-sm">
+                    ${paymentMethod}
+                  </span>
+                </div>
+              </div>
+              
+              ${order.orderType === 'delivery' ? `<p class="text-[10px] font-bold text-text-secondary leading-snug border-t border-primary/5 pt-2 mt-2">${customerAddress}</p>` : ''}
+              
+              ${mapsUrl ? `
+                <a href="${mapsUrl}" target="_blank" class="inline-flex items-center space-x-1.5 mt-2.5 px-3 py-1.5 bg-background-card border border-primary/20 rounded-lg text-[9px] font-black text-primary hover:bg-primary hover:text-white transition-all shadow-sm no-underline">
+                  <span>📍 VIEW ON MAPS</span>
+                </a>
+              ` : ''}
+            </div>
+            
+            <div class="flex-1"></div>
+            
+            <!-- Total Bill -->
+            <div class="pt-3 border-t-2 border-dashed border-border-light flex flex-col gap-1 px-1">
+              <div class="flex justify-between items-center">
+                <span class="text-[10px] font-black text-text-muted uppercase tracking-widest">Listing Price</span>
+                <span class="text-[11px] font-black text-text-primary">₹${(order.subtotal || 0) + (order.discount || 0)}</span>
+              </div>
+              ${order.deliveryFee > 0 ? `
+                <div class="flex justify-between items-center text-text-muted">
+                  <span class="text-[10px] font-black uppercase tracking-widest">Delivery Fee</span>
+                  <span class="text-[11px] font-black">+₹${order.deliveryFee}</span>
+                </div>
+              ` : ''}
+              ${order.platformFee > 0 ? `
+                <div class="flex justify-between items-center text-text-muted">
+                  <span class="text-[10px] font-black uppercase tracking-widest">Platform Fee</span>
+                  <span class="text-[11px] font-black">+₹${order.platformFee}</span>
+                </div>
+              ` : ''}
+              ${order.discount > 0 ? `
+                <div class="flex justify-between items-center text-green-600">
+                  <span class="text-[10px] font-black uppercase tracking-widest">Discount</span>
+                  <span class="text-[11px] font-black">-₹${order.discount}</span>
+                </div>
+              ` : ''}
+              <div class="flex justify-between items-center mt-2 pt-2 border-t border-border-light/50">
+                <p class="text-[11px] font-black text-text-primary uppercase tracking-widest">Total Payable</p>
+                <p class="text-[18px] font-black text-primary">₹${(order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `,
+      showCancelButton: true,
+      showDenyButton: order.orderType === 'delivery' && order.orderSource === 'user',
+      confirmButtonText: 'Confirm',
+      denyButtonText: 'Reject',
+      cancelButtonText: 'Cancel',
+      buttonsStyling: false,
+      customClass: {
+        popup: 'rounded-[2.5rem] border-none shadow-2xl max-w-[780px] bg-background-card text-text-primary p-0',
+        title: 'text-2xl mt-4 mb-0 font-black',
+        icon: 'mt-6 mb-2 scale-[0.8]',
+        htmlContainer: 'px-8 pb-4 m-0 mt-2',
+        actions: 'flex flex-row gap-3 justify-center mt-2 mb-6 px-8 w-full',
+        confirmButton: 'flex-1 px-4 py-3.5 bg-primary text-white rounded-xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all active:scale-95',
+        denyButton: 'flex-1 px-4 py-3.5 bg-background border border-border/60 text-text-primary rounded-xl font-black uppercase tracking-widest text-[10px] shadow-sm hover:bg-background-muted transition-all active:scale-95',
+        cancelButton: 'flex-1 px-4 py-3.5 bg-transparent text-text-muted hover:text-text-primary rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-background-muted transition-all active:scale-95'
+      }
+    });
+
+    if (result.isConfirmed) {
+      handleUpdateOrderStatus(order._id, 'processing');
+    } else if (result.isDenied) {
+      const reasonResult = await Swal.fire({
+        title: 'Reject Order',
+        text: 'Please provide a reason for rejection:',
+        input: 'text',
+        inputPlaceholder: 'e.g., Items out of stock, Outside delivery area...',
+        showCancelButton: true,
+        confirmButtonText: 'Submit',
+        cancelButtonText: 'Cancel',
+        buttonsStyling: false,
+        customClass: {
+          popup: 'rounded-[2.5rem] bg-background-card text-text-primary border-none shadow-2xl max-w-[400px]',
+          htmlContainer: 'text-sm text-text-muted opacity-80',
+          actions: 'flex gap-3 justify-center mt-6 mb-6 px-6 w-full',
+          confirmButton: 'flex-1 px-4 py-3.5 bg-primary text-white rounded-xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all active:scale-95',
+          cancelButton: 'flex-1 px-4 py-3.5 bg-background border border-border/60 text-text-primary rounded-xl font-black uppercase tracking-widest text-[10px] shadow-sm hover:bg-background-muted transition-all active:scale-95',
+          input: 'w-[85%] mx-auto block px-4 py-3.5 rounded-xl bg-background border border-border/40 text-sm font-medium text-text-primary focus:outline-none focus:border-primary/50 transition-colors mt-6 text-center'
+        },
+        preConfirm: (value) => {
+          if (!value) {
+            Swal.showValidationMessage('Reason is required');
+          }
+          return value;
+        }
+      });
+
+      if (reasonResult.isConfirmed) {
+        handleUpdateOrderStatus(order._id, 'cancelled', { rejectionReason: reasonResult.value });
+      }
+    }
+  };
+
+  const handleUpdateItemStatus = async (orderId, itemId, newStatus) => {
+    try {
+      const response = await api.patch(`${API_BASE_URL}/orders/${orderId}/items/${itemId}/status`, { kitchenStatus: newStatus });
+      if (response.data.success) {
+        showToast('success', 'Status updated');
+
+        const updatedOrder = response.data.data;
+        setOrders(orders.map(o => o._id === orderId ? updatedOrder : o));
+        if (selectedOrder?._id === orderId) setSelectedOrder(updatedOrder);
+      }
+    } catch (error) {
+      showToast('error', error.response?.data?.message || 'Update failed');
+    }
+  };
+
+  const handleUpdatePaymentStatus = async (orderId, newStatus) => {
+    try {
+      const updateData = { paymentStatus: newStatus };
+
+      if (newStatus === 'paid') {
+        updateData.orderStatus = 'delivered';
+
+        const orderToUpdate = orders.find(o => o._id === orderId);
+        if (orderToUpdate) {
+          updateData.paidAmount = orderToUpdate.totalAmount;
+        }
+      }
+
+      const response = await api.patch(`${API_BASE_URL}/orders/${orderId}/status`, updateData);
+      if (response.data.success) {
+        showToast('success', `Payment marked as ${newStatus}${newStatus === 'paid' ? ' and order Delivered' : ''}`);
+        setOrders(orders.map(o => o._id === orderId ? response.data.data : o));
+        if (selectedOrder?._id === orderId) setSelectedOrder(response.data.data);
+      }
+    } catch (error) {
+      showToast('error', error.response?.data?.message || 'Failed to update payment status');
+    }
+  };
+
+  const handlePayNow = (order) => {
+    setPayMethod('');
+    setCashInput('');
+    setPaymentModal({ open: true, order });
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!payMethod) {
+      showToast('warning', 'Please select a payment method');
+      return;
+    }
+    const order = paymentModal.order;
+    const totalAmount = order.totalAmount || 0;
+    const cashReceived = parseFloat(cashInput) || 0;
+
+    if (payMethod === 'cash' && cashReceived < totalAmount) {
+      showToast('warning', `Cash received (₹${cashReceived}) must be at least ₹${totalAmount}`);
+      return;
+    }
+
+    setIsPaymentSubmitting(true);
+    try {
+      const change = payMethod === 'cash' ? Math.max(0, cashReceived - totalAmount) : 0;
+      const updateData = {
+        paymentStatus: 'paid',
+        orderStatus: 'delivered',
+        paymentMethod: payMethod,
+        paidAmount: totalAmount
+      };
+      if (payMethod === 'cash') {
+        updateData.cashReceived = cashReceived;
+        updateData.balance = change;
+      }
+      const response = await api.patch(`${API_BASE_URL}/orders/${order._id}/status`, updateData);
+      if (response.data.success) {
+        showToast('success', `Payment accepted via ${payMethod === 'upi/card' ? 'UPI / Card' : 'Cash'}`);
+        setOrders(orders.map(o => o._id === order._id ? response.data.data : o));
+        if (selectedOrder?._id === order._id) setSelectedOrder(response.data.data);
+        setPaymentModal({ open: false, order: null });
+      }
+    } catch (error) {
+      showToast('error', error.response?.data?.message || 'Failed to accept payment');
+    } finally {
+      setIsPaymentSubmitting(false);
+    }
+  };
+
+  const [editCustomer, setEditCustomer] = useState({ name: '', phone: '' });
+  const [editCashReceived, setEditCashReceived] = useState('');
+
+  useEffect(() => {
+    if (selectedOrder) {
+      setEditCustomer({
+        name: (selectedOrder.orderSource === 'online' || selectedOrder.orderSource === 'user')
+          ? (selectedOrder.address?.recipientName || selectedOrder.customerDetails?.name || '')
+          : (selectedOrder.customerDetails?.name || selectedOrder.address?.recipientName || ''),
+        phone: selectedOrder.customerDetails?.phone || selectedOrder.address?.mobile || ''
+      });
+      setEditCashReceived(selectedOrder.cashReceived || '');
+    }
+  }, [selectedOrder]);
+
+  const fetchUsers = async () => {
+    try {
+      const response = await api.get(`/api/users`);
+      setAllUsers(response.data.data || []);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
+
+  const fetchDeliveryStaff = async () => {
+    try {
+      const response = await api.get('/api/staff');
+      const allStaff = response.data.data || [];
+      const dStaff = allStaff.filter(s => s.role === 'delivery' && s.isActive);
+      setDeliveryStaff(dStaff);
+    } catch (error) {
+      console.error('Error fetching delivery staff:', error);
+    }
+  };
+
+  const handleCustomerSearch = (field, value) => {
+    setCustomer(prev => ({ ...prev, [field]: value }));
+
+    if (allUsers.length === 0) fetchUsers();
+
+
+    if (window.searchTimer) clearTimeout(window.searchTimer);
+
+    window.searchTimer = setTimeout(() => {
+      if (value.length >= 1) {
+        const filtered = allUsers.filter(u => {
+          const nameMatch = u.name?.toLowerCase().includes(value.toLowerCase());
+          const phoneMatch = u.phone?.includes(value);
+          return nameMatch || phoneMatch;
+        });
+
+        setUserSuggestions(filtered.slice(0, 5));
+        setShowSuggestions(true);
+      } else {
+        setShowSuggestions(false);
+      }
+    }, 150);
+  };
+
+  const selectUserSuggestion = (user) => {
+    setSelectedUserId(user._id);
+    setCustomer({
+      name: user.name,
+      phone: user.phone || ''
+    });
+
+    // Find default address or use the first one
+    const defaultAddr = user.addresses?.find(a => a.isDefault) || user.addresses?.[0];
+
+    if (defaultAddr) {
+      setDeliveryAddress(defaultAddr.address || '');
+      if (defaultAddr.location) {
+        handleLocationLinkChange(defaultAddr.location);
+      }
+    }
+    setShowSuggestions(false);
+    setUpdateProfile(false);
+  };
+
+  const handleOpenModal = (order = null) => {
+    fetchMenu();
+    fetchTables();
+    fetchUsers();
+    if (order) {
+      setSelectedOrder(order);
+    } else {
+      setSelectedOrder(null);
+      setCart([]);
+      setCustomer({ name: 'Walk-in', phone: '' });
+      setSelectedUserId(null);
+      setUpdateProfile(false);
+      setSelectedTableId('');
+      setGuestCount(1);
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleOpenDetails = (order) => {
+    setSelectedOrder(order);
+    setIsDetailsModalOpen(true);
+  };
+
+  const handleUpdatePaymentDetails = async () => {
+    try {
+      const subtotal = selectedOrder.totalAmount || 0;
+      const cash = parseFloat(editCashReceived) || 0;
+      const balance = cash - subtotal;
+
+      const response = await api.patch(`${API_BASE_URL}/orders/${selectedOrder._id}/status`, {
+        customerDetails: editCustomer,
+        cashReceived: cash,
+        balance: balance
+      });
+
+      if (response.data.success) {
+        showToast('success', 'Order details updated');
+        setOrders(orders.map(o => o._id === selectedOrder._id ? response.data.data : o));
+        setSelectedOrder(response.data.data);
+      }
+    } catch (error) {
+      showToast('error', 'Failed to update details');
+    }
+  };
+
+  const addToCart = (item, variant, qty = 1) => {
+
+    if (item.isCombo && item.comboItems?.length > 0) {
+      const outOfStockItems = [];
+      for (const ci of item.comboItems) {
+        const underlyingItem = menuItems.find(m => m._id === (ci.menuItem?._id || ci.menuItem));
+        if (underlyingItem && getEffectiveStock(underlyingItem) <= 0) {
+          outOfStockItems.push(ci.menuItem?.name || ci.name || 'Item');
+        }
+      }
+      if (outOfStockItems.length > 0) {
+        showToast('error', `Cannot add ${item.name}: ${outOfStockItems.join(', ')} is out of stock`);
+        return;
+      }
+    } else {
+      const availableStock = getEffectiveStock(item);
+      const mult = variant?.stockValue || 1;
+      const effectiveVariantStock = Math.floor(availableStock / mult);
+
+      const currentInCart = cart
+        .filter(c => c.menuItem === item._id && c.size === (variant?.size || 'Standard'))
+        .reduce((acc, c) => acc + c.quantity, 0);
+
+      if (currentInCart + qty > effectiveVariantStock) {
+        showToast('error', `Out of stock: Only ${effectiveVariantStock} portions of ${variant?.size || 'Standard'} are available`);
+        return;
+      }
+    }
+
+    const sizeName = variant.size || 'Standard';
+
+    const bogoInfo = (variant?.isBOGO && variant?.bogoItem) ? {
+      name: variant.bogoItem.name || menuItems.find(m => m._id.toString() === (variant.bogoItem._id?.toString() || variant.bogoItem.toString()))?.name || 'Free Item',
+      size: variant.bogoVariant || '',
+      quantity: qty
+    } : null;
+
+    const menuDiscount = item.discountPercentage || 0;
+    const categoryDiscount = item.category?.discountPercentage || 0;
+    const discountPercent = Math.max(menuDiscount, categoryDiscount);
+    const basePrice = variant.price || item.price || 0;
+    const currentPrice = item.isCombo ? basePrice : Math.round(discountPercent > 0 ? basePrice * (1 - discountPercent / 100) : basePrice);
+
+    setCart(prevCart => {
+      const existingIndex = prevCart.findIndex(c => c.menuItem === item._id && c.size === sizeName);
+
+      if (existingIndex > -1) {
+        return prevCart.map((c, idx) => {
+          if (idx === existingIndex) {
+            const newQty = c.quantity + qty;
+            const updatedItem = {
+              ...c,
+              quantity: newQty,
+              totalPrice: newQty * c.unitPrice
+            };
+            if (bogoInfo) {
+              updatedItem.bogoItem = {
+                ...bogoInfo,
+                quantity: newQty
+              };
+            } else if (c.bogoItem) {
+              updatedItem.bogoItem = {
+                ...c.bogoItem,
+                quantity: newQty
+              };
+            }
+            return updatedItem;
+          }
+          return c;
+        });
+      } else {
+        return [...prevCart, {
+          menuItem: item._id,
+          name: item.name,
+          image: item.image || '',
+          size: sizeName,
+          quantity: qty,
+          unitPrice: currentPrice,
+          originalPrice: basePrice,
+          totalPrice: currentPrice * qty,
+          bogoItem: bogoInfo,
+          comboItems: item.comboItems || [],
+          includedItems: variant.includedItems || item.includedItems || [],
+          discountPercent: discountPercent,
+          isCombo: item.isCombo
+        }];
+      }
+    });
+
+    showToast('success', `${item.name} added`);
+  };
+
+  const updateCartQuantity = (index, delta) => {
+    const targetCartItem = cart[index];
+    if (delta > 0 && targetCartItem) {
+      const fullMenuItem = menuItems.find(m => m._id === targetCartItem.menuItem);
+      if (fullMenuItem) {
+        const availableStock = getEffectiveStock(fullMenuItem);
+        const variant = (fullMenuItem.variants || fullMenuItem.sizes || []).find(v => v.size === targetCartItem.size);
+        const mult = variant?.stockValue || 1;
+        const effectiveVariantStock = Math.floor(availableStock / mult);
+
+        const currentInCart = cart
+          .filter(c => c.menuItem === targetCartItem.menuItem && c.size === targetCartItem.size)
+          .reduce((acc, c) => acc + c.quantity, 0);
+
+        if (currentInCart + delta > effectiveVariantStock) {
+          showToast('error', `Out of stock: Only ${effectiveVariantStock} portions of ${targetCartItem.size || 'Standard'} are available`);
+          return;
+        }
+      }
+    }
+
+    setCart(prevCart => prevCart.map((item, idx) => {
+      if (idx === index) {
+        const newQty = Math.max(1, item.quantity + delta);
+        const updatedItem = {
+          ...item,
+          quantity: newQty,
+          totalPrice: newQty * item.unitPrice
+        };
+        if (item.bogoItem) {
+          updatedItem.bogoItem = {
+            ...item.bogoItem,
+            quantity: newQty
+          };
+        }
+        return updatedItem;
+      }
+      return item;
+    }));
+  };
+
+  const setCartQuantity = (index, value) => {
+    setCart(prevCart => prevCart.map((item, idx) => {
+      if (idx === index) {
+        return { ...item, quantity: value };
+      }
+      return item;
+    }));
+  };
+
+  const handleCartQuantityBlur = (index) => {
+    setCart(prevCart => prevCart.map((item, idx) => {
+      if (idx === index) {
+        const val = parseInt(item.quantity);
+        const newQty = (isNaN(val) || val < 1) ? 1 : val;
+        const updatedItem = {
+          ...item,
+          quantity: newQty,
+          totalPrice: newQty * item.unitPrice
+        };
+        if (item.bogoItem) {
+          updatedItem.bogoItem = { ...item.bogoItem, quantity: newQty };
+        }
+        return updatedItem;
+      }
+      return item;
+    }));
+  };
+
+  const removeFromCart = (index) => {
+    setCart(cart.filter((_, i) => i !== index));
+  };
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const d = R * c;
+    return d;
+  };
+
+
+  const handleLocationLinkChange = async (url) => {
+    setDeliveryLocation(url);
+    if (!url) return;
+
+    let targetUrl = url;
+
+
+    const extractCoords = (text) => {
+      if (!text) return null;
+      const coordRegex = /([-.\d]+),([-.\d]+)/g;
+      let match;
+      while ((match = coordRegex.exec(text)) !== null) {
+        const lat = parseFloat(match[1]);
+        const lng = parseFloat(match[2]);
+        if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && Math.abs(lat) > 0.01) {
+          return { lat, lng };
+        }
+      }
+      return null;
+    };
+
+
+    if (url.includes('maps.app.goo.gl') || url.includes('share.google') || !extractCoords(url)) {
+      try {
+        setIsResolvingLink(true);
+        showToast('info', 'Processing link...');
+        const res = await api.post(`${API_BASE_URL}/utils/expand-url`, { url });
+        targetUrl = res.data.expandedUrl;
+      } catch (err) {
+        console.error('Failed to expand URL:', err);
+      } finally {
+        setIsResolvingLink(false);
+      }
+    }
+
+    const coords = extractCoords(targetUrl);
+
+    if (coords && settings?.restaurantDetails?.location?.lat) {
+      const { lat: destLat, lng: destLng } = coords;
+      const restLat = settings.restaurantDetails.location.lat;
+      const restLng = settings.restaurantDetails.location.lng;
+
+      let roundedDist = Math.ceil(calculateDistance(restLat, restLng, destLat, destLng) * 10) / 10;
+
+
+      try {
+        const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${restLng},${restLat};${destLng},${destLat}?overview=false`;
+        const osrmRes = await axios.get(osrmUrl);
+        if (osrmRes.data?.routes?.[0]?.distance) {
+          const roadDistKm = osrmRes.data.routes[0].distance / 1000;
+          roundedDist = Math.ceil(roadDistKm * 10) / 10;
+        }
+      } catch (osrmErr) {
+        console.error('OSRM failed, falling back to straight line:', osrmErr);
+      }
+
+
+      const distInput = document.getElementById('pos-distance-input');
+      if (distInput) distInput.value = roundedDist;
+
+      const freeLimit = settings.deliverySettings?.freeDistanceLimit || 5;
+      const rate = settings.deliverySettings?.chargePerExtraKm || 10;
+      setDeliveryFee(roundedDist <= freeLimit ? '0' : ((roundedDist - freeLimit) * rate).toFixed(0));
+      showToast('success', `Road distance calculated: ${roundedDist} KM`);
+    }
+  };
+
+  const getFriendlyStatus = (order) => {
+    if (!order) return { label: 'Unknown', color: 'bg-background-muted/10 text-text-muted border-border-light' };
+
+
+    if (order.orderStatus === 'cancelled') return { label: 'Cancelled', color: 'bg-status-off/10 text-status-unavailable border-status-off/20' };
+    if (order.orderStatus === 'delivered' || order.orderStatus === 'completed') return { label: 'Delivered', color: 'bg-primary/10 text-primary border-primary/20' };
+
+
+    if (order.orderType === 'dine-in' || order.orderType === 'dining') {
+      const items = order.items || [];
+      const isReady = items.length > 0 && items.every(i => i.kitchenStatus === 'ready');
+      let actualOrderStatus = order.orderStatus;
+
+      if (actualOrderStatus === 'placed' && items.some(i => ['preparing', 'ready'].includes(i.kitchenStatus))) {
+        actualOrderStatus = 'processing';
+      }
+
+      const currentStatus = (actualOrderStatus === 'processing' && isReady) ? 'ready' : actualOrderStatus;
+
+      if (currentStatus === 'placed') return { label: 'Waiting Approval', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' };
+      if (currentStatus === 'processing') return { label: 'Preparing', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' };
+      if (currentStatus === 'ready') return { label: 'Ready', color: 'bg-status-on/10 text-status-available border-status-on/20' };
+      if (currentStatus === 'billed') return { label: 'Billed', color: 'bg-purple-500/10 text-purple-500 border-purple-500/20' };
+    }
+
+
+    if (order.orderStatus === 'placed') return { label: 'New Order', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' };
+    if (order.orderStatus === 'out-for-delivery') return { label: 'Out for Delivery', color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' };
+    if (order.orderStatus === 'billed') return { label: 'Billed', color: 'bg-purple-500/10 text-purple-500 border-purple-500/20' };
+
+    if (order.orderStatus === 'processing') {
+      const items = order.items || [];
+      const allReady = items.length > 0 && items.every(i => i.kitchenStatus === 'ready');
+      const anyPreparing = items.some(i => i.kitchenStatus === 'preparing');
+
+      if (allReady) return { label: 'Ready', color: 'bg-status-on/10 text-status-available border-status-on/20' };
+      if (anyPreparing) return { label: 'Preparing', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' };
+
+      return { label: 'Order Accepted', color: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20' };
+    }
+
+    return { label: order.orderStatus, color: 'bg-background-muted/10 text-text-muted border-border-light' };
+  };
+
+  const getSortedData = (data) => {
+    return [...data].sort((a, b) => {
+
+      if (a.orderStatus === 'placed' && b.orderStatus !== 'placed') return -1;
+      if (a.orderStatus !== 'placed' && b.orderStatus === 'placed') return 1;
+
+
+      if (a.orderStatus === 'placed' && b.orderStatus === 'placed') {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      }
+
+
+      let valA, valB;
+
+      switch (sortConfig.key) {
+        case 'orderNumber':
+          valA = a.orderNumber;
+          valB = b.orderNumber;
+          break;
+        case 'customer':
+          valA = a.customerDetails?.name || '';
+          valB = b.customerDetails?.name || '';
+          break;
+        case 'amount':
+          valA = a.totalAmount;
+          valB = b.totalAmount;
+          break;
+        case 'createdAt':
+          valA = new Date(a.createdAt);
+          valB = new Date(b.createdAt);
+          break;
+        default:
+          valA = a[sortConfig.key];
+          valB = b[sortConfig.key];
+      }
+
+      if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  };
+
+  const applyFilters = (data, tabId, filters = {}) => {
+    const {
+      search = searchTerm,
+      status = orderStatusFilter,
+      payment = paymentFilter,
+      method = paymentMethodFilter,
+      histType = historyOrderTypeFilter,
+      sDate = startDate,
+      eDate = endDate
+    } = filters;
+
+    return data.filter(o => {
+      const searchLower = (search || '').toLowerCase();
+      const customerName = o.customerDetails?.name || o.address?.recipientName || '';
+      const customerPhone = o.customerDetails?.phone || o.address?.mobile || '';
+      const orderStatus = o.orderStatus || '';
+
+      const matchesSearch = (o.orderNumber || '').toLowerCase().includes(searchLower) ||
+        customerPhone.includes(search) ||
+        customerName.toLowerCase().includes(searchLower);
+
+      const matchesStatus = status === 'all' || orderStatus === status;
+      const matchesPayment = payment === 'all' || o.paymentStatus === payment;
+      const matchesPaymentMethod = method === 'all' || o.paymentMethod === method;
+
+      const isHistoryOrder = o.orderStatus === 'cancelled' || o.orderStatus === 'completed' || (o.orderStatus === 'billed' && o.paymentStatus === 'paid') || (o.orderStatus === 'delivered' && o.paymentStatus === 'paid');
+
+      let matchesType = false;
+      const orderDate = new Date(o.createdAt);
+      const todayStart = new Date();
+      if (todayStart.getHours() < 5) todayStart.setDate(todayStart.getDate() - 1);
+      todayStart.setHours(5, 0, 0, 0);
+
+      if (tabId === 'history') {
+        if (!isHistoryOrder) return false;
+        const matchesHistType = histType === 'all' || o.orderType === histType;
+
+        let matchesDate = true;
+        if (sDate || eDate) {
+          const start = sDate ? new Date(sDate).setHours(0, 0, 0, 0) : null;
+          const end = eDate ? new Date(eDate).setHours(23, 59, 59, 999) : null;
+          if (start && end) matchesDate = orderDate >= start && orderDate <= end;
+          else if (start) matchesDate = orderDate >= start;
+          else if (end) matchesDate = orderDate <= end;
+        }
+
+        matchesType = matchesHistType && matchesDate;
+      } else {
+
+        if (orderDate < todayStart && isHistoryOrder) return false;
+
+        if (tabId === 'all') {
+          matchesType = true;
+        } else if (tabId === 'dine-in') {
+          matchesType = (o.orderType === 'dine-in' || o.orderType === 'dining') && !isHistoryOrder;
+        } else {
+          if (isHistoryOrder) {
+            matchesType = false;
+          } else if (tabId === 'delivery') {
+            matchesType = (o.orderType === 'delivery' || o.orderType === 'online');
+          } else if (tabId === 'takeaway') {
+            matchesType = o.orderType === 'takeaway' || o.orderType === 'take-away' || o.orderType === 'counter';
+          } else {
+            matchesType = o.orderType === tabId;
+          }
+        }
+      }
+      return matchesSearch && matchesStatus && matchesPayment && matchesPaymentMethod && matchesType;
+    });
+  };
+
+  const filteredOrders = getSortedData(applyFilters(orders, activeTab));
+
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const paginatedOrders = filteredOrders.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, orderStatusFilter, paymentFilter, paymentMethodFilter, historyOrderTypeFilter, startDate, endDate]);
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'delivered': return 'bg-green-500/10 text-green-500 border-green-500/20';
+      case 'processing': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+      case 'out-for-delivery': return 'bg-orange-500/10 text-orange-500 border-orange-500/20';
+      case 'cancelled': return 'bg-red-500/10 text-red-500 border-red-500/20';
+      case 'placed': return 'bg-primary/10 text-primary border-primary/20';
+      default: return 'bg-background-muted text-text-muted border-border-light';
+    }
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+
+
+      <div className="print:hidden space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-black text-text-primary tracking-tight">Order Management</h2>
+            <p className="text-text-secondary text-sm">Monitor all orders and operational status</p>
+          </div>
+          {activeTab !== 'all' && activeTab !== 'history' && activeTab !== 'dine-in' && (
+            <button
+              onClick={() => {
+                setSelectedOrder(null);
+                setCart([]);
+                setPosSearchTerm('');
+                setCashReceived('');
+                setPosOrderType(activeTab === 'all' ? 'takeaway' : activeTab);
+                setDeliveryAddress('');
+                setDeliveryFee('');
+                setCustomer({ name: 'Walk-in', phone: '' });
+                setIsModalOpen(true);
+              }}
+              className="bg-primary text-white px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-primary/20 hover:bg-primary-light transition-all flex items-center space-x-2"
+            >
+              <Plus size={18} />
+              <span>New Order</span>
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center space-x-2 bg-background-card p-1.5 rounded-2xl border border-border/40 w-fit shadow-sm">
+          {[
+            { id: 'takeaway', label: 'Counter', icon: ShoppingCart },
+            { id: 'dine-in', label: 'Dine In', icon: Utensils },
+            { id: 'delivery', label: 'Delivery', icon: ChevronRight },
+            { id: 'history', label: 'History', icon: Clock }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => handleTabChange(tab.id)}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id
+                ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                : 'text-text-muted hover:bg-background-muted hover:text-text-primary'
+                }`}
+            >
+              <tab.icon size={14} />
+              <span>{tab.label}</span>
+              {tab.id !== 'history' && (
+                <span className={`ml-1.5 px-2 py-0.5 rounded-full text-[9px] font-black ${activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'
+                  }`}>
+                  {applyFilters(orders, tab.id).length}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        <div className="bg-background-card rounded-[2.5rem] border border-border/40 shadow-[0_10px_30px_rgba(0,0,0,0.02)] overflow-hidden">
+          <div className="p-4 border-b border-border-light bg-background-muted/30 space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
+                <input
+                  type="text"
+                  placeholder="Search by order # or phone..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    localStorage.setItem('orderSearchTerm', e.target.value);
+                  }}
+                  className="w-full pl-10 pr-4 py-2 bg-background-card rounded-lg border border-border-main focus:border-primary transition-all outline-none text-sm"
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {activeTab === 'history' ? (
+                  <>
+                    <select
+                      value={historyOrderTypeFilter}
+                      onChange={(e) => setHistoryOrderTypeFilter(e.target.value)}
+                      className="bg-background-card text-text-primary border border-border-main rounded-lg px-3 py-1.5 text-xs outline-none"
+                    >
+                      <option value="all">All Types</option>
+                      <option value="takeaway">Counter</option>
+                      <option value="dine-in">Dine In</option>
+                      <option value="delivery">Delivery</option>
+                    </select>
+                    <select
+                      value={paymentMethodFilter}
+                      onChange={(e) => setPaymentMethodFilter(e.target.value)}
+                      className="bg-background-card text-text-primary border border-border-main rounded-lg px-3 py-1.5 text-xs outline-none"
+                    >
+                      <option value="all">Payment Method</option>
+                      <option value="cash">Cash</option>
+                      <option value="upi/card">UPI / Card</option>
+                      <option value="online">Online</option>
+                    </select>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="date"
+                        max={new Date().toISOString().split('T')[0]}
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="bg-background-card text-text-primary border border-border-main rounded-lg px-2 py-1.5 text-[10px] outline-none"
+                      />
+                      <span className="text-text-muted text-[10px]">to</span>
+                      <input
+                        type="date"
+                        max={new Date().toISOString().split('T')[0]}
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="bg-background-card text-text-primary border border-border-main rounded-lg px-2 py-1.5 text-[10px] outline-none"
+                      />
+                    </div>
+                    <div className="h-8 w-px bg-border/40 mx-2 hidden md:block"></div>
+                  </>
+                ) : (
+                  <>
+                    <Filter size={14} className="text-text-muted" />
+                    <select
+                      value={orderStatusFilter}
+                      onChange={(e) => {
+                        setOrderStatusFilter(e.target.value);
+                        localStorage.setItem('orderStatusFilter', e.target.value);
+                      }}
+                      className="bg-background-card text-text-primary border border-border-main rounded-lg px-3 py-1.5 text-xs outline-none"
+                    >
+                      <option value="all">All Orders</option>
+                      <option value="placed">Placed</option>
+                      <option value="processing">Processing</option>
+                      {(activeTab === 'delivery' || activeTab === 'all') && (
+                        <>
+                          <option value="out-for-delivery">Out for Delivery</option>
+                          <option value="delivered">Delivered</option>
+                        </>
+                      )}
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                    <select
+                      value={paymentFilter}
+                      onChange={(e) => setPaymentFilter(e.target.value)}
+                      className="bg-background-card text-text-primary border border-border-main rounded-lg px-3 py-1.5 text-xs outline-none"
+                    >
+                      <option value="all">All Payment</option>
+                      <option value="unpaid">Unpaid</option>
+                      <option value="paid">Paid</option>
+                      <option value="refunded">Refunded</option>
+                    </select>
+                    <select
+                      value={paymentMethodFilter}
+                      onChange={(e) => setPaymentMethodFilter(e.target.value)}
+                      className="bg-background-card text-text-primary border border-border-main rounded-lg px-3 py-1.5 text-xs outline-none"
+                    >
+                      <option value="all">Payment Method</option>
+                      <option value="cash">Cash</option>
+                      <option value="upi/card">UPI / Card</option>
+                      <option value="online">Online</option>
+                    </select>
+                  </>
+                )}
+
+                <button
+                  onClick={() => {
+                    setSearchTerm('');
+                    localStorage.removeItem('orderSearchTerm');
+                    setOrderStatusFilter('all');
+                    localStorage.removeItem('orderStatusFilter');
+                    setPaymentFilter('all');
+                    setPaymentMethodFilter('all');
+                    setHistoryOrderTypeFilter('all');
+                    setStartDate('');
+                    setEndDate('');
+                  }}
+                  disabled={!searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all' && paymentMethodFilter === 'all' && historyOrderTypeFilter === 'all' && !startDate && !endDate}
+                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${!searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all' && paymentMethodFilter === 'all' && historyOrderTypeFilter === 'all' && !startDate && !endDate
+                    ? 'bg-background-muted/50 text-text-muted/30 border-border-light cursor-not-allowed'
+                    : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white'
+                    }`}
+                  title="Reset All Filters"
+                >
+                  <RotateCcw size={12} />
+                  <span className="text-[10px] font-black uppercase tracking-wider">Reset</span>
+                </button>
+
+                {activeTab === 'history' && (
+                  <div className="flex items-center ml-auto">
+                    {selectedOrderIds.length > 0 ? (
+                      <button
+                        onClick={() => handleClearHistory(selectedOrderIds)}
+                        className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-status-unavailable text-white shadow-lg shadow-status-unavailable/20 hover:bg-status-unavailable/90 active:scale-95 transition-all group"
+                      >
+                        <Trash2 size={14} className="group-hover:rotate-12 transition-transform" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Delete Selected ({selectedOrderIds.length})</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleClearHistory()}
+                        className="flex items-center space-x-2 px-4 py-2 rounded-xl border-2 border-status-unavailable/20 text-status-unavailable hover:bg-status-unavailable hover:text-white shadow-sm hover:shadow-status-unavailable/30 active:scale-95 transition-all group"
+                        title="Permanently Delete All History Records"
+                      >
+                        <Trash2 size={14} className="group-hover:shake transition-transform" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Delete All Records</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm whitespace-nowrap">
+              <thead className="bg-background-muted/50 text-text-secondary uppercase text-[10px] font-black tracking-widest border-b border-border-light">
+                <tr>
+                  {activeTab === 'history' && (
+                    <th className="px-3 py-4 w-10">
+                      <input
+                        type="checkbox"
+                        checked={selectedOrderIds.length === filteredOrders.length && filteredOrders.length > 0}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedOrderIds(filteredOrders.map(o => o._id));
+                          } else {
+                            setSelectedOrderIds([]);
+                          }
+                        }}
+                        className="w-4 h-4 rounded border-border-main text-primary focus:ring-primary cursor-pointer accent-primary"
+                      />
+                    </th>
+                  )}
+                  <th className="px-2 py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('orderNumber')}>
+                    <div className="flex items-center space-x-1">
+                      <span>Order #</span>
+                      <ArrowUpDown size={12} className={sortConfig.key === 'orderNumber' ? 'text-primary' : 'text-text-muted'} />
+                    </div>
+                  </th>
+                  {activeTab === 'history' && (
+                    <th className="px-2 py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('orderType')}>
+                      <div className="flex items-center space-x-1">
+                        <span>Type</span>
+                        <ArrowUpDown size={12} className={sortConfig.key === 'orderType' ? 'text-primary' : 'text-text-muted'} />
+                      </div>
+                    </th>
+                  )}
+                  <th className="px-2 py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('createdAt')}>
+                    <div className="flex items-center space-x-1">
+                      <span>Date & Time</span>
+                      <ArrowUpDown size={12} className={sortConfig.key === 'createdAt' ? 'text-primary' : 'text-text-muted'} />
+                    </div>
+                  </th>
+                  {activeTab === 'dine-in' ? (
+                    <th className="px-2 py-2.5">
+                      <div className="flex items-center space-x-1">
+                        <span>Table</span>
+                      </div>
+                    </th>
+                  ) : (
+                    <th className="px-2 py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('customer')}>
+                      <div className="flex items-center space-x-1">
+                        <span>Customer</span>
+                        <ArrowUpDown size={12} className={sortConfig.key === 'customer' ? 'text-primary' : 'text-text-muted'} />
+                      </div>
+                    </th>
+                  )}
+                  <th className="px-2 py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('amount')}>
+                    <div className="flex items-center space-x-1">
+                      <span>Amount</span>
+                      <ArrowUpDown size={12} className={sortConfig.key === 'amount' ? 'text-primary' : 'text-text-muted'} />
+                    </div>
+                  </th>
+                  <th className="px-2 py-2.5 text-center">Order</th>
+                  <th className="px-2 py-2.5 text-center">Payment</th>
+                  {activeTab === 'history' && (
+                    <th className="px-2 py-2.5 text-center">Method</th>
+                  )}
+                  <th className="px-2 py-2.5 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-light">
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={activeTab === 'history' ? 10 : (activeTab === 'dine-in' ? 8 : 7)} className="px-6 py-10">
+                      <TableSkeleton columns={activeTab === 'history' ? 10 : (activeTab === 'dine-in' ? 8 : 7)} rows={5} />
+                    </td>
+                  </tr>
+                ) : filteredOrders.length === 0 ? (
+                  <tr>
+                    <td colSpan={activeTab === 'history' ? 10 : (activeTab === 'dine-in' ? 8 : 7)} className="px-6 py-12 text-center text-text-muted italic">No orders found</td>
+                  </tr>
+                ) : (
+                  paginatedOrders.map((order) => (
+                    <tr
+                      key={order._id}
+                      onClick={() => {
+                        if (order.orderStatus === 'placed' && (order.orderSource === 'user' || order.orderSource === 'online')) {
+                          handleConfirmOrder(order);
+                        } else {
+                          handleOpenDetails(order);
+                        }
+                      }}
+                      className={`hover:bg-background-muted/30 transition-colors group cursor-pointer ${selectedOrderIds.includes(order._id) ? 'bg-primary/5' : ''}`}
+                    >
+                      {activeTab === 'history' && (
+                        <td className="px-3 py-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedOrderIds.includes(order._id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedOrderIds(prev => [...prev, order._id]);
+                              } else {
+                                setSelectedOrderIds(prev => prev.filter(id => id !== order._id));
+                              }
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-4 h-4 rounded border-border-main text-primary focus:ring-primary cursor-pointer accent-primary"
+                          />
+                        </td>
+                      )}
+                      <td className="px-2 py-2.5 font-black text-text-primary">
+                        <div className="flex items-center space-x-2">
+                          {order.orderStatus === 'placed' && activeTab !== 'dine-in' && order.orderType !== 'dine-in' && order.orderType !== 'dining' && (
+                            <div className="flex items-center shrink-0">
+                              <Zap size={12} className="text-primary fill-primary animate-pulse" />
+                              <span className="ml-1 text-[8px] font-black text-primary uppercase tracking-tighter">New</span>
+                            </div>
+                          )}
+                          <span>{order.orderNumber}</span>
+                        </div>
+                      </td>
+                      {activeTab === 'history' && (
+                        <td className="px-2 py-2.5">
+                          <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase border tracking-widest ${order.orderType === 'delivery' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
+                            order.orderType === 'takeaway' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                              'bg-primary/10 text-primary border-primary/20'
+                            }`}>
+                            {order.orderType}
+                          </span>
+                        </td>
+                      )}
+                      <td className="px-2 py-2.5">
+                        <div className="flex flex-col">
+                          <span className="text-xs font-bold text-text-primary">{new Date(order.createdAt).toLocaleDateString('en-GB')}</span>
+                          <span className="text-[10px] text-text-muted">{new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                      </td>
+                      {activeTab === 'dine-in' ? (
+                        <td className="px-2 py-2.5">
+                          {order.table ? (
+                            <span className="bg-primary/10 text-primary px-3 py-1.5 rounded-xl text-xs font-black border border-primary/20 shadow-sm">
+                              {order.table.mergedGroup && order.table.mergedGroup.length > 0
+                                ? `T-${[...order.table.mergedGroup].sort((a, b) => parseInt(a) - parseInt(b)).join(' & ')}`
+                                : `T-${order.table.tableNumber}`
+                              }
+                            </span>
+                          ) : (
+                            <span className="text-text-muted text-[10px] font-bold italic bg-background-muted px-2 py-1 rounded-lg w-fit">No Table</span>
+                          )}
+                        </td>
+                      ) : (
+                        <td className="px-2 py-2.5 font-bold text-text-secondary">
+                          <div className="flex flex-col">
+                            <div className="flex items-center space-x-2">
+                              <span>
+                                {(order.orderSource === 'online' || order.orderSource === 'user')
+                                  ? (order.address?.recipientName || order.customerDetails?.name || 'Walk-in')
+                                  : (order.customerDetails?.name || order.address?.recipientName || 'Walk-in')
+                                }
+                              </span>
+                              { }
+                              {(order.orderSource === 'online' || order.orderSource === 'user') ? (
+                                <span className="flex h-2 w-2 rounded-full bg-blue-500" title="Online Order"></span>
+                              ) : (
+                                <span className="flex h-2 w-2 rounded-full bg-amber-500" title="Admin Order"></span>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-text-muted">{order.customerDetails?.phone || order.address?.mobile || '-'}</span>
+                            <span className="text-[8px] font-black uppercase tracking-tighter text-text-muted/50">
+                              Source: {order.orderSource || 'admin'}
+                            </span>
+                          </div>
+                        </td>
+                      )}
+                      <td className="px-2 py-2.5 font-black text-text-primary">₹{(order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0)}</td>
+                      <td className="px-2 py-2.5 text-center">
+                        {(() => {
+                          const status = getFriendlyStatus(order);
+                          const isActionable = status.label === 'Ready' && activeTab !== 'dine-in';
+
+                          if (isActionable) {
+                            return (
+                              <select
+                                value={order.orderStatus === 'completed' ? 'delivered' : order.orderStatus}
+                                onChange={(e) => {
+                                  if (e.target.value === 'out-for-delivery') {
+                                    handleAssignDelivery(order);
+                                  } else {
+                                    handleUpdateOrderStatus(order._id, e.target.value);
+                                  }
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border cursor-pointer outline-none transition-all text-center ${status.color}`}
+                              >
+                                <option value={order.orderStatus} className="bg-background-card text-text-primary">{status.label}</option>
+                                {order.orderType === 'delivery' && (
+                                  <option value="out-for-delivery" className="bg-background-card text-text-primary">Out for Delivery</option>
+                                )}
+                                <option value="delivered" className="bg-background-card text-text-primary">Delivered</option>
+                              </select>
+                            );
+                          }
+                          return (
+                            <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${status.color}`}>
+                              {status.label}
+                            </span>
+                          );
+                        })()}
+                      </td>
+                      <td className="px-2 py-2.5 text-center">
+                        {activeTab !== 'history' && order.paymentStatus === 'unpaid' ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePayNow(order);
+                            }}
+                            className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-[9px] font-black uppercase tracking-wider rounded-full shadow-md shadow-emerald-500/20 transition-all border border-emerald-600/20 cursor-pointer"
+                          >
+                            Pay Now
+                          </button>
+                        ) : (
+                          <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${(order.paymentStatus === 'paid' || order.paymentStatus === 'completed') ? 'bg-status-on/10 text-status-available border-status-on/20' :
+                            order.paymentStatus === 'unpaid' ? 'bg-status-off/10 text-status-unavailable border-status-off/20' :
+                              order.paymentStatus === 'refunded' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                'bg-status-off/10 text-status-unavailable border-status-off/20'
+                            }`}>
+                            {order.paymentStatus}
+                          </span>
+                        )}
+                      </td>
+                      {activeTab === 'history' && (
+                        <td className="px-2 py-2.5 text-center">
+                          <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-background-muted text-text-secondary border border-border-light">
+                            {order.paymentMethod || 'N/A'}
+                          </span>
+                        </td>
+                      )}
+                      <td className="px-2 py-2.5 text-center">
+                        <div className="flex items-center justify-center space-x-1" onClick={(e) => e.stopPropagation()}>
+                          {(() => {
+                            const status = getFriendlyStatus(order);
+                            return (
+                              <>
+
+                                <button
+                                  onClick={() => handlePrintKOT(order)}
+                                  className="p-2 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all"
+                                  title="Print KOT"
+                                >
+                                  <Printer size={18} />
+                                </button>
+                                {activeTab !== 'dine-in' && (
+                                  <button
+                                    onClick={() => handleOpenDetails(order)}
+                                    className="p-2 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all"
+                                    title="View Details"
+                                  >
+                                    <Eye size={18} />
+                                  </button>
+                                )}
+
+                                {order.orderType === 'delivery' && (
+                                  <button
+                                    onClick={() => handleCopyForWhatsApp(order)}
+                                    className="p-2 hover:bg-primary/10 text-primary rounded-lg transition-all"
+                                    title="Copy for WhatsApp"
+                                  >
+                                    <Copy size={16} />
+                                  </button>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        </div>
+      </div>
+
+      { }
+      {isDetailsModalOpen && selectedOrder && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-hidden print:hidden">
+          <div className="bg-background-card w-full max-w-2xl h-[85vh] rounded-[2.5rem] border border-border-light shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-6 border-b border-border-light flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div>
+                  <h3 className="text-xl font-black text-text-primary">{selectedOrder.orderNumber}</h3>
+                  <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">
+                    {new Date(selectedOrder.createdAt).toLocaleString()}
+                  </p>
+                </div>
+                {(() => {
+                  const status = getFriendlyStatus(selectedOrder);
+                  return (
+                    <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${status.color}`}>
+                      {status.label}
+                    </span>
+                  );
+                })()}
+              </div>
+              <div className="flex items-center space-x-3">
+
+                <button onClick={() => setIsDetailsModalOpen(false)} className="p-2 hover:bg-background-muted rounded-xl text-text-muted transition-colors">
+                  <XCircle size={24} />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-6 flex-1 overflow-y-auto no-scrollbar">
+              { }
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-border-light pb-2">
+                  <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Ordered Items</p>
+                  {activeTab !== 'history' && !['cancelled', 'completed', 'delivered'].includes(selectedOrder.orderStatus) &&
+                    (!selectedOrder.orderSource || selectedOrder.orderSource === 'admin') && (
+                      <button
+                        onClick={() => {
+                          setCashReceived(selectedOrder.cashReceived || '');
+                          setCustomer({
+                            name: (selectedOrder.orderSource === 'online' || selectedOrder.orderSource === 'user')
+                              ? (selectedOrder.address?.recipientName || selectedOrder.customerDetails?.name || '')
+                              : (selectedOrder.customerDetails?.name || selectedOrder.address?.recipientName || ''),
+                            phone: selectedOrder.customerDetails?.phone || selectedOrder.address?.mobile || ''
+                          });
+                          setDeliveryAddress(selectedOrder.customerDetails?.address || selectedOrder.address?.address || '');
+                          setDeliveryLocation(selectedOrder.address?.location || (typeof selectedOrder.customerDetails?.location === 'string' ? selectedOrder.customerDetails.location : ''));
+                          setPosOrderType(selectedOrder.orderType);
+                          setPaymentMethod(selectedOrder.paymentMethod || 'Not Specified');
+
+                          setCart(selectedOrder.items.map(item => ({
+                            ...item,
+                            menuItem: item.menuItem?._id || item.menuItem,
+                            name: item.name || item.menuItem?.name || 'Item',
+                            image: item.image || item.menuItem?.image || '',
+                            unitPrice: item.unitPrice || item.price,
+                            totalPrice: item.totalPrice || ((item.unitPrice || item.price) * item.quantity)
+                          })));
+                          setIsModalOpen(true);
+                        }}
+                        className="text-[10px] font-black text-primary uppercase hover:underline flex items-center space-x-1"
+                      >
+                        <Edit2 size={12} />
+                        <span>Edit Items</span>
+                      </button>
+                    )}
+                </div>
+
+                {selectedOrder.orderStatus === 'pending' && (
+                  <div className="flex items-center space-x-2 p-3 bg-amber-500/10 rounded-xl border border-amber-500/20 text-amber-600">
+                    <AlertCircle size={14} />
+                    <p className="text-[10px] font-bold uppercase tracking-widest">Awaiting Confirmation</p>
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  {selectedOrder?.items?.map((item) => {
+                    const ks = item?.kitchenStatus || 'placed';
+                    const ksStyles = ks === 'ready' ? 'bg-status-on/10 text-status-available border-status-on/20' : ks === 'preparing' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : ks === 'delayed' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20';
+                    return (
+                      <div key={item._id} className="flex items-center justify-between p-3 bg-background-muted/20 rounded-2xl border border-border-light hover:border-primary/20 transition-all">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-background-card rounded-xl flex items-center justify-center border border-border-light overflow-hidden shrink-0">
+                            {item?.image || item?.menuItem?.image ? (
+                              <img src={item?.image || item?.menuItem?.image} alt={item?.name || item?.menuItem?.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <Package size={16} className="text-primary/40" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-text-primary text-[13px] truncate">
+                              {item?.name && item.name !== 'Unknown Item' ? item.name : (item?.menuItem?.name || item?.name || 'Menu Item')}
+                            </p>
+                            <p className="text-[9px] text-text-muted font-bold uppercase">
+                              {item?.size} • ₹{item?.unitPrice || item?.price} x {item?.quantity}
+                            </p>
+                            { }
+                            {item?.bogoItem && (
+                              <div className="mt-1 pl-2 border-l border-emerald-500/30">
+                                <span className="text-[8px] font-black text-emerald-600 uppercase tracking-wider block">Free Add-on:</span>
+                                <div className="flex flex-wrap gap-1 mt-0.5">
+                                  <span className="inline-flex items-center text-text-muted text-[8px] font-bold">
+                                    🎁 {item.bogoItem.quantity || item.quantity}x {item.bogoItem.name} {item.bogoItem.size ? `(${item.bogoItem.size})` : ''}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                            {/* Combo Items */}
+                            {item?.comboItems?.length > 0 && (
+                              <div className="mt-1 pl-2 border-l border-primary/30">
+                                <span className="text-[8px] font-black text-primary uppercase tracking-wider block">Combo includes:</span>
+                                <div className="flex flex-wrap gap-1 mt-0.5">
+                                  {item.comboItems.map((ci, idx) => (
+                                    <span key={idx} className="inline-flex items-center text-text-muted text-[8px] font-bold">
+                                      {ci.quantity || 1}x {ci.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Included Items (Add-ons) */}
+                            {item?.includedItems?.length > 0 && (
+                              <div className="mt-1 pl-2 border-l border-primary/30">
+                                <span className="text-[8px] font-black text-primary uppercase tracking-wider block">Includes Add-ons:</span>
+                                <div className="flex flex-wrap gap-1 mt-0.5">
+                                  {item.includedItems.map((ii, idx) => (
+                                    <span key={idx} className="inline-flex items-center text-text-muted text-[8px] font-bold">
+                                      {ii.quantity || 1}x {ii.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-3">
+                          <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${ksStyles}`}>
+                            {ks}
+                          </span>
+                          <p className="text-xs font-black text-text-primary">
+                            ₹{item?.totalPrice || ((item?.unitPrice || item?.price || 0) * item?.quantity)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Section 2: Customer & Order Details */}
+              <div className="grid grid-cols-2 gap-4 bg-background-muted/10 p-5 rounded-3xl border border-border-light">
+                <div className="space-y-1">
+                  <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest">Customer</p>
+                  <p className="text-xs font-black text-text-primary truncate">
+                    {selectedOrder?.address?.recipientName || selectedOrder?.customerDetails?.name || 'Walk-in'}
+                  </p>
+                  <p className="text-[10px] text-text-muted font-bold">{selectedOrder?.customerDetails?.phone || selectedOrder?.address?.mobile || 'No Phone'}</p>
+                </div>
+                <div className="space-y-1 text-right">
+                  <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest">Order Info</p>
+                  <div className="flex flex-col items-end">
+                    <p className="text-[10px] text-text-primary font-bold uppercase tracking-widest mb-1">
+                      {selectedOrder.orderStatus === 'processing' ? 'Order Accepted' : selectedOrder.orderStatus}
+                    </p>
+                    <p className={`text-[11px] font-black uppercase tracking-tight mb-1 ${selectedOrder.paymentStatus === 'paid' ? 'text-status-available' : 'text-amber-500'}`}>
+                      PAYMENT - {selectedOrder.paymentStatus}
+                    </p>
+                    {selectedOrder.orderType === 'dine-in' && selectedOrder.table && (
+                      <span className="mt-2 bg-primary/10 text-primary px-2 py-0.5 rounded text-[10px] font-black uppercase border border-primary/20">
+                        {selectedOrder.table.mergedGroup && selectedOrder.table.mergedGroup.length > 0
+                          ? `Tables ${[...selectedOrder.table.mergedGroup].sort((a, b) => parseInt(a) - parseInt(b)).join(' & ')}`
+                          : `Table ${selectedOrder.table.tableNumber}`
+                        }
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              { }
+              {selectedOrder.orderType === 'delivery' && selectedOrder.assignedDeliveryBoy && (
+                <div className="p-4 bg-primary/10 rounded-3xl border border-primary/20 overflow-hidden flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-background-card border border-primary/30 flex items-center justify-center shrink-0">
+                    <Truck size={18} className="text-primary" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[9px] text-primary font-bold uppercase tracking-widest">Assigned Delivery Boy</p>
+                    <p className="text-xs font-black text-text-primary">
+                      {selectedOrder.assignedDeliveryBoy.name}
+                    </p>
+                    {selectedOrder.assignedDeliveryBoy.phoneNumber && (
+                      <p className="text-[10px] text-text-muted font-bold">
+                        {selectedOrder.assignedDeliveryBoy.phoneNumber}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              { }
+              {selectedOrder.orderType === 'delivery' && (selectedOrder.customerDetails?.address || selectedOrder.address?.address) && (
+                <div className="p-4 bg-primary/5 rounded-3xl border border-primary/10 overflow-hidden">
+                  <div className="flex flex-col space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <p className="text-[9px] text-primary font-bold uppercase tracking-widest flex items-center space-x-1">
+                          <MapPin size={10} />
+                          <span>Delivery Address</span>
+                        </p>
+                        <p className="text-xs font-bold text-text-primary leading-relaxed line-clamp-2">
+                          {selectedOrder.customerDetails?.address || selectedOrder.address?.address}
+                        </p>
+                      </div>
+                      {(() => {
+                        const loc = selectedOrder.customerDetails?.location || selectedOrder.address?.location;
+                        let url;
+                        if (typeof loc === 'object' && loc.lat) {
+                          url = `https://www.google.com/maps?q=${loc.lat},${loc.lng}`;
+                        } else if (typeof loc === 'string') {
+                          url = loc.match(/https?:\/\/[^\s]+/) ? loc.match(/https?:\/\/[^\s]+/)[0] : `https://www.google.com/maps?q=${loc}`;
+                        }
+                        if (!url) return null;
+                        return (
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 bg-primary/10 text-primary rounded-xl hover:bg-primary hover:text-white transition-all shadow-sm border border-primary/20"
+                            title="View on Maps"
+                          >
+                            <ExternalLink size={14} />
+                          </a>
+                        );
+                      })()}
+                    </div>
+
+                    {(() => {
+                      const loc = selectedOrder.customerDetails?.location || selectedOrder.address?.location;
+                      let lat, lng;
+                      if (typeof loc === 'object' && loc.lat) {
+                        lat = loc.lat; lng = loc.lng;
+                      } else if (typeof loc === 'string') {
+                        const match = loc.match(/q=([\d.-]+),([\d.-]+)/);
+                        if (match) { lat = match[1]; lng = match[2]; }
+                      }
+                      if (lat && lng) return (
+                        <div className="w-full h-32 rounded-2xl overflow-hidden border border-border-light shadow-inner relative group">
+                          <iframe
+                            title="Order Location"
+                            width="100%"
+                            height="100%"
+                            frameBorder="0"
+                            scrolling="no"
+                            src={`https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`}
+                            className="grayscale contrast-125 opacity-80 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-500"
+                          />
+                          <div className="absolute inset-0 pointer-events-none border border-primary/5 rounded-2xl" />
+                        </div>
+                      );
+                      return null;
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              { }
+              {selectedOrder.remarks && (
+                <div className="p-4 bg-amber-500/5 rounded-3xl border border-amber-500/20">
+                  <div className="flex items-start gap-3">
+                    <div className="w-7 h-7 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="text-amber-500 text-sm">📝</span>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest">Special Instructions</p>
+                      <p className="text-xs font-bold text-text-primary leading-relaxed">{selectedOrder.remarks}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-8 bg-background-muted/30 border-t border-border-light flex items-center justify-between">
+              <div className="flex flex-col space-y-4">
+                <div className="space-y-1">
+                  <div className="flex flex-col mb-1 space-y-0.5">
+                    <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">
+                      Listing Price: ₹{(selectedOrder.subtotal || 0) + (selectedOrder.discount || 0)}
+                    </span>
+                    {selectedOrder.platformFee > 0 && (
+                      <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">
+                        Platform Fee: +₹{selectedOrder.platformFee}
+                      </span>
+                    )}
+                    {selectedOrder.deliveryFee > 0 && (
+                      <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">
+                        Delivery Fee: +₹{selectedOrder.deliveryFee}
+                      </span>
+                    )}
+                    {selectedOrder.discount > 0 && (
+                      <span className="text-[10px] text-green-600 font-bold uppercase tracking-widest">
+                        Discount: -₹{selectedOrder.discount}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Total Bill Amount</p>
+                  <div className="flex items-baseline space-x-2">
+                    <span className="text-4xl font-black text-text-primary">
+                      ₹{(selectedOrder.subtotal || 0) + (selectedOrder.deliveryFee || 0) + (selectedOrder.platformFee || 0) + (selectedOrder.tax || 0)}
+                    </span>
+                    {selectedOrder.paidAmount > 0 && (selectedOrder.totalAmount || selectedOrder.subtotal) > selectedOrder.paidAmount && (
+                      <span className="px-2 py-0.5 bg-status-off/10 text-status-unavailable text-[10px] font-black rounded-lg uppercase tracking-tighter">
+                        Partial Payment
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {selectedOrder.paidAmount > 0 && (selectedOrder.totalAmount || selectedOrder.subtotal) > selectedOrder.paidAmount && (
+                  <div className="animate-in slide-in-from-left duration-500">
+                    <div className="flex items-center space-x-4 p-4 bg-background-card rounded-[1.5rem] border border-status-unavailable/20 shadow-sm">
+                      <div className="w-10 h-10 bg-status-off/10 text-status-unavailable rounded-xl flex items-center justify-center">
+                        <AlertCircle size={20} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-status-unavailable uppercase tracking-widest mb-0.5">Balance to Collect</p>
+                        <div className="flex items-baseline space-x-3">
+                          <span className="text-2xl font-black text-text-primary">
+                            ₹{(selectedOrder?.totalAmount || selectedOrder?.subtotal || 0) - (selectedOrder?.paidAmount || 0)}
+                          </span>
+                          <div className="h-4 w-[1px] bg-border-light" />
+                          <span className="text-[10px] font-bold text-text-muted uppercase">
+                            Paid: ₹{selectedOrder?.paidAmount || 0}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center space-x-4">
+                {null}
+
+                {selectedOrder.orderStatus === 'placed' && activeTab !== 'dine-in' && selectedOrder.orderType !== 'dine-in' && selectedOrder.orderType !== 'dining' && (
+                  <button
+                    onClick={() => {
+                      handleUpdateOrderStatus(selectedOrder._id, 'processing');
+                      setIsDetailsModalOpen(false);
+                    }}
+                    className="flex items-center justify-center space-x-2 bg-primary text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-primary/20 min-w-[160px]"
+                  >
+                    <CheckCircle2 size={18} />
+                    <span>Confirm</span>
+                  </button>
+                )}
+
+                {['placed', 'pending', 'processing', 'out-for-delivery'].includes(selectedOrder.orderStatus) && activeTab !== 'dine-in' && selectedOrder.orderType !== 'dine-in' && selectedOrder.orderType !== 'dining' && (
+                  <button
+                    onClick={() => {
+                      Swal.fire({
+                        title: 'Cancel Order?',
+                        text: "Are you sure you want to cancel this order?",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#ef4444',
+                        cancelButtonColor: '#6b7280',
+                        confirmButtonText: 'Yes, Cancel',
+                        scrollbarPadding: false,
+                        heightAuto: false
+                      }).then((result) => {
+                        if (result.isConfirmed) {
+                          handleUpdateOrderStatus(selectedOrder._id, 'cancelled');
+                          setIsDetailsModalOpen(false);
+                        }
+                      });
+                    }}
+                    className="flex items-center justify-center space-x-2 bg-background-muted text-text-muted px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-status-off/10 hover:text-status-unavailable transition-all border border-border-light min-w-[140px]"
+                  >
+                    <XCircle size={18} />
+                    <span>Cancel</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      { }
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-hidden print:hidden">
+          <div className="bg-background-card w-full max-w-6xl h-[88vh] rounded-[2.5rem] border border-border/40 shadow-[0_40px_80px_rgba(0,0,0,0.4)] flex overflow-hidden animate-in zoom-in-95 duration-300">
+
+            {/* ── COLUMN 1: Menu Listing ── */}
+            <div className="flex-1 flex flex-col border-r border-border-light/60 min-w-0">
+              {/* Header */}
+              <div className="p-5 border-b border-border-light/60 flex items-center justify-between shrink-0 bg-gradient-to-r from-background-card to-background-muted/10">
+                <div>
+                  <p className="text-[9px] font-black text-primary uppercase tracking-[0.25em] mb-0.5">Step 1</p>
+                  <h3 className="text-lg font-black text-text-primary">Menu</h3>
+                </div>
+                <div className="relative w-56">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={14} />
+                  <input
+                    type="text"
+                    placeholder="Search menu..."
+                    value={posSearchTerm}
+                    onChange={(e) => setPosSearchTerm(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 bg-background-muted/60 rounded-xl text-xs outline-none focus:ring-1 focus:ring-primary/50 border border-transparent focus:border-primary/30 transition-all"
+                  />
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 xl:grid-cols-3 gap-3 no-scrollbar content-start">
+                {menuItems
+                  .filter(item => {
+                    const searchLower = (posSearchTerm || '').toLowerCase();
+                    return (item.name || '').toLowerCase().includes(searchLower);
+                  })
+                  .map(item => {
+                    let isItemOutOfStock = false;
+                    if (item.isCombo && item.comboItems?.length > 0) {
+                      isItemOutOfStock = item.comboItems.some(ci => {
+                        const underlyingItem = menuItems.find(m => m._id === (ci.menuItem?._id || ci.menuItem));
+                        return !underlyingItem || underlyingItem.isBlocked || getEffectiveStock(underlyingItem) <= 0;
+                      });
+                    } else {
+                      isItemOutOfStock = getEffectiveStock(item) <= 0;
+                    }
+                    return (
+                      <div
+                        key={item._id}
+                        onClick={() => {
+                          const targetVariant = (item.variants && item.variants.length > 0)
+                            ? item.variants[0]
+                            : { size: 'Standard', price: item.price || 0 };
+                          setSelectedItemToView(item);
+                          setViewItemSelectedSize(targetVariant);
+                          setViewItemQuantity(1);
+                        }}
+                        className={`bg-background-muted/30 p-3 rounded-2xl border border-border-light hover:border-primary/30 transition-all group relative cursor-pointer active:scale-[0.98] ${isItemOutOfStock ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+                      >
+                        <div className="w-full aspect-square bg-background-card rounded-xl mb-3 overflow-hidden border border-border-light relative">
+                          <img src={item.image || '/placeholder-dish.png'} alt={item.name} className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${isItemOutOfStock ? 'grayscale' : ''}`} />
+
+                          {/* Badges on Image */}
+                          <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
+                            {item.isCombo && (
+                              <span className="bg-primary/90 backdrop-blur-sm text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm border border-primary/20">Combo Deal</span>
+                            )}
+                            {(() => {
+                              const menuDiscount = item.discountPercentage || 0;
+                              const categoryDiscount = item.category?.discountPercentage || 0;
+                              const discountPercent = Math.max(menuDiscount, categoryDiscount);
+                              if (discountPercent > 0 && !item.isCombo) {
+                                return (
+                                  <span className="bg-green-500/90 backdrop-blur-sm text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm border border-green-500/20">
+                                    {discountPercent}% OFF
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
+                            {item.variants?.some(v => v.isBOGO) && (
+                              <span className="bg-status-available/90 backdrop-blur-sm text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm border border-status-available/20 flex items-center gap-0.5">
+                                <Zap size={8} className="animate-pulse" /> BOGO
+                              </span>
+                            )}
+                          </div>
+
+                          {isItemOutOfStock && (
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px]">
+                              <span className="bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest shadow-lg">Out of Stock</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-col mb-2">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="font-bold text-text-primary text-xs line-clamp-1">{item.name}</p>
+                            <span className={`shrink-0 ml-2 text-[8px] font-black px-1.5 py-0.5 rounded-full ${isItemOutOfStock ? 'bg-red-500/10 text-red-500' : (item.isCombo ? 'bg-primary/10 text-primary' : (getEffectiveStock(item) > 10 ? 'bg-primary/10 text-primary' : 'bg-amber-500/10 text-amber-500'))}`}>
+                              {item.isCombo ? (isItemOutOfStock ? 'Out of Stock' : 'Available') : `${getEffectiveStock(item)} Left`}
+                            </span>
+                          </div>
+
+                          {/* Price Display */}
+                          <div className="flex items-center gap-1.5 mb-1.5">
+                            {(() => {
+                              const menuDiscount = item.discountPercentage || 0;
+                              const categoryDiscount = item.category?.discountPercentage || 0;
+                              const discountPercent = Math.max(menuDiscount, categoryDiscount);
+                              const basePrice = item.price > 0 ? item.price : (item.variants?.[0]?.price || 0);
+
+                              if (discountPercent > 0 && !item.isCombo && basePrice > 0) {
+                                const currentPrice = Math.round(basePrice * (1 - discountPercent / 100));
+                                return (
+                                  <>
+                                    <span className="text-[10px] line-through text-text-muted font-bold">₹{basePrice}</span>
+                                    <span className="text-[11px] font-black text-status-available">₹{currentPrice} {item.variants?.length > 1 && <span className="text-[8px] text-text-muted ml-0.5">onwards</span>}</span>
+                                  </>
+                                );
+                              }
+                              return <span className="text-[11px] font-black text-text-primary">₹{basePrice} {item.variants?.length > 1 && <span className="text-[8px] text-text-muted ml-0.5">onwards</span>}</span>;
+                            })()}
+                          </div>
+
+                          {/* Extras Details */}
+                          <div className="flex flex-col gap-1 mb-2">
+                            {item.isCombo && item.comboItems?.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                <span className="text-[7px] font-black text-primary uppercase mt-0.5">Combo:</span>
+                                {item.comboItems.map((ci, idx) => (
+                                  <span key={idx} className="text-[7px] font-bold text-text-muted bg-primary/5 px-1 rounded border border-primary/10">
+                                    {ci.quantity || 1}x {ci.name || ci.menuItem?.name || 'Item'}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {(() => {
+                              const allIncluded = item.variants?.flatMap(v => v.includedItems || []) || [];
+                              if (allIncluded.length > 0) {
+                                const groupedAddons = {};
+                                allIncluded.forEach(a => {
+                                  const name = a.name || a.menuItem?.name || menuItems.find(m => m._id === (a.menuItem?._id || a.menuItem))?.name || 'Add-on';
+                                  if (!groupedAddons[name]) groupedAddons[name] = 0;
+                                  groupedAddons[name] += (a.quantity || 1);
+                                });
+                                return (
+                                  <div className="flex flex-wrap gap-1">
+                                    <span className="text-[7px] font-black text-amber-500 uppercase mt-0.5">Add-ons:</span>
+                                    {Object.entries(groupedAddons).map(([name, qty], idx) => (
+                                      <span key={idx} className="text-[7px] font-bold text-text-muted bg-amber-500/5 px-1 rounded border border-amber-500/10">
+                                        {qty}x {name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+
+                            {(() => {
+                              const bogoVariants = item.variants?.filter(v => v.isBOGO) || [];
+                              if (bogoVariants.length > 0) {
+                                return (
+                                  <div className="flex flex-wrap gap-1">
+                                    <span className="text-[7px] font-black text-status-available uppercase mt-0.5 flex items-center"><Zap size={6} className="mr-0.5" /> Free:</span>
+                                    {bogoVariants.map((v, idx) => {
+                                      const freeItemName = menuItems.find(m => m._id === (v.bogoItem?._id || v.bogoItem))?.name || 'Item';
+                                      return (
+                                        <span key={idx} className="text-[7px] font-bold text-status-available bg-status-available/10 px-1 rounded border border-status-available/20">
+                                          {v.size} ➔ {freeItemName} {v.bogoVariant ? `(${v.bogoVariant})` : ''}
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+
+            {/* ── COLUMN 2: Cart Items + Totals ── */}
+            <div className="w-[300px] shrink-0 flex flex-col border-r border-border-light bg-background-muted/40 dark:bg-[#0d0d0d]">
+              {/* Header */}
+              <div className="p-5 border-b border-border-light/30 shrink-0">
+                <p className="text-[9px] font-black text-primary uppercase tracking-[0.25em] mb-0.5">Step 2</p>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-black text-text-primary flex items-center gap-2">
+                    <ShoppingCart size={16} className="text-primary" />
+                    {selectedOrder ? `Order ${selectedOrder.orderNumber}` : 'Cart'}
+                  </h3>
+                  {cart.length > 0 && (
+                    <span className="text-[9px] font-black bg-primary/20 text-primary px-2.5 py-1 rounded-full border border-primary/20">
+                      {cart.reduce((a, i) => a + i.quantity, 0)} item{cart.reduce((a, i) => a + i.quantity, 0) !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {selectedOrder && (
+                <div className="mx-4 mt-3 p-3 bg-amber-500/10 rounded-xl border border-amber-500/20 shrink-0">
+                  <p className="text-[9px] font-black text-amber-500 uppercase mb-0.5">Editing Order Mode</p>
+                  <p className="text-[8px] text-text-muted font-medium">Add, remove, or adjust quantities.</p>
+                </div>
+              )}
+
+              {/* Cart Items List */}
+              <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-2">
+                {cart.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-text-muted/50">
+                    <div className="w-16 h-16 bg-background-muted rounded-full flex items-center justify-center mb-3 border border-border-light">
+                      <ShoppingCart size={24} />
+                    </div>
+                    <p className="text-[10px] font-black uppercase tracking-widest">Cart is Empty</p>
+                    <p className="text-[9px] font-bold mt-1 text-center max-w-[160px] opacity-70">Select items from the menu to add them here.</p>
+                  </div>
+                ) : (
+                  cart.map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-3 group p-3 bg-background-card hover:bg-background-muted/40 rounded-2xl border border-border-light hover:border-border transition-all duration-300">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-black text-text-primary text-[11px] leading-tight mb-0.5 truncate">{item.name}</p>
+                        <p className="text-[9px] text-text-muted font-bold uppercase mb-1.5">{item.size} · ₹{item.unitPrice}</p>
+                        <div className="flex flex-wrap gap-1">
+                          {item.comboItems?.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {item.comboItems.map((ci, idx) => (
+                                <span key={idx} className="inline-flex items-center text-[7px] font-black uppercase text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
+                                  {ci.menuItem?.name || ci.name || 'Combo Item'}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {item.includedItems?.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {item.includedItems.map((ii, idx) => (
+                                <span key={idx} className="inline-flex items-center text-[7px] font-black uppercase text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                                  + {ii.menuItem?.name || ii.name || 'Add-on'} (x{ii.quantity || 1})
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {item.bogoItem && (
+                            <span className="inline-flex items-center text-[7px] font-black uppercase text-status-available bg-status-available/10 px-1.5 py-0.5 rounded border border-status-available/20">
+                              <Zap size={7} className="mr-0.5" /> Free: {item.bogoItem.name || 'Item'}
+                            </span>
+                          )}
+                          {item.discountPercent > 0 && !item.isCombo && (
+                            <span className="inline-flex items-center text-[7px] font-black uppercase text-green-600 bg-green-500/10 px-1.5 py-0.5 rounded border border-green-500/20">{item.discountPercent}% OFF</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        <p className="font-black text-[11px] text-text-primary">₹{item.totalPrice}</p>
+                        <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1 bg-background-card px-2 py-1 rounded-lg border border-border-light">
+                            <button onClick={() => updateCartQuantity(idx, -1)} disabled={item.quantity <= 1} className="text-text-muted hover:text-primary font-black text-xs disabled:opacity-30 w-4 h-4 flex items-center justify-center">−</button>
+                            <input
+                              type="number"
+                              min="1"
+                              value={item.quantity}
+                              onChange={(e) => setCartQuantity(idx, e.target.value)}
+                              onBlur={() => handleCartQuantityBlur(idx)}
+                              className="w-7 text-center font-black text-[11px] bg-transparent border-none outline-none appearance-none [-moz-appearance:_textfield] [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                            <button onClick={() => updateCartQuantity(idx, 1)} className="text-text-muted hover:text-primary font-black text-xs w-4 h-4 flex items-center justify-center">+</button>
+                          </div>
+                          <button onClick={() => removeFromCart(idx)} className="text-text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-1 rounded-lg hover:bg-red-500/10">
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Totals Footer */}
+              <div className="p-4 border-t border-border-light space-y-2 shrink-0 bg-background-card">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-text-muted/60 text-[10px] font-bold">
+                    <span>Listing Price</span>
+                    <span>₹{cart.reduce((acc, item) => acc + ((item.originalPrice || item.unitPrice) * item.quantity), 0)}</span>
+                  </div>
+                  {cart.reduce((acc, item) => acc + (Math.max(0, (item.originalPrice || item.unitPrice) - item.unitPrice) * item.quantity), 0) > 0 && (
+                    <div className="flex items-center justify-between text-status-available text-[10px] font-black">
+                      <span className="flex items-center gap-1"><Zap size={9} /> Savings</span>
+                      <span>-₹{cart.reduce((acc, item) => acc + (Math.max(0, (item.originalPrice || item.unitPrice) - item.unitPrice) * item.quantity), 0)}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-primary text-[10px] font-black bg-primary/10 -mx-4 px-4 py-1.5 border-y border-primary/10">
+                    <span>Items Total</span>
+                    <span>₹{cart.reduce((acc, i) => acc + i.totalPrice, 0)}</span>
+                  </div>
+                  {posOrderType === 'delivery' && (
+                    <div className="flex items-center justify-between text-text-primary text-[10px] font-bold">
+                      <span>Delivery Fee</span>
+                      <span>₹{parseFloat(deliveryFee) || 0}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-end justify-between pt-1 border-t border-border-light/20">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">Grand Total</span>
+                  <span className="text-2xl font-black tracking-tighter leading-none">
+                    <span className="text-base opacity-70">₹</span>{cart.reduce((acc, i) => acc + i.totalPrice, 0) + (posOrderType === 'delivery' ? (parseFloat(deliveryFee) || 0) : 0)}
+                  </span>
+                </div>
+                {selectedOrder && selectedOrder.paidAmount > 0 && (
+                  <div className="flex items-center justify-between p-2.5 bg-amber-500/10 rounded-xl border border-amber-500/20 mt-2">
+                    <div>
+                      <p className="text-[8px] font-black text-amber-500 uppercase">Already Paid</p>
+                      <p className="text-[11px] font-bold text-amber-500/70">₹{selectedOrder.paidAmount}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[8px] font-black text-status-unavailable uppercase">Balance</p>
+                      <p className="text-base font-black text-status-unavailable">₹{Math.max(0, cart.reduce((acc, i) => acc + i.totalPrice, 0) - selectedOrder.paidAmount)}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ── COLUMN 3: Order Details + Place Order ── */}
+            <div className="w-[280px] shrink-0 flex flex-col bg-background-card">
+              {/* Header */}
+              <div className="p-5 border-b border-border-light/60 shrink-0 flex items-start justify-between">
+                <div>
+                  <p className="text-[9px] font-black text-primary uppercase tracking-[0.25em] mb-0.5">Step 3</p>
+                  <h3 className="text-lg font-black text-text-primary">Order Details</h3>
+                </div>
+                <button onClick={() => setIsModalOpen(false)} className="p-1.5 bg-white/5 hover:bg-red-500/10 rounded-full text-text-muted hover:text-red-500 transition-all mt-1">
+                  <X size={14} strokeWidth={3} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto no-scrollbar p-5 space-y-5">
+
+                {/* Order Type Selector */}
+                {!selectedOrder && (
+                  <div>
+                    <label className="text-[9px] font-black text-text-muted/70 uppercase tracking-widest mb-2 block">Order Type</label>
+                    <div className="bg-background-muted p-1.5 rounded-[1.25rem] flex gap-1.5 border border-border-light">
+                      {[
+                        { id: 'takeaway', label: 'Counter', icon: Store },
+                        { id: 'delivery', label: 'Delivery', icon: Truck },
+                      ].map(({ id, label, icon: Icon }) => (
+                        <button
+                          key={id}
+                          onClick={() => setPosOrderType(id)}
+                          className={`flex-1 py-3 flex flex-col items-center gap-1 rounded-[0.875rem] transition-all duration-300 ${posOrderType === id ? 'bg-gradient-to-b from-primary/90 to-primary text-white shadow-lg shadow-primary/20 scale-[1.02]' : 'text-text-muted hover:bg-background-card hover:text-text-primary'}`}
+                        >
+                          <Icon size={14} />
+                          <span className="text-[8px] font-black uppercase tracking-wider">{label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedOrder && (
+                  <div className="p-3 bg-amber-500/5 rounded-xl border border-amber-500/10">
+                    <p className="text-[9px] font-black text-amber-500 uppercase mb-0.5">Editing Order</p>
+                    <p className="text-[8px] text-text-muted italic">Updating {selectedOrder.orderNumber}</p>
+                  </div>
+                )}
+
+                {/* Customer Info */}
+                <div className="space-y-2">
+                  <label className="text-[9px] font-black text-text-muted/70 uppercase tracking-widest block">Customer Info</label>
+                  <div className="relative">
+                    <div className={`flex items-center gap-2 bg-background-muted/40 p-3 rounded-xl border transition-all ${errors.customerName ? 'border-primary ring-1 ring-primary/30' : 'border-border-light focus-within:border-primary/50'}`}>
+                      <User size={13} className={errors.customerName ? 'text-primary' : 'text-text-muted'} />
+                      <input
+                        type="text"
+                        placeholder="Customer Name (optional)"
+                        value={customer.name}
+                        onChange={e => {
+                          handleCustomerSearch('name', e.target.value);
+                          if (errors.customerName) setErrors({ ...errors, customerName: false });
+                        }}
+                        onFocus={() => customer.name.length > 1 && setShowSuggestions(true)}
+                        className="bg-transparent text-[11px] font-bold text-text-primary outline-none w-full placeholder:text-text-muted/40"
+                      />
+                    </div>
+                    {errors.customerName && <p className="text-[9px] font-bold text-primary px-1 mt-0.5">Name is required</p>}
+                  </div>
+
+                  <div className={`flex items-center gap-2 bg-background-muted/40 p-3 rounded-xl border transition-all ${errors.customerPhone ? 'border-primary ring-1 ring-primary/30' : 'border-border-light focus-within:border-primary/50'}`}>
+                    <Phone size={13} className={errors.customerPhone ? 'text-primary' : 'text-text-muted'} />
+                    <input
+                      type="text"
+                      placeholder="Phone Number (optional)"
+                      value={customer.phone}
+                      onChange={e => {
+                        handleCustomerSearch('phone', e.target.value);
+                        if (errors.customerPhone) setErrors({ ...errors, customerPhone: false });
+                      }}
+                      onFocus={() => customer.phone.length > 1 && setShowSuggestions(true)}
+                      className="bg-transparent text-[11px] font-bold text-text-primary outline-none w-full placeholder:text-text-muted/40"
+                    />
+                  </div>
+                  {errors.customerPhone && <p className="text-[9px] font-bold text-primary px-1">Phone is required</p>}
+
+                  {/* Customer Suggestions Dropdown */}
+                  {showSuggestions && (
+                    <div className="bg-background-card border border-primary/20 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="p-3 border-b border-border-light bg-primary/5 flex items-center justify-between">
+                        <p className="text-[10px] font-black text-primary uppercase tracking-widest">Suggestions</p>
+                        <button onClick={(e) => { e.stopPropagation(); setShowSuggestions(false); }} className="p-1 hover:bg-primary/10 rounded-full text-text-muted hover:text-primary transition-colors">
+                          <X size={12} />
+                        </button>
+                      </div>
+                      <div className="max-h-44 overflow-y-auto no-scrollbar">
+                        {userSuggestions.length === 0 ? (
+                          <div className="p-4 text-center">
+                            <p className="text-[10px] text-text-muted font-bold">No matching customers</p>
+                          </div>
+                        ) : (
+                          userSuggestions.map(user => (
+                            <button
+                              key={user._id}
+                              onClick={() => selectUserSuggestion(user)}
+                              className="w-full px-4 py-3 flex items-center gap-3 hover:bg-primary/10 transition-all border-b border-border-light last:border-0"
+                            >
+                              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-xs shrink-0">
+                                {user.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="flex flex-col items-start text-left min-w-0">
+                                <span className="text-xs font-black text-text-primary truncate w-full">{user.name}</span>
+                                <span className="text-[9px] font-bold text-text-muted">{user.phone || 'No phone'}</span>
+                              </div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Delivery Details */}
+                {posOrderType === 'delivery' && (
+                  <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <label className="text-[9px] font-black text-text-muted/70 uppercase tracking-widest block">Delivery Details</label>
+
+                    <div className="flex items-center gap-2 bg-primary/[0.04] px-3 py-2.5 rounded-xl border border-primary/20 focus-within:border-primary transition-all">
+                      <Truck size={12} className="text-primary shrink-0" />
+                      <input
+                        id="pos-distance-input"
+                        type="number"
+                        placeholder="Distance (KM)"
+                        onChange={(e) => {
+                          const dist = parseFloat(e.target.value) || 0;
+                          const freeLimit = settings.deliverySettings?.freeDistanceLimit || 5;
+                          const rate = settings.deliverySettings?.chargePerExtraKm || 10;
+                          setDeliveryFee(dist <= freeLimit ? '0' : ((dist - freeLimit) * rate).toFixed(0));
+                        }}
+                        className="bg-transparent text-[11px] font-black text-primary outline-none w-full placeholder:text-primary/30"
+                      />
+                    </div>
+
+                    <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all ${errors.deliveryLocation ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'bg-primary/[0.04] border-primary/20 focus-within:border-primary'}`}>
+                      <ExternalLink size={12} className="text-primary shrink-0" />
+                      <input
+                        type="text"
+                        placeholder="Google Maps Link"
+                        value={deliveryLocation}
+                        onChange={e => {
+                          handleLocationLinkChange(e.target.value);
+                          if (errors.deliveryLocation) setErrors({ ...errors, deliveryLocation: false, deliveryAddress: false });
+                        }}
+                        className="bg-transparent text-[11px] font-black text-primary outline-none w-full placeholder:text-primary/30"
+                      />
+                      <button onClick={() => handleLocationLinkChange(deliveryLocation)} className="p-1 hover:bg-primary/10 rounded-lg text-primary disabled:opacity-30" disabled={isResolvingLink}>
+                        <Loader2 size={11} className={isResolvingLink ? 'animate-spin' : ''} />
+                      </button>
+                    </div>
+
+                    <div className={`px-3 py-2.5 rounded-xl border transition-all ${errors.deliveryAddress ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'bg-background-muted/30 border-border-light focus-within:border-primary/50'}`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-1.5">
+                          <MapPin size={10} className="text-primary" />
+                          <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Delivery Address</p>
+                        </div>
+                        {selectedUserId && (
+                          <button type="button" onClick={() => setUpdateProfile(!updateProfile)} className="flex items-center gap-1.5">
+                            <div className={`w-3 h-3 rounded-[4px] border flex items-center justify-center transition-all ${updateProfile ? 'bg-primary border-primary' : 'bg-transparent border-border-main'}`}>
+                              {updateProfile && <CheckCircle2 size={8} className="text-white" />}
+                            </div>
+                            <span className={`text-[8px] font-black uppercase ${updateProfile ? 'text-primary' : 'text-text-muted'}`}>Update Profile</span>
+                          </button>
+                        )}
+                      </div>
+                      <textarea
+                        placeholder="Building, Street, Area..."
+                        value={deliveryAddress}
+                        onChange={e => {
+                          setDeliveryAddress(e.target.value);
+                          if (errors.deliveryAddress) setErrors({ ...errors, deliveryAddress: false, deliveryLocation: false });
+                        }}
+                        className="bg-transparent text-[11px] font-bold text-text-primary outline-none w-full h-16 resize-none placeholder:text-text-muted/30"
+                      />
+                    </div>
+                    {(errors.deliveryAddress || errors.deliveryLocation) && <p className="text-[9px] font-bold text-primary">Either Address or Maps Link is required</p>}
+                  </div>
+                )}
+
+              </div>
+
+              {/* Place Order Button */}
+              <div className="p-5 border-t border-border-light shrink-0">
+                <button
+                  onClick={() => {
+                    const cartItemsHtml = cart.map(i => `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>${i.name}</span><span>x${i.quantity}</span></div>`).join('');
+                    const isEdit = !!selectedOrder;
+                    Swal.fire({
+                      title: isEdit ? 'Confirm Updates' : 'Confirm Order',
+                      html: `<div style="max-height:150px;overflow-y:auto;background:rgba(0,0,0,0.02);padding:12px;border-radius:12px;border:1px solid #e5e7eb;font-size:14px;text-align:left;margin-bottom:16px">${cartItemsHtml}</div><p style="font-weight:bold;margin:0">${isEdit ? 'Send updated items to the kitchen?' : 'Send this order to the kitchen?'}</p>`,
+                      icon: 'question',
+                      showCancelButton: true,
+                      confirmButtonColor: '#10b981',
+                      cancelButtonColor: '#6b7280',
+                      confirmButtonText: 'Yes, Send to Kitchen',
+                      customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-6 py-3 font-black tracking-widest uppercase', cancelButton: 'rounded-xl px-6 py-3 font-black tracking-widest uppercase text-white' }
+                    }).then((result) => {
+                      if (result.isConfirmed) handleCreateOrder();
+                    });
+                  }}
+                  disabled={isSubmitting || cart.length === 0}
+                  className={`w-full py-4 rounded-[1.25rem] font-black text-[13px] uppercase tracking-[0.2em] transition-all duration-300 relative overflow-hidden group ${isSubmitting || cart.length === 0
+                    ? 'bg-background-muted text-text-muted/60 cursor-not-allowed border border-border-light'
+                    : 'bg-primary text-white hover:scale-[1.01] active:scale-[0.98] shadow-[0_12px_30px_rgba(239,68,68,0.35)] border border-primary/50'}`}
+                >
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    {isSubmitting ? 'Placing Order...' : (selectedOrder ? 'Update Order' : 'Place Order')}
+                    {!isSubmitting && cart.length > 0 && <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />}
+                  </span>
+                  {!isSubmitting && cart.length > 0 && (
+                    <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:animate-[shimmer_2s_infinite]" />
+                  )}
+                </button>
+                {cart.length > 0 && (
+                  <p className="text-center text-[9px] text-text-muted/50 font-bold mt-2.5 uppercase tracking-wider">
+                    {cart.reduce((a, i) => a + i.quantity, 0)} items · ₹{cart.reduce((acc, i) => acc + i.totalPrice, 0) + (posOrderType === 'delivery' ? (parseFloat(deliveryFee) || 0) : 0)} total
+                  </p>
+                )}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ── Payment Method Modal ── */}
+      {paymentModal.open && paymentModal.order && (() => {
+        const order = paymentModal.order;
+        const total = order.totalAmount || 0;
+        const cash = parseFloat(cashInput) || 0;
+        const change = Math.max(0, cash - total);
+        const cashValid = payMethod === 'cash' ? cash >= total : true;
+        const canConfirm = !!payMethod && (payMethod !== 'cash' || cash >= total);
+
+        return (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+            <div
+              className="bg-background-card w-full max-w-md rounded-[2.5rem] border border-border/40 shadow-[0_32px_80px_rgba(0,0,0,0.25)] overflow-hidden animate-in zoom-in-95 duration-300"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5" />
+                <div className="relative p-6 flex items-start justify-between">
+                  <div className="space-y-1">
+                    <p className="text-[9px] font-black text-primary uppercase tracking-[0.25em]">Accept Payment</p>
+                    <h3 className="text-2xl font-black text-text-primary tracking-tight">{order.orderNumber}</h3>
+                    <p className="text-[10px] text-text-muted font-bold">
+                      {order.orderType === 'dine-in' ? `Table ${order.table?.tableNumber || '–'}` : order.orderType?.toUpperCase()}
+                      {' • '}
+                      {(order.address?.recipientName || order.customerDetails?.name || 'Walk-in')}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setPaymentModal({ open: false, order: null })}
+                    className="p-2 hover:bg-background-muted rounded-xl text-text-muted hover:text-text-primary transition-colors"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                {/* Total Amount Banner */}
+                <div className="mx-6 mb-6 p-4 bg-primary/10 border border-primary/20 rounded-2xl flex items-center justify-between">
+                  <div className="flex items-center space-x-2 text-primary">
+                    <IndianRupee size={16} strokeWidth={2.5} />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Total Payable</span>
+                  </div>
+                  <span className="text-3xl font-black text-text-primary tracking-tighter">₹{total}</span>
+                </div>
+              </div>
+
+              {/* Payment Method Cards */}
+              <div className="px-6 pb-2 space-y-3">
+                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] mb-3">Select Payment Method</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Cash Card */}
+                  <button
+                    onClick={() => setPayMethod('cash')}
+                    className={`relative flex flex-col items-center justify-center gap-2.5 p-5 rounded-2xl border-2 transition-all duration-200 group ${payMethod === 'cash'
+                      ? 'bg-primary/10 border-primary shadow-lg shadow-primary/15'
+                      : 'bg-background-muted/30 border-border-light hover:border-primary/40 hover:bg-primary/5'
+                      }`}
+                  >
+                    {payMethod === 'cash' && (
+                      <div className="absolute top-2.5 right-2.5 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
+                        <CheckCircle2 size={10} className="text-white" />
+                      </div>
+                    )}
+                    <div className={`p-3 rounded-xl transition-colors ${payMethod === 'cash' ? 'bg-primary/20 text-primary' : 'bg-background-card text-text-muted group-hover:text-primary'
+                      }`}>
+                      <Banknote size={24} strokeWidth={1.5} />
+                    </div>
+                    <div className="text-center">
+                      <p className={`text-xs font-black uppercase tracking-widest transition-colors ${payMethod === 'cash' ? 'text-primary' : 'text-text-primary'
+                        }`}>Cash</p>
+                      <p className="text-[9px] text-text-muted font-medium">Physical currency</p>
+                    </div>
+                  </button>
+
+                  {/* UPI / Card */}
+                  <button
+                    onClick={() => setPayMethod('upi/card')}
+                    className={`relative flex flex-col items-center justify-center gap-2.5 p-5 rounded-2xl border-2 transition-all duration-200 group ${payMethod === 'upi/card'
+                      ? 'bg-primary/10 border-primary shadow-lg shadow-primary/15'
+                      : 'bg-background-muted/30 border-border-light hover:border-primary/40 hover:bg-primary/5'
+                      }`}
+                  >
+                    {payMethod === 'upi/card' && (
+                      <div className="absolute top-2.5 right-2.5 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
+                        <CheckCircle2 size={10} className="text-white" />
+                      </div>
+                    )}
+                    <div className={`p-3 rounded-xl transition-colors ${payMethod === 'upi/card' ? 'bg-primary/20 text-primary' : 'bg-background-card text-text-muted group-hover:text-primary'
+                      }`}>
+                      <Smartphone size={24} strokeWidth={1.5} />
+                    </div>
+                    <div className="text-center">
+                      <p className={`text-xs font-black uppercase tracking-widest transition-colors ${payMethod === 'upi/card' ? 'text-primary' : 'text-text-primary'
+                        }`}>UPI / Card</p>
+                      <p className="text-[9px] text-text-muted font-medium">Digital payment</p>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Cash Detail Section */}
+                {payMethod === 'cash' && (
+                  <div className="mt-4 space-y-3 animate-in slide-in-from-top-2 fade-in duration-300">
+                    <div className="h-px bg-border-light" />
+                    <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Cash Details</p>
+
+                    {/* Cash Received Input */}
+                    <div className={`flex items-center space-x-3 p-4 rounded-2xl border-2 transition-all ${cashInput && !cashValid
+                      ? 'border-red-400 bg-red-500/10'
+                      : cashInput && cashValid
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border-light bg-background-muted/20 focus-within:border-primary'
+                      }`}>
+                      <div className="w-9 h-9 bg-primary/10 text-primary rounded-xl flex items-center justify-center shrink-0">
+                        <Banknote size={18} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-[8px] font-black text-text-muted uppercase tracking-widest mb-0.5">Cash Received</p>
+                        <div className="flex items-center space-x-1">
+                          <span className="text-base font-black text-text-muted">₹</span>
+                          <input
+                            autoFocus
+                            type="number"
+                            min={total}
+                            placeholder={total.toString()}
+                            value={cashInput}
+                            onChange={e => setCashInput(e.target.value)}
+                            className="flex-1 bg-transparent text-xl font-black text-text-primary outline-none placeholder:text-text-muted/30 w-full"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Change Display */}
+                    <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${cash > 0 && cashValid
+                      ? 'bg-primary/5 border-primary/20 opacity-100'
+                      : 'bg-background-muted/10 border-border-light opacity-40'
+                      }`}>
+                      <div className="space-y-0.5">
+                        <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Change to Return</p>
+                        <p className="text-[10px] text-text-muted">{cash > 0 ? `₹${cash} − ₹${total}` : '—'}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className={`text-3xl font-black tracking-tighter ${cash > 0 && cashValid ? 'text-primary' : 'text-text-muted'
+                          }`}>
+                          ₹{cash > 0 && cashValid ? change.toFixed(2) : '0.00'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {cashInput && !cashValid && (
+                      <div className="flex items-center space-x-2 px-3 py-2 bg-red-500/8 border border-red-400/20 rounded-xl animate-in fade-in duration-200">
+                        <AlertCircle size={12} className="text-red-500 shrink-0" />
+                        <p className="text-[9px] font-bold text-red-500">Cash received must be at least ₹{total}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* UPI Confirmed State */}
+                {payMethod === 'upi/card' && (
+                  <div className="mt-4 animate-in slide-in-from-top-2 fade-in duration-300">
+                    <div className="flex items-center space-x-3 p-4 bg-primary/10 border border-primary/20 rounded-2xl">
+                      <div className="w-9 h-9 bg-primary/15 text-primary rounded-xl flex items-center justify-center shrink-0">
+                        <Smartphone size={18} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-black text-text-primary">UPI / Card Payment</p>
+                        <p className="text-[10px] text-text-muted font-medium">Confirm once digital payment is received</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="p-6 pt-4 flex items-center space-x-3">
+                <button
+                  onClick={() => setPaymentModal({ open: false, order: null })}
+                  className="flex-1 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest border-2 border-border-light text-text-muted hover:bg-background-muted transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmPayment}
+                  disabled={!canConfirm || isPaymentSubmitting}
+                  className={`flex-[2] py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center space-x-2 transition-all ${canConfirm && !isPaymentSubmitting
+                    ? 'bg-primary hover:bg-primary-light text-white shadow-xl shadow-primary/25 hover:scale-[1.02] active:scale-95'
+                    : 'bg-background-muted text-text-muted cursor-not-allowed opacity-50'
+                    }`}
+                >
+                  {isPaymentSubmitting ? (
+                    <><Loader2 size={14} className="animate-spin" /><span>Processing...</span></>
+                  ) : (
+                    <><CheckCircle2 size={14} /><span>Confirm Payment</span></>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+      {selectedItemToView && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+          {(() => {
+            const item = selectedItemToView;
+            const menuDiscount = item.discountPercentage || 0;
+            const categoryDiscount = item.category?.discountPercentage || 0;
+            const discountPercent = Math.max(menuDiscount, categoryDiscount);
+
+            const basePrice = viewItemSelectedSize?.price || item.price || 0;
+            const currentPrice = item.isCombo ? basePrice : Math.round(discountPercent > 0 ? basePrice * (1 - discountPercent / 100) : basePrice);
+            const hasSavings = discountPercent > 0 && !item.isCombo && basePrice > currentPrice;
+
+            const availableStock = getEffectiveStock(item);
+            const variantMult = viewItemSelectedSize?.stockValue || 1;
+            const effectiveStock = Math.floor(availableStock / variantMult);
+
+            return (
+              <div className="bg-background-card w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row relative animate-scale-in">
+                <button onClick={() => setSelectedItemToView(null)} className="absolute top-4 right-4 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full z-10 transition-all">
+                  <X size={20} />
+                </button>
+
+                <div className="w-full md:w-2/5 h-48 md:h-auto bg-background-muted relative">
+                  <img src={item.image || '/placeholder-dish.png'} alt={item.name} className="w-full h-full object-cover" />
+                  {hasSavings && (
+                    <div className="absolute top-4 left-4 bg-green-500 text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-lg">
+                      {discountPercent}% OFF
+                    </div>
+                  )}
+                  {effectiveStock <= 0 && (
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                      <span className="bg-red-500 text-white text-xs font-black px-3 py-1.5 rounded-lg uppercase tracking-widest shadow-lg">Out of Stock</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="w-full md:w-3/5 p-6 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border ${item.foodType === 'veg' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}`}>
+                        {item.foodType === 'veg' ? 'Veg' : 'Non-Veg'}
+                      </span>
+                      {item.isCombo && (
+                        <span className="bg-primary/10 text-primary text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest border border-primary/20">Combo</span>
+                      )}
+                    </div>
+                    <h2 className="text-xl font-black text-text-primary uppercase tracking-wider leading-tight mb-2">{item.name}</h2>
+                    <p className="text-xs font-bold text-text-muted opacity-70 mb-4 line-clamp-2">{item.description || 'No description available.'}</p>
+
+                    {item.variants && item.variants.length > 0 && !item.isCombo && (
+                      <div className="mb-4">
+                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2">Select Size</p>
+                        <div className="flex flex-wrap gap-2">
+                          {item.variants.map((v, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => setViewItemSelectedSize(v)}
+                              className={`px-3 py-1.5 rounded-xl border text-[10px] font-black transition-all ${viewItemSelectedSize?.size === v.size ? 'bg-primary/10 border-primary text-primary shadow-sm' : 'bg-transparent border-border-light text-text-muted hover:border-primary/50'}`}
+                            >
+                              {v.size}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {item.isCombo && item.comboItems?.length > 0 && (
+                      <div className="mb-4">
+                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2">Combo Contains</p>
+                        <div className="flex flex-wrap gap-2">
+                          {item.comboItems.map((ci, idx) => (
+                            <span key={idx} className="bg-primary/5 text-primary border border-primary/20 px-2 py-1 rounded-lg text-[9px] font-bold">
+                              {ci.quantity || 1}x {ci.name || ci.menuItem?.name || 'Item'}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {(() => {
+                      const addons = viewItemSelectedSize?.includedItems || [];
+                      if (addons.length > 0) {
+                        return (
+                          <div className="mb-4">
+                            <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2">Included Add-ons</p>
+                            <div className="flex flex-wrap gap-2">
+                              {addons.map((a, idx) => {
+                                const name = a.name || a.menuItem?.name || menuItems.find(m => m._id === (a.menuItem?._id || a.menuItem))?.name || 'Add-on';
+                                return (
+                                  <span key={idx} className="bg-amber-500/10 text-amber-600 border border-amber-500/20 px-2 py-1 rounded-lg text-[9px] font-bold flex items-center">
+                                    <Plus size={10} className="mr-1" /> {a.quantity || 1}x {name}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                    {viewItemSelectedSize?.isBOGO && viewItemSelectedSize.bogoItem && (
+                      <div className="mb-4">
+                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2">Free Bonus (BOGO)</p>
+                        <div className="flex items-center gap-2 bg-status-available/10 border border-status-available/20 px-3 py-1.5 rounded-xl w-fit">
+                          <Zap size={12} className="text-status-available animate-pulse" />
+                          <span className="text-[10px] font-black text-status-available uppercase tracking-wider">
+                            1x {menuItems.find(m => m._id === (viewItemSelectedSize.bogoItem?._id || viewItemSelectedSize.bogoItem))?.name || 'Free Item'} {viewItemSelectedSize.bogoVariant ? `(${viewItemSelectedSize.bogoVariant})` : ''}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-4 border-t border-border-light mt-4">
+                    <div className="flex items-end justify-between mb-4">
+                      <div>
+                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">Total Price</p>
+                        <div className="flex flex-col">
+                          {hasSavings && (
+                            <span className="text-xs font-black text-text-muted line-through opacity-50">₹{basePrice * viewItemQuantity}</span>
+                          )}
+                          <span className="text-2xl font-black text-primary leading-none">₹{currentPrice * viewItemQuantity}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center bg-background-muted rounded-xl p-1 border border-border-light">
+                        <button onClick={() => setViewItemQuantity(Math.max(1, (parseInt(viewItemQuantity) || 1) - 1))} className="w-8 h-8 flex items-center justify-center text-text-muted hover:text-primary transition-colors"><Minus size={14} /></button>
+                        <input
+                          type="number"
+                          min="1"
+                          value={viewItemQuantity}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === '') {
+                              setViewItemQuantity('');
+                            } else {
+                              const newQ = parseInt(val);
+                              if (newQ > 0) setViewItemQuantity(newQ);
+                            }
+                          }}
+                          onBlur={() => {
+                            if (!viewItemQuantity || parseInt(viewItemQuantity) < 1) {
+                              setViewItemQuantity(1);
+                            }
+                          }}
+                          className="w-10 text-center font-black text-sm bg-transparent border-none focus:outline-none p-0 no-spinners text-text"
+                        />
+                        <button onClick={() => setViewItemQuantity((parseInt(viewItemQuantity) || 0) + 1)} className="w-8 h-8 flex items-center justify-center text-text-muted hover:text-primary transition-colors"><Plus size={14} /></button>
+                      </div>
+                    </div>
+
+                    <button
+                      disabled={effectiveStock <= 0}
+                      onClick={() => {
+                        if (effectiveStock <= 0) return;
+                        addToCart(item, viewItemSelectedSize || { size: 'Standard', price: item.price }, viewItemQuantity);
+                        setSelectedItemToView(null);
+                      }}
+                      className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg flex items-center justify-center gap-2 ${effectiveStock <= 0 ? 'bg-background-muted text-text-muted cursor-not-allowed shadow-none' : 'bg-primary text-white hover:bg-primary-light shadow-primary/20 hover:-translate-y-0.5'}`}
+                    >
+                      <ShoppingCart size={16} />
+                      {effectiveStock <= 0 ? 'Out of Stock' : `Add ${viewItemQuantity} to Cart`}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default OrderSection;

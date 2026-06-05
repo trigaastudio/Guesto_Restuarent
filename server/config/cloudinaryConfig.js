@@ -20,11 +20,34 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: 'menu-items',
-    allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
+    folder: 'guesto',
+    format: 'png',
+    public_id: (req, file) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+      return `img_${uniqueSuffix}`;
+    },
+    transformation: [
+      { quality: 'auto' }
+    ],
   },
 });
 
-const upload = multer({ storage: storage });
+// MED-9 FIX: Added fileFilter to validate MIME types before uploading to Cloudinary
+// Previously any file type could be uploaded (SVG with XSS, HTML files, executables, etc.)
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 3 * 1024 * 1024 }, // 3 MB max
+  fileFilter: (req, file, cb) => {
+    if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+      return cb(
+        new Error(`Invalid file type "${file.mimetype}". Only JPEG, PNG, WebP, and GIF images are allowed.`),
+        false
+      );
+    }
+    cb(null, true);
+  }
+});
 
 export { cloudinary, upload };

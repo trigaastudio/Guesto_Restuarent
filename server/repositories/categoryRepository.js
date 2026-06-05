@@ -1,12 +1,39 @@
-import Category from "../models/categorySchema.js";
+import Category from '../models/categorySchema.js';
 
 class CategoryRepository {
   async create(data) {
     return await Category.create(data);
   }
 
+  async getAll() {
+    return await Category.find({ isActive: true });
+  }
+
   async findAll() {
-    return await Category.find().sort({ createdAt: -1 });
+    return await Category.aggregate([
+      {
+        $lookup: {
+          from: "menus",
+          localField: "_id",
+          foreignField: "category",
+          as: "menus"
+        }
+      },
+      {
+        $project: {
+          name: 1,
+          image: 1,
+          isActive: 1,
+          discountPercentage: 1,
+          isSharedStock: 1,
+          createdAt: 1,
+          itemCount: { $size: "$menus" },
+          totalStock: "$totalStock",
+          stockactive: 1
+        }
+      },
+      { $sort: { createdAt: -1 } }
+    ]);
   }
 
   async findById(id) {
@@ -14,7 +41,7 @@ class CategoryRepository {
   }
 
   async update(id, data) {
-    return await Category.findByIdAndUpdate(id, data, { new: true });
+    return await Category.findByIdAndUpdate(id, data, { returnDocument: 'after' });
   }
 
   async delete(id) {

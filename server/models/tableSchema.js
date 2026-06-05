@@ -5,10 +5,9 @@ import mongoose from "mongoose";
 const tableSchema = new mongoose.Schema({
 
   tableNumber: {
-    type: Number,
+    type: String,
     required: true,
     unique: true,
-    min: 1
   },
 
   capacity: {
@@ -16,16 +15,26 @@ const tableSchema = new mongoose.Schema({
     default: 4
   },
 
-  status: {
-    type: String,
-    enum: ["empty", "partial", "full"],
-    default: "empty"
+  occupiedSeats: {
+    type: Number,
+    default: 0
   },
 
-  
+  status: {
+    type: String,
+    enum: ["available", "occupied", "billing"],
+    default: "available"
+  },
+
+
   isActive: {
     type: Boolean,
-    default: true  
+    default: true
+  },
+
+  mergedGroup: {
+    type: [String],
+    default: []
   }
 
 }, { timestamps: true });
