@@ -11,7 +11,7 @@ import CardSkeleton from '../../../components/Skeleton/CardSkeleton';
 import DineInPOSModal from '../../../components/POS/DineInPOSModal';
 import { useCart } from '../../../context/CartContext';
 
-const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
+const SOCKET_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : `${window.location.protocol}//${window.location.hostname}:5000`;
 
 const DineInSection = () => {
   const [tables, setTables] = useState([]);

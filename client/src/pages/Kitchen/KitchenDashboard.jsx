@@ -14,8 +14,8 @@ import { showToast, showAlert } from '../../utils/sweetAlert';
 import ListSkeleton from '../../components/Skeleton/ListSkeleton';
 import { logoutStaff } from '../../utils/auth';
 
-const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:5000/api`;
-const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
+const API_BASE_URL = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:5000/api`;
+const SOCKET_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : `${window.location.protocol}//${window.location.hostname}:5000`;
 
 const NOTIFICATION_SOUND = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
 

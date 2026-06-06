@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Edit2, Trash2, CheckCircle, XCircle, Search, Loader2, ArrowUpDown, Filter, Image as ImageIcon, RotateCcw, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { io } from 'socket.io-client';
 import api from '../../../api/axiosInstance';
-const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
+const SOCKET_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : `${window.location.protocol}//${window.location.hostname}:5000`;
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 import Swal from 'sweetalert2';
 import ImageCropper from '../../../components/ImageCropper/ImageCropper';
