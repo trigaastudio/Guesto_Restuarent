@@ -14,7 +14,7 @@ import CardSkeleton from '../../components/Skeleton/CardSkeleton';
 import DineInPOSModal from '../../components/POS/DineInPOSModal';
 import { logoutStaff } from '../../utils/auth';
 
-const SOCKET_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : `${window.location.protocol}//${window.location.hostname}:5000`;
+const SOCKET_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'https://guest-o-backend.onrender.com';
 
 const WaiterDashboard = () => {
   const [tables, setTables] = useState([]);

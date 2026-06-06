@@ -6,7 +6,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useCart } from '../../context/CartContext';
 import Loader from '../../components/Loader/Loader';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://guest-o-backend.onrender.com/api';
 
 const StaffLogin = () => {
   const [employeeId, setEmployeeId] = useState('');
