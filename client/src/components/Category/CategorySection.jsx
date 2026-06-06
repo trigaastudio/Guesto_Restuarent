@@ -77,6 +77,7 @@ const CategorySection = React.memo(({ categories, selectedCategory, handleCatego
                   <img 
                     src={category.image || '/placeholder-category.png'} 
                     alt={category.name}
+                    loading="lazy"
                     className={`w-10 h-10 md:w-14 md:h-14 object-contain transition-transform duration-500 ${selectedCategory === category._id ? 'scale-110' : 'group-hover:scale-110'}`}
                   />
                 </div>

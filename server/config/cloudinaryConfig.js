@@ -21,13 +21,13 @@ const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'guesto',
-    format: 'png',
+    format: 'webp',
     public_id: (req, file) => {
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
       return `img_${uniqueSuffix}`;
     },
     transformation: [
-      { quality: 'auto' }
+      { quality: 'auto', fetch_format: 'webp' }
     ],
   },
 });

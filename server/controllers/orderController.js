@@ -666,10 +666,16 @@ class OrderController {
 
   async getMyOrders(req, res) {
     try {
+      const limit = parseInt(req.query.limit) || 20;
+      const skip = (parseInt(req.query.page || 1) - 1) * limit;
+
       const orders = await Order.find({ customer: req.user._id })
         .populate('items.menuItem')
         .populate('assignedDeliveryBoy', 'name phoneNumber')
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
 
       res.status(200).json({
         success: true,
@@ -893,6 +899,9 @@ class OrderController {
         ]
       };
 
+      const limit = parseInt(req.query.limit) || (history === 'true' ? 500 : 200);
+      const skip = (parseInt(req.query.page || 1) - 1) * limit;
+
       const finalQuery = { $and: [query, baseFilter] };
 
       const orders = await Order.find(finalQuery)
@@ -900,7 +909,8 @@ class OrderController {
         .populate('table', 'tableNumber mergedGroup')
         .populate('assignedDeliveryBoy', 'name phoneNumber')
         .sort({ createdAt: -1 })
-        .limit(history === 'true' ? 500 : 200) 
+        .skip(skip)
+        .limit(limit) 
         .lean(); 
 
       res.json({ success: true, data: orders });
