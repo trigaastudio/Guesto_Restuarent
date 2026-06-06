@@ -97,7 +97,7 @@ const OrderSection = () => {
 
   const fetchSettings = async () => {
     try {
-      const response = await api.get(`${API_BASE_URL}/settings`);
+      const response = await api.get(`/api/settings`);
       setSettings(response.data.data);
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -392,7 +392,7 @@ const OrderSection = () => {
         if (start) params.startDate = start;
         if (end) params.endDate = end;
       }
-      const response = await api.get(`${API_BASE_URL}/orders`, { params });
+      const response = await api.get(`/api/orders`, { params });
       setOrders(response.data.data);
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -423,7 +423,7 @@ const OrderSection = () => {
     const result = await showDeleteConfirmation(title, text);
     if (result.isConfirmed) {
       try {
-        const response = await api.delete(`${API_BASE_URL}/orders/clear-history`, {
+        const response = await api.delete(`/api/orders/clear-history`, {
           params: {
             orderType: historyOrderTypeFilter,
             startDate,
@@ -443,7 +443,7 @@ const OrderSection = () => {
 
   const fetchMenu = async () => {
     try {
-      const response = await api.get(`${API_BASE_URL}/menus`);
+      const response = await api.get(`/api/menus`);
       setMenuItems(response.data.filter(m => !m.isBlocked));
     } catch (error) {
       console.error('Error fetching menu:', error);
@@ -509,7 +509,7 @@ const OrderSection = () => {
 
       if (selectedOrder) {
 
-        const response = await api.patch(`${API_BASE_URL}/orders/${selectedOrder._id}/items`, {
+        const response = await api.patch(`/api/orders/${selectedOrder._id}/items`, {
           items: cart,
           cashReceived: parseFloat(cashReceived) || selectedOrder.cashReceived || 0,
           deliveryAddress: deliveryAddress,
@@ -568,7 +568,7 @@ const OrderSection = () => {
         orderStatus: 'processing',
       };
 
-      const response = await api.post(`${API_BASE_URL}/orders/counter`, orderData);
+      const response = await api.post(`/api/orders/counter`, orderData);
       if (response.data.success) {
         showToast('success', 'Order created successfully');
         setIsModalOpen(false);
@@ -601,7 +601,7 @@ const OrderSection = () => {
         }
       }
 
-      const response = await api.patch(`${API_BASE_URL}/orders/${orderId}/status`, updateData);
+      const response = await api.patch(`/api/orders/${orderId}/status`, updateData);
       if (response.data.success) {
         showToast('success', `Order marked as ${newStatus}${updateData.paymentStatus ? ' and Paid' : ''}`);
         setOrders(orders.map(o => o._id === orderId ? response.data.data : o));
@@ -855,7 +855,7 @@ const OrderSection = () => {
 
   const handleUpdateItemStatus = async (orderId, itemId, newStatus) => {
     try {
-      const response = await api.patch(`${API_BASE_URL}/orders/${orderId}/items/${itemId}/status`, { kitchenStatus: newStatus });
+      const response = await api.patch(`/api/orders/${orderId}/items/${itemId}/status`, { kitchenStatus: newStatus });
       if (response.data.success) {
         showToast('success', 'Status updated');
 
@@ -881,7 +881,7 @@ const OrderSection = () => {
         }
       }
 
-      const response = await api.patch(`${API_BASE_URL}/orders/${orderId}/status`, updateData);
+      const response = await api.patch(`/api/orders/${orderId}/status`, updateData);
       if (response.data.success) {
         showToast('success', `Payment marked as ${newStatus}${newStatus === 'paid' ? ' and order Delivered' : ''}`);
         setOrders(orders.map(o => o._id === orderId ? response.data.data : o));
@@ -925,7 +925,7 @@ const OrderSection = () => {
         updateData.cashReceived = cashReceived;
         updateData.balance = change;
       }
-      const response = await api.patch(`${API_BASE_URL}/orders/${order._id}/status`, updateData);
+      const response = await api.patch(`/api/orders/${order._id}/status`, updateData);
       if (response.data.success) {
         showToast('success', `Payment accepted via ${payMethod === 'upi/card' ? 'UPI / Card' : 'Cash'}`);
         setOrders(orders.map(o => o._id === order._id ? response.data.data : o));
@@ -1047,7 +1047,7 @@ const OrderSection = () => {
       const cash = parseFloat(editCashReceived) || 0;
       const balance = cash - subtotal;
 
-      const response = await api.patch(`${API_BASE_URL}/orders/${selectedOrder._id}/status`, {
+      const response = await api.patch(`/api/orders/${selectedOrder._id}/status`, {
         customerDetails: editCustomer,
         cashReceived: cash,
         balance: balance
@@ -1277,7 +1277,7 @@ const OrderSection = () => {
       try {
         setIsResolvingLink(true);
         showToast('info', 'Processing link...');
-        const res = await api.post(`${API_BASE_URL}/utils/expand-url`, { url });
+        const res = await api.post(`/api/utils/expand-url`, { url });
         targetUrl = res.data.expandedUrl;
       } catch (err) {
         console.error('Failed to expand URL:', err);
