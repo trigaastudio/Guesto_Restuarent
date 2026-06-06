@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit2, Trash2, Search, User, Mail, Phone, Shield, Power, Loader2, ArrowUpDown, XCircle, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, User, Mail, Phone, Shield, Power, Loader2, ArrowUpDown, XCircle, ChevronLeft, ChevronRight, RotateCcw, Eye, EyeOff } from 'lucide-react';
 import api from '../../../api/axiosInstance';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 import TableSkeleton from '../../../components/Skeleton/TableSkeleton';
@@ -71,6 +71,7 @@ const StaffManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [errors, setErrors] = useState({});
+  const [showPassword, setShowPassword] = useState(false);
 
   const [currentStaff, setCurrentStaff] = useState({
     name: '',
@@ -125,6 +126,7 @@ const StaffManagement = () => {
       });
       setIsEditing(false);
     }
+    setShowPassword(false); // Reset password visibility when modal opens
     setIsModalOpen(true);
   }, []);
 
@@ -414,20 +416,29 @@ const StaffManagement = () => {
                 {currentStaff.role !== 'delivery' && (
                   <div className="space-y-1.5">
                     <label className={`text-[10px] font-bold uppercase tracking-widest ${errors.password ? 'text-primary' : 'text-text-muted'}`}>Password</label>
-                    <input
-                      type="password"
-                      value={currentStaff.password}
-                      onChange={(e) => {
-                        setCurrentStaff({ ...currentStaff, password: e.target.value });
-                        if (errors.password) setErrors({ ...errors, password: false });
-                      }}
-                      className={`w-full px-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all text-sm font-bold ${
-                        errors.password 
-                          ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
-                          : 'border-border-main focus:border-primary'
-                      }`}
-                      placeholder={isEditing ? "Leave blank to keep same" : "Min 6 chars"}
-                    />
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={currentStaff.password}
+                        onChange={(e) => {
+                          setCurrentStaff({ ...currentStaff, password: e.target.value });
+                          if (errors.password) setErrors({ ...errors, password: false });
+                        }}
+                        className={`w-full px-4 py-2 pr-10 bg-background-muted/50 rounded-xl border outline-none transition-all text-sm font-bold ${
+                          errors.password 
+                            ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                            : 'border-border-main focus:border-primary'
+                        }`}
+                        placeholder={isEditing ? "Leave blank to keep same" : "Min 6 chars"}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors"
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
                     {errors.password && <p className="text-[10px] font-bold text-primary">Password is required</p>}
                   </div>
                 )}
