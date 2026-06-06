@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Lock, Loader2, ArrowRight, Sun, Moon, ChefHat, Eye, EyeOff } from 'lucide-react';
-import axios from 'axios';
+import api from '../../api/axiosInstance';
 import { useTheme } from '../../context/ThemeContext';
 import { useCart } from '../../context/CartContext';
 import Loader from '../../components/Loader/Loader';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://guest-o-backend.onrender.com/api';
 
 const StaffLogin = () => {
   const [employeeId, setEmployeeId] = useState('');
@@ -52,7 +51,7 @@ const StaffLogin = () => {
 
     setIsLoading(true);
     try {
-      const response = await axios.post(`${API_BASE_URL}/staff/login`, { employeeId, password });
+      const response = await api.post(`/api/staff/login`, { employeeId, password });
 
       if (response.data.success) {
         const staffData = response.data.data;
