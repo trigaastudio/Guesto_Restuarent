@@ -24,7 +24,7 @@ const SideNavbar = ({
             <div className="w-full h-full rounded-full overflow-hidden border-4 border-background shadow-inner bg-background-muted flex items-center justify-center">
               {user.avatar ? (
                 <img
-                  src={`http://localhost:5000${user.avatar}`}
+                  src={user.avatar?.startsWith('http') ? user.avatar : `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${user.avatar}`}
                   alt={user.name}
                   className="w-full h-full object-cover group-hover/avatar:scale-110 transition-transform duration-1000"
                   onError={(e) => {
