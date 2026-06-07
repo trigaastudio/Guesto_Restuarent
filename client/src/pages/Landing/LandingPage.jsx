@@ -229,19 +229,7 @@ const LandingPage = () => {
   }, []);
 
   const handleLogout = () => {
-    
-    
-    
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_user');
-    localStorage.removeItem('admin_notifications');
-    localStorage.removeItem('dineInTableId');
-    localStorage.removeItem('dineInTableNumber');
-
-    
-    window.location.href = '/';
+    logoutToLanding(navigate);
   };
 
   if (loading && menus.length === 0 && categories.length === 0) {

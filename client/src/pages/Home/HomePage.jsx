@@ -334,7 +334,7 @@ const HomePage = () => {
   }
 
   return (
-    <div className={`min-h-screen bg-background font-sans ${theme}`}>
+    <div className={`min-h-screen bg-background font-sans overflow-x-hidden w-full ${theme}`}>
       <div className="relative w-full overflow-hidden flex flex-col bg-[#B91C1C]">
         <div className="absolute inset-0 z-0 bg-[#B91C1C]"></div>
 
@@ -359,7 +359,7 @@ const HomePage = () => {
         />
       </div>
 
-      <main className="relative z-10 max-w-7xl mx-auto px-6 -mt-6 sm:-mt-10 md:-mt-36 lg:-mt-40 pb-0">
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 -mt-6 sm:-mt-10 md:-mt-36 lg:-mt-40 pb-0 w-full">
         <div className="mb-12">
           <OffersCarousel
             onOfferClick={(offer) => {
@@ -378,8 +378,8 @@ const HomePage = () => {
 
         {}
         {trendingItems.length > 0 && (
-          <div className="mb-0 relative group/slider mt-12">
-            <div className="flex items-center justify-between mb-8 px-6">
+          <div className="mb-0 relative group/slider mt-12 w-full">
+            <div className="flex items-center justify-between mb-8 px-4 sm:px-6">
               <div className="space-y-1">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-primary/10 rounded-2xl flex items-center justify-center">
@@ -410,7 +410,7 @@ const HomePage = () => {
 
             <div
               ref={scrollContainerRef}
-              className="flex overflow-x-auto no-scrollbar gap-6 px-6 pb-6 snap-x"
+              className="flex overflow-x-auto no-scrollbar gap-4 sm:gap-6 px-4 sm:px-6 pb-6 snap-x w-full"
             >
               {trendingItems.filter(item => !item.isBlocked).map((item, idx) => {
                 const isItemOutOfStock = getEffectiveStock(item) < 1 || isClosed;

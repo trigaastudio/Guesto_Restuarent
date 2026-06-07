@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { logoutToLanding } from '../../utils/auth';
-import { Home, Utensils, ShoppingCart, User, MapPin, LogOut, Package, X } from 'lucide-react';
+import { Home, Utensils, ShoppingCart, User, MapPin, LogOut, Package, X, LogIn } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 
 const BottomNavbar = () => {
@@ -38,11 +38,18 @@ const BottomNavbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [location.pathname, activeSection]);
 
+  const excludedPaths = ['/login', '/register', '/admin/login', '/admin/dashboard', '/digital-menu', '/waiter/dashboard', '/kitchen/dashboard'];
+  if (excludedPaths.includes(location.pathname) || location.pathname.startsWith('/admin') || location.pathname.startsWith('/waiter') || location.pathname.startsWith('/kitchen')) {
+    return null;
+  }
+
+  const user = localStorage.getItem('user');
+
   const navItems = [
     { name: 'Home', icon: Home, path: '/home', isHome: true },
     { name: 'Menu', icon: Utensils, path: '/home', isMenu: true },
     { name: 'Cart', icon: ShoppingCart, path: '/cart', showBadge: true },
-    { name: 'Profile', icon: User, path: '/profile', isProfile: true },
+    { name: user ? 'Profile' : 'Sign In', icon: user ? User : LogIn, path: user ? '/profile' : '/login', isProfile: true },
   ];
 
   const isActive = (path, item) => {
@@ -57,11 +64,10 @@ const BottomNavbar = () => {
     return location.pathname === path;
   };
 
-  
-  const excludedPaths = ['/login', '/register', '/admin/login', '/admin/dashboard', '/digital-menu', '/waiter/dashboard', '/kitchen/dashboard'];
-  if (excludedPaths.includes(location.pathname) || location.pathname.startsWith('/admin') || location.pathname.startsWith('/waiter') || location.pathname.startsWith('/kitchen')) {
-    return null;
-  }
+  const handleLogout = () => {
+    logoutToLanding(navigate);
+    setShowProfileOptions(false);
+  };
 
   const handleItemClick = (item) => {
     setShowProfileOptions(false);
@@ -85,15 +91,14 @@ const BottomNavbar = () => {
         navigate('/home');
       }
     } else if (item.isProfile) {
-      setShowProfileOptions(!showProfileOptions);
+      if (user) {
+        setShowProfileOptions(!showProfileOptions);
+      } else {
+        navigate('/login');
+      }
     } else {
       navigate(item.path);
     }
-  };
-
-  const handleLogout = () => {
-    logoutToLanding(navigate);
-    setShowProfileOptions(false);
   };
 
   return (

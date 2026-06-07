@@ -71,11 +71,11 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
   const isLowStock = !isOutOfStock && !isClosed && effectiveStock > 0 && effectiveStock < (5 * mult);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose}></div>
-      <div className="bg-background-card w-full max-w-[500px] rounded-[2rem] shadow-2xl relative z-10 overflow-hidden animate-in fade-in zoom-in duration-300 border border-border/10">
+      <div className="bg-background-card w-full max-w-[500px] max-h-[90dvh] flex flex-col rounded-[2rem] shadow-2xl relative z-10 overflow-hidden animate-in fade-in zoom-in duration-300 border border-border/10">
         {}
-        <div className="relative h-40 md:h-44 bg-background-muted/50 flex items-center justify-center p-3">
+        <div className="relative h-40 md:h-44 shrink-0 bg-background-muted/50 flex items-center justify-center p-3">
           <img
             src={menu.image || '/placeholder-food.jpg'}
             alt={menu.name}
@@ -94,7 +94,7 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
           </button>
         </div>
 
-        <div className="p-4 md:p-5 space-y-3 max-h-[50vh] overflow-y-auto no-scrollbar">
+        <div className="p-4 md:p-5 space-y-3 overflow-y-auto no-scrollbar flex-1">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${menu.foodType === 'veg' ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></span>
@@ -153,7 +153,7 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
                 <div className="w-1 h-3 bg-primary rounded-full"></div>
                 <h4 className="text-[9px] font-black tracking-wider text-text-primary uppercase">Choose portion</h4>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {variants.map((v) => {
                   const variantMaxQty = Math.max(0, Math.floor(effectiveStock / (v.stockValue || 1)));
                   const isVariantOutOfStock = variantMaxQty < 1;
@@ -284,7 +284,7 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
 
         </div>
 
-        <div className="p-4 md:p-5 pt-0 flex items-center justify-between border-t border-border/10 bg-background-card/50 backdrop-blur-sm relative z-20">
+        <div className="p-4 md:p-5 pt-0 flex items-center justify-between border-t border-border/10 bg-background-card/50 backdrop-blur-sm relative z-20 shrink-0">
           <div className="flex flex-col">
             <span className="text-[8px] font-black tracking-widest text-text-muted opacity-40 mb-1 uppercase">Price</span>
             <div className="flex items-center gap-2">

@@ -186,7 +186,7 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
                   <div className="w-7 h-7 md:w-8 h-8 rounded-full bg-[#DA9133] flex items-center justify-center text-white font-black text-xs md:text-sm shadow-lg overflow-hidden border border-white/20">
                     {localUser.avatar ? (
                       <img 
-                        src={`http://localhost:5000${localUser.avatar}`} 
+                        src={localUser.avatar.startsWith('http') ? localUser.avatar : `http://localhost:5000${localUser.avatar}`} 
                         alt={localUser.name} 
                         className="w-full h-full object-cover"
                         onError={(e) => {

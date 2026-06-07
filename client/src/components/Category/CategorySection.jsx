@@ -14,7 +14,7 @@ const CategorySection = React.memo(({ categories, selectedCategory, handleCatego
 
   return (
     <section className="bg-background pt-0 md:pt-2 pb-4 w-full">
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full">
         <div className="flex items-center justify-between mb-6">
           <div className="space-y-1">
             <h2 className="text-xl md:text-4xl font-black text-text-primary tracking-tighter flex items-center gap-3">
