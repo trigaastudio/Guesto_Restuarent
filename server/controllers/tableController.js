@@ -164,7 +164,7 @@ export const mergeTables = async (req, res) => {
 
     res.status(200).json({ message: `Successfully merged ${activeOrders.length} orders into the new table.` });
     emitTablesUpdated();
-    getIO().emit('ordersUpdated');
+    getIO().to('staff_room').emit('ordersUpdated');
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

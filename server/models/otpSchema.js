@@ -1,11 +1,6 @@
 import mongoose from 'mongoose';
-import mailSender from '../Utilities/mailSender.js';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+
 
 const otpSchema = new mongoose.Schema({
   email: {
@@ -15,6 +10,11 @@ const otpSchema = new mongoose.Schema({
   otp: {
     type: String,
     required: true,
+  },
+  attempts: {
+    type: Number,
+    default: 0,
+    max: 3
   },
   logoUrl: {
     type: String,
@@ -27,6 +27,13 @@ const otpSchema = new mongoose.Schema({
 });
 
 import Settings from './settingsSchema.js';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import mailSender from '../Utilities/mailSender.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 
 async function sendVerificationEmail(email, otp) {
@@ -34,13 +41,11 @@ async function sendVerificationEmail(email, otp) {
     const settings = await Settings.getSettings();
     const restaurantName = settings.restaurantDetails.name || "GuestO";
     
-    
     let primaryLogoPath = '/logo-golden.png';
     
     const attachments = [];
     let logoSrc = '';
 
-    // Function to handle logo resolution
     const resolveLogo = (logoPathToUse, cidName) => {
       const logoFileName = 'logo-golden.png';
       const logoPath = path.join(__dirname, '..', '..', 'client', 'public', logoFileName);
@@ -108,7 +113,6 @@ async function sendVerificationEmail(email, otp) {
 
 
 otpSchema.pre("save", async function () {
-  
   if (this.isNew) {
     await sendVerificationEmail(this.email, this.otp);
   }

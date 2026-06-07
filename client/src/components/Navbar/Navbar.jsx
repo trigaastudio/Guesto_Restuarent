@@ -3,7 +3,7 @@ import { useCart } from '../../context/CartContext';
 import { ShoppingCart, User as UserIcon, LayoutGrid, UtensilsCrossed, Menu, X, Home, Info, Phone, Utensils, LogOut, Sun, Moon, LayoutDashboard } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
-const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown, handleLogout, navigate, dropdownRef, hideCart }) => {
+const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown, handleLogout, navigate, dropdownRef, hideCart, isLightTop = false }) => {
   const { cartItems, settings, checkStoreStatus } = useCart();
   const storeStatus = checkStoreStatus();
   const { theme, toggleTheme } = useTheme();
@@ -107,7 +107,7 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
             <img
               src={isDarkMode 
                 ? (settings?.branding?.logoGold || "/logo-golden.png") 
-                : (isScrolled 
+                : (isScrolled || isLightTop
                     ? (settings?.branding?.logoDark || "/logo-dark.png") 
                     : (settings?.branding?.logoGold || "/logo-golden.png")
                   )
@@ -130,12 +130,12 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
                 key={link.name}
                 onClick={(e) => handleNavClick(e, link.path, link.name)}
                 className={`relative px-6 py-2 text-[11px] font-black tracking-[0.1em] uppercase transition-all duration-300 group ${
-                  isScrolled ? 'text-text-primary' : (isDarkMode ? 'text-white' : 'text-white')
+                  isScrolled ? 'text-text-primary' : (isLightTop && !isDarkMode ? 'text-text-primary' : 'text-white')
                 }`}
               >
                 {link.name}
                 <span className={`absolute bottom-1 left-1/2 -translate-x-1/2 w-0 h-1 rounded-full transition-all duration-300 group-hover:w-4 ${
-                  isScrolled ? 'bg-[#B91C1C]' : 'bg-white'
+                  isScrolled ? 'bg-[#B91C1C]' : (isLightTop && !isDarkMode ? 'bg-primary' : 'bg-white')
                 }`}></span>
               </button>
             ))}
@@ -146,7 +146,7 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
             <button
               onClick={toggleTheme}
               className={`p-2.5 rounded-full border transition-all duration-500 active:scale-90 group ${
-                isScrolled 
+                isScrolled || (isLightTop && !isDarkMode)
                 ? 'bg-background-muted/50 border-border text-text-primary hover:border-primary/30' 
                 : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
               }`}
@@ -156,7 +156,7 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
             {!hideCart && (
               <div
                 className={`relative p-2.5 rounded-full border transition-all duration-500 cursor-pointer group active:scale-90 hidden lg:flex ${
-                  isScrolled 
+                  isScrolled || (isLightTop && !isDarkMode)
                 ? 'bg-[#B91C1C]/5 border-[#B91C1C]/10 text-[#B91C1C]' 
                 : 'bg-white/10 border-white/20 text-white'
               }`}
@@ -178,7 +178,7 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
                 <div
                   onClick={() => setShowUserDropdown(!showUserDropdown)}
                   className={`flex items-center gap-2 p-1 md:pr-4 rounded-full border transition-all duration-500 cursor-pointer ${
-                    isScrolled 
+                    isScrolled || (isLightTop && !isDarkMode)
                     ? 'bg-background-muted border-border hover:border-primary/30' 
                     : 'bg-white/10 border-white/20 hover:bg-white/20'
                   }`}
@@ -186,7 +186,7 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
                   <div className="w-7 h-7 md:w-8 h-8 rounded-full bg-[#DA9133] flex items-center justify-center text-white font-black text-xs md:text-sm shadow-lg overflow-hidden border border-white/20">
                     {localUser.avatar ? (
                       <img 
-                        src={localUser.avatar.startsWith('http') ? localUser.avatar : `http://localhost:5000${localUser.avatar}`} 
+                        src={localUser.avatar?.startsWith('http') ? localUser.avatar : `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${localUser.avatar}`}
                         alt={localUser.name} 
                         className="w-full h-full object-cover"
                         onError={(e) => {
@@ -197,7 +197,7 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
                     <span className={localUser.avatar ? 'hidden' : ''}>{localUser.name[0].toUpperCase()}</span>
                   </div>
                   <span className={`text-[10px] font-black tracking-widest hidden md:block ${
-                    isScrolled ? 'text-text-primary' : 'text-white'
+                    isScrolled || (isLightTop && !isDarkMode) ? 'text-text-primary' : 'text-white'
                   }`}>
                     {localUser.name.split(' ')[0]}
                   </span>
@@ -274,7 +274,7 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
               <button
                 onClick={() => navigate('/admin/dashboard')}
                 className={`flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 rounded-full font-black text-[9px] md:text-[10px] uppercase tracking-[0.2em] transition-all duration-300 active:scale-95 border ${
-                  isScrolled
+                  isScrolled || (isLightTop && !isDarkMode)
                   ? 'bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white'
                   : 'bg-white/10 text-white border-white/20 hover:bg-white/20'
                 }`}
@@ -286,7 +286,7 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
               <button
                 onClick={() => navigate('/login')}
                 className={`px-4 md:px-8 py-2 md:py-3 rounded-full font-black text-[9px] md:text-[10px] uppercase tracking-[0.2em] transition-all duration-300 active:scale-95 shadow-xl ${
-                  isScrolled 
+                  isScrolled || (isLightTop && !isDarkMode)
                   ? 'bg-[#B91C1C] text-white shadow-[#B91C1C]/20 hover:bg-[#991b1b]' 
                   : 'bg-white text-[#B91C1C] shadow-white/10 hover:bg-gray-50'
                 }`}
@@ -299,7 +299,7 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
             <button
               onClick={() => setIsMobileMenuOpen(true)}
               className={`lg:hidden p-2 rounded-xl transition-colors ${
-                isScrolled ? 'text-text-primary bg-background-muted' : 'text-white bg-white/10'
+                isScrolled || (isLightTop && !isDarkMode) ? 'text-text-primary bg-background-muted' : 'text-white bg-white/10'
               }`}
             >
               <Menu size={24} />

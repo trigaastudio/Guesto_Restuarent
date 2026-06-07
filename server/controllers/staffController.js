@@ -7,6 +7,10 @@ class StaffController {
       const { employeeId, password } = req.body;
       const staff = await staffService.login(employeeId, password);
       
+      
+      
+      const token = staffService.generateToken(staff._id);
+
       res.status(200).json({
         success: true,
         message: 'Login successful',
@@ -15,7 +19,7 @@ class StaffController {
           name: staff.name,
           employeeId: staff.employeeId,
           role: staff.role,
-          token: staffService.generateToken(staff._id)
+          token: token
         }
       });
     } catch (error) {

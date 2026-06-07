@@ -1,41 +1,81 @@
 import express from 'express';
+import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.post('/expand-url', async (req, res) => {
+
+
+
+
+const ALLOWED_HOSTNAMES = new Set([
+  'maps.app.goo.gl',
+  'goo.gl',
+  'maps.google.com',
+  'share.google'
+]);
+
+
+const PRIVATE_IP_PATTERNS = [
+  /^127\./,
+  /^10\./,
+  /^192\.168\./,
+  /^172\.(1[6-9]|2\d|3[01])\./,
+  /^169\.254\./,                    
+  /^::1$/,                          
+  /^fc00:/i,                        
+];
+
+const isPrivateAddress = (hostname) => {
+  return PRIVATE_IP_PATTERNS.some(pattern => pattern.test(hostname));
+};
+
+router.post('/expand-url', protect, async (req, res) => {
   const { url } = req.body;
 
   if (!url) {
     return res.status(400).json({ error: 'URL is required' });
   }
 
+  let parsedUrl;
   try {
-    const parsedUrl = new URL(url);
-    const validHostnames = ['maps.app.goo.gl', 'goo.gl', 'maps.google.com', 'share.google'];
-    
-    if (!validHostnames.includes(parsedUrl.hostname)) {
-      return res.status(400).json({ error: 'Invalid URL hostname' });
-    }
-  } catch (error) {
+    parsedUrl = new URL(url);
+  } catch {
     return res.status(400).json({ error: 'Invalid URL format' });
   }
 
+  
+  if (!ALLOWED_HOSTNAMES.has(parsedUrl.hostname)) {
+    return res.status(400).json({ error: 'Invalid URL hostname' });
+  }
+
   try {
-    
     const response = await fetch(url, {
       method: 'GET',
       redirect: 'follow',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-      }
+        'User-Agent': 'Mozilla/5.0 (compatible; GuestO/1.0)',
+        'Accept': 'text/html',
+      },
+      signal: AbortSignal.timeout(5000) 
     });
 
     const finalUrl = response.url;
+
+    
+    
+    let finalParsed;
+    try {
+      finalParsed = new URL(finalUrl);
+    } catch {
+      return res.status(400).json({ error: 'Invalid resolved URL' });
+    }
+
+    if (isPrivateAddress(finalParsed.hostname)) {
+      return res.status(400).json({ error: 'Resolved URL points to a private or internal address' });
+    }
+
     res.json({ expandedUrl: finalUrl });
   } catch (error) {
-    console.error('Error expanding URL:', error);
     res.status(500).json({ error: 'Failed to expand URL' });
   }
 });

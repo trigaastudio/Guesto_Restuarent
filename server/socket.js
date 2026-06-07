@@ -1,28 +1,99 @@
 import { Server } from 'socket.io';
+import jwt from 'jsonwebtoken';
+import User from './models/userSchema.js';
+import Staff from './models/staffSchema.js';
 
 let io;
 
 export const initSocket = (httpServer) => {
   io = new Server(httpServer, {
     cors: {
-      origin: process.env.CLIENT_URL || "http://localhost:5173",
-      methods: ["GET", "POST", "PATCH", "DELETE"]
+      origin: process.env.NODE_ENV === 'production' 
+        ? [process.env.FRONTEND_URL] 
+        : ['http://localhost:5173', 'http://127.0.0.1:5173'],
+      methods: ["GET", "POST", "PATCH", "DELETE"],
+      credentials: true
+    }
+  });
+
+  
+  
+  io.use(async (socket, next) => {
+    try {
+      
+      const token =
+        socket.handshake.auth?.token ||
+        socket.handshake.headers?.cookie
+          ?.split(';')
+          .map(c => c.trim())
+          .find(c => c.startsWith('token=') || c.startsWith('admin_token=') || c.startsWith('staff_token='))
+          ?.split('=')[1];
+
+      if (!token) {
+        
+        
+        socket.isAuthenticated = false;
+        socket.userId = null;
+        socket.userRole = null;
+        return next();
+      }
+
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      let user = await User.findById(decoded.id).select('_id role isActive');
+      if (!user) {
+        user = await Staff.findById(decoded.id).select('_id role isActive');
+      }
+
+      if (!user || !user.isActive) {
+        socket.isAuthenticated = false;
+        socket.userId = null;
+        socket.userRole = null;
+        return next();
+      }
+
+      socket.isAuthenticated = true;
+      socket.userId = user._id.toString();
+      socket.userRole = user.role;
+      next();
+    } catch {
+      
+      socket.isAuthenticated = false;
+      socket.userId = null;
+      socket.userRole = null;
+      next();
     }
   });
 
   io.on('connection', (socket) => {
+    if (socket.isAuthenticated && ['admin', 'staff', 'waiter', 'kitchen', 'cashier', 'delivery'].includes(socket.userRole)) {
+      socket.join('staff_room');
+    }
     
-
+    
     socket.on('joinOrder', (orderId) => {
-      socket.join(orderId);
+      if (!socket.isAuthenticated) return;
+      
+      const isStaff = ['admin', 'staff', 'waiter', 'kitchen', 'cashier', 'delivery'].includes(socket.userRole);
+      if (isStaff) {
+        socket.join(orderId);
+      } else {
+        
+        socket.join(orderId);
+      }
     });
 
     socket.on('leaveOrder', (orderId) => {
       socket.leave(orderId);
     });
 
+    
     socket.on('joinUser', (userId) => {
-      socket.join(userId);
+      if (!socket.isAuthenticated) return;
+      const isStaff = ['admin', 'staff', 'waiter', 'kitchen', 'cashier', 'delivery'].includes(socket.userRole);
+      
+      if (isStaff || socket.userId === userId.toString()) {
+        socket.join(userId);
+      }
     });
 
     socket.on('leaveUser', (userId) => {
@@ -88,6 +159,6 @@ export const emitSettingsUpdate = (settings) => {
 
 export const emitTablesUpdated = () => {
   if (io) {
-    io.emit('tablesUpdated');
+    io.to('staff_room').emit('tablesUpdated');
   }
 };

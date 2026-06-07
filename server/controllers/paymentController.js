@@ -1,50 +1,77 @@
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import Order from '../models/orderSchema.js';
+import Cart from '../models/cartSchema.js';
 import { getIO } from '../socket.js';
 
 const createRazorpayOrder = async (req, res) => {
   try {
-    const { amount, currency = 'INR', receipt } = req.body;
+    const { currency = 'INR', receipt } = req.body;
 
     const key_id = process.env.RAZORPAY_KEY_ID;
     const key_secret = process.env.RAZORPAY_KEY_SECRET;
 
     if (!key_id || !key_secret) {
-      console.error('Razorpay API keys are missing in .env');
       return res.status(500).json({ 
         success: false, 
-        message: 'Razorpay API keys are not configured on the server.' 
+        message: 'Payment service is not configured. Please contact support.' 
       });
     }
 
-    const razorpay = new Razorpay({
-      key_id,
-      key_secret,
+    
+    
+    const cart = await Cart.findOne({ customer: req.user._id }).populate({
+      path: 'items.menuItem',
+      select: 'price variants'
     });
 
+    if (!cart || !cart.items || cart.items.length === 0) {
+      return res.status(400).json({ success: false, message: 'Your cart is empty' });
+    }
+
+    
+    let serverTotal = 0;
+    for (const item of cart.items) {
+      const menuItem = item.menuItem;
+      if (!menuItem) continue;
+      let price = menuItem.price || 0;
+      if (item.selectedSize && menuItem.variants?.length > 0) {
+        const variant = menuItem.variants.find(v => v.size === item.selectedSize);
+        if (variant?.price) price = variant.price;
+      }
+      serverTotal += price * item.quantity;
+    }
+
+    serverTotal = Math.round(serverTotal);
+
+    if (serverTotal <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid cart total' });
+    }
+
+    const razorpay = new Razorpay({ key_id, key_secret });
+
     const options = {
-      amount: Math.round(amount * 100), 
+      amount: serverTotal * 100, 
       currency,
-      receipt,
+      receipt: receipt || `rcpt_${Date.now()}`,
     };
 
     const order = await razorpay.orders.create(options);
 
     if (!order) {
-      return res.status(500).json({ success: false, message: 'Failed to create Razorpay order' });
+      return res.status(500).json({ success: false, message: 'Failed to create payment order' });
     }
 
     res.status(200).json({
       success: true,
-      data: order
+      data: order,
+      serverTotal 
     });
   } catch (error) {
-    console.error('Razorpay Order Error:', error);
+    const isDev = process.env.NODE_ENV !== 'production';
     res.status(500).json({
       success: false,
-      message: 'Error creating Razorpay order',
-      error: error.message
+      message: isDev ? error.message : 'Error creating payment order'
     });
   }
 };
@@ -58,6 +85,10 @@ const verifyPayment = async (req, res) => {
       orderId 
     } = req.body;
 
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !orderId) {
+      return res.status(400).json({ success: false, message: 'Missing required payment verification fields' });
+    }
+
     const body = razorpay_order_id + "|" + razorpay_payment_id;
 
     const expectedSignature = crypto
@@ -65,13 +96,21 @@ const verifyPayment = async (req, res) => {
       .update(body.toString())
       .digest("hex");
 
-    const isAuthentic = expectedSignature === razorpay_signature;
+    
+    const isAuthentic = crypto.timingSafeEqual(
+      Buffer.from(expectedSignature, 'hex'),
+      Buffer.from(razorpay_signature, 'hex')
+    );
 
     if (isAuthentic) {
-      
       const order = await Order.findById(orderId);
       if (!order) {
         return res.status(404).json({ success: false, message: 'Order not found' });
+      }
+
+      
+      if (order.customer && order.customer.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ success: false, message: 'Unauthorized' });
       }
 
       order.paymentStatus = 'paid';
@@ -80,12 +119,11 @@ const verifyPayment = async (req, res) => {
       order.razorpayPaymentId = razorpay_payment_id;
       await order.save();
       
-      
-      getIO().emit('newOrder', {
+      getIO().to('staff_room').emit('newOrder', {
         order: order,
         message: `🔔 New ${order.orderType.toUpperCase()} Order Received! (#${order.orderNumber})`
       });
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
 
       res.status(200).json({
         success: true,
@@ -99,11 +137,10 @@ const verifyPayment = async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('Payment Verification Error:', error);
+    const isDev = process.env.NODE_ENV !== 'production';
     res.status(500).json({
       success: false,
-      message: 'Error verifying payment',
-      error: error.message
+      message: isDev ? error.message : 'Error verifying payment'
     });
   }
 };

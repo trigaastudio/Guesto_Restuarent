@@ -14,10 +14,15 @@ export const CartProvider = ({ children }) => {
   const pendingUpdatesRef = useRef({});
 
   useEffect(() => {
-    // Skip cart fetch for staff/admin users — they don't have a customer token,
-    // so /api/cart would return 401 and trigger an unwanted logout redirect.
+    
+    
     const isStaffUser = !!(localStorage.getItem('staff_user') || localStorage.getItem('admin_user'));
-    if (!isStaffUser) {
+    const isStaffPath = window.location.pathname.startsWith('/admin') || 
+                        window.location.pathname.startsWith('/staff') || 
+                        window.location.pathname.startsWith('/kitchen') || 
+                        window.location.pathname.startsWith('/waiter');
+                        
+    if (!isStaffUser && !isStaffPath) {
       fetchCart();
     } else {
       setLoading(false);

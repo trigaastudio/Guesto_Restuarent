@@ -138,8 +138,19 @@ const menuSchema = new mongoose.Schema({
     default: 0,
     min: 0,
     max: 100
+  },
+
+  
+  salesCount: {
+    type: Number,
+    default: 0,
+    index: true
   }
 
 }, { timestamps: true });
+
+
+menuSchema.index({ category: 1 });
+menuSchema.index({ salesCount: -1 });
 
 export default mongoose.model("Menu", menuSchema);

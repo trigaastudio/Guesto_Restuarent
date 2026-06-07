@@ -598,7 +598,7 @@ const CartPage = () => {
                           {/* Image Block - Scaled Down */}
                           <div className="relative shrink-0">
                             <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden border border-border/10 bg-background p-1 group-hover:border-primary/20 transition-all duration-500 shadow-sm relative z-10">
-                              <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-xl group-hover:scale-110 transition-transform duration-700" />
+                              <img src={item.image} alt={item.name} loading="lazy" className="w-full h-full object-cover rounded-xl group-hover:scale-110 transition-transform duration-700" />
                             </div>
                           </div>
 

@@ -7,8 +7,8 @@ const router = express.Router();
 
 
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, 
-  max: 5, 
+  windowMs: 15 * 60 * 1000,
+  max: 5,
   message: { success: false, message: 'Too many requests from this IP, please try again after 15 minutes' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -17,7 +17,7 @@ const authLimiter = rateLimit({
 router.post('/register', authLimiter, validateRegister, authController.register);
 router.post('/login', authLimiter, validateLogin, authController.login);
 router.post('/admin-login', authLimiter, validateLogin, authController.adminLogin);
-router.post('/google', authController.googleLogin);
+router.post('/google', authLimiter, authController.googleLogin); 
 router.post('/send-otp', authLimiter, authController.sendOTP);
 router.post('/verify-otp', authLimiter, validateOTPRegister, authController.registerWithOTP);
 router.post('/send-reset-otp', authLimiter, authController.sendPasswordResetOTP);

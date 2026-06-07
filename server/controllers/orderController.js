@@ -8,6 +8,7 @@ import Category from '../models/categorySchema.js';
 import Settings from '../models/settingsSchema.js';
 import Table from '../models/tableSchema.js';
 import { getIO, emitStockUpdate, emitCategoryStockUpdate, emitTablesUpdated } from '../socket.js';
+import { logAdminAction } from '../services/auditService.js'; 
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; 
@@ -258,7 +259,7 @@ const handleStock = async (items, type = 'reduce') => {
         }
       }
 
-      // Update BOGO item stock
+      
       if (variant && variant.isBOGO && variant.bogoItem) {
         const bogoDoc = await Menu.findById(variant.bogoItem).populate('category');
         if (bogoDoc) {
@@ -647,12 +648,12 @@ class OrderController {
 
       
       if (newOrder.paymentMethod === 'cod' || newOrder.paymentStatus === 'paid') {
-        getIO().emit('newOrder', {
+        getIO().to('staff_room').emit('newOrder', {
           order: newOrder,
           message: `🔔 New ${newOrder.orderType.toUpperCase()} Order Received! (#${newOrder.orderNumber})`
         });
       }
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
       getIO().emit('orderUpdated', newOrder);
     } catch (error) {
       console.error('Order Error Details:', error);
@@ -665,10 +666,16 @@ class OrderController {
 
   async getMyOrders(req, res) {
     try {
+      const limit = parseInt(req.query.limit) || 20;
+      const skip = (parseInt(req.query.page || 1) - 1) * limit;
+
       const orders = await Order.find({ customer: req.user._id })
         .populate('items.menuItem')
         .populate('assignedDeliveryBoy', 'name phoneNumber')
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
 
       res.status(200).json({
         success: true,
@@ -716,7 +723,7 @@ class OrderController {
       order.orderStatus = 'cancelled';
       await order.save();
 
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
       getIO().emit('orderUpdated', order);
 
       res.status(200).json({
@@ -767,7 +774,7 @@ class OrderController {
           }));
         }
 
-        // Admin POS already computes discounts accurately, trust the unitPrice
+        
         const actualPrice = item.unitPrice !== undefined ? item.unitPrice : (variant ? variant.price : (menuDoc?.hasOffer && menuDoc?.offerPrice != null ? menuDoc.offerPrice : menuDoc?.price || 0));
         const calculatedTotalPrice = item.totalPrice !== undefined ? item.totalPrice : actualPrice * item.quantity;
 
@@ -789,7 +796,7 @@ class OrderController {
       const calculatedSubtotal = processedItems.reduce((sum, item) => sum + item.totalPrice, 0);
       const actualDeliveryFee = deliveryFee || 0;
       const actualTax = tax || 0;
-      // Trust the discount computed by the admin frontend
+      
       const actualDiscount = discount || req.body.discount || 0;
       const actualTotalAmount = calculatedSubtotal + actualDeliveryFee + actualTax - actualDiscount;
 
@@ -835,11 +842,11 @@ class OrderController {
 
       res.status(201).json({ success: true, data: newOrder });
 
-      getIO().emit('newOrder', {
+      getIO().to('staff_room').emit('newOrder', {
         order: newOrder,
         message: `🔔 New ${newOrder.orderType.toUpperCase()} Order Received! (#${newOrder.orderNumber})`
       });
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
       getIO().emit('orderUpdated', newOrder);
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -892,6 +899,9 @@ class OrderController {
         ]
       };
 
+      const limit = parseInt(req.query.limit) || (history === 'true' ? 500 : 200);
+      const skip = (parseInt(req.query.page || 1) - 1) * limit;
+
       const finalQuery = { $and: [query, baseFilter] };
 
       const orders = await Order.find(finalQuery)
@@ -899,7 +909,8 @@ class OrderController {
         .populate('table', 'tableNumber mergedGroup')
         .populate('assignedDeliveryBoy', 'name phoneNumber')
         .sort({ createdAt: -1 })
-        .limit(history === 'true' ? 500 : 200) 
+        .skip(skip)
+        .limit(limit) 
         .lean(); 
 
       res.json({ success: true, data: orders });
@@ -963,6 +974,14 @@ class OrderController {
       }
 
       const order = await originalOrder.save();
+
+      
+      await logAdminAction(req, 'UPDATE_ORDER_STATUS', 'Order', order._id, {
+        previousStatus: originalOrder.orderStatus,
+        newStatus: updateData.orderStatus,
+        orderNumber: order.orderNumber
+      });
+
       await order.populate([
         { path: 'items.menuItem', select: 'name image' },
         { path: 'table', select: 'tableNumber mergedGroup' }
@@ -995,7 +1014,7 @@ class OrderController {
         await order.populate('assignedDeliveryBoy', 'name phoneNumber');
       }
 
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
       getIO().emit('orderUpdated', order);
       res.json({ success: true, data: order });
     } catch (error) {
@@ -1014,7 +1033,7 @@ class OrderController {
       }
 
       await Order.findByIdAndDelete(id);
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
       res.json({ success: true, message: 'Order deleted and stock restored' });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -1041,7 +1060,7 @@ class OrderController {
       await order.save();
       await order.populate('items.menuItem', 'name image');
 
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
       getIO().emit('orderUpdated', order);
       res.json({ success: true, data: order });
     } catch (error) {
@@ -1078,7 +1097,7 @@ class OrderController {
 
       await order.populate('items.menuItem', 'name image');
 
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
       getIO().emit('orderUpdated', order);
       res.json({ success: true, data: order });
     } catch (error) {
@@ -1123,7 +1142,7 @@ class OrderController {
       await handleStock(items, 'reduce');
 
       await order.populate('items.menuItem', 'name image');
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
       getIO().emit('orderUpdated', order);
       res.json({ success: true, data: order });
     } catch (error) {
@@ -1154,7 +1173,7 @@ class OrderController {
         await order.populate('items.menuItem', 'name image');
       }
 
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
       getIO().emit('orderUpdated', order);
       res.json({ success: true, data: order });
     } catch (error) {
@@ -1196,7 +1215,7 @@ class OrderController {
       await order.save();
       await order.populate('items.menuItem', 'name image');
 
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
       getIO().emit('orderUpdated', order);
       res.json({ success: true, data: order });
     } catch (error) {
@@ -1273,7 +1292,7 @@ class OrderController {
       await handleStock(order.items, 'reduce');
 
       await order.populate('items.menuItem', 'name image');
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
       getIO().emit('orderUpdated', order);
       res.json({ success: true, data: order });
     } catch (error) {
@@ -1313,7 +1332,7 @@ class OrderController {
       }
 
       const result = await Order.deleteMany(query);
-      getIO().emit('ordersUpdated');
+      getIO().to('staff_room').emit('ordersUpdated');
       res.json({ success: true, message: `${result.deletedCount} orders cleared`, deletedCount: result.deletedCount });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });

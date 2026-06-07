@@ -2,12 +2,16 @@ import menuRepository from '../repositories/menuRepository.js';
 import menuService from "../services/menuService.js";
 import mongoose from "mongoose";
 import { logAdminAction } from '../services/auditService.js';
+import NodeCache from 'node-cache';
+
+const cache = new NodeCache({ stdTTL: 120, useClones: false }); 
 
 export const createMenu = async (req, res) => {
   try {
     const menu = await menuService.createMenu(req.body);
     
     await logAdminAction(req, 'CREATE_MENU', 'Menu', menu._id, { name: menu.name, price: menu.price });
+    cache.flushAll();
 
     res.status(201).json(menu);
   } catch (error) {
@@ -20,8 +24,13 @@ export const getMenus = async (req, res) => {
     const { category, page, limit, all, search, dietary } = req.query;
     const sortBy = req.query.sortBy || req.query.sort;
 
+    const cacheKey = JSON.stringify(req.query);
+    const cachedData = cache.get(cacheKey);
+    if (cachedData) return res.status(200).json(cachedData);
+
     if (all === 'true') {
       const menus = await menuService.getAllMenus();
+      cache.set(cacheKey, menus);
       return res.status(200).json(menus);
     }
 
@@ -112,78 +121,18 @@ export const getMenus = async (req, res) => {
     } else if (sortBy === 'name-az') {
       sortOption = { name: 1 };
     } else if (sortBy === 'rating') {
-      // Handled custom below
+      sortOption = { salesCount: -1 };
     }
 
     if (page && limit) {
-      if (sortBy === 'rating') {
-        const Order = mongoose.model('Order');
-        const topDishesRaw = await Order.aggregate([
-          { $match: { orderStatus: { $ne: 'cancelled' } } },
-          { $unwind: '$items' },
-          {
-            $group: {
-              _id: '$items.menuItem',
-              orders: { $sum: '$items.quantity' }
-            }
-          },
-          { $sort: { orders: -1 } }
-        ]);
-
-        const topDishMap = {};
-        topDishesRaw.forEach((d, index) => {
-          if (d._id) topDishMap[d._id.toString()] = index;
-        });
-
-        const allMenus = await menuRepository.getAll(filter, 0, 0, {});
-        
-        allMenus.sort((a, b) => {
-          const indexA = topDishMap[a._id.toString()] ?? Infinity;
-          const indexB = topDishMap[b._id.toString()] ?? Infinity;
-          return indexA - indexB;
-        });
-
-        const skip = (parseInt(page) - 1) * parseInt(limit);
-        const paginatedMenus = allMenus.slice(skip, skip + parseInt(limit));
-        return res.status(200).json(paginatedMenus);
-      }
-
       const skip = (parseInt(page) - 1) * parseInt(limit);
       const menus = await menuRepository.getAll(filter, skip, parseInt(limit), sortOption);
+      cache.set(cacheKey, menus);
       return res.status(200).json(menus);
     }
 
-    if (sortBy === 'rating') {
-        const Order = mongoose.model('Order');
-        const topDishesRaw = await Order.aggregate([
-          { $match: { orderStatus: { $ne: 'cancelled' } } },
-          { $unwind: '$items' },
-          {
-            $group: {
-              _id: '$items.menuItem',
-              orders: { $sum: '$items.quantity' }
-            }
-          },
-          { $sort: { orders: -1 } }
-        ]);
-
-        const topDishMap = {};
-        topDishesRaw.forEach((d, index) => {
-          if (d._id) topDishMap[d._id.toString()] = index;
-        });
-
-        const menus = await menuRepository.getAll(filter, 0, 0, {});
-        
-        menus.sort((a, b) => {
-          const indexA = topDishMap[a._id.toString()] ?? Infinity;
-          const indexB = topDishMap[b._id.toString()] ?? Infinity;
-          return indexA - indexB;
-        });
-
-        return res.status(200).json(menus);
-    }
-
     const menus = await menuRepository.getAll(filter, 0, 0, sortOption);
+    cache.set(cacheKey, menus);
     res.status(200).json(menus);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -205,6 +154,7 @@ export const updateMenu = async (req, res) => {
     const menu = await menuService.updateMenu(req.params.id, req.body);
     
     await logAdminAction(req, 'UPDATE_MENU', 'Menu', menu._id, { updatedFields: Object.keys(req.body) });
+    cache.flushAll();
 
     res.status(200).json(menu);
   } catch (error) {
@@ -217,6 +167,7 @@ export const deleteMenu = async (req, res) => {
     await menuService.deleteMenu(req.params.id);
 
     await logAdminAction(req, 'DELETE_MENU', 'Menu', req.params.id, {});
+    cache.flushAll();
 
     res.status(200).json({ message: "Menu item deleted successfully" });
   } catch (error) {

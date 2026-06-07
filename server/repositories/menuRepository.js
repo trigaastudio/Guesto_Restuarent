@@ -29,7 +29,7 @@ class MenuRepository {
       .sort(sortOption);
     if (skip > 0) query = query.skip(skip);
     if (limit > 0) query = query.limit(limit);
-    return await query;
+    return await query.lean();
   }
 
   async findAll() {
@@ -47,7 +47,8 @@ class MenuRepository {
         path: 'comboItems.menuItem',
         select: 'name variants totalStock isBlocked'
       })
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
   }
 
   async findById(id) {
@@ -64,7 +65,8 @@ class MenuRepository {
       .populate({
         path: 'comboItems.menuItem',
         select: 'name variants totalStock isBlocked'
-      });
+      })
+      .lean();
   }
 
   async getByCategory(categoryId) {
@@ -81,7 +83,8 @@ class MenuRepository {
       .populate({
         path: 'comboItems.menuItem',
         select: 'name variants totalStock isBlocked'
-      });
+      })
+      .lean();
   }
 
   async update(id, data) {

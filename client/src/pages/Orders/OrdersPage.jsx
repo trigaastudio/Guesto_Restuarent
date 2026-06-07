@@ -69,7 +69,7 @@ const OrdersPage = () => {
 
     socket.on('orderStatusUpdated', onOrderStatusUpdate);
 
-    // Also listen to general ordersUpdated as fallback
+    
     const onOrdersUpdatedFallback = () => {
       fetchOrders();
     };
@@ -494,7 +494,7 @@ const OrdersPage = () => {
                     ))}
                   </div>
 
-                  {/* Pagination Controls */}
+                  {}
                   {totalPages > 1 && (
                     <div className="pt-6 mt-6 border-t border-border/40 relative z-10 flex justify-center">
                       <Pagination
@@ -558,7 +558,7 @@ const OrdersPage = () => {
                           )}
                         </div>
 
-                        {/* Combo Items */}
+                        {}
                         {item.comboItems?.length > 0 && (
                           <div className="mt-1.5 space-y-1 pl-2 border-l-2 border-primary/20">
                             <span className="text-[8px] font-bold text-primary uppercase tracking-wider block">Combo includes:</span>
@@ -572,7 +572,7 @@ const OrdersPage = () => {
                           </div>
                         )}
 
-                        {/* BOGO Items */}
+                        {}
                         {item.bogoItem && (
                           <div className="mt-1.5 space-y-1 pl-2 border-l-2 border-emerald-500/30">
                             <span className="text-[8px] font-bold text-emerald-600 uppercase tracking-wider block">Free Add-on:</span>
@@ -584,7 +584,7 @@ const OrdersPage = () => {
                           </div>
                         )}
 
-                        {/* Included Items (Add-ons) */}
+                        {}
                         {item.includedItems?.length > 0 && (
                           <div className="mt-1.5 space-y-1 pl-2 border-l-2 border-primary/20">
                             <span className="text-[8px] font-bold text-primary uppercase tracking-wider block">Includes Add-ons:</span>

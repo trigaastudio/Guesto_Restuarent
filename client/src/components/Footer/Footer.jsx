@@ -14,6 +14,43 @@ const Footer = React.memo(() => {
   const phone = settings?.restaurantDetails?.contactNumber || "7034805085,9947649007";
   const email = settings?.restaurantDetails?.email || "restaurantguesto@gmail.com";
 
+  const user = JSON.parse(
+    localStorage.getItem('user') || 
+    localStorage.getItem('admin_user') || 
+    'null'
+  );
+
+  const handleNavClick = (e, path, name) => {
+    e.preventDefault();
+    if (name === 'Home') {
+      const targetPath = user ? '/home' : '/';
+      if (window.location.pathname === targetPath || window.location.pathname === '/home' || window.location.pathname === '/') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        navigate(targetPath);
+      }
+    } else if (name === 'Menu') {
+      const targetPath = user ? '/home' : '/';
+      if (window.location.pathname === targetPath || window.location.pathname === '/home' || window.location.pathname === '/') {
+        const menuSection = document.getElementById('menu');
+        if (menuSection) {
+          menuSection.scrollIntoView({ behavior: 'smooth' });
+        } else {
+          navigate(`${targetPath}#menu`);
+        }
+      } else {
+        navigate(`${targetPath}#menu`);
+        setTimeout(() => {
+          const menuSection = document.getElementById('menu');
+          if (menuSection) menuSection.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+    } else {
+      navigate(path);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   return (
     <footer className="relative bg-primary dark:bg-background-card text-white dark:text-text-primary pt-6 pb-24 md:pb-6 overflow-hidden border-t border-border/10">
       {}
@@ -31,7 +68,7 @@ const Footer = React.memo(() => {
                 src={settings?.branding?.logoGold || "/logo-golden.png"}
                 alt={brandName}
                 className="h-12 w-auto object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.2)] cursor-pointer"
-                onClick={() => navigate('/home')}
+                onClick={(e) => handleNavClick(e, '/home', 'Home')}
               />
               <p className="text-white/80 dark:text-text-muted text-[11px] font-bold leading-relaxed tracking-wide max-w-xs">
                 Crafting extraordinary culinary experiences since 2020. We bring the authentic heart of our heritage to your table with a modern twist.
@@ -67,7 +104,7 @@ const Footer = React.memo(() => {
               ].map((item) => (
                 <li key={item.name}>
                   <button
-                    onClick={() => navigate(item.path)}
+                    onClick={(e) => handleNavClick(e, item.path, item.name === 'About Our Story' ? 'About' : item.name)}
                     className="text-xs font-black text-white/70 dark:text-text-muted hover:text-white dark:hover:text-primary hover:translate-x-3 transition-all duration-300 flex items-center gap-3 group"
                   >
                     <span className="w-2 h-[2px] bg-white/30 dark:bg-text-muted/30 group-hover:w-4 group-hover:bg-white dark:group-hover:bg-primary transition-all"></span>

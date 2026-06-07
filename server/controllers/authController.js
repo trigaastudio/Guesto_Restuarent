@@ -1,24 +1,26 @@
 import authService from '../services/authService.js';
 
+
+
+
+const setAuthCookie = (res, role, token) => {
+  
+  
+  return;
+};
+
 class AuthController {
   async logout(req, res) {
-    res.clearCookie('token');
-    res.clearCookie('admin_token');
-    res.clearCookie('staff_token');
     res.status(200).json({ success: true, message: 'Logged out successfully' });
   }
 
   async register(req, res) {
     try {
       const user = await authService.register(req.body);
+      
+      
       const jwtToken = authService.generateToken(user._id);
-      const cookieName = user.role === 'admin' ? 'admin_token' : user.role === 'staff' ? 'staff_token' : 'token';
-      res.cookie(cookieName, typeof jwtToken !== 'undefined' ? jwtToken : token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 30 * 24 * 60 * 60 * 1000
-      });
+      setAuthCookie(res, user.role, jwtToken);
 
       res.status(201).json({
         success: true,
@@ -30,7 +32,8 @@ class AuthController {
           phone: user.phone,
           avatar: user.avatar,
           role: user.role,
-          createdAt: user.createdAt
+          createdAt: user.createdAt,
+          token: jwtToken
         }
       });
     } catch (error) {
@@ -47,13 +50,7 @@ class AuthController {
       const user = await authService.login(email, password, 'user');
       
       const token = authService.generateToken(user._id);
-      const cookieName = user.role === 'admin' ? 'admin_token' : user.role === 'staff' ? 'staff_token' : 'token';
-      res.cookie(cookieName, typeof jwtToken !== 'undefined' ? jwtToken : token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 30 * 24 * 60 * 60 * 1000
-      });
+      setAuthCookie(res, user.role, token);
 
       res.status(200).json({
         success: true,
@@ -65,7 +62,8 @@ class AuthController {
           phone: user.phone,
           avatar: user.avatar,
           role: user.role,
-          createdAt: user.createdAt
+          createdAt: user.createdAt,
+          token: token
         }
       });
     } catch (error) {
@@ -83,13 +81,7 @@ class AuthController {
       const user = await authService.login(email, password, 'admin');
       
       const token = authService.generateToken(user._id);
-      const cookieName = user.role === 'admin' ? 'admin_token' : user.role === 'staff' ? 'staff_token' : 'token';
-      res.cookie(cookieName, typeof jwtToken !== 'undefined' ? jwtToken : token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 30 * 24 * 60 * 60 * 1000
-      });
+      setAuthCookie(res, user.role, token);
 
       res.status(200).json({
         success: true,
@@ -101,7 +93,8 @@ class AuthController {
           phone: user.phone,
           avatar: user.avatar,
           role: user.role,
-          createdAt: user.createdAt
+          createdAt: user.createdAt,
+          token: token
         }
       });
     } catch (error) {
@@ -115,22 +108,13 @@ class AuthController {
 
   async googleLogin(req, res) {
     try {
-      console.log('📬 Received Google login request...');
       const { token } = req.body;
       if (!token) {
-        console.error('❌ No token provided in request body');
         return res.status(400).json({ success: false, message: 'No token provided' });
       }
       const user = await authService.googleLogin(token);
-
       const jwtToken = authService.generateToken(user._id);
-      const cookieName = user.role === 'admin' ? 'admin_token' : user.role === 'staff' ? 'staff_token' : 'token';
-      res.cookie(cookieName, jwtToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 30 * 24 * 60 * 60 * 1000
-      });
+      setAuthCookie(res, user.role, jwtToken);
 
       res.status(200).json({
         success: true,
@@ -142,7 +126,8 @@ class AuthController {
           phone: user.phone,
           avatar: user.avatar,
           role: user.role,
-          createdAt: user.createdAt
+          createdAt: user.createdAt,
+          token: jwtToken
         }
       });
     } catch (error) {
@@ -157,7 +142,6 @@ class AuthController {
   async sendOTP(req, res) {
     try {
       const { email, phone } = req.body;
-
       await authService.sendOTP(email, phone);
       res.status(200).json({
         success: true,
@@ -184,14 +168,9 @@ class AuthController {
       }
 
       const user = await authService.register(userData);
+      
       const token = authService.generateToken(user._id);
-      const cookieName = user.role === 'admin' ? 'admin_token' : user.role === 'staff' ? 'staff_token' : 'token';
-      res.cookie(cookieName, typeof jwtToken !== 'undefined' ? jwtToken : token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 30 * 24 * 60 * 60 * 1000
-      });
+      setAuthCookie(res, user.role, token);
 
       res.status(201).json({
         success: true,
@@ -203,7 +182,8 @@ class AuthController {
           phone: user.phone,
           avatar: user.avatar,
           role: user.role,
-          createdAt: user.createdAt
+          createdAt: user.createdAt,
+          token: token
         }
       });
     } catch (error) {
@@ -223,16 +203,19 @@ class AuthController {
         message: 'OTP sent successfully'
       });
     } catch (error) {
-      res.status(400).json({ success: false, message: error.message });
+      
+      res.status(200).json({ success: true, message: 'If this email is registered, an OTP will be sent.' });
     }
   }
 
   async verifyPasswordResetOTP(req, res) {
     try {
       const { email, otp } = req.body;
-      const isValid = await authService.verifyOTP(email, otp);
-      if (isValid) {
-        res.status(200).json({ success: true, message: 'OTP verified' });
+      
+      
+      const resetToken = await authService.verifyOTPAndGetResetToken(email, otp);
+      if (resetToken) {
+        res.status(200).json({ success: true, message: 'OTP verified', resetToken });
       } else {
         res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
       }
@@ -243,8 +226,10 @@ class AuthController {
 
   async resetPassword(req, res) {
     try {
-      const { email, newPassword } = req.body;
-      await authService.resetPassword(email, newPassword);
+      const { email, newPassword, resetToken } = req.body;
+      
+      
+      await authService.resetPasswordWithToken(email, newPassword, resetToken);
       res.status(200).json({ success: true, message: 'Password reset successful' });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });

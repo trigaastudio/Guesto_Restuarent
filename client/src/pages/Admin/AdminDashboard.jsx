@@ -73,7 +73,8 @@ const AdminDashboard = () => {
   const notificationSound = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'));
 
   useEffect(() => {
-    const socket = io(`${window.location.protocol}//${window.location.hostname}:5000`);
+    const socketUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'https://guest-o-backend.onrender.com';
+    const socket = io(socketUrl);
 
     socket.on('newOrder', (data) => {
       

@@ -1,10 +1,13 @@
 import express from 'express';
 import Order from '../models/orderSchema.js';
+import { protect, admin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
 
-router.get('/sales', async (req, res) => {
+
+
+router.get('/sales', protect, admin, async (req, res) => {
   try {
     const { startDate, endDate, orderType, orderSource, menuItem } = req.query;
     
@@ -42,12 +45,12 @@ router.get('/sales', async (req, res) => {
 
     res.json({ success: true, data: { orders, stats } });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 
 
-router.get('/periodic', async (req, res) => {
+router.get('/periodic', protect, admin, async (req, res) => {
   try {
     const { orderType, orderSource, menuItem } = req.query;
     const today = new Date();
@@ -100,12 +103,12 @@ router.get('/periodic', async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 
 
-router.get('/items', async (req, res) => {
+router.get('/items', protect, admin, async (req, res) => {
   try {
     const { startDate, endDate, orderType, orderSource, menuItem } = req.query;
     let matchQuery = { orderStatus: { $ne: 'cancelled' } };
@@ -167,7 +170,7 @@ router.get('/items', async (req, res) => {
 
     res.json({ success: true, data: itemStats });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 

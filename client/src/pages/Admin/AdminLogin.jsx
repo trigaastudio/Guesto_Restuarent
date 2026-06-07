@@ -62,6 +62,7 @@ const AdminLogin = () => {
       if (response.data.success) {
         const userData = response.data.data;
         localStorage.setItem('admin_user', JSON.stringify(userData));
+        if (userData.token) localStorage.setItem('admin_token', userData.token);
 
         
         localStorage.removeItem('staff_token');

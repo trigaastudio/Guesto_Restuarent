@@ -10,8 +10,25 @@ const BottomNavbar = () => {
   const { cartItems } = useCart();
   const [showProfileOptions, setShowProfileOptions] = useState(false);
   const [activeSection, setActiveSection] = useState('hero'); 
-
   const [isVisible, setIsVisible] = useState(true); 
+
+  const [user, setUser] = useState(() => JSON.parse(
+    localStorage.getItem('user') ||
+    localStorage.getItem('admin_user') ||
+    'null'
+  ));
+
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setUser(JSON.parse(
+        localStorage.getItem('user') ||
+        localStorage.getItem('admin_user') ||
+        'null'
+      ));
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   useEffect(() => {
     let ticking = false;
@@ -43,13 +60,13 @@ const BottomNavbar = () => {
     return null;
   }
 
-  const user = localStorage.getItem('user');
+  const isLoggedIn = user && Object.keys(user).length > 0 && user.name;
 
   const navItems = [
     { name: 'Home', icon: Home, path: '/home', isHome: true },
     { name: 'Menu', icon: Utensils, path: '/home', isMenu: true },
     { name: 'Cart', icon: ShoppingCart, path: '/cart', showBadge: true },
-    { name: user ? 'Profile' : 'Sign In', icon: user ? User : LogIn, path: user ? '/profile' : '/login', isProfile: true },
+    { name: isLoggedIn ? 'Profile' : 'Sign In', icon: isLoggedIn ? User : LogIn, path: isLoggedIn ? '/profile' : '/login', isProfile: true },
   ];
 
   const isActive = (path, item) => {
@@ -91,7 +108,7 @@ const BottomNavbar = () => {
         navigate('/home');
       }
     } else if (item.isProfile) {
-      if (user) {
+      if (isLoggedIn) {
         setShowProfileOptions(!showProfileOptions);
       } else {
         navigate('/login');

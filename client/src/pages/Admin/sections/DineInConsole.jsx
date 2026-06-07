@@ -14,7 +14,7 @@ import CardSkeleton from '../../components/Skeleton/CardSkeleton';
 import DineInPOSModal from '../../components/POS/DineInPOSModal';
 import { logoutStaff } from '../../utils/auth';
 
-const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
+const SOCKET_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'https://guest-o-backend.onrender.com';
 
 const WaiterDashboard = () => {
   const [tables, setTables] = useState([]);
@@ -56,22 +56,22 @@ const WaiterDashboard = () => {
     fetchTables();
     document.title = 'Waiter | Dashboard';
 
-    
+
     socketRef.current = io(SOCKET_URL);
 
-    
+
     socketRef.current.on('ordersUpdated', () => {
       fetchTables(true);
     });
 
-    
+
     socketRef.current.on('tablesUpdated', () => {
       fetchTables(true);
     });
 
     const handleDbChange = (event) => {
       const data = event.detail;
-      
+
       if (['Table', 'tables', 'Order', 'orders'].includes(data.collection)) {
         fetchTables(true);
       }
@@ -424,7 +424,7 @@ const WaiterDashboard = () => {
   const handlePrintKOT = (order) => {
     const printWindow = window.open('', '_blank');
 
-    
+
     const aggregatedItems = [];
     order.items.forEach(item => {
       const itemId = item.menuItem?._id || item.menuItem;
@@ -478,7 +478,7 @@ const WaiterDashboard = () => {
     const restaurantPhone = settings?.restaurantDetails?.contactNumber || '7034805085';
     const monochromeLogo = settings?.branding?.logoMonochrome || null;
 
-    
+
     let qrCodeUrl = '';
     const showQR = settings?.printingSettings?.showKOTQRCode && (order.orderType === 'delivery' || order.orderSource === 'online' || order.orderType === 'online');
 
@@ -606,7 +606,7 @@ const WaiterDashboard = () => {
 
   return (
     <div className="flex h-screen bg-background text-text-primary overflow-hidden transition-colors duration-300">
-      {}
+      { }
       <main className="flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out">
         <header className="h-20 bg-background-card border-b border-border-main flex items-center justify-between px-4 lg:px-8 shrink-0">
           <div className="flex items-center space-x-4">
@@ -678,7 +678,7 @@ const WaiterDashboard = () => {
 
               return (
                 <div className="animate-in fade-in slide-in-from-right-8 duration-500">
-                  {}
+                  { }
                   <div className="flex items-center justify-between mb-6">
                     <button
                       onClick={() => setSelectedViewTableId(null)}
@@ -693,12 +693,12 @@ const WaiterDashboard = () => {
                     </span>
                   </div>
 
-                  {}
+                  { }
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-                    {}
+                    { }
                     <div className="lg:col-span-4 bg-background-card border border-border-light rounded-[2.5rem] p-6 lg:p-8 shadow-md flex flex-col items-center relative overflow-hidden">
-                      {}
+                      { }
                       <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
                       <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary-light/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -743,7 +743,7 @@ const WaiterDashboard = () => {
                                 {isCurFullyOccupied ? 'Fully Seated' : isCurPartiallyOccupied ? 'Partially Occupied' : 'Available'}
                               </span>
 
-                              {}
+                              { }
                               <div className="w-full max-w-[240px] mt-4">
                                 <div className="flex justify-between text-[10px] font-black text-text-muted uppercase tracking-widest mb-1.5">
                                   <span>Seating Status</span>
@@ -908,7 +908,7 @@ const WaiterDashboard = () => {
             })()
           ) : (
             <div className="space-y-6">
-              {}
+              { }
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-background-card border border-border-light rounded-3xl p-5 shadow-sm">
                 <div>
                   <h2 className="text-xl font-black text-text-primary tracking-tight">
@@ -952,7 +952,7 @@ const WaiterDashboard = () => {
                 </div>
               </div>
 
-              {}
+              { }
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {(() => {
                   const displayTables = tables.filter(table => {
@@ -964,121 +964,122 @@ const WaiterDashboard = () => {
                   });
 
                   return displayTables.map((table) => {
-                  const isOccupied = table.status === 'occupied';
-                  const isSelectedForMerge = isMergeMode && selectedMergeTableNumbers.includes(table.tableNumber);
-                  const hasMergedGroup = table.mergedGroup && table.mergedGroup.length > 0;
+                    const isOccupied = table.status === 'occupied';
+                    const isSelectedForMerge = isMergeMode && selectedMergeTableNumbers.includes(table.tableNumber);
+                    const hasMergedGroup = table.mergedGroup && table.mergedGroup.length > 0;
 
-                  return (
-                    <div
-                      key={table._id}
-                      onClick={() => {
-                        if (isMergeMode) {
-                          if (table.occupiedSeats > 0) {
-                            showToast('warning', 'Only available tables can be selected for merging.');
-                            return;
+                    return (
+                      <div
+                        key={table._id}
+                        onClick={() => {
+                          if (isMergeMode) {
+                            if (table.occupiedSeats > 0) {
+                              showToast('warning', 'Only available tables can be selected for merging.');
+                              return;
+                            }
+                            setSelectedMergeTableNumbers(prev =>
+                              prev.includes(table.tableNumber)
+                                ? prev.filter(num => num !== table.tableNumber)
+                                : [...prev, table.tableNumber]
+                            );
+                          } else {
+                            setSelectedViewTableId(table._id);
                           }
-                          setSelectedMergeTableNumbers(prev =>
-                            prev.includes(table.tableNumber)
-                              ? prev.filter(num => num !== table.tableNumber)
-                              : [...prev, table.tableNumber]
-                          );
-                        } else {
-                          setSelectedViewTableId(table._id);
-                        }
-                      }}
-                      className={`relative cursor-pointer rounded-2xl overflow-hidden shadow-sm hover:shadow-md bg-white dark:bg-gray-900 transition-all duration-300 ${isSelectedForMerge
-                        ? 'border-2 border-primary ring-4 ring-primary/10 scale-[1.02] shadow-lg'
-                        : isMergeMode && table.occupiedSeats > 0
-                          ? 'border border-border-light opacity-60 cursor-not-allowed grayscale'
-                          : 'border border-border-light hover:-translate-y-0.5 active:scale-98'
-                        }`}
-                    >
-                      {}
-                      {isSelectedForMerge && (
-                        <div className="absolute top-3.5 left-3.5 bg-primary text-white p-1.5 rounded-xl z-20 shadow-md flex items-center justify-center animate-in zoom-in-50 duration-200">
-                          <CheckCircle2 size={14} strokeWidth={3} />
-                        </div>
-                      )}
-
-                      <div className="aspect-[4/3] w-full overflow-hidden bg-gradient-to-b from-gray-50 to-gray-200 dark:from-gray-800 dark:to-gray-950 flex items-center justify-center p-2">
-                        <img
-                          src="/table_pic.png"
-                          alt={`Table ${table.tableNumber}`}
-                          className="w-full h-full object-contain drop-shadow-lg"
-                        />
-                      </div>
-
-                      {}
-                      <div className="absolute top-3.5 right-3.5 flex items-center gap-2 z-10">
-                        {hasMergedGroup && (
-                          <div className="flex items-center gap-1 bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-lg border border-amber-500/20 text-[9px] font-black uppercase tracking-wider">
-                            <GitMerge size={10} strokeWidth={3} />
-                            <span>Merged</span>
+                        }}
+                        className={`relative cursor-pointer rounded-2xl overflow-hidden shadow-sm hover:shadow-md bg-white dark:bg-gray-900 transition-all duration-300 ${isSelectedForMerge
+                          ? 'border-2 border-primary ring-4 ring-primary/10 scale-[1.02] shadow-lg'
+                          : isMergeMode && table.occupiedSeats > 0
+                            ? 'border border-border-light opacity-60 cursor-not-allowed grayscale'
+                            : 'border border-border-light hover:-translate-y-0.5 active:scale-98'
+                          }`}
+                      >
+                        { }
+                        {isSelectedForMerge && (
+                          <div className="absolute top-3.5 left-3.5 bg-primary text-white p-1.5 rounded-xl z-20 shadow-md flex items-center justify-center animate-in zoom-in-50 duration-200">
+                            <CheckCircle2 size={14} strokeWidth={3} />
                           </div>
                         )}
-                        {(() => {
-                          const capacity = table.capacity || 4;
-                          const occupied = table.occupiedSeats || 0;
-                          const isFullyOccupied = occupied >= capacity;
-                          const isPartiallyOccupied = occupied > 0 && occupied < capacity;
-                          return (
-                            <div className={`w-3 h-3 rounded-full ${isFullyOccupied
-                              ? 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.85)]'
-                              : isPartiallyOccupied
-                                ? 'bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.85)]'
-                                : 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.85)]'
-                              } animate-pulse border-2 border-white/80`} />
-                          );
-                        })()}
-                      </div>
 
-                      {}
-                      <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/95 via-black/70 to-transparent">
-                        <div className="flex justify-between items-end">
-                          <div>
-                            <p className="text-white/60 text-[9px] font-black uppercase tracking-widest mb-0.5">
-                              {hasMergedGroup ? 'Tables' : 'Table'}
-                            </p>
-                            <h3 className="text-3xl font-black text-white drop-shadow-md leading-none">
-                              {hasMergedGroup ? [...table.mergedGroup].sort((a, b) => parseInt(a) - parseInt(b)).join(' & ') : table.tableNumber}
-                            </h3>
-                            <p className="text-white/85 text-[11px] font-bold mt-2 flex items-center gap-1.5">
-                              <Users size={12} className="opacity-80" /> {table.capacity} Seats
-                            </p>
-                          </div>
+                        <div className="aspect-[4/3] w-full overflow-hidden bg-gradient-to-b from-gray-50 to-gray-200 dark:from-gray-800 dark:to-gray-950 flex items-center justify-center p-2">
+                          <img
+                            src="/table_pic.png"
+                            alt={`Table ${table.tableNumber}`}
+                            className="w-full h-full object-contain drop-shadow-lg"
+                          />
+                        </div>
+
+                        { }
+                        <div className="absolute top-3.5 right-3.5 flex items-center gap-2 z-10">
+                          {hasMergedGroup && (
+                            <div className="flex items-center gap-1 bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-lg border border-amber-500/20 text-[9px] font-black uppercase tracking-wider">
+                              <GitMerge size={10} strokeWidth={3} />
+                              <span>Merged</span>
+                            </div>
+                          )}
                           {(() => {
                             const capacity = table.capacity || 4;
                             const occupied = table.occupiedSeats || 0;
                             const isFullyOccupied = occupied >= capacity;
                             const isPartiallyOccupied = occupied > 0 && occupied < capacity;
-                            const isFree = occupied === 0;
-
-                            if (isFullyOccupied) {
-                              return (
-                                <div className="bg-red-600/90 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-xl backdrop-blur-sm shadow-md">
-                                  Fully Seated
-                                </div>
-                              );
-                            } else if (isPartiallyOccupied) {
-                              const remaining = capacity - occupied;
-                              return (
-                                <div className="bg-amber-500/90 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-xl backdrop-blur-sm shadow-md">
-                                  {remaining} Seat{remaining > 1 ? 's' : ''} Available
-                                </div>
-                              );
-                            } else {
-                              return (
-                                <div className="bg-emerald-500/90 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-xl backdrop-blur-sm shadow-md">
-                                  Available
-                                </div>
-                              );
-                            }
+                            return (
+                              <div className={`w-3 h-3 rounded-full ${isFullyOccupied
+                                ? 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.85)]'
+                                : isPartiallyOccupied
+                                  ? 'bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.85)]'
+                                  : 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.85)]'
+                                } animate-pulse border-2 border-white/80`} />
+                            );
                           })()}
                         </div>
+
+                        { }
+                        <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/95 via-black/70 to-transparent">
+                          <div className="flex justify-between items-end">
+                            <div>
+                              <p className="text-white/60 text-[9px] font-black uppercase tracking-widest mb-0.5">
+                                {hasMergedGroup ? 'Tables' : 'Table'}
+                              </p>
+                              <h3 className="text-3xl font-black text-white drop-shadow-md leading-none">
+                                {hasMergedGroup ? [...table.mergedGroup].sort((a, b) => parseInt(a) - parseInt(b)).join(' & ') : table.tableNumber}
+                              </h3>
+                              <p className="text-white/85 text-[11px] font-bold mt-2 flex items-center gap-1.5">
+                                <Users size={12} className="opacity-80" /> {table.capacity} Seats
+                              </p>
+                            </div>
+                            {(() => {
+                              const capacity = table.capacity || 4;
+                              const occupied = table.occupiedSeats || 0;
+                              const isFullyOccupied = occupied >= capacity;
+                              const isPartiallyOccupied = occupied > 0 && occupied < capacity;
+                              const isFree = occupied === 0;
+
+                              if (isFullyOccupied) {
+                                return (
+                                  <div className="bg-red-600/90 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-xl backdrop-blur-sm shadow-md">
+                                    Fully Seated
+                                  </div>
+                                );
+                              } else if (isPartiallyOccupied) {
+                                const remaining = capacity - occupied;
+                                return (
+                                  <div className="bg-amber-500/90 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-xl backdrop-blur-sm shadow-md">
+                                    {remaining} Seat{remaining > 1 ? 's' : ''} Available
+                                  </div>
+                                );
+                              } else {
+                                return (
+                                  <div className="bg-emerald-500/90 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-xl backdrop-blur-sm shadow-md">
+                                    Available
+                                  </div>
+                                );
+                              }
+                            })()}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })})()}
+                    );
+                  })
+                })()}
               </div>
             </div>
           )}
@@ -1136,13 +1137,12 @@ const WaiterDashboard = () => {
                   {(() => {
                     const status = getComputedOrderStatus(selectedOrderForView);
                     return (
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mt-1 ${
-                        status === 'completed' || status === 'delivered' || status === 'ready'
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mt-1 ${status === 'completed' || status === 'delivered' || status === 'ready'
                           ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
                           : status === 'placed'
                             ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
                             : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
-                      }`}>
+                        }`}>
                         {status}
                       </span>
                     );
@@ -1150,7 +1150,7 @@ const WaiterDashboard = () => {
                 </div>
               </div>
 
-              {}
+              { }
               <div className="space-y-3">
                 <p className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1">Items, Quantity & Status</p>
                 <div className="space-y-2">
@@ -1167,7 +1167,7 @@ const WaiterDashboard = () => {
                           <p className="text-xs font-bold text-text-muted mt-1 uppercase tracking-wider">
                             Quantity: {item.quantity}
                           </p>
-                          
+
                           {/* Combo Items */}
                           {item.comboItems?.length > 0 && (
                             <div className="mt-1.5 pl-2 border-l border-primary/30">
@@ -1182,7 +1182,7 @@ const WaiterDashboard = () => {
                             </div>
                           )}
 
-                          {/* Included Items (Add-ons) */}
+                          {}
                           {item.includedItems?.length > 0 && (
                             <div className="mt-1.5 pl-2 border-l border-primary/30">
                               <span className="text-[9px] font-black text-primary uppercase tracking-wider block mb-0.5">Includes Add-ons:</span>
@@ -1207,7 +1207,7 @@ const WaiterDashboard = () => {
               </div>
             </div>
 
-            {/* Footer */}
+            {}
             <div className="p-6 bg-background-card border-t border-border-light flex justify-between items-center shrink-0 gap-3">
               <div className="flex gap-2">
                 <button
@@ -1232,8 +1232,8 @@ const WaiterDashboard = () => {
                   disabled={selectedOrderForView.kitchenStatus !== 'ready'}
                   title={selectedOrderForView.kitchenStatus !== 'ready' ? 'Kitchen has not marked this order as Ready yet' : 'Print Bill'}
                   className={`px-4 py-3 rounded-2xl font-black uppercase tracking-wider text-xs transition-all shadow-sm flex items-center gap-2 ${selectedOrderForView.kitchenStatus !== 'ready'
-                      ? 'bg-background-muted border border-border-light text-text-muted cursor-not-allowed opacity-60'
-                      : 'bg-background border border-border-light text-text-secondary hover:text-primary hover:border-primary/50 hover:bg-primary/5 active:scale-95'
+                    ? 'bg-background-muted border border-border-light text-text-muted cursor-not-allowed opacity-60'
+                    : 'bg-background border border-border-light text-text-secondary hover:text-primary hover:border-primary/50 hover:bg-primary/5 active:scale-95'
                     }`}
                 >
                   <span>Print</span>

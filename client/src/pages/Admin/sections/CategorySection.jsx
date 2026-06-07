@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Edit2, Trash2, CheckCircle, XCircle, Search, Loader2, ArrowUpDown, Filter, Image as ImageIcon, RotateCcw, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { io } from 'socket.io-client';
 import api from '../../../api/axiosInstance';
-const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
+const SOCKET_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'https://guest-o-backend.onrender.com';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 import Swal from 'sweetalert2';
 import ImageCropper from '../../../components/ImageCropper/ImageCropper';
@@ -196,7 +196,7 @@ const CategorySection = ({ refreshKey }) => {
 
   const handleToggleStatus = async (category) => {
     try {
-      
+
       setCategories(prev => prev.map(c => c._id === category._id ? { ...c, isActive: !c.isActive } : c));
       const updatedCategory = { ...category, isActive: !category.isActive };
       await api.put(`/api/categories/${category._id}`, updatedCategory);
@@ -204,7 +204,7 @@ const CategorySection = ({ refreshKey }) => {
     } catch (error) {
       console.error('Error toggling category status:', error);
       showToast('error', 'Failed to update category status');
-      fetchCategories(true); 
+      fetchCategories(true);
     }
   };
 
@@ -222,7 +222,7 @@ const CategorySection = ({ refreshKey }) => {
     } catch (error) {
       console.error('Error updating discount:', error);
       showToast('error', 'Failed to update discount');
-      fetchCategories(true); 
+      fetchCategories(true);
     } finally {
       setEditingDiscountId(null);
     }
@@ -404,12 +404,12 @@ const CategorySection = ({ refreshKey }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
-                {isLoading ? (
-                  <tr>
-                    <td colSpan="7" className="px-6 py-10">
-                      <TableSkeleton columns={7} rows={5} />
-                    </td>
-                  </tr>
+              {isLoading ? (
+                <tr>
+                  <td colSpan="7" className="px-6 py-10">
+                    <TableSkeleton columns={7} rows={5} />
+                  </td>
+                </tr>
               ) : filteredCategories.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="px-6 py-12 text-center">
@@ -539,7 +539,7 @@ const CategorySection = ({ refreshKey }) => {
         />
       </div>
 
-      {}
+      { }
       {isModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-background-card w-full max-w-md rounded-2xl border border-border-light shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
@@ -560,11 +560,10 @@ const CategorySection = ({ refreshKey }) => {
                     setCurrentCategory({ ...currentCategory, name: e.target.value });
                     if (errors.name) setErrors({ ...errors, name: false });
                   }}
-                  className={`w-full px-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all ${
-                    errors.name 
-                      ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                  className={`w-full px-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all ${errors.name
+                      ? 'border-primary ring-1 ring-primary/30 bg-primary/5'
                       : 'border-border-main focus:border-primary'
-                  }`}
+                    }`}
                   placeholder="e.g. Main Course"
                 />
                 {errors.name && <p className="text-[10px] font-bold text-primary mt-1">{typeof errors.name === 'string' ? errors.name : 'Category Name is required'}</p>}

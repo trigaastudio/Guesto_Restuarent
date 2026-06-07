@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Lock, Loader2, ArrowRight, Sun, Moon, ChefHat } from 'lucide-react';
-import axios from 'axios';
+import { User, Lock, Loader2, ArrowRight, Sun, Moon, ChefHat, Eye, EyeOff } from 'lucide-react';
+import api from '../../api/axiosInstance';
 import { useTheme } from '../../context/ThemeContext';
 import { useCart } from '../../context/CartContext';
 import Loader from '../../components/Loader/Loader';
 
-const API_BASE_URL = 'http://localhost:5000/api';
 
 const StaffLogin = () => {
   const [employeeId, setEmployeeId] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const navigate = useNavigate();
@@ -51,7 +51,7 @@ const StaffLogin = () => {
 
     setIsLoading(true);
     try {
-      const response = await axios.post(`${API_BASE_URL}/staff/login`, { employeeId, password });
+      const response = await api.post(`/api/staff/login`, { employeeId, password });
 
       if (response.data.success) {
         const staffData = response.data.data;
@@ -63,6 +63,7 @@ const StaffLogin = () => {
         }
 
         localStorage.setItem('staff_user', JSON.stringify(staffData));
+        if (staffData.token) localStorage.setItem('staff_token', staffData.token);
         
         localStorage.removeItem('admin_token');
         localStorage.removeItem('admin_user');
@@ -139,13 +140,20 @@ const StaffLogin = () => {
                 <Lock className="h-4 w-4 text-text-muted group-focus-within:text-primary transition-colors" />
               </div>
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="block w-full pl-11 pr-4 py-4 bg-background-muted border border-transparent focus:border-primary/50 focus:bg-white dark:focus:bg-background-card rounded-xl text-sm transition-all outline-none text-text-primary placeholder:text-text-muted"
+                className="block w-full pl-11 pr-12 py-4 bg-background-muted border border-transparent focus:border-primary/50 focus:bg-white dark:focus:bg-background-card rounded-xl text-sm transition-all outline-none text-text-primary placeholder:text-text-muted"
                 placeholder="••••••••"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-4 flex items-center text-text-muted hover:text-text-primary transition-colors"
+              >
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
             </div>
           </div>
 

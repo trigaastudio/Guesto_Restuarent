@@ -1,5 +1,5 @@
-import express from 'express'; 
-import dotenv from 'dotenv';
+import 'dotenv/config.js';
+import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -25,27 +25,32 @@ import tableRoutes from './routes/tableRoutes.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import http from 'http';
+import compression from 'compression';
 import { initSocket } from './socket.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-dotenv.config();
-
 const app = express();
 
 
+app.use(compression({ threshold: 1024 }));
+
+
+
+app.set('trust proxy', 1);
+
 app.set('query parser', function (str) {
   return qs.parse(str, {
-    parameterLimit: 100, 
-    depth: 2,            
-    arrayLimit: 100      
+    parameterLimit: 100,
+    depth: 2,
+    arrayLimit: 100
   });
 });
 
 
-const allowedOrigins = process.env.NODE_ENV === 'production' 
-  ? [process.env.FRONTEND_URL] 
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? [process.env.FRONTEND_URL]
   : ['http://localhost:5173', 'http://127.0.0.1:5173'];
 
 app.use(cors({
@@ -56,14 +61,22 @@ app.use(cors({
 }));
 
 
+
+
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-      "script-src": ["'self'", "'unsafe-inline'", "https://checkout.razorpay.com"],
+      "script-src": ["'self'", "https://checkout.razorpay.com"],
       "frame-src": ["'self'", "https://api.razorpay.com", "https://tds.razorpay.com"],
-      "connect-src": ["'self'", "https://api.razorpay.com", "http://localhost:5000"],
-      "img-src": ["'self'", "data:", "http://localhost:5000", "blob:"]
+      "connect-src": [
+        "'self'",
+        "https://api.razorpay.com",
+        process.env.NODE_ENV === 'production'
+          ? process.env.BACKEND_URL || ''
+          : "http://localhost:5000"
+      ].filter(Boolean),
+      "img-src": ["'self'", "data:", "blob:", "https://res.cloudinary.com"],
     },
   },
   crossOriginResourcePolicy: { policy: "cross-origin" },
@@ -71,8 +84,8 @@ app.use(helmet({
 
 
 const limiter = rateLimit({
-  windowMs: 1 * 60 * 1000, 
-  max: 200, 
+  windowMs: 1 * 60 * 1000,
+  max: 200,
   message: 'Too many requests from this IP, please try again after a minute',
   standardHeaders: true,
   legacyHeaders: false,
@@ -82,18 +95,20 @@ app.use('/api/', limiter);
 
 connectDB();
 
-app.use(express.json());
+
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
 
+
 app.use((req, res, next) => {
-  ['body', 'params', 'query'].forEach((key) => {
-    if (req[key]) {
-      mongoSanitize.sanitize(req[key], { replaceWith: '_' });
-    }
-  });
+  if (req.body) mongoSanitize.sanitize(req.body, { replaceWith: '_' });
+  if (req.query) mongoSanitize.sanitize(req.query, { replaceWith: '_' });
+  if (req.params) mongoSanitize.sanitize(req.params, { replaceWith: '_' });
   next();
 });
+
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
@@ -123,7 +138,17 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/tables', tableRoutes);
 
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'OK', message: 'Server is running' });
+  res.status(200).json({ status: 'OK' });
+});
+
+
+app.use((err, req, res, next) => {
+  const isDev = process.env.NODE_ENV !== 'production';
+  const status = err.status || err.statusCode || 500;
+  res.status(status).json({
+    success: false,
+    message: isDev ? err.message : 'Internal server error'
+  });
 });
 
 const PORT = process.env.PORT || 5000;
