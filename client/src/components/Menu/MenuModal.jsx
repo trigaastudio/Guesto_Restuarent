@@ -120,7 +120,7 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
                       <div className="w-1.5 h-1.5 rounded-full bg-primary/40"></div>
                       <span className="text-[11px] font-bold text-text-primary">{item.menuItem?.name || item.name || 'Item'}</span>
                     </div>
-                    <span className="text-[10px] font-black text-text-muted opacity-50">₹{item.price}</span>
+                    <span className="text-[10px] font-black text-text-muted opacity-50">₹{Math.round(item.price || 0)}</span>
                   </div>
                 ))}
               </div>
@@ -288,9 +288,9 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
           <div className="flex flex-col">
             <span className="text-[8px] font-black tracking-widest text-text-muted opacity-40 mb-1 uppercase">Price</span>
             <div className="flex items-center gap-2">
-              <span className="text-2xl font-black text-text-primary tracking-tighter leading-none">₹{currentPrice * quantity}</span>
+              <span className="text-2xl font-black text-text-primary tracking-tighter leading-none">₹{Math.round(currentPrice * quantity)}</span>
               {originalPrice > currentPrice && (
-                <span className="text-sm font-bold text-text-muted line-through opacity-50">₹{originalPrice * quantity}</span>
+                <span className="text-sm font-bold text-text-muted line-through opacity-50">₹{Math.round(originalPrice * quantity)}</span>
               )}
             </div>
           </div>

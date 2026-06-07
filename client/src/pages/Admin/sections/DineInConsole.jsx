@@ -353,7 +353,7 @@ const WaiterDashboard = () => {
                     if (received > 0) {
                       changeWrap.style.display = 'flex';
                       if (received >= total) {
-                        changeEl.textContent = '₹' + (received - total).toFixed(2);
+                        changeEl.textContent = '₹' + (received - total).toFixed(0);
                         changeEl.style.color = '#10b981';
                       } else {
                         changeEl.textContent = 'Insufficient Cash';
@@ -397,7 +397,7 @@ const WaiterDashboard = () => {
               const cashRec = parseFloat(document.getElementById('swal-cash-received')?.value) || 0;
               const total = orderToUpdate.totalAmount || orderToUpdate.subtotal;
               if (cashRec < total) {
-                Swal.showValidationMessage('Cash received is less than total order amount (₹' + total.toFixed(2) + ')');
+                Swal.showValidationMessage('Cash received is less than total order amount (₹' + total.toFixed(0) + ')');
                 return false;
               }
               return { paymentMethod: 'cash', cashReceived: cashRec, balance: cashRec - total };
@@ -466,8 +466,8 @@ const WaiterDashboard = () => {
       <tr>
         <td style="width: 40%;"></td>
         <td style="width: 15%; text-align: left;">${item.quantity} P</td>
-        <td style="width: 20%; text-align: right;">${unitPrice.toFixed(2)}</td>
-        <td style="width: 25%; text-align: right;">${totalPrice.toFixed(2)}</td>
+        <td style="width: 20%; text-align: right;">${unitPrice.toFixed(0)}</td>
+        <td style="width: 25%; text-align: right;">${totalPrice.toFixed(0)}</td>
       </tr>
     `;
     }).join('');
@@ -547,16 +547,16 @@ const WaiterDashboard = () => {
           <div class="divider"></div>
           <div class="total-section">
             <span>TOTAL :</span>
-            <span>${(order.totalAmount || order.subtotal || 0).toFixed(2)}</span>
+            <span>${(order.totalAmount || order.subtotal || 0).toFixed(0)}</span>
           </div>
           ${order.paidAmount > 0 && (order.totalAmount || order.subtotal) > order.paidAmount ? `
             <div style="font-size: 13px; font-weight: bold; margin-top: 5px; display: flex; justify-content: space-between;">
               <span>PAID AMOUNT:</span>
-              <span>₹${order.paidAmount.toFixed(2)}</span>
+              <span>₹${order.paidAmount.toFixed(0)}</span>
             </div>
             <div style="font-size: 14px; font-weight: bold; margin-top: 3px; display: flex; justify-content: space-between; border: 1px solid #000; padding: 4px;">
               <span>BALANCE DUE:</span>
-              <span>₹${((order.totalAmount || order.subtotal) - order.paidAmount).toFixed(2)}</span>
+              <span>₹${((order.totalAmount || order.subtotal) - order.paidAmount).toFixed(0)}</span>
             </div>
           ` : ''}
           <div class="divider"></div>
@@ -564,11 +564,11 @@ const WaiterDashboard = () => {
             ${order.paymentMethod === 'cash' ? `
               <div style="display: flex; justify-content: space-between;">
                 <span>CASH RECEIVED :</span>
-                <span>${(order.cashReceived || order.totalAmount || order.subtotal || 0).toFixed(2)}</span>
+                <span>${(order.cashReceived || order.totalAmount || order.subtotal || 0).toFixed(0)}</span>
               </div>
               <div style="display: flex; justify-content: space-between; margin-top: 3px;">
                 <span>CHANGE :</span>
-                <span>${(order.balance || 0).toFixed(2)}</span>
+                <span>${(order.balance || 0).toFixed(0)}</span>
               </div>
             ` : (order.orderType === 'dine-in' && order.orderStatus !== 'delivered') ? `
               <div style="display: flex; justify-content: space-between;">
@@ -843,7 +843,7 @@ const WaiterDashboard = () => {
                                       </div>
                                       <div className="min-w-0">
                                         <p className="text-base md:text-lg font-extrabold text-text-primary truncate leading-tight">{order.customerDetails?.name || 'Walk-in'}</p>
-                                        <p className="text-xs md:text-sm text-text-muted font-bold tracking-wide mt-0.5">₹{order.totalAmount} • {order.items?.length || 0} items</p>
+                                        <p className="text-xs md:text-sm text-text-muted font-bold tracking-wide mt-0.5">₹{Math.round(order.totalAmount || 0)} • {order.items?.length || 0} items</p>
                                       </div>
                                     </div>
                                   </div>

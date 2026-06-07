@@ -590,7 +590,7 @@ const MenuSection = () => {
                       <div className="flex flex-col space-y-2">
                         {menu.isCombo ? (
                           <div className="flex flex-col">
-                            <span className="text-sm font-black text-primary">₹{menu.price?.toFixed(2)}</span>
+                            <span className="text-sm font-black text-primary">₹{menu.price?.toFixed(0)}</span>
                             <span className="text-[9px] text-text-muted font-bold uppercase">Combo Price</span>
                             {menu.offerPercentage > 0 && (
                               <span className="text-[9px] text-status-available font-bold italic">({menu.offerPercentage}% Off)</span>
@@ -1202,7 +1202,7 @@ const MenuSection = () => {
                     <div className="bg-primary/5 p-4 rounded-xl border border-primary/10 space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-semibold text-text-secondary">Total Original Price</span>
-                        <span className="text-sm font-bold text-text-primary">₹{currentMenu.comboItems.reduce((sum, item) => sum + (item.price || 0), 0).toFixed(2)}</span>
+                        <span className="text-sm font-bold text-text-primary">₹{currentMenu.comboItems.reduce((sum, item) => sum + (item.price || 0), 0).toFixed(0)}</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <label className="text-sm font-semibold text-text-secondary">Offer Percentage (%)</label>
@@ -1227,7 +1227,7 @@ const MenuSection = () => {
                           ₹{(
                             currentMenu.comboItems.reduce((sum, item) => sum + (item.price || 0), 0) *
                             (1 - (currentMenu.offerPercentage || 0) / 100)
-                          ).toFixed(2)}
+                          ).toFixed(0)}
                         </span>
                       </div>
                     </div>

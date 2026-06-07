@@ -214,8 +214,8 @@ const OrderSection = () => {
       <tr>
         <td style="width: 40%;"></td>
         <td style="width: 15%; text-align: left;">${item.quantity} P</td>
-        <td style="width: 20%; text-align: right;">${unitPrice.toFixed(2)}</td>
-        <td style="width: 25%; text-align: right;">${totalPrice.toFixed(2)}</td>
+        <td style="width: 20%; text-align: right;">${unitPrice.toFixed(0)}</td>
+        <td style="width: 25%; text-align: right;">${totalPrice.toFixed(0)}</td>
       </tr>
     `;
     }).join('');
@@ -296,39 +296,39 @@ const OrderSection = () => {
           <div style="font-size: 13px; font-weight: normal; margin-bottom: 5px;">
             <div style="display: flex; justify-content: space-between;">
               <span>Listing Price:</span>
-              <span>₹${((order.subtotal || 0) + (order.discount || 0)).toFixed(2)}</span>
+              <span>₹${((order.subtotal || 0) + (order.discount || 0)).toFixed(0)}</span>
             </div>
             ${order.deliveryFee > 0 ? `
               <div style="display: flex; justify-content: space-between;">
                 <span>Delivery Fee:</span>
-                <span>${order.deliveryFee.toFixed(2)}</span>
+                <span>${order.deliveryFee.toFixed(0)}</span>
               </div>
             ` : ''}
             ${order.platformFee > 0 ? `
               <div style="display: flex; justify-content: space-between;">
                 <span>Platform Fee:</span>
-                <span>${order.platformFee.toFixed(2)}</span>
+                <span>${order.platformFee.toFixed(0)}</span>
               </div>
             ` : ''}
             ${order.discount > 0 ? `
               <div style="display: flex; justify-content: space-between; color: green; font-weight: bold;">
                 <span>Discount:</span>
-                <span>-${order.discount.toFixed(2)}</span>
+                <span>-${order.discount.toFixed(0)}</span>
               </div>
             ` : ''}
           </div>
           <div class="total-section" style="border-top: 1px dashed #000; padding-top: 5px;">
             <span>TOTAL :</span>
-            <span>${(order.totalAmount || order.subtotal || 0).toFixed(2)}</span>
+            <span>${(order.totalAmount || order.subtotal || 0).toFixed(0)}</span>
           </div>
           ${order.paidAmount > 0 && (order.totalAmount || order.subtotal) > order.paidAmount ? `
             <div style="font-size: 13px; font-weight: bold; margin-top: 5px; display: flex; justify-content: space-between;">
               <span>PAID AMOUNT:</span>
-              <span>₹${order.paidAmount.toFixed(2)}</span>
+              <span>₹${order.paidAmount.toFixed(0)}</span>
             </div>
             <div style="font-size: 14px; font-weight: bold; margin-top: 3px; display: flex; justify-content: space-between; border: 1px solid #000; padding: 4px;">
               <span>BALANCE DUE:</span>
-              <span>₹${((order.totalAmount || order.subtotal) - order.paidAmount).toFixed(2)}</span>
+              <span>₹${((order.totalAmount || order.subtotal) - order.paidAmount).toFixed(0)}</span>
             </div>
           ` : ''}
           <div class="divider"></div>
@@ -336,11 +336,11 @@ const OrderSection = () => {
             ${order.paymentMethod === 'cash' ? `
               <div style="display: flex; justify-content: space-between;">
                 <span>CASH RECEIVED :</span>
-                <span>${(order.cashReceived || order.totalAmount || order.subtotal || 0).toFixed(2)}</span>
+                <span>${(order.cashReceived || order.totalAmount || order.subtotal || 0).toFixed(0)}</span>
               </div>
               <div style="display: flex; justify-content: space-between; margin-top: 3px;">
                 <span>CHANGE :</span>
-                <span>${(order.balance || 0).toFixed(2)}</span>
+                <span>${(order.balance || 0).toFixed(0)}</span>
               </div>
             ` : (order.orderType === 'dine-in' && order.orderStatus !== 'delivered') ? `
               <div style="display: flex; justify-content: space-between;">
@@ -1881,7 +1881,7 @@ const OrderSection = () => {
                           </div>
                         </td>
                       )}
-                      <td className="px-2 py-2.5 font-black text-text-primary">₹{(order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0)}</td>
+                      <td className="px-2 py-2.5 font-black text-text-primary">₹{Math.round((order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0))}</td>
                       <td className="px-2 py-2.5 text-center">
                         {(() => {
                           const status = getFriendlyStatus(order);
@@ -2090,7 +2090,7 @@ const OrderSection = () => {
                               {item?.name && item.name !== 'Unknown Item' ? item.name : (item?.menuItem?.name || item?.name || 'Menu Item')}
                             </p>
                             <p className="text-[9px] text-text-muted font-bold uppercase">
-                              {item?.size} • ₹{item?.unitPrice || item?.price} x {item?.quantity}
+                              {item?.size} • ₹{Math.round(item?.unitPrice || item?.price || 0)} x {item?.quantity}
                             </p>
                             { }
                             {item?.bogoItem && (
@@ -2138,7 +2138,7 @@ const OrderSection = () => {
                             {ks}
                           </span>
                           <p className="text-xs font-black text-text-primary">
-                            ₹{item?.totalPrice || ((item?.unitPrice || item?.price || 0) * item?.quantity)}
+                            ₹{Math.round(item?.totalPrice || ((item?.unitPrice || item?.price || 0) * item?.quantity))}
                           </p>
                         </div>
                       </div>
@@ -2604,7 +2604,7 @@ const OrderSection = () => {
                     <div key={idx} className="flex items-start gap-3 group p-3 bg-background-card hover:bg-background-muted/40 rounded-2xl border border-border-light hover:border-border transition-all duration-300">
                       <div className="flex-1 min-w-0">
                         <p className="font-black text-text-primary text-[11px] leading-tight mb-0.5 truncate">{item.name}</p>
-                        <p className="text-[9px] text-text-muted font-bold uppercase mb-1.5">{item.size} · ₹{item.unitPrice}</p>
+                        <p className="text-[9px] text-text-muted font-bold uppercase mb-1.5">{item.size} · ₹{Math.round(item.unitPrice || 0)}</p>
                         <div className="flex flex-wrap gap-1">
                           {item.comboItems?.length > 0 && (
                             <div className="flex flex-wrap gap-1">
@@ -2664,17 +2664,17 @@ const OrderSection = () => {
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-text-muted/60 text-[10px] font-bold">
                     <span>Listing Price</span>
-                    <span>₹{cart.reduce((acc, item) => acc + ((item.originalPrice || item.unitPrice) * item.quantity), 0)}</span>
+                    <span>₹{Math.round(cart.reduce((acc, item) => acc + ((item.originalPrice || item.unitPrice) * item.quantity), 0))}</span>
                   </div>
                   {cart.reduce((acc, item) => acc + (Math.max(0, (item.originalPrice || item.unitPrice) - item.unitPrice) * item.quantity), 0) > 0 && (
                     <div className="flex items-center justify-between text-status-available text-[10px] font-black">
                       <span className="flex items-center gap-1"><Zap size={9} /> Savings</span>
-                      <span>-₹{cart.reduce((acc, item) => acc + (Math.max(0, (item.originalPrice || item.unitPrice) - item.unitPrice) * item.quantity), 0)}</span>
+                      <span>-₹{Math.round(cart.reduce((acc, item) => acc + (Math.max(0, (item.originalPrice || item.unitPrice) - item.unitPrice) * item.quantity), 0))}</span>
                     </div>
                   )}
                   <div className="flex items-center justify-between text-primary text-[10px] font-black bg-primary/10 -mx-4 px-4 py-1.5 border-y border-primary/10">
                     <span>Items Total</span>
-                    <span>₹{cart.reduce((acc, i) => acc + i.totalPrice, 0)}</span>
+                    <span>₹{Math.round(cart.reduce((acc, i) => acc + i.totalPrice, 0))}</span>
                   </div>
                   {posOrderType === 'delivery' && (
                     <div className="flex items-center justify-between text-text-primary text-[10px] font-bold">
@@ -2924,7 +2924,7 @@ const OrderSection = () => {
                 </button>
                 {cart.length > 0 && (
                   <p className="text-center text-[9px] text-text-muted/50 font-bold mt-2.5 uppercase tracking-wider">
-                    {cart.reduce((a, i) => a + i.quantity, 0)} items · ₹{cart.reduce((acc, i) => acc + i.totalPrice, 0) + (posOrderType === 'delivery' ? (parseFloat(deliveryFee) || 0) : 0)} total
+                    {cart.reduce((a, i) => a + i.quantity, 0)} items · ₹{Math.round(cart.reduce((acc, i) => acc + i.totalPrice, 0) + (posOrderType === 'delivery' ? (parseFloat(deliveryFee) || 0) : 0))} total
                   </p>
                 )}
               </div>
@@ -3078,7 +3078,7 @@ const OrderSection = () => {
                       <div className="text-right">
                         <span className={`text-3xl font-black tracking-tighter ${cash > 0 && cashValid ? 'text-primary' : 'text-text-muted'
                           }`}>
-                          ₹{cash > 0 && cashValid ? change.toFixed(2) : '0.00'}
+                          ₹{cash > 0 && cashValid ? change.toFixed(0) : '0.00'}
                         </span>
                       </div>
                     </div>

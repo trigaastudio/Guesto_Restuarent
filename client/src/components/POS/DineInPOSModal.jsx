@@ -592,7 +592,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2 shrink-0">
-                    <p className="font-black text-[13px] md:text-sm text-text-primary">₹{item.totalPrice}</p>
+                    <p className="font-black text-[13px] md:text-sm text-text-primary">₹{Math.round(item.totalPrice || 0)}</p>
                     <div className="flex items-center gap-1.5">
                       <div className="flex items-center bg-background border border-border-light rounded-xl overflow-hidden shadow-inner">
                         <button onClick={() => updateCartQuantity(index, -1)} className="p-2 hover:bg-background-muted text-text-secondary transition-colors"><Minus size={14} /></button>
@@ -637,7 +637,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
             <div>
               <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-0.5">Total Amount</p>
               <p className="text-2xl font-black text-primary tracking-tight leading-none">
-                ₹{cart.reduce((acc, item) => acc + item.totalPrice, 0)}
+                ₹{Math.round(cart.reduce((acc, item) => acc + (item.totalPrice || 0), 0))}
               </p>
             </div>
             <button
@@ -664,14 +664,14 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                       <p className="font-bold text-text-primary text-[15px] truncate">{item.name}</p>
                       <p className="text-[11px] text-text-muted uppercase font-black tracking-widest mt-1">{item.size} x {item.quantity}</p>
                     </div>
-                    <p className="font-black text-text-primary text-base shrink-0">₹{item.totalPrice}</p>
+                    <p className="font-black text-text-primary text-base shrink-0">₹{Math.round(item.totalPrice || 0)}</p>
                   </div>
                 ))}
               </div>
 
               <div className="flex justify-between items-center mb-6 px-2">
                 <span className="text-[11px] font-black text-text-muted uppercase tracking-widest">Total Amount</span>
-                <span className="text-3xl font-black text-primary tracking-tighter">₹{cart.reduce((acc, i) => acc + i.totalPrice, 0)}</span>
+                <span className="text-3xl font-black text-primary tracking-tighter">₹{Math.round(cart.reduce((acc, i) => acc + (i.totalPrice || 0), 0))}</span>
               </div>
 
               <div className="flex gap-3">
