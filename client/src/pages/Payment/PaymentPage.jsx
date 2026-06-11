@@ -138,7 +138,7 @@ const PaymentPage = () => {
         const categoryDiscount = item.category?.discountPercentage || 0;
         const maxDiscount = Math.max(menuDiscount, categoryDiscount);
         const discountedPrice = item.isCombo
-          ? basePrice
+          ? Math.round(basePrice)
           : Math.round(maxDiscount > 0 ? basePrice * (1 - maxDiscount / 100) : basePrice);
 
         return {
@@ -564,7 +564,7 @@ const PaymentPage = () => {
                           const categoryDiscount = item.category?.discountPercentage || 0;
                           const maxDiscount = Math.max(menuDiscount, categoryDiscount);
                           const discountedPrice = item.isCombo
-                            ? basePrice
+                            ? Math.round(basePrice)
                             : Math.round(maxDiscount > 0 ? basePrice * (1 - maxDiscount / 100) : basePrice);
                           return discountedPrice * item.quantity;
                         })()}

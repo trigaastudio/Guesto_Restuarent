@@ -135,7 +135,7 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
 
               const discountPercent = Math.max(menuDiscount, categoryDiscount);
               const discountedPrice = menu.isCombo
-                ? (menu.price || originalPrice)
+                ? Math.round(menu.price || originalPrice)
                 : Math.round(discountPercent > 0 ? originalPrice * (1 - discountPercent / 100) : originalPrice);
 
               const hasSavings = originalPrice > discountedPrice;
