@@ -433,7 +433,7 @@ const OrdersPage = () => {
 
                           {}
                           <div className="w-full md:w-auto md:min-w-[120px] md:text-center">
-                            <p className="text-lg font-black text-text-primary tracking-tighter">₹{(order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0)}</p>
+                            <p className="text-lg font-black text-text-primary tracking-tighter">₹{Math.round((order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0))}</p>
                             <div className="flex items-center gap-1.5 md:justify-center mt-0.5">
                               {order.orderStatus !== 'cancelled' && (
                                 <span className={`text-[9px] font-bold uppercase tracking-wider ${order.paymentStatus === 'paid' ? 'text-emerald-600' : 'text-orange-600 animate-pulse'}`}>

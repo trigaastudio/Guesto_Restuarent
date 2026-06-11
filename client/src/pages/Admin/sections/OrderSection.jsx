@@ -62,7 +62,7 @@ const OrderSection = () => {
       `--------------------------\n` +
       `📦 *Items:*\n${itemsText}\n` +
       `--------------------------\n` +
-      `💰 *Total:* ₹${order.totalAmount}\n` +
+      `💰 *Total:* ₹${Math.round(order.totalAmount)}\n` +
       `💳 *Payment:* ${order.paymentMethod?.toUpperCase()} (${order.paymentStatus?.toUpperCase()})\n` +
       locationUrl;
 
@@ -773,29 +773,29 @@ const OrderSection = () => {
             <div class="pt-3 border-t-2 border-dashed border-border-light flex flex-col gap-1 px-1">
               <div class="flex justify-between items-center">
                 <span class="text-[10px] font-black text-text-muted uppercase tracking-widest">Listing Price</span>
-                <span class="text-[11px] font-black text-text-primary">₹${(order.subtotal || 0) + (order.discount || 0)}</span>
+                <span class="text-[11px] font-black text-text-primary">₹${Math.round((order.subtotal || 0) + (order.discount || 0))}</span>
               </div>
               ${order.deliveryFee > 0 ? `
                 <div class="flex justify-between items-center text-text-muted">
                   <span class="text-[10px] font-black uppercase tracking-widest">Delivery Fee</span>
-                  <span class="text-[11px] font-black">+₹${order.deliveryFee}</span>
+                  <span class="text-[11px] font-black">+₹${Math.round(order.deliveryFee)}</span>
                 </div>
               ` : ''}
               ${order.platformFee > 0 ? `
                 <div class="flex justify-between items-center text-text-muted">
                   <span class="text-[10px] font-black uppercase tracking-widest">Platform Fee</span>
-                  <span class="text-[11px] font-black">+₹${order.platformFee}</span>
+                  <span class="text-[11px] font-black">+₹${Math.round(order.platformFee)}</span>
                 </div>
               ` : ''}
               ${order.discount > 0 ? `
                 <div class="flex justify-between items-center text-green-600">
                   <span class="text-[10px] font-black uppercase tracking-widest">Discount</span>
-                  <span class="text-[11px] font-black">-₹${order.discount}</span>
+                  <span class="text-[11px] font-black">-₹${Math.round(order.discount)}</span>
                 </div>
               ` : ''}
               <div class="flex justify-between items-center mt-2 pt-2 border-t border-border-light/50">
                 <p class="text-[11px] font-black text-text-primary uppercase tracking-widest">Total Payable</p>
-                <p class="text-[18px] font-black text-primary">₹${(order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0)}</p>
+                <p class="text-[18px] font-black text-primary">₹${Math.round((order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0))}</p>
               </div>
             </div>
           </div>
@@ -2287,28 +2287,28 @@ const OrderSection = () => {
                 <div className="space-y-1">
                   <div className="flex flex-col mb-1 space-y-0.5">
                     <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">
-                      Listing Price: ₹{(selectedOrder.subtotal || 0) + (selectedOrder.discount || 0)}
+                      Listing Price: ₹{Math.round((selectedOrder.subtotal || 0) + (selectedOrder.discount || 0))}
                     </span>
                     {selectedOrder.platformFee > 0 && (
                       <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">
-                        Platform Fee: +₹{selectedOrder.platformFee}
+                        Platform Fee: +₹{Math.round(selectedOrder.platformFee)}
                       </span>
                     )}
                     {selectedOrder.deliveryFee > 0 && (
                       <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">
-                        Delivery Fee: +₹{selectedOrder.deliveryFee}
+                        Delivery Fee: +₹{Math.round(selectedOrder.deliveryFee)}
                       </span>
                     )}
                     {selectedOrder.discount > 0 && (
                       <span className="text-[10px] text-green-600 font-bold uppercase tracking-widest">
-                        Discount: -₹{selectedOrder.discount}
+                        Discount: -₹{Math.round(selectedOrder.discount)}
                       </span>
                     )}
                   </div>
                   <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Total Bill Amount</p>
                   <div className="flex items-baseline space-x-2">
                     <span className="text-4xl font-black text-text-primary">
-                      ₹{(selectedOrder.subtotal || 0) + (selectedOrder.deliveryFee || 0) + (selectedOrder.platformFee || 0) + (selectedOrder.tax || 0)}
+                      ₹{Math.round((selectedOrder.subtotal || 0) + (selectedOrder.deliveryFee || 0) + (selectedOrder.platformFee || 0) + (selectedOrder.tax || 0))}
                     </span>
                     {selectedOrder.paidAmount > 0 && (selectedOrder.totalAmount || selectedOrder.subtotal) > selectedOrder.paidAmount && (
                       <span className="px-2 py-0.5 bg-status-off/10 text-status-unavailable text-[10px] font-black rounded-lg uppercase tracking-tighter">
@@ -2328,11 +2328,11 @@ const OrderSection = () => {
                         <p className="text-[10px] font-black text-status-unavailable uppercase tracking-widest mb-0.5">Balance to Collect</p>
                         <div className="flex items-baseline space-x-3">
                           <span className="text-2xl font-black text-text-primary">
-                            ₹{(selectedOrder?.totalAmount || selectedOrder?.subtotal || 0) - (selectedOrder?.paidAmount || 0)}
+                            ₹{Math.round((selectedOrder?.totalAmount || selectedOrder?.subtotal || 0) - (selectedOrder?.paidAmount || 0))}
                           </span>
                           <div className="h-4 w-[1px] bg-border-light" />
                           <span className="text-[10px] font-bold text-text-muted uppercase">
-                            Paid: ₹{selectedOrder?.paidAmount || 0}
+                            Paid: ₹{Math.round(selectedOrder?.paidAmount || 0)}
                           </span>
                         </div>
                       </div>
@@ -2646,7 +2646,7 @@ const OrderSection = () => {
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-2 shrink-0">
-                        <p className="font-black text-[11px] text-text-primary">₹{item.totalPrice}</p>
+                        <p className="font-black text-[11px] text-text-primary">₹{Math.round(item.totalPrice)}</p>
                         <div className="flex items-center gap-1.5">
                           <div className="flex items-center gap-1 bg-background-card px-2 py-1 rounded-lg border border-border-light">
                             <button onClick={() => updateCartQuantity(idx, -1)} disabled={item.quantity <= 1} className="text-text-muted hover:text-primary font-black text-xs disabled:opacity-30 w-4 h-4 flex items-center justify-center">−</button>
