@@ -102,7 +102,11 @@ class CartController {
           },
           {
             path: 'comboItems.menuItem',
-            model: 'Menu'
+            model: 'Menu',
+            populate: {
+              path: 'category',
+              model: 'Category'
+            }
           }
         ]
       });
@@ -132,7 +136,11 @@ class CartController {
           },
           {
             path: 'comboItems.menuItem',
-            model: 'Menu'
+            model: 'Menu',
+            populate: {
+              path: 'category',
+              model: 'Category'
+            }
           }
         ]
       });

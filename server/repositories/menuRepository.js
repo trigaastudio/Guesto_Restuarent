@@ -24,7 +24,11 @@ class MenuRepository {
       })
       .populate({
         path: 'comboItems.menuItem',
-        select: 'name variants totalStock isBlocked'
+        select: 'name variants totalStock isBlocked category',
+        populate: {
+          path: 'category',
+          select: 'name totalStock stockactive isSharedStock'
+        }
       })
       .sort(sortOption);
     if (skip > 0) query = query.skip(skip);
@@ -45,7 +49,11 @@ class MenuRepository {
       })
       .populate({
         path: 'comboItems.menuItem',
-        select: 'name variants totalStock isBlocked'
+        select: 'name variants totalStock isBlocked category',
+        populate: {
+          path: 'category',
+          select: 'name totalStock stockactive isSharedStock'
+        }
       })
       .sort({ createdAt: -1 })
       .lean();
@@ -64,7 +72,11 @@ class MenuRepository {
       })
       .populate({
         path: 'comboItems.menuItem',
-        select: 'name variants totalStock isBlocked'
+        select: 'name variants totalStock isBlocked category',
+        populate: {
+          path: 'category',
+          select: 'name totalStock stockactive isSharedStock'
+        }
       })
       .lean();
   }
@@ -82,7 +94,11 @@ class MenuRepository {
       })
       .populate({
         path: 'comboItems.menuItem',
-        select: 'name variants totalStock isBlocked'
+        select: 'name variants totalStock isBlocked category',
+        populate: {
+          path: 'category',
+          select: 'name totalStock stockactive isSharedStock'
+        }
       })
       .lean();
   }
