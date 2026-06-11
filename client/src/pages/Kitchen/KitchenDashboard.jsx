@@ -27,38 +27,31 @@ const KITCHEN_STATUSES = [
 ];
 
 const ItemStatusActions = ({ value, onChange }) => {
-  if (value === 'placed') {
-    return (
-      <button onClick={() => onChange('preparing')} className="flex items-center space-x-1 bg-blue-500/10 text-blue-600 border border-blue-500/30 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-500/20 transition-all">
-        <ChefHat size={12} />
-        <span>Start</span>
-      </button>
-    );
-  }
-  if (value === 'preparing' || value === 'delayed') {
-    return (
-      <div className="flex items-center space-x-2">
-        {value === 'preparing' && (
-          <button onClick={() => onChange('delayed')} className="p-1.5 bg-amber-500/10 text-amber-600 border border-amber-500/30 rounded-lg hover:bg-amber-500/20 transition-colors" title="Mark Delayed">
-            <AlertTriangle size={14} />
-          </button>
-        )}
-        <button onClick={() => onChange('ready')} className="flex items-center space-x-1 bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500/20 hover:scale-105 transition-all shadow-sm">
-          <CheckCircle2 size={12} />
-          <span>Ready</span>
-        </button>
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border outline-none appearance-none cursor-pointer transition-colors shadow-sm
+          ${value === 'placed' ? 'bg-amber-500/10 text-amber-600 border-amber-500/30' :
+          value === 'preparing' ? 'bg-blue-500/10 text-blue-600 border-blue-500/30' :
+          value === 'delayed' ? 'bg-red-500/10 text-red-600 border-red-500/30' :
+          'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'
+        }`}
+        style={{ textAlignLast: 'center', paddingRight: '20px' }}
+      >
+        {value === 'placed' && <option value="placed" disabled className="bg-background text-text-primary font-bold">Placed (New)</option>}
+        <option value="preparing" className="bg-background text-text-primary font-bold">Preparing</option>
+        <option value="delayed" className="bg-background text-text-primary font-bold">Delayed</option>
+        <option value="ready" className="bg-background text-text-primary font-bold">Ready</option>
+      </select>
+      <div className="pointer-events-none absolute inset-y-0 right-1 flex items-center px-1 text-inherit opacity-70">
+        <svg className="fill-current h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+          <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+        </svg>
       </div>
-    );
-  }
-  if (value === 'ready') {
-    return (
-      <span className="flex items-center space-x-1 text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg text-[10px] font-black uppercase">
-        <CheckCircle2 size={12} />
-        <span>Done</span>
-      </span>
-    );
-  }
-  return null;
+    </div>
+  );
 };
 
 const TABS = [
@@ -135,7 +128,10 @@ const KitchenDashboard = () => {
     document.title = `Kitchen | ${tabName}`;
 
 
-    socketRef.current = io(SOCKET_URL);
+    const token = localStorage.getItem('staff_token') || localStorage.getItem('admin_token') || '';
+    socketRef.current = io(SOCKET_URL, {
+      auth: { token }
+    });
     socketRef.current.on('ordersUpdated', () => {
       fetchOrders(true);
     });
@@ -725,12 +721,26 @@ const KitchenDashboard = () => {
                         </div>
                         {order.items?.some(i => i.kitchenStatus !== 'ready') && (
                           <div className="pt-2 flex justify-end">
-                            <button
-                              onClick={() => handleBulkUpdateOrderItems(order._id, 'ready', order.orderNumber)}
-                              className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[9px] font-black uppercase tracking-widest rounded-xl transition-all shadow-sm shadow-emerald-500/20 active:scale-95"
-                            >
-                              Mark All Ready
-                            </button>
+                            <div className="relative">
+                              <select
+                                value=""
+                                onChange={(e) => {
+                                  const newStatus = e.target.value;
+                                  if (newStatus) handleBulkUpdateOrderItems(order._id, newStatus, order.orderNumber);
+                                }}
+                                className="appearance-none px-4 py-1.5 bg-background-card border border-border-light text-text-primary text-[9px] font-black uppercase tracking-widest rounded-xl transition-all shadow-sm hover:border-primary/50 cursor-pointer pr-8"
+                              >
+                                <option value="">Bulk Update Items</option>
+                                <option value="preparing">All Preparing</option>
+                                <option value="delayed">All Delayed</option>
+                                <option value="ready">All Ready</option>
+                              </select>
+                              <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-text-muted">
+                                <svg className="fill-current h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+                                </svg>
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -755,7 +765,7 @@ const KitchenDashboard = () => {
                       {(activeStatusFilter === 'new'
                         ? order.items?.filter(i => (i.kitchenStatus || 'placed') === 'placed')
                         : order.items
-                      )?.map((item) => {
+                      )?.slice().reverse().map((item) => {
                         const status = item.kitchenStatus || 'placed';
                         return (
                           <div key={item._id} className={`grid ${activeStatusFilter === 'new' ? 'grid-cols-[40px_1fr]' : 'grid-cols-[48px_1fr_auto]'} items-center p-3 bg-background-muted/10 rounded-2xl border border-border-light hover:border-primary/20 transition-all gap-3 group/item`}>
@@ -848,13 +858,28 @@ const KitchenDashboard = () => {
                     <div className="px-4 pb-4 space-y-2">
                       { }
                       {activeStatusFilter === 'new' && order.items?.some(i => (i.kitchenStatus || 'placed') === 'placed') && (
-                        <button
-                          onClick={() => handleStartPreparation(order)}
-                          className="w-full flex items-center justify-center space-x-3 py-3 bg-primary text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all group"
-                        >
-                          <ChefHat size={16} className="group-hover:rotate-12 transition-transform" />
-                          <span>Send to Preparing</span>
-                        </button>
+                        <div className="relative w-full">
+                          <select
+                            value=""
+                            onChange={(e) => {
+                              const newStatus = e.target.value;
+                              if (newStatus === 'preparing') handleStartPreparation(order);
+                              else if (newStatus) handleBulkUpdateOrderItems(order._id, newStatus, order.orderNumber);
+                            }}
+                            className="appearance-none w-full py-3 bg-background-card text-text-primary border border-border-light rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-sm hover:border-primary/50 transition-all cursor-pointer text-center outline-none"
+                            style={{ textAlignLast: 'center' }}
+                          >
+                            <option value="">-- Update All Items --</option>
+                            <option value="preparing">Preparing (Start All)</option>
+                            <option value="delayed">Delayed</option>
+                            <option value="ready">Ready</option>
+                          </select>
+                          <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-text-muted">
+                            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                              <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+                            </svg>
+                          </div>
+                        </div>
                       )}
 
                       {allReady && (

@@ -23,6 +23,19 @@ class CartController {
           menuData = item.menuItem;
         }
 
+        if (menuData.isBlocked) return false;
+        if (menuData.category && menuData.category.isActive === false) return false;
+
+        return true;
+      })
+      .map(item => {
+        let menuData = {};
+        if (item.menuItem.toObject) {
+          menuData = item.menuItem.toObject();
+        } else if (typeof item.menuItem === 'object') {
+          menuData = item.menuItem;
+        }
+
         return {
           ...menuData,
           menuItemId: menuData._id, 
@@ -123,6 +136,21 @@ class CartController {
           }
         ]
       });
+
+      if (cart) {
+        const validItems = cart.items.filter(item => {
+          if (!item.menuItem) return false;
+          let menuData = item.menuItem.toObject ? item.menuItem.toObject() : item.menuItem;
+          if (menuData.isBlocked) return false;
+          if (menuData.category && menuData.category.isActive === false) return false;
+          return true;
+        });
+
+        if (validItems.length !== cart.items.length) {
+          cart.items = validItems;
+          await cart.save();
+        }
+      }
 
       res.status(200).json({
         success: true,

@@ -268,6 +268,7 @@ const CartPage = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
     if (user && !dineInTableId) fetchAddresses();
+    if (fetchCart) fetchCart();
   }, []);
 
   useEffect(() => {

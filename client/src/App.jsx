@@ -38,8 +38,16 @@ const PageLoader = () => (
 );
 
 function App() {
+  React.useEffect(() => {
+    const refreshTimer = setInterval(() => {
+      window.location.reload();
+    }, 10 * 60 * 1000); // 10 minutes
+
+    return () => clearInterval(refreshTimer);
+  }, []);
+
   return (
-    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'dummy_client_id_for_dev'}>
       <ThemeProvider>
         <CartProvider>
           <BrowserRouter>

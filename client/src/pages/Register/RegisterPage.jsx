@@ -428,36 +428,7 @@ const RegisterPage = () => {
         </div>
       </div>
 
-      <style dangerouslySetInnerHTML={{
-        __html: `
-        @keyframes slow-zoom {
-          from { transform: scale(1); }
-          to   { transform: scale(1.07); }
-        }
-        .animate-slow-zoom { animation: slow-zoom 20s ease-out infinite alternate; }
 
-        @keyframes shake {
-          0%,100%{ transform:translateX(0); }
-          25%    { transform:translateX(-4px); }
-          75%    { transform:translateX(4px); }
-        }
-        .animate-shake { animation: shake .35s ease-in-out; }
-
-        @keyframes bounce-in {
-          0%   { opacity:0; transform:scale(0.9); }
-          60%  { opacity:1; transform:scale(1.03); }
-          100% { opacity:1; transform:scale(1); }
-        }
-        .animate-bounce-in { animation: bounce-in .4s cubic-bezier(.68,-.55,.27,1.55) forwards; }
-
-        input:-webkit-autofill,
-        input:-webkit-autofill:hover,
-        input:-webkit-autofill:focus,
-        input:-webkit-autofill:active {
-          -webkit-box-shadow: 0 0 0 40px var(--color-background-muted) inset !important;
-          -webkit-text-fill-color: var(--color-text-primary) !important;
-        }
-      `}} />
 
       {showOTP && (
         <OTPModal

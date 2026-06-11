@@ -141,8 +141,11 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
     const menuDiscount = item.discountPercentage || 0;
     const categoryDiscount = item.category?.discountPercentage || 0;
     const discountPercent = Math.max(menuDiscount, categoryDiscount);
-    const basePrice = variant.price || item.price || 0;
-    const currentPrice = item.isCombo ? basePrice : Math.round(discountPercent > 0 ? basePrice * (1 - discountPercent / 100) : basePrice);
+    const comboOriginalPrice = item.isCombo 
+      ? item.comboItems?.reduce((sum, ci) => sum + ((ci.price || ci.menuItem?.price) || 0), 0)
+      : null;
+    const basePrice = item.isCombo && comboOriginalPrice ? comboOriginalPrice : (variant.price || item.price || 0);
+    const currentPrice = Math.round(item.isCombo ? (item.price || basePrice) : (discountPercent > 0 ? basePrice * (1 - discountPercent / 100) : basePrice));
 
     setCart(prevCart => {
       const existingIndex = prevCart.findIndex(c => c.menuItem === item._id && c.size === sizeName);

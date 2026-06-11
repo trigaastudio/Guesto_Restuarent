@@ -16,13 +16,12 @@ export const CartProvider = ({ children }) => {
   useEffect(() => {
     
     
-    const isStaffUser = !!(localStorage.getItem('staff_user') || localStorage.getItem('admin_user'));
     const isStaffPath = window.location.pathname.startsWith('/admin') || 
                         window.location.pathname.startsWith('/staff') || 
                         window.location.pathname.startsWith('/kitchen') || 
                         window.location.pathname.startsWith('/waiter');
                         
-    if (!isStaffUser && !isStaffPath) {
+    if (!isStaffPath) {
       fetchCart();
     } else {
       setLoading(false);
@@ -59,6 +58,10 @@ export const CartProvider = ({ children }) => {
       fetchOffers();
     });
 
+    socket.on('categoryUpdate', () => {
+      fetchCart();
+    });
+
     socket.on('settingsUpdate', (newSettings) => {
       if (newSettings) {
         setSettings(newSettings);
@@ -70,6 +73,7 @@ export const CartProvider = ({ children }) => {
     return () => {
       socket.off('stockUpdate');
       socket.off('offerUpdate');
+      socket.off('categoryUpdate');
       socket.off('settingsUpdate');
       if (pendingUpdatesRef.current) {
         Object.values(pendingUpdatesRef.current).forEach(clearTimeout);
@@ -175,6 +179,29 @@ export const CartProvider = ({ children }) => {
       showToast('error', 'Failed to remove item');
     }
   }, []);
+
+  // Track items being removed to prevent infinite loops
+  const removingItemsRef = useRef(new Set());
+
+  // Automatically remove inactive/blocked items from cart
+  useEffect(() => {
+    const itemsToRemove = cartItems.filter(item => 
+      item.isBlocked || (item.category && item.category.isActive === false)
+    );
+
+    itemsToRemove.forEach(async (item) => {
+      if (!removingItemsRef.current.has(item._id)) {
+        removingItemsRef.current.add(item._id);
+        try {
+          await removeFromCart(item._id);
+        } catch (error) {
+          console.error("Auto-remove failed for item:", item._id);
+        } finally {
+          removingItemsRef.current.delete(item._id);
+        }
+      }
+    });
+  }, [cartItems, removeFromCart]);
 
   const updateQuantity = useCallback(async (id, quantity) => {
     if (quantity < 1) {

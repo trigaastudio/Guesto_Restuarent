@@ -160,10 +160,10 @@ const MenuSection = () => {
 
   const handleSave = async () => {
     const isComboCategory = categories.find(c => c._id === currentMenu.category)?.name.toLowerCase() === 'combo';
-    
+
     const newErrors = {};
     const textRegex = /^[a-zA-Z0-9\s]*$/;
-    
+
     if (!currentMenu.name || !currentMenu.name.trim()) {
       newErrors.name = 'Item Name is required';
     } else if (currentMenu.name.length > 20) {
@@ -173,11 +173,13 @@ const MenuSection = () => {
     }
 
     if (!currentMenu.category) newErrors.category = true;
-    
-    if (currentMenu.totalStock === '' || currentMenu.totalStock === undefined || currentMenu.totalStock === null) {
-      newErrors.totalStock = 'Stock is required';
-    } else if (currentMenu.totalStock < 0) {
-      newErrors.totalStock = 'Stock must be a positive value';
+
+    if (!isComboCategory) {
+      if (currentMenu.totalStock === '' || currentMenu.totalStock === undefined || currentMenu.totalStock === null) {
+        newErrors.totalStock = 'Stock is required';
+      } else if (currentMenu.totalStock < 0) {
+        newErrors.totalStock = 'Stock must be a positive value';
+      }
     }
 
     if (currentMenu.description) {
@@ -222,6 +224,7 @@ const MenuSection = () => {
       ...currentMenu,
       isCombo: isComboCategory,
       price: finalPrice,
+      totalStock: isComboCategory ? 0 : currentMenu.totalStock,
       variants: isComboCategory ? [] : cleanedVariants
     };
 
@@ -830,7 +833,7 @@ const MenuSection = () => {
                     ))}
                   </select>
                 </div>
-                {!categories.find(c => c._id === currentMenu.category)?.stockactive && (
+                {!isComboCategory && !categories.find(c => c._id === currentMenu.category)?.stockactive && (
                   <div className="space-y-1.5">
                     <label className={`text-sm font-semibold ${errors.totalStock ? 'text-primary' : 'text-text-secondary'}`}>Total Stock</label>
                     <input

@@ -1103,8 +1103,11 @@ const OrderSection = () => {
     const menuDiscount = item.discountPercentage || 0;
     const categoryDiscount = item.category?.discountPercentage || 0;
     const discountPercent = Math.max(menuDiscount, categoryDiscount);
-    const basePrice = variant.price || item.price || 0;
-    const currentPrice = item.isCombo ? basePrice : Math.round(discountPercent > 0 ? basePrice * (1 - discountPercent / 100) : basePrice);
+    const comboOriginalPrice = item.isCombo 
+      ? item.comboItems?.reduce((sum, ci) => sum + ((ci.price || ci.menuItem?.price) || 0), 0)
+      : null;
+    const basePrice = item.isCombo && comboOriginalPrice ? comboOriginalPrice : (variant.price || item.price || 0);
+    const currentPrice = Math.round(item.isCombo ? (item.price || basePrice) : (discountPercent > 0 ? basePrice * (1 - discountPercent / 100) : basePrice));
 
     setCart(prevCart => {
       const existingIndex = prevCart.findIndex(c => c.menuItem === item._id && c.size === sizeName);
@@ -2483,21 +2486,29 @@ const OrderSection = () => {
                           {}
                           <div className="flex items-center gap-1.5 mb-1.5">
                             {(() => {
+                              const originalPrice = item.isCombo
+                                ? item.comboItems?.reduce((sum, ci) => sum + ((ci.price || ci.menuItem?.price) || 0), 0)
+                                : (item.variants?.length > 0 ? Math.min(...item.variants.map(v => v.price)) : (item.price || 0));
+
                               const menuDiscount = item.discountPercentage || 0;
                               const categoryDiscount = item.category?.discountPercentage || 0;
                               const discountPercent = Math.max(menuDiscount, categoryDiscount);
-                              const basePrice = item.price > 0 ? item.price : (item.variants?.[0]?.price || 0);
+                              
+                              const currentPrice = item.isCombo
+                                ? (item.price || originalPrice)
+                                : Math.round(discountPercent > 0 ? originalPrice * (1 - discountPercent / 100) : originalPrice);
 
-                              if (discountPercent > 0 && !item.isCombo && basePrice > 0) {
-                                const currentPrice = Math.round(basePrice * (1 - discountPercent / 100));
+                              const hasSavings = originalPrice > currentPrice;
+
+                              if (hasSavings) {
                                 return (
                                   <>
-                                    <span className="text-[10px] line-through text-text-muted font-bold">₹{basePrice}</span>
-                                    <span className="text-[11px] font-black text-status-available">₹{currentPrice} {item.variants?.length > 1 && <span className="text-[8px] text-text-muted ml-0.5">onwards</span>}</span>
+                                    <span className="text-[10px] line-through text-text-muted font-bold">₹{Math.round(originalPrice)}</span>
+                                    <span className="text-[11px] font-black text-status-available">₹{Math.round(currentPrice)} {item.variants?.length > 1 && <span className="text-[8px] text-text-muted ml-0.5">onwards</span>}</span>
                                   </>
                                 );
                               }
-                              return <span className="text-[11px] font-black text-text-primary">₹{basePrice} {item.variants?.length > 1 && <span className="text-[8px] text-text-muted ml-0.5">onwards</span>}</span>;
+                              return <span className="text-[11px] font-black text-text-primary">₹{Math.round(currentPrice)} {item.variants?.length > 1 && <span className="text-[8px] text-text-muted ml-0.5">onwards</span>}</span>;
                             })()}
                           </div>
 
@@ -3144,7 +3155,7 @@ const OrderSection = () => {
             const discountPercent = Math.max(menuDiscount, categoryDiscount);
 
             const basePrice = viewItemSelectedSize?.price || item.price || 0;
-            const currentPrice = item.isCombo ? basePrice : Math.round(discountPercent > 0 ? basePrice * (1 - discountPercent / 100) : basePrice);
+            const currentPrice = Math.round(item.isCombo ? basePrice : (discountPercent > 0 ? basePrice * (1 - discountPercent / 100) : basePrice));
             const hasSavings = discountPercent > 0 && !item.isCombo && basePrice > currentPrice;
 
             const availableStock = getEffectiveStock(item);
@@ -3255,7 +3266,7 @@ const OrderSection = () => {
                         <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">Total Price</p>
                         <div className="flex flex-col">
                           {hasSavings && (
-                            <span className="text-xs font-black text-text-muted line-through opacity-50">₹{basePrice * viewItemQuantity}</span>
+                            <span className="text-xs font-black text-text-muted line-through opacity-50">₹{Math.round(basePrice * viewItemQuantity)}</span>
                           )}
                           <span className="text-2xl font-black text-primary leading-none">₹{currentPrice * viewItemQuantity}</span>
                         </div>

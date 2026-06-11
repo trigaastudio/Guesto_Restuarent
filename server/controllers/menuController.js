@@ -5,6 +5,7 @@ import { logAdminAction } from '../services/auditService.js';
 import NodeCache from 'node-cache';
 
 const cache = new NodeCache({ stdTTL: 120, useClones: false }); 
+export const menuCache = cache; 
 
 export const createMenu = async (req, res) => {
   try {
