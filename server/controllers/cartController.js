@@ -15,7 +15,7 @@ class CartController {
     
     return cart.items
       .filter(item => item.menuItem)
-      .map(item => {
+      .filter(item => {
         let menuData = {};
         if (item.menuItem.toObject) {
           menuData = item.menuItem.toObject();
