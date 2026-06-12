@@ -1,15 +1,27 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar/Navbar';
 import Footer from '../../components/Footer/Footer';
 
 const TermsPage = () => {
+  const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const dropdownRef = useRef(null);
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
   return (
     <div className="min-h-screen bg-background text-text-primary flex flex-col font-sans">
-      <Navbar />
+      <Navbar 
+        user={user} 
+        navigate={navigate} 
+        showUserDropdown={showUserDropdown}
+        setShowUserDropdown={setShowUserDropdown}
+        dropdownRef={dropdownRef}
+      />
       
       <main className="flex-grow pt-24 pb-16 px-6 sm:px-12 max-w-4xl mx-auto w-full">
         <h1 className="text-3xl sm:text-4xl font-black text-primary mb-8 tracking-tight">Terms of Service</h1>

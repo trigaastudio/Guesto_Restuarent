@@ -60,6 +60,17 @@ const LandingPage = () => {
 
   useEffect(() => {
     document.title = "GuestO | Premium Dining Experience";
+    if (window.location.hash) {
+      setTimeout(() => {
+        const id = window.location.hash.replace('#', '');
+        const element = document.getElementById(id);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 300);
+    } else {
+      window.scrollTo(0, 0);
+    }
     fetchTrendingDishes();
     fetchCategories();
     fetchMenus();
