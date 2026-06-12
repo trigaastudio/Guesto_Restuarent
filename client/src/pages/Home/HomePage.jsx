@@ -185,12 +185,12 @@ const HomePage = () => {
 
   const fetchTrendingDishes = async () => {
     try {
-      const response = await api.get('/api/dashboard/stats');
+      const response = await api.get('/api/menus/top-selling');
       if (response.data && response.data.success) {
-        setTrendingItems(response.data.data.topDishes || []);
+        setTrendingItems(response.data.data || []);
       }
     } catch (error) {
-      console.error('Error fetching trending dishes:', error);
+      console.error('Error fetching top-selling dishes:', error);
     }
   };
 

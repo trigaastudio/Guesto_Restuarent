@@ -99,7 +99,7 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6 animate-fade-in">
+          <div className="grid grid-cols-1 min-[380px]:grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6 animate-fade-in">
             {Array.from({ length: 10 }).map((_, i) => (
               <CardSkeleton key={i} />
             ))}
@@ -121,7 +121,7 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6 animate-fade-in">
+          <div className="grid grid-cols-1 min-[380px]:grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6 animate-fade-in">
             {filteredMenus.map((menu, index) => {
               const variants = menu.variants || menu.sizes || [];
               const originalPrice = menu.isCombo
@@ -147,7 +147,11 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
               return (
                 <div
                   key={`${menu._id}-${index}`}
-                  className={`bg-background-card rounded-[1rem] md:rounded-[1.5rem] overflow-hidden p-2.5 sm:p-3.5 md:p-5 transition-all duration-500 group flex flex-col h-full shadow-[0_4px_15px_rgba(0,0,0,0.02)] border border-border/10 will-change-transform ${isOutOfStock
+                  className={`bg-background-card rounded-[1rem] md:rounded-[1.5rem] overflow-hidden transition-all duration-500 group shadow-[0_4px_15px_rgba(0,0,0,0.02)] border border-border/10 will-change-transform
+                    max-[379px]:flex max-[379px]:flex-row max-[379px]:items-stretch max-[379px]:p-2.5
+                    min-[380px]:flex min-[380px]:flex-col min-[380px]:p-2.5 sm:p-3.5 md:p-5
+                    h-full
+                    ${isOutOfStock
                       ? 'grayscale opacity-60 pointer-events-none'
                       : 'hover:bg-primary active:bg-primary hover:shadow-[0_20px_50px_rgba(185,28,28,0.15)] active:shadow-[0_20px_50px_rgba(185,28,28,0.15)]'
                     }`}
@@ -157,57 +161,61 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
                   }}
                   onClick={() => !isOutOfStock && onAddClick(menu)}
                 >
-                  <div className="relative h-28 sm:h-32 md:h-36 mb-2.5 sm:mb-3 md:mb-4 overflow-hidden rounded-xl bg-white/5">
+                  {/* Image wrapper — square on 2-col, fixed-width sidebar on 1-col */}
+                  <div className="relative overflow-hidden rounded-xl bg-white/5 flex-shrink-0
+                    max-[379px]:w-24 max-[379px]:h-24 max-[379px]:mr-3
+                    min-[380px]:h-28 sm:h-32 md:h-36 min-[380px]:mb-2.5 sm:mb-3 md:mb-4">
                     <img
                       src={menu.image || '/placeholder-food.jpg'}
                       alt={menu.name}
                       loading="lazy"
-                      className={`w-full h-full object-cover sm:object-contain group-hover:scale-110 group-active:scale-110 transition-transform duration-700 ease-out ${isClosed ? 'grayscale brightness-0' : ''}`}
+                      className={`w-full h-full object-cover group-hover:scale-110 group-active:scale-110 transition-transform duration-700 ease-out ${isClosed ? 'grayscale brightness-0' : ''}`}
                     />
 
                     {isOutOfStock && (
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px] z-20">
-                        <span className="bg-white text-black text-[9px] font-black px-3 py-1.5 rounded-lg uppercase tracking-widest shadow-xl border border-black/10">
-                          {isClosed ? 'Closed' : 'Out of Stock'}
+                        <span className="bg-white text-black text-[8px] font-black px-2 py-1 rounded-lg uppercase tracking-widest shadow-xl border border-black/10">
+                          {isClosed ? 'Closed' : 'OOS'}
                         </span>
                       </div>
                     )}
 
                     {discountPercent > 0 && !isOutOfStock && !menu.isCombo && (
-                      <div className="absolute top-2 left-2 bg-primary text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-lg animate-bounce-slow z-10">
+                      <div className="absolute top-1.5 left-1.5 bg-primary text-white text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-lg animate-bounce-slow z-10">
                         {`${discountPercent}% OFF`}
                       </div>
                     )}
                     {menu.isCombo && !isOutOfStock && (
-                      <div className="absolute top-2 left-2 bg-amber-500 text-white text-[10px] font-black px-2.5 py-1 rounded-lg shadow-lg z-10 uppercase tracking-wider">
-                        Combo Deal
+                      <div className="absolute top-1.5 left-1.5 bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-lg z-10 uppercase tracking-wide">
+                        Combo
                       </div>
                     )}
                     {variants.some(v => v.isBOGO) && !isOutOfStock && (
-                      <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-lg z-10 uppercase tracking-tighter">
+                      <div className="absolute top-1.5 right-1.5 bg-emerald-500 text-white text-[7px] font-black px-1 py-0.5 rounded shadow-lg z-10 uppercase">
                         BOGO
                       </div>
                     )}
                     {isLowStock && (
-                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-red-500/90 backdrop-blur-sm border border-red-400 text-white text-[9px] font-black px-2.5 py-1 rounded-full shadow-lg z-10 uppercase tracking-widest whitespace-nowrap">
+                      <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 bg-red-500/90 backdrop-blur-sm border border-red-400 text-white text-[7px] font-black px-1.5 py-0.5 rounded-full shadow-lg z-10 uppercase tracking-wider whitespace-nowrap">
                         Only {effectiveStock} Left
                       </div>
                     )}
                   </div>
 
-                  <div className="flex-1 flex flex-col">
+                  {/* Content */}
+                  <div className="flex-1 flex flex-col min-w-0">
                     <h3 className="font-black text-[11px] sm:text-sm text-text-primary group-hover:text-white group-active:text-white transition-colors leading-tight mb-1 tracking-tight truncate">
                       {menu.name}
                     </h3>
 
-                    <p className="text-[8px] sm:text-[9px] text-text-muted/90 group-hover:text-white/90 group-active:text-white/90 line-clamp-2 mb-2.5 sm:mb-4 leading-relaxed font-bold tracking-wider sm:tracking-widest transition-colors">
+                    <p className="text-[8px] sm:text-[9px] text-text-muted/90 group-hover:text-white/90 group-active:text-white/90 line-clamp-2 mb-auto leading-relaxed font-bold tracking-wider transition-colors">
                       {menu.description}
                     </p>
 
-                    <div className="flex justify-between items-center mt-auto pt-2.5 sm:pt-4 border-t border-text-primary/5 group-hover:border-white/10 group-active:border-white/10">
+                    <div className="flex justify-between items-center mt-2 pt-2 border-t border-text-primary/5 group-hover:border-white/10 group-active:border-white/10">
                       <div className="flex flex-col">
                         {hasSavings && (
-                          <span className="text-[8px] sm:text-[10px] text-text-muted line-through opacity-60 group-hover:text-white/60">
+                          <span className="text-[8px] text-text-muted line-through opacity-60 group-hover:text-white/60">
                             ₹{Math.round(originalPrice)}
                           </span>
                         )}
@@ -219,7 +227,7 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
                         <button
                           onClick={(e) => { e.stopPropagation(); !isOutOfStock && onAddClick(menu); }}
                           disabled={isOutOfStock}
-                          className={`p-1.5 sm:p-2 rounded-lg transition-all active:scale-90 shadow-sm ${isOutOfStock
+                          className={`p-1.5 sm:p-2 rounded-lg transition-all active:scale-90 shadow-sm flex-shrink-0 ${isOutOfStock
                               ? 'bg-background-muted text-text-muted cursor-not-allowed opacity-30'
                               : 'bg-primary-light/10 group-hover:bg-primary-light group-active:bg-primary-light text-primary-light group-hover:text-white group-active:text-white'
                             }`}

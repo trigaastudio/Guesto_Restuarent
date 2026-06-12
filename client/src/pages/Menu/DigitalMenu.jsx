@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
-import '../Home/HomePage.css'; 
+import '../Home/HomePage.css';
 import api from '../../api/axiosInstance';
 import Footer from '../../components/Footer/Footer';
+import Navbar from '../../components/Navbar/Navbar';
 import CategorySection from '../../components/Category/CategorySection';
 import MenuSection from '../../components/Menu/MenuSection';
 import MenuModal from '../../components/Menu/MenuModal';
@@ -11,7 +12,7 @@ import PageSkeleton from '../../components/Skeleton/PageSkeleton';
 import { useCart } from '../../context/CartContext';
 import StoreStatusBanner from '../../components/StoreStatus/StoreStatusBanner';
 import OffersCarousel from '../../components/Offers/OffersCarousel';
-import { Utensils, Info, Phone, MapPin, Sparkles, Flame, Share2, LayoutGrid, Star, Clock, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Utensils, MapPin, Sparkles, Flame, Share2, ChevronLeft, ChevronRight, X, Search, ArrowRight } from 'lucide-react';
 
 const DigitalMenu = () => {
   const navigate = useNavigate();
@@ -37,10 +38,12 @@ const DigitalMenu = () => {
   const [isOffersModalOpen, setIsOffersModalOpen] = useState(false);
   const [offerFilter, setOfferFilter] = useState(null);
   const [offerName, setOfferName] = useState('');
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [user] = useState(() => JSON.parse(localStorage.getItem('user') || localStorage.getItem('admin_user') || 'null'));
 
   const observerTarget = useRef(null);
   const scrollContainerRef = useRef(null);
-  const heroRef = useRef(null);
+  const dropdownRef = useRef(null);
 
   useEffect(() => {
     document.title = "Digital Menu | GuestO";
@@ -68,12 +71,12 @@ const DigitalMenu = () => {
 
   const fetchTrending = async () => {
     try {
-      const response = await api.get('/api/dashboard/stats');
+      const response = await api.get('/api/menus/top-selling');
       if (response.data?.success) {
-        setTrendingItems(response.data.data.topDishes || []);
+        setTrendingItems(response.data.data || []);
       }
     } catch (error) {
-      console.error('Error fetching trending:', error);
+      console.error('Error fetching top-selling:', error);
     }
   };
 
@@ -182,25 +185,10 @@ const DigitalMenu = () => {
     }
   };
 
-  
-  const handleMouseMove = (e) => {
-    if (!heroRef.current) return;
-    const { clientX, clientY } = e;
-    const { left, top, width, height } = heroRef.current.getBoundingClientRect();
-    const x = (clientX - left) / width - 0.5;
-    const y = (clientY - top) / height - 0.5;
-    
-    const logo = heroRef.current.querySelector('.tilt-logo');
-    if (logo) {
-      logo.style.transform = `perspective(1000px) rotateY(${x * 20}deg) rotateX(${-y * 20}deg) translateZ(50px)`;
-    }
-  };
-
-  const handleMouseLeave = () => {
-    const logo = heroRef.current.querySelector('.tilt-logo');
-    if (logo) {
-      logo.style.transform = `perspective(1000px) rotateY(0deg) rotateX(0deg) translateZ(0px)`;
-    }
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/';
   };
 
   if (loading && menus.length === 0 && categories.length === 0) {
@@ -208,67 +196,99 @@ const DigitalMenu = () => {
   }
 
   const restaurantName = restaurantSettings?.restaurantDetails?.name || 'GUESTO RESTAURANT';
+  const restaurantAddress = restaurantSettings?.restaurantDetails?.address || 'Premium Dining';
+  const logoSrc = restaurantSettings?.branding?.logoGold || '/logo-golden.png';
 
   return (
     <div className={`min-h-screen bg-background font-sans overflow-x-hidden ${theme}`}>
-      {}
-      <header 
-        ref={heroRef}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        className="relative w-full min-h-[40vh] md:min-h-[50vh] flex flex-col items-center justify-center overflow-hidden bg-[#050505] perspective-[1000px]"
-      >
-        {}
-        <div className="absolute inset-0 z-0">
-           <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-primary/10 via-transparent to-black"></div>
-           {}
-           <div className="absolute top-1/4 -left-20 w-80 h-80 bg-primary/20 rounded-full blur-[100px] animate-pulse"></div>
-           <div className="absolute bottom-1/4 -right-20 w-80 h-80 bg-primary-light/10 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '2s' }}></div>
-           
-           {}
-           <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
-        </div>
+      {/* ── Header: same red hero style as LandingPage ── */}
+      <div className="relative w-full overflow-hidden flex flex-col bg-[#B91C1C]">
+        <div className="absolute inset-0 z-0 bg-[#B91C1C]"></div>
 
-        <div className="relative z-10 flex flex-col items-center text-center px-6">
-          {}
-          <div className="tilt-logo transition-transform duration-200 ease-out preserve-3d mb-8 mt-4">
-             <div className="relative group">
-                {}
-                <div className="absolute inset-[-20%] bg-gradient-to-r from-primary/40 to-primary-light/40 blur-3xl rounded-full opacity-30 group-hover:opacity-60 transition-opacity animate-spin-slow"></div>
-                
-                <img 
-                   src={restaurantSettings?.branding?.logoGold || "/logo-golden.png"} 
-                   alt={restaurantName} 
-                   className="h-28 md:h-40 w-auto object-contain relative z-10 drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)] transform translate-z-10" 
-                />
-             </div>
-          </div>
-          
-          <div className="space-y-6 max-w-3xl mx-auto transform translate-z-20">
-            {}
-            <div className="flex flex-wrap items-center justify-center gap-4 animate-fade-in">
-               <div className="px-6 py-2.5 bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl text-[10px] md:text-xs font-black text-white/90 uppercase tracking-[0.2em] shadow-[0_10px_30px_rgba(0,0,0,0.3)] flex items-center gap-2 hover:bg-white/[0.08] transition-colors cursor-default">
-                  <MapPin size={14} className="text-primary" /> 
-                  <span>{restaurantSettings?.restaurantDetails?.address || 'Premium Dining'}</span>
-               </div>
-               <div className="px-6 py-2.5 bg-primary/20 backdrop-blur-xl border border-primary/30 rounded-2xl text-[10px] md:text-xs font-black text-primary uppercase tracking-[0.2em] shadow-[0_10px_30px_rgba(185,28,28,0.2)] flex items-center gap-2 animate-bounce-subtle">
-                  <Sparkles size={14} /> 
-                  Exclusive Menu
-               </div>
+        {/* Shared Navbar (same as Landing / Home) */}
+        <Navbar
+          user={user}
+          cartItems={[]}
+          hideCart={true}
+          showUserDropdown={showUserDropdown}
+          setShowUserDropdown={setShowUserDropdown}
+          handleLogout={handleLogout}
+          navigate={navigate}
+          dropdownRef={dropdownRef}
+        />
+
+        {/* Hero content — logo + restaurant name + address */}
+        <div className="relative pt-10 sm:pt-12 md:pt-14 lg:pt-16 pb-16 sm:pb-20 md:pb-28 lg:pb-32 overflow-hidden">
+          {/* ambient blobs */}
+          <div className="absolute top-0 right-0 w-[400px] sm:w-[600px] h-[400px] sm:h-[600px] bg-white/10 rounded-full -translate-y-1/2 translate-x-1/4 blur-[60px] sm:blur-[80px] pointer-events-none"></div>
+          <div className="absolute bottom-0 left-0 w-[300px] sm:w-[400px] h-[300px] sm:h-[400px] bg-black/10 rounded-full translate-y-1/2 -translate-x-1/4 blur-[40px] sm:blur-[50px] pointer-events-none"></div>
+
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
+            <div className="flex flex-col lg:flex-row items-center gap-6 md:gap-12 lg:gap-24">
+
+              {/* Right: logo image */}
+              <div className="w-full lg:flex-1 relative flex justify-center lg:justify-end order-1 lg:order-2">
+                <div className="relative w-full max-w-[200px] sm:max-w-[300px] md:max-w-[400px] lg:max-w-[480px] aspect-square">
+                  <div className="absolute inset-0 bg-white/20 rounded-full blur-[60px] sm:blur-[80px] animate-pulse"></div>
+                  <img
+                    src={logoSrc}
+                    alt={restaurantName}
+                    className="w-full h-full object-contain drop-shadow-[0_30px_50px_rgba(0,0,0,0.4)] animate-float"
+                  />
+                </div>
+              </div>
+
+              {/* Left: text content */}
+              <div className="flex-1 text-center lg:text-left space-y-4 sm:space-y-5 hero-fade-in order-2 lg:order-1 w-full flex flex-col items-center lg:items-start">
+                <div className="inline-flex items-center gap-2 sm:gap-3 bg-white/10 backdrop-blur-md border border-white/20 text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] shadow-xl mx-auto lg:mx-0">
+                  <span className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-white animate-pulse shadow-[0_0_10px_white]"></span>
+                  Exclusive Digital Menu 🍽️
+                </div>
+
+                <div className="space-y-3 sm:space-y-4">
+                  <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black leading-[1.1] md:leading-[0.9] text-white tracking-tighter drop-shadow-[0_20px_50px_rgba(0,0,0,0.2)] uppercase">
+                    {restaurantName}
+                  </h1>
+                  <p className="text-white/70 text-[10px] sm:text-xs md:text-base font-bold leading-relaxed max-w-[280px] sm:max-w-md mx-auto lg:mx-0 tracking-wide flex items-center justify-center lg:justify-start gap-1.5">
+                    <MapPin size={12} className="text-white/50 flex-shrink-0" />
+                    {restaurantAddress}
+                  </p>
+                </div>
+
+                {/* CTA: scroll to menu */}
+                <div className="pt-1 sm:pt-2 mx-auto lg:mx-0">
+                  <button
+                    onClick={() => { const el = document.getElementById('menu'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }}
+                    className="bg-white text-[#B91C1C] px-6 sm:px-10 py-3 sm:py-4 rounded-full font-black text-[9px] sm:text-[11px] uppercase tracking-[0.2em] transition-all transform active:scale-95 shadow-xl shadow-black/20 flex items-center gap-2 hover:bg-gray-50"
+                  >
+                    Browse Menu <ArrowRight size={14} strokeWidth={3} />
+                  </button>
+                </div>
+
+                {/* Top Selling pills */}
+                {trendingItems.length > 0 && (
+                  <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2 sm:gap-3 mt-2">
+                    <span className="text-[8px] sm:text-[10px] font-black text-white/40 uppercase tracking-widest">🔥 Top Selling:</span>
+                    {trendingItems.slice(0, 3).map(item => (
+                      <button
+                        key={item._id}
+                        onClick={() => { const el = document.getElementById('menu'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }}
+                        className="text-[7px] sm:text-[9px] font-black text-white hover:text-white/60 transition-all uppercase tracking-widest px-2.5 py-1 sm:px-3 sm:py-1.5 bg-white/5 rounded-full border border-white/10"
+                      >
+                        {item.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-
-            {}
-            <div className="opacity-40 animate-fade-in" style={{ animationDelay: '0.3s' }}>
-               <p className="text-[10px] font-black text-white uppercase tracking-[0.8em]">Discover Perfection</p>
-            </div>
           </div>
         </div>
+      </div>
 
-        {}
-        <div className="absolute bottom-0 left-0 w-full h-24 bg-gradient-to-t from-background to-transparent z-20"></div>
-      </header>
+      {/* Content area — same rounded-top style as LandingPage */}
+      <div className="relative z-10 bg-background rounded-t-[3rem] -mt-12 md:-mt-20">
 
-      <div className="relative z-30 bg-background rounded-t-[5rem] -mt-20 shadow-[0_-40px_100px_rgba(0,0,0,0.2)]">
         <main className="max-w-7xl mx-auto px-4 md:px-6 pt-20 pb-32">
           <div className="mb-16">
             <OffersCarousel
@@ -462,56 +482,50 @@ const DigitalMenu = () => {
         </main>
       </div>
 
-      {/* Floating Dynamic Navbar */}
-      <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[60] w-[95%] max-w-[420px] md:hidden">
-         <nav className="bg-[#0A0A0A]/95 backdrop-blur-3xl border border-white/10 rounded-[3.5rem] px-5 py-4 shadow-[0_50px_150px_rgba(0,0,0,0.8)] flex items-center justify-center gap-4 transition-all">
-            
-            <button 
-               onClick={() => setIsOffersModalOpen(true)}
-               className="flex-1 flex flex-col items-center gap-1.5 text-white/40 hover:text-white transition-all group"
-            >
-               <div className="w-14 h-14 rounded-[2rem] bg-white/5 flex items-center justify-center group-hover:bg-primary/20 group-hover:text-primary transition-all">
-                  <Sparkles size={24} className="group-hover:scale-110 transition-transform" />
-               </div>
-               <span className="text-[9px] font-black uppercase tracking-[0.2em]">Offers</span>
-            </button>
+      {/* ── Bottom Floating Navbar — Landing Page Style ── */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] w-[92%] max-w-[400px] md:hidden">
+        <nav className="bg-background-card/95 backdrop-blur-2xl border border-border/20 rounded-[2.5rem] px-4 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.15)] flex items-center justify-around gap-2 transition-all">
 
-            <button 
-               onClick={() => {
-                  const menuElement = document.getElementById('menu');
-                  if (menuElement) menuElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-               }}
-               className="flex-[1.5] flex flex-col items-center gap-1.5 py-4 bg-primary rounded-[2.5rem] text-white shadow-[0_20px_40px_rgba(185,28,28,0.4)] transform -translate-y-6 scale-110 group transition-all"
-            >
-               <Utensils size={28} className="group-hover:rotate-12 transition-transform" />
-               <span className="text-[11px] font-black uppercase tracking-[0.2em]">Full Menu</span>
-            </button>
+          {/* Offers */}
+          <button
+            onClick={() => setIsOffersModalOpen(true)}
+            className="flex-1 flex flex-col items-center gap-1 text-text-muted hover:text-primary transition-all group active:scale-90"
+          >
+            <div className="w-11 h-11 rounded-2xl bg-background-muted group-hover:bg-primary/10 flex items-center justify-center transition-all">
+              <Sparkles size={20} className="group-hover:scale-110 transition-transform" />
+            </div>
+            <span className="text-[8px] font-black uppercase tracking-widest">Offers</span>
+          </button>
 
-            <button 
-               onClick={async () => {
-                  try {
-                     if (navigator.share) {
-                        await navigator.share({
-                           title: 'GuestO Digital Menu',
-                           text: 'Check out our delicious menu!',
-                           url: window.location.href,
-                        });
-                     } else {
-                        await navigator.clipboard.writeText(window.location.href);
-                        alert('Menu link copied to clipboard!');
-                     }
-                  } catch (error) {
-                     console.error('Error sharing:', error);
-                  }
-               }}
-               className="flex-1 flex flex-col items-center gap-1.5 text-white/40 hover:text-white transition-all group"
-            >
-               <div className="w-14 h-14 rounded-[2rem] bg-white/5 flex items-center justify-center group-hover:bg-status-available/20 group-hover:text-status-available transition-all">
-                  <Share2 size={24} className="group-hover:scale-110 transition-transform" />
-               </div>
-               <span className="text-[9px] font-black uppercase tracking-[0.2em]">Share</span>
-            </button>
-         </nav>
+          {/* Center: Browse Menu — raised pill, primary red */}
+          <button
+            onClick={() => { const el = document.getElementById('menu'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
+            className="flex-[1.4] flex flex-col items-center gap-1.5 py-3.5 bg-primary rounded-[2rem] text-white shadow-[0_12px_30px_rgba(185,28,28,0.35)] -translate-y-4 active:scale-95 transition-all group"
+          >
+            <Utensils size={22} className="group-hover:rotate-12 transition-transform" />
+            <span className="text-[9px] font-black uppercase tracking-[0.15em]">Menu</span>
+          </button>
+
+          {/* Share */}
+          <button
+            onClick={async () => {
+              try {
+                if (navigator.share) {
+                  await navigator.share({ title: restaurantName, text: 'Check out our digital menu!', url: window.location.href });
+                } else {
+                  await navigator.clipboard.writeText(window.location.href);
+                  alert('Menu link copied!');
+                }
+              } catch (e) { console.error(e); }
+            }}
+            className="flex-1 flex flex-col items-center gap-1 text-text-muted hover:text-primary transition-all group active:scale-90"
+          >
+            <div className="w-11 h-11 rounded-2xl bg-background-muted group-hover:bg-primary/10 flex items-center justify-center transition-all">
+              <Share2 size={20} className="group-hover:scale-110 transition-transform" />
+            </div>
+            <span className="text-[8px] font-black uppercase tracking-widest">Share</span>
+          </button>
+        </nav>
       </div>
 
       {isOffersModalOpen && (
@@ -557,23 +571,25 @@ const DigitalMenu = () => {
       <style dangerouslySetInnerHTML={{ __html: `
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        .preserve-3d { transform-style: preserve-3d; }
-        .translate-z-10 { transform: translateZ(30px); }
-        .translate-z-20 { transform: translateZ(50px); }
 
-        @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .animate-spin-slow { animation: spin-slow 15s linear infinite; }
-
-        @keyframes bounce-subtle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
-        .animate-bounce-subtle { animation: bounce-subtle 3s ease-in-out infinite; }
-
-        @keyframes fade-in { 
-          from { opacity: 0; transform: translateY(20px); } 
-          to { opacity: 1; transform: translateY(0); } 
+        @keyframes float {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-18px); }
         }
-        .animate-fade-in { animation: fade-in 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
-        
+        .animate-float { animation: float 6s ease-in-out infinite; }
+
+        @keyframes hero-fade-in {
+          from { opacity: 0; transform: translateY(24px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .hero-fade-in { animation: hero-fade-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(15px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+
         .snap-x { scroll-snap-type: x mandatory; }
         .snap-center { scroll-snap-align: center; }
       `}} />

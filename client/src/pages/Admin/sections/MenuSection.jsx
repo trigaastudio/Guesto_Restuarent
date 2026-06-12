@@ -158,9 +158,9 @@ const MenuSection = () => {
     setCurrentMenu({ ...currentMenu, variants: newVariants });
   };
 
-  const handleSave = async () => {
-    const isComboCategory = categories.find(c => c._id === currentMenu.category)?.name.toLowerCase() === 'combo';
+  const isComboCategory = categories.find(c => c._id === currentMenu.category)?.name?.toLowerCase() === 'combo';
 
+  const handleSave = async () => {
     const newErrors = {};
     const textRegex = /^[a-zA-Z0-9\s]*$/;
 
