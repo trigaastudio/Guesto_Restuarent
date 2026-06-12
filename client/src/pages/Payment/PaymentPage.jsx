@@ -323,11 +323,12 @@ const PaymentPage = () => {
             </div>
           </div>
 
-            <div class="p-6 sm:p-8 space-y-6 sm:space-y-8">
+            <!-- Order Details Card -->
+            <div class="p-4 sm:p-8 space-y-4 sm:space-y-8">
               <div class="flex items-center justify-center gap-4 sm:gap-8">
-                <div class="text-center">
+                <div class="text-center max-w-[45%]">
                   <p class="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1 opacity-50">Order ID</p>
-                  <p class="text-lg sm:text-xl font-black text-text-primary tracking-tight">${order.orderNumber}</p>
+                  <p class="text-[12px] sm:text-xl font-black text-text-primary tracking-tight break-all">${order.orderNumber}</p>
                 </div>
                 <div class="w-px h-10 bg-border/40"></div>
                 <div class="text-center">
@@ -365,7 +366,7 @@ const PaymentPage = () => {
       padding: '0',
       width: 'min(92%, 520px)',
       customClass: {
-        popup: 'rounded-[3.5rem] border-none shadow-[0_60px_120px_rgba(0,0,0,0.18)] overflow-hidden bg-background-card',
+        popup: 'rounded-[2rem] sm:rounded-[3.5rem] border-none shadow-[0_60px_120px_rgba(0,0,0,0.18)] overflow-hidden bg-background-card',
       },
       didOpen: () => {
         document.getElementById('track-order-btn').addEventListener('click', () => {
@@ -400,13 +401,13 @@ const PaymentPage = () => {
           <div className="absolute top-0 right-0 w-64 h-64 bg-background-card/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
         </div>
 
-        <main className="max-w-7xl mx-auto px-6 pt-24 md:pt-32 relative z-10 pb-24">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-24 md:pt-32 relative z-10 pb-24">
           <div className="flex flex-col lg:flex-row gap-10 items-start">
 
             {}
             <div className="flex-1 space-y-6 w-full">
               {}
-              <div className="bg-background-card rounded-[3rem] p-8 md:p-10 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.04)] relative overflow-hidden group">
+              <div className="bg-background-card rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-8 md:p-10 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.04)] relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-80 h-80 bg-primary/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 group-hover:bg-primary/10 transition-colors duration-1000"></div>
                 <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2"></div>
 
@@ -490,7 +491,7 @@ const PaymentPage = () => {
               </div>
 
               {}
-              <div className="bg-background-card rounded-[3rem] p-8 md:p-10 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.04)]">
+              <div className="bg-background-card rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-8 md:p-10 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.04)]">
                 <div className="flex items-center gap-4 mb-8">
                   <div className="h-1 w-12 bg-primary rounded-full"></div>
                   <p className="text-[11px] font-black text-primary tracking-[0.3em] uppercase opacity-90">your selection</p>
@@ -576,10 +577,10 @@ const PaymentPage = () => {
 
             {/* Right Column: Payment Method */}
             <div className="w-full lg:w-[420px] sticky top-32">
-              <div className="bg-background-card rounded-[3.5rem] shadow-[0_50px_100px_rgba(0,0,0,0.06)] border border-border/40 overflow-hidden relative group">
+              <div className="bg-background-card rounded-[2rem] sm:rounded-[3.5rem] shadow-[0_50px_100px_rgba(0,0,0,0.06)] border border-border/40 overflow-hidden relative group">
                 <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-r from-primary via-primary-light to-primary"></div>
 
-                <div className="p-6 md:p-8 relative z-10">
+                <div className="p-5 md:p-8 relative z-10">
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-black text-text-primary tracking-tighter uppercase flex items-center gap-3">
                       <div className="p-2 bg-primary/10 text-primary rounded-xl">
