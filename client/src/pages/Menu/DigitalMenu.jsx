@@ -41,6 +41,45 @@ const DigitalMenu = () => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [user] = useState(() => JSON.parse(localStorage.getItem('user') || localStorage.getItem('admin_user') || 'null'));
 
+  const heroImages = useMemo(() => [
+    '/heroSection/hero_1.png',
+    '/heroSection/hero_2.png',
+    '/heroSection/hero_3.png',
+    '/heroSection/hero_4.png'
+  ], []);
+
+  const [heroIndex, setHeroIndex] = useState(0);
+  const [loadedImages, setLoadedImages] = useState({});
+  const directionRef = useRef(1);
+
+  useEffect(() => {
+    if (heroImages && heroImages.length > 0) {
+      heroImages.forEach((src) => {
+        const img = new Image();
+        img.src = src;
+      });
+    }
+  }, [heroImages]);
+
+  useEffect(() => {
+    const heroTimer = setInterval(() => {
+      setHeroIndex((prev) => {
+        let next = prev + directionRef.current;
+        if (next >= heroImages.length) {
+          directionRef.current = -1;
+          return prev - 1;
+        }
+        if (next < 0) {
+          directionRef.current = 1;
+          return prev + 1;
+        }
+        return next;
+      });
+    }, 4000);
+
+    return () => clearInterval(heroTimer);
+  }, [heroImages.length]);
+
   const observerTarget = useRef(null);
   const scrollContainerRef = useRef(null);
   const dropdownRef = useRef(null);
@@ -226,15 +265,30 @@ const DigitalMenu = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
             <div className="flex flex-col lg:flex-row items-center gap-6 md:gap-12 lg:gap-24">
 
-              {/* Right: logo image */}
+              {/* Right: hero image animation */}
               <div className="w-full lg:flex-1 relative flex justify-center lg:justify-end order-1 lg:order-2">
                 <div className="relative w-full max-w-[200px] sm:max-w-[300px] md:max-w-[400px] lg:max-w-[480px] aspect-square">
                   <div className="absolute inset-0 bg-white/20 rounded-full blur-[60px] sm:blur-[80px] animate-pulse"></div>
-                  <img
-                    src={logoSrc}
-                    alt={restaurantName}
-                    className="w-full h-full object-contain drop-shadow-[0_30px_50px_rgba(0,0,0,0.4)] animate-float"
-                  />
+                  {heroImages.map((img, idx) => (
+                    <div
+                      key={idx}
+                      className={`absolute inset-0 w-full h-full flex justify-center items-center transition-all duration-[2s] cubic-bezier(0.4, 0, 0.2, 1) ${idx === heroIndex ? 'opacity-100 scale-100 rotate-0' : 'opacity-0 scale-90 rotate-12 pointer-events-none'
+                        }`}
+                    >
+                      {!loadedImages[idx] && (
+                        <div className="absolute w-[80%] h-[80%] bg-white/5 rounded-full blur-[80px] sm:blur-[100px] animate-pulse"></div>
+                      )}
+                      <img
+                        src={img}
+                        alt={`Hero ${idx + 1}`}
+                        fetchPriority={idx === 0 ? "high" : "low"}
+                        loading={idx === 0 ? "eager" : "lazy"}
+                        onLoad={() => setLoadedImages(prev => ({ ...prev, [idx]: true }))}
+                        className={`w-full h-full object-contain drop-shadow-[0_30px_50px_rgba(0,0,0,0.4)] animate-float transition-opacity duration-700 ${loadedImages[idx] ? 'opacity-100' : 'opacity-0'
+                          }`}
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
 
