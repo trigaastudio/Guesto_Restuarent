@@ -170,7 +170,7 @@ const Footer = React.memo(() => {
               <img 
                 src="/developer-logo.png" 
                 alt="Developer Logo" 
-                className="h-4 sm:h-5 object-contain opacity-70 hover:opacity-100 transition-opacity"
+                className="h-5 sm:h-6 md:h-7 object-contain opacity-70 hover:opacity-100 transition-opacity"
               />
               <a href="tel:9048136161" className="text-[8px] font-bold text-white/40 dark:text-text-muted/20 tracking-widest hover:text-white dark:hover:text-primary transition-colors">
                 | +91 9048136161
