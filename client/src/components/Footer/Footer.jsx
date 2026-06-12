@@ -2,7 +2,7 @@ import React from 'react';
 import { Mail, MapPin, Phone, Share2, Globe, Heart } from 'lucide-react';
 import './Footer.css';
 import { useCart } from '../../context/CartContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const Footer = React.memo(() => {
   const currentYear = new Date().getFullYear();
@@ -168,7 +168,7 @@ const Footer = React.memo(() => {
                 Designed by
               </p>
               <img 
-                src="/developer%20logo.png" 
+                src="/developer-logo.png" 
                 alt="Developer Logo" 
                 className="h-4 sm:h-5 object-contain opacity-70 hover:opacity-100 transition-opacity"
               />
@@ -180,14 +180,15 @@ const Footer = React.memo(() => {
 
           <div className="flex gap-10">
             {['Privacy', 'Terms', 'Cookies'].map((link) => (
-              <a
+              <Link
                 key={link}
-                href="#"
+                to={`/${link.toLowerCase()}`}
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                 className="text-[10px] font-black text-white/60 dark:text-text-muted/40 hover:text-white dark:hover:text-primary transition-all tracking-[0.2em] uppercase relative group"
               >
                 {link}
                 <span className="absolute -bottom-1 left-0 w-0 h-[2px] bg-white dark:bg-primary transition-all group-hover:w-full"></span>
-              </a>
+              </Link>
             ))}
           </div>
         </div>

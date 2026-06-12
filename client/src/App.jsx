@@ -22,6 +22,9 @@ const WaiterDashboard = lazy(() => import('./pages/Waiter/WaiterDashboard'));
 const AboutPage = lazy(() => import('./pages/About/AboutPage'));
 const DigitalMenu = lazy(() => import('./pages/Menu/DigitalMenu'));
 const ErrorPage = lazy(() => import('./pages/Error/ErrorPage'));
+const PrivacyPage = lazy(() => import('./pages/Legal/PrivacyPage'));
+const TermsPage = lazy(() => import('./pages/Legal/TermsPage'));
+const CookiesPage = lazy(() => import('./pages/Legal/CookiesPage'));
 
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
@@ -120,6 +123,9 @@ function App() {
                   } />
                   <Route path="/about" element={<AboutPage />} />
                   <Route path="/digital-menu" element={<DigitalMenu />} />
+                  <Route path="/privacy" element={<PrivacyPage />} />
+                  <Route path="/terms" element={<TermsPage />} />
+                  <Route path="/cookies" element={<CookiesPage />} />
                 </Routes>
               </Suspense>
             </ErrorBoundary>
