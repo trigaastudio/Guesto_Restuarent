@@ -3,28 +3,47 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import './index.css';
 
+const lazyWithRetry = (componentImport) =>
+  lazy(async () => {
+    const pageHasAlreadyBeenForceRefreshed = JSON.parse(
+      window.sessionStorage.getItem('page-has-been-force-refreshed') || 'false'
+    );
 
-const AdminLogin = lazy(() => import('./pages/Admin/AdminLogin'));
-const AdminDashboard = lazy(() => import('./pages/Admin/AdminDashboard'));
-const RegisterPage = lazy(() => import('./pages/Register/RegisterPage'));
-const LoginPage = lazy(() => import('./pages/Login/LoginPage'));
-const HomePage = lazy(() => import('./pages/Home/HomePage'));
-const LandingPage = lazy(() => import('./pages/Landing/LandingPage'));
-const CartPage = lazy(() => import('./pages/Cart/CartPage'));
-const PaymentPage = lazy(() => import('./pages/Payment/PaymentPage'));
-const ProfilePage = lazy(() => import('./pages/Profile/ProfilePage'));
-const OrdersPage = lazy(() => import('./pages/Orders/OrdersPage'));
-const TrackOrderPage = lazy(() => import('./pages/Orders/TrackOrderPage'));
-const MenuDetailPage = lazy(() => import('./pages/Menu/MenuDetailPage'));
-const StaffLogin = lazy(() => import('./pages/Staff/StaffLogin'));
-const KitchenDashboard = lazy(() => import('./pages/Kitchen/KitchenDashboard'));
-const WaiterDashboard = lazy(() => import('./pages/Waiter/WaiterDashboard'));
-const AboutPage = lazy(() => import('./pages/About/AboutPage'));
-const DigitalMenu = lazy(() => import('./pages/Menu/DigitalMenu'));
-const ErrorPage = lazy(() => import('./pages/Error/ErrorPage'));
-const PrivacyPage = lazy(() => import('./pages/Legal/PrivacyPage'));
-const TermsPage = lazy(() => import('./pages/Legal/TermsPage'));
-const CookiesPage = lazy(() => import('./pages/Legal/CookiesPage'));
+    try {
+      const component = await componentImport();
+      window.sessionStorage.setItem('page-has-been-force-refreshed', 'false');
+      return component;
+    } catch (error) {
+      if (!pageHasAlreadyBeenForceRefreshed) {
+        window.sessionStorage.setItem('page-has-been-force-refreshed', 'true');
+        window.location.reload();
+        return new Promise(() => {});
+      }
+      throw error;
+    }
+  });
+
+const AdminLogin = lazyWithRetry(() => import('./pages/Admin/AdminLogin'));
+const AdminDashboard = lazyWithRetry(() => import('./pages/Admin/AdminDashboard'));
+const RegisterPage = lazyWithRetry(() => import('./pages/Register/RegisterPage'));
+const LoginPage = lazyWithRetry(() => import('./pages/Login/LoginPage'));
+const HomePage = lazyWithRetry(() => import('./pages/Home/HomePage'));
+const LandingPage = lazyWithRetry(() => import('./pages/Landing/LandingPage'));
+const CartPage = lazyWithRetry(() => import('./pages/Cart/CartPage'));
+const PaymentPage = lazyWithRetry(() => import('./pages/Payment/PaymentPage'));
+const ProfilePage = lazyWithRetry(() => import('./pages/Profile/ProfilePage'));
+const OrdersPage = lazyWithRetry(() => import('./pages/Orders/OrdersPage'));
+const TrackOrderPage = lazyWithRetry(() => import('./pages/Orders/TrackOrderPage'));
+const MenuDetailPage = lazyWithRetry(() => import('./pages/Menu/MenuDetailPage'));
+const StaffLogin = lazyWithRetry(() => import('./pages/Staff/StaffLogin'));
+const KitchenDashboard = lazyWithRetry(() => import('./pages/Kitchen/KitchenDashboard'));
+const WaiterDashboard = lazyWithRetry(() => import('./pages/Waiter/WaiterDashboard'));
+const AboutPage = lazyWithRetry(() => import('./pages/About/AboutPage'));
+const DigitalMenu = lazyWithRetry(() => import('./pages/Menu/DigitalMenu'));
+const ErrorPage = lazyWithRetry(() => import('./pages/Error/ErrorPage'));
+const PrivacyPage = lazyWithRetry(() => import('./pages/Legal/PrivacyPage'));
+const TermsPage = lazyWithRetry(() => import('./pages/Legal/TermsPage'));
+const CookiesPage = lazyWithRetry(() => import('./pages/Legal/CookiesPage'));
 
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
