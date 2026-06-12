@@ -42,10 +42,11 @@ const DigitalMenu = () => {
   const [user] = useState(() => JSON.parse(localStorage.getItem('user') || localStorage.getItem('admin_user') || 'null'));
 
   const heroImages = useMemo(() => [
-    '/heroSection/hero_1.png',
-    '/heroSection/hero_2.png',
-    '/heroSection/hero_3.png',
-    '/heroSection/hero_4.png'
+    '/heroSection/hero1.png',
+    '/heroSection/hero2.png',
+    '/heroSection/hero3.png',
+    '/heroSection/hero4.png',
+    '/heroSection/hero5.png'
   ], []);
 
   const [heroIndex, setHeroIndex] = useState(0);
@@ -301,7 +302,7 @@ const DigitalMenu = () => {
 
                 <div className="space-y-3 sm:space-y-4">
                   <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black leading-[1.1] md:leading-[0.9] text-white tracking-tighter drop-shadow-[0_20px_50px_rgba(0,0,0,0.2)] uppercase">
-                    {restaurantName}
+                    DIGITAL MENU
                   </h1>
                   <p className="text-white/70 text-[10px] sm:text-xs md:text-base font-bold leading-relaxed max-w-[280px] sm:max-w-md mx-auto lg:mx-0 tracking-wide flex items-center justify-center lg:justify-start gap-1.5">
                     <MapPin size={12} className="text-white/50 flex-shrink-0" />
