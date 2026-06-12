@@ -5,7 +5,7 @@ import api from '../../api/axiosInstance';
 import { useTheme } from '../../context/ThemeContext';
 import { useCart } from '../../context/CartContext';
 import { showToast, showAlert } from '../../utils/sweetAlert';
-import { User, Mail, Phone, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Phone, Lock, ArrowRight, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import OTPModal from '../../components/OTPModal/OTPModal';
 import FunnyDumpling from '../../components/FunnyDumpling/FunnyDumpling';
 
@@ -214,6 +214,15 @@ const RegisterPage = () => {
       </div>
 
       <div ref={containerRef} className="w-full lg:w-1/2 flex flex-col justify-start sm:justify-center items-center px-3 xs:px-4 sm:px-12 pt-3 pb-12 sm:py-6 relative min-h-screen lg:h-screen lg:overflow-y-auto no-scrollbar">
+
+        {/* Back to Home Button */}
+        <button
+          onClick={() => navigate('/')}
+          className="absolute top-4 sm:top-8 left-4 sm:left-8 z-[100] flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full bg-background-card/80 backdrop-blur-md border border-border text-text-primary hover:bg-primary hover:border-primary hover:text-white transition-all shadow-lg group active:scale-95"
+        >
+          <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+          <span className="text-[10px] font-black uppercase tracking-widest hidden xs:block">Home</span>
+        </button>
 
         {}
         <div className="lg:hidden fixed inset-0 pointer-events-none">
