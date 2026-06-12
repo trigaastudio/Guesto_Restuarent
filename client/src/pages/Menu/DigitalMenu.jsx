@@ -301,7 +301,7 @@ const DigitalMenu = () => {
                 </div>
 
                 <div className="space-y-3 sm:space-y-4">
-                  <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black leading-[1.1] md:leading-[0.9] text-white tracking-tighter drop-shadow-[0_20px_50px_rgba(0,0,0,0.2)] uppercase">
+                  <h1 className="text-2xl min-[360px]:text-3xl min-[400px]:text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black leading-[1.1] md:leading-[0.9] text-white tracking-tighter drop-shadow-[0_20px_50px_rgba(0,0,0,0.2)] uppercase">
                     DIGITAL <br className="block sm:hidden" /> MENU
                   </h1>
                   <p className="text-white/70 text-[10px] sm:text-xs md:text-base font-bold leading-relaxed max-w-[280px] sm:max-w-md mx-auto lg:mx-0 tracking-wide flex items-center justify-center lg:justify-start gap-1.5">

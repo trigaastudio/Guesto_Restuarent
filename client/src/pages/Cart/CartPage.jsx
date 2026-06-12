@@ -665,10 +665,10 @@ const CartPage = () => {
                                 )}
                               </div>
 
-                              <div className="flex flex-col items-end gap-1 ml-4 shrink-0">
-                                <span className="text-base font-black text-text-primary">₹{(finalPrice * item.quantity).toFixed(0)}</span>
+                              <div className="flex flex-col items-end gap-0.5 ml-2 shrink-0">
+                                <span className="text-[13px] sm:text-base font-black text-text-primary">₹{(finalPrice * item.quantity).toFixed(0)}</span>
                                 {basePrice > finalPrice && (
-                                  <span className="text-xs font-bold text-text-muted line-through opacity-50">₹{(basePrice * item.quantity).toFixed(0)}</span>
+                                  <span className="text-[10px] sm:text-xs font-bold text-text-muted line-through opacity-50">₹{(basePrice * item.quantity).toFixed(0)}</span>
                                 )}
                               </div>
                             </div>

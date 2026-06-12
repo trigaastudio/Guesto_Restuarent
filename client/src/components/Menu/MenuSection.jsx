@@ -148,9 +148,7 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
                 <div
                   key={`${menu._id}-${index}`}
                   className={`bg-background-card rounded-[1rem] md:rounded-[1.5rem] overflow-hidden transition-all duration-500 group shadow-[0_4px_15px_rgba(0,0,0,0.02)] border border-border/10 will-change-transform
-                    max-[379px]:flex max-[379px]:flex-row max-[379px]:items-stretch max-[379px]:p-2.5
-                    min-[380px]:flex min-[380px]:flex-col min-[380px]:p-2.5 sm:p-3.5 md:p-5
-                    h-full
+                    flex flex-col p-2.5 sm:p-3.5 md:p-5 h-full
                     ${isOutOfStock
                       ? 'grayscale opacity-60 pointer-events-none'
                       : 'hover:bg-primary active:bg-primary hover:shadow-[0_20px_50px_rgba(185,28,28,0.15)] active:shadow-[0_20px_50px_rgba(185,28,28,0.15)]'
@@ -161,10 +159,8 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
                   }}
                   onClick={() => !isOutOfStock && onAddClick(menu)}
                 >
-                  {/* Image wrapper — square on 2-col, fixed-width sidebar on 1-col */}
-                  <div className="relative overflow-hidden rounded-xl bg-white/5 flex-shrink-0
-                    max-[379px]:w-24 max-[379px]:h-24 max-[379px]:mr-3
-                    min-[380px]:h-28 sm:h-32 md:h-36 min-[380px]:mb-2.5 sm:mb-3 md:mb-4">
+                  {/* Image wrapper */}
+                  <div className="relative overflow-hidden rounded-xl bg-white/5 flex-shrink-0 w-full h-28 sm:h-32 md:h-36 mb-2.5 sm:mb-3 md:mb-4">
                     <img
                       src={menu.image || '/placeholder-food.jpg'}
                       alt={menu.name}

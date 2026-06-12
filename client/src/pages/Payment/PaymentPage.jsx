@@ -363,7 +363,7 @@ const PaymentPage = () => {
       `,
       showConfirmButton: false,
       padding: '0',
-      width: window.innerWidth < 640 ? '92%' : '520px',
+      width: 'min(92%, 520px)',
       customClass: {
         popup: 'rounded-[3.5rem] border-none shadow-[0_60px_120px_rgba(0,0,0,0.18)] overflow-hidden bg-background-card',
       },
@@ -498,8 +498,8 @@ const PaymentPage = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {cartItems.map((item) => (
-                    <div key={item._id} className="flex items-center gap-3 sm:gap-5 p-3 sm:p-4 rounded-[1.5rem] sm:rounded-[2rem] bg-background border border-border/40 group hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all duration-500">
-                      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-[1rem] sm:rounded-2xl shrink-0 overflow-hidden group-hover:rotate-3 transition-transform duration-500">
+                    <div key={item._id} className="flex items-center gap-2 sm:gap-5 p-2 sm:p-4 rounded-[1.25rem] sm:rounded-[2rem] bg-background border border-border/40 group hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all duration-500">
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-[0.75rem] sm:rounded-2xl shrink-0 overflow-hidden group-hover:rotate-3 transition-transform duration-500">
                         <img src={item.image || '/placeholder-food.jpg'} alt={item.name} className="w-full h-full object-contain" />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -553,7 +553,7 @@ const PaymentPage = () => {
                           </div>
                         )}
                       </div>
-                      <div className="text-lg font-black text-text-primary tracking-tighter pr-2">
+                      <div className="text-[13px] sm:text-lg font-black text-text-primary tracking-tighter pr-1 sm:pr-2 shrink-0">
                         ₹{(() => {
                           const variants = item.variants || item.sizes || [];
                           const sizeData = variants.find(v => v.size === item.selectedSize);
