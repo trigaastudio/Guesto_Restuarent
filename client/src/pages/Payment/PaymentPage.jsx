@@ -323,48 +323,47 @@ const PaymentPage = () => {
             </div>
           </div>
 
-          <!-- Order Details Card -->
-          <div class="p-8 space-y-8">
-            <div class="flex items-center justify-center gap-8">
-              <div class="text-center">
-                <p class="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1 opacity-50">Order ID</p>
-                <p class="text-xl font-black text-text-primary tracking-tight">${order.orderNumber}</p>
-              </div>
-              <div class="w-px h-10 bg-border/40"></div>
-              <div class="text-center">
-                <p class="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1 opacity-50">Delivery ETA</p>
-                <p class="text-xl font-black text-primary tracking-tight">35-45 mins</p>
-              </div>
-            </div>
-
-            <div class="bg-background-muted/50 rounded-3xl p-6 border border-border/40 relative group overflow-hidden">
-              <div class="absolute inset-0 bg-primary/5 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
-              <div class="relative z-10 flex items-center gap-5">
-                <div class="w-12 h-12 bg-white rounded-2xl shadow-lg flex items-center justify-center text-primary">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <div class="p-6 sm:p-8 space-y-6 sm:space-y-8">
+              <div class="flex items-center justify-center gap-4 sm:gap-8">
+                <div class="text-center">
+                  <p class="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1 opacity-50">Order ID</p>
+                  <p class="text-lg sm:text-xl font-black text-text-primary tracking-tight">${order.orderNumber}</p>
                 </div>
-                <div class="text-left">
-                  <h4 class="text-xs font-black text-text-primary uppercase tracking-wider mb-0.5">Secure Preparation</h4>
-                  <p class="text-[10px] font-bold text-text-muted opacity-60">Your kitchen is maintaining top hygiene standards.</p>
+                <div class="w-px h-10 bg-border/40"></div>
+                <div class="text-center">
+                  <p class="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1 opacity-50">Delivery ETA</p>
+                  <p class="text-lg sm:text-xl font-black text-primary tracking-tight">35-45 mins</p>
                 </div>
               </div>
-            </div>
 
-            <div class="flex flex-col sm:flex-row gap-4 mt-4">
-              <button id="track-order-btn" class="flex-1 w-full bg-primary hover:bg-primary-dark text-white font-black py-4 px-2 rounded-2xl transition-all duration-300 shadow-xl shadow-primary/20 active:scale-95 text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 group">
-                Track Order
-                <svg class="group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-              </button>
-              <button id="home-btn" class="flex-1 w-full bg-background-card hover:bg-background border border-border/60 text-text-primary font-black py-4 px-2 rounded-2xl transition-all duration-300 active:scale-95 text-[10px] uppercase tracking-widest flex items-center justify-center">
-                Go Shopping
-              </button>
+              <div class="bg-background-muted/50 rounded-[1.5rem] sm:rounded-3xl p-4 sm:p-6 border border-border/40 relative group overflow-hidden">
+                <div class="absolute inset-0 bg-primary/5 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
+                <div class="relative z-10 flex items-center gap-4 sm:gap-5">
+                  <div class="w-10 h-10 sm:w-12 sm:h-12 shrink-0 bg-white rounded-xl sm:rounded-2xl shadow-lg flex items-center justify-center text-primary">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sm:w-6 sm:h-6"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  </div>
+                  <div class="text-left">
+                    <h4 class="text-[11px] sm:text-xs font-black text-text-primary uppercase tracking-wider mb-0.5">Secure Preparation</h4>
+                    <p class="text-[9px] sm:text-[10px] font-bold text-text-muted opacity-60">Your kitchen is maintaining top hygiene standards.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-2 sm:mt-4">
+                <button id="track-order-btn" class="flex-1 w-full bg-primary hover:bg-primary-dark text-white font-black py-3.5 sm:py-4 px-2 rounded-2xl transition-all duration-300 shadow-xl shadow-primary/20 active:scale-95 text-[9px] sm:text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 group">
+                  Track Order
+                  <svg class="group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </button>
+                <button id="home-btn" class="flex-1 w-full bg-background-card hover:bg-background border border-border/60 text-text-primary font-black py-3.5 sm:py-4 px-2 rounded-2xl transition-all duration-300 active:scale-95 text-[9px] sm:text-[10px] uppercase tracking-widest flex items-center justify-center">
+                  Go Shopping
+                </button>
+              </div>
             </div>
-          </div>
         </div>
       `,
       showConfirmButton: false,
       padding: '0',
-      width: '520px',
+      width: window.innerWidth < 640 ? '92%' : '520px',
       customClass: {
         popup: 'rounded-[3.5rem] border-none shadow-[0_60px_120px_rgba(0,0,0,0.18)] overflow-hidden bg-background-card',
       },
@@ -499,8 +498,8 @@ const PaymentPage = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {cartItems.map((item) => (
-                    <div key={item._id} className="flex items-center gap-5 p-4 rounded-[2rem] bg-background border border-border/40 group hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all duration-500">
-                      <div className="w-16 h-16 rounded-2xl shrink-0 overflow-hidden group-hover:rotate-3 transition-transform duration-500">
+                    <div key={item._id} className="flex items-center gap-3 sm:gap-5 p-3 sm:p-4 rounded-[1.5rem] sm:rounded-[2rem] bg-background border border-border/40 group hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all duration-500">
+                      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-[1rem] sm:rounded-2xl shrink-0 overflow-hidden group-hover:rotate-3 transition-transform duration-500">
                         <img src={item.image || '/placeholder-food.jpg'} alt={item.name} className="w-full h-full object-contain" />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -676,7 +675,7 @@ const PaymentPage = () => {
                     className="w-full bg-primary hover:bg-primary-dark text-white font-black py-5 rounded-[1.75rem] transition-all duration-700 shadow-[0_15px_40px_rgba(185,28,28,0.2)] active:scale-95 flex items-center justify-center gap-4 group/btn disabled:opacity-50 relative overflow-hidden"
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000"></div>
-                    <span className="text-[10px] uppercase tracking-[0.3em] relative z-10">{loading ? 'Processing...' : 'Place Your Order'}</span>
+                    <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.3em] relative z-10">{loading ? 'Processing...' : 'Place Your Order'}</span>
                     {!loading && <ChevronRight size={18} strokeWidth={3} className="group-hover/btn:translate-x-2 transition-transform duration-500 relative z-10" />}
                   </button>
 

@@ -654,9 +654,9 @@ const CartPage = () => {
                               <button onClick={() => removeFromCart(item._id)} className="text-text-muted/20 hover:text-red-500 transition-colors p-1"><Trash2 size={16} /></button>
                             </div>
 
-                            <div className="flex flex-wrap items-center gap-4 pt-2">
+                            <div className="flex justify-between items-center w-full pt-2 mt-auto">
                               {/* Compact Quantity Control */}
-                              <div className="flex flex-col gap-1.5">
+                              <div className="flex flex-col gap-1.5 shrink-0">
                                 <QuantityInput item={item} updateQuantity={updateQuantity} getStock={getStock} />
                                 {getStock(item) < item.quantity && (
                                   <span className="text-[9px] font-black text-red-500 tracking-wider">
@@ -665,7 +665,7 @@ const CartPage = () => {
                                 )}
                               </div>
 
-                              <div className="flex flex-col items-end gap-1 ml-auto">
+                              <div className="flex flex-col items-end gap-1 ml-4 shrink-0">
                                 <span className="text-base font-black text-text-primary">₹{(finalPrice * item.quantity).toFixed(0)}</span>
                                 {basePrice > finalPrice && (
                                   <span className="text-xs font-bold text-text-muted line-through opacity-50">₹{(basePrice * item.quantity).toFixed(0)}</span>
@@ -773,7 +773,7 @@ const CartPage = () => {
                 <button
                   onClick={handleCheckout}
                   disabled={loading || hasOutOfStockItems || isValidating}
-                  className={`w-full font-black py-5 rounded-2xl transition-all shadow-2xl uppercase tracking-[0.2em] flex items-center justify-center gap-4 text-xs ${hasOutOfStockItems || isValidating
+                  className={`w-full font-black py-5 rounded-2xl transition-all shadow-2xl uppercase tracking-[0.2em] flex items-center justify-center gap-2 md:gap-4 text-[10px] md:text-xs ${hasOutOfStockItems || isValidating
                     ? 'bg-background-muted text-text-muted/30 cursor-not-allowed border border-border/10 grayscale opacity-50'
                     : 'bg-primary text-white hover:bg-primary-dark active:scale-[0.98] shadow-primary/20'
                     }`}

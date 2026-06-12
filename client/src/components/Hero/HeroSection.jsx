@@ -87,7 +87,7 @@ const HeroSection = React.memo(({ searchQuery, setSearchQuery, heroImages, trend
             </div>
 
             <div className="space-y-3 sm:space-y-4 md:space-y-6">
-              <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black leading-[1.1] md:leading-[0.9] text-white tracking-tighter drop-shadow-[0_20px_50px_rgba(0,0,0,0.2)] uppercase">
+              <h1 className="text-[28px] min-[380px]:text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black leading-[1.1] md:leading-[0.9] text-white tracking-tighter drop-shadow-[0_20px_50px_rgba(0,0,0,0.2)] uppercase">
                 Taste the <br className="block" />
                 <span className="text-white/90">Extraordinary</span>
               </h1>
