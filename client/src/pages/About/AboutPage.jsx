@@ -60,7 +60,7 @@ const AboutPage = () => {
               </div>
 
               <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tighter text-text-primary leading-tight">
-                Welcome to <br className="hidden sm:block lg:hidden" />
+                Welcome to <br className="block lg:hidden" />
                 <span className="text-primary italic">{restaurantName}</span>
               </h1>
 
