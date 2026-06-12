@@ -27,8 +27,16 @@ const BottomNavbar = () => {
       ));
     };
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+    window.addEventListener('auth-change', handleStorageChange);
+    
+    // Also re-check user state whenever location changes
+    handleStorageChange();
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('auth-change', handleStorageChange);
+    };
+  }, [location.pathname]);
 
   useEffect(() => {
     let ticking = false;
@@ -84,6 +92,8 @@ const BottomNavbar = () => {
   const handleLogout = () => {
     logoutToLanding(navigate);
     setShowProfileOptions(false);
+    setUser(null);
+    window.dispatchEvent(new Event('auth-change'));
   };
 
   const handleItemClick = (item) => {
