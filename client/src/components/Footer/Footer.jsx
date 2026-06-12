@@ -163,9 +163,19 @@ const Footer = React.memo(() => {
             <p className="text-[10px] font-black text-white/60 dark:text-text-muted/40 tracking-[0.2em] uppercase">
               © {currentYear} {brandName}
             </p>
-            <p className="text-[8px] font-bold text-white/40 dark:text-text-muted/20 tracking-widest uppercase">
-              Designed with Logic Loop Solution
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-[8px] font-bold text-white/40 dark:text-text-muted/20 tracking-widest uppercase">
+                Designed by
+              </p>
+              <img 
+                src="/developer%20logo.png" 
+                alt="Developer Logo" 
+                className="h-4 sm:h-5 object-contain opacity-70 hover:opacity-100 transition-opacity"
+              />
+              <a href="tel:9048136161" className="text-[8px] font-bold text-white/40 dark:text-text-muted/20 tracking-widest hover:text-white dark:hover:text-primary transition-colors">
+                | +91 9048136161
+              </a>
+            </div>
           </div>
 
           <div className="flex gap-10">
