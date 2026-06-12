@@ -265,21 +265,7 @@ const DigitalMenu = () => {
                   </button>
                 </div>
 
-                {/* Top Selling pills */}
-                {trendingItems.length > 0 && (
-                  <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2 sm:gap-3 mt-2">
-                    <span className="text-[8px] sm:text-[10px] font-black text-white/40 uppercase tracking-widest">🔥 Top Selling:</span>
-                    {trendingItems.slice(0, 3).map(item => (
-                      <button
-                        key={item._id}
-                        onClick={() => { const el = document.getElementById('menu'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }}
-                        className="text-[7px] sm:text-[9px] font-black text-white hover:text-white/60 transition-all uppercase tracking-widest px-2.5 py-1 sm:px-3 sm:py-1.5 bg-white/5 rounded-full border border-white/10"
-                      >
-                        {item.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
+
               </div>
             </div>
           </div>
