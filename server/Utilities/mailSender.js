@@ -4,12 +4,15 @@ const mailSender = async (email, title, body, attachments = []) => {
   try {
     let transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
+      port: 587,
+      secure: false, // true for 465, false for other ports
       auth: {
         user: process.env.NODEMAILER_EMAIL,
         pass: process.env.NODEMAILER_PASSWORD,
       },
+      tls: {
+        rejectUnauthorized: false
+      }
     });
 
     let info = await transporter.sendMail({
