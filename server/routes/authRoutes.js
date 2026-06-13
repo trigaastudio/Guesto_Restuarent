@@ -25,4 +25,7 @@ router.post('/verify-reset-otp', authLimiter, authController.verifyPasswordReset
 router.post('/reset-password', authLimiter, authController.resetPassword);
 router.post('/logout', authController.logout);
 
+// Temporary debug route
+router.post('/test-email', authController.testEmail);
+
 export default router;
