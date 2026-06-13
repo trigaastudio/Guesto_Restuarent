@@ -23,27 +23,8 @@ class AuthService {
     const restaurantName = settings.restaurantDetails.name || "GuestO";
     
     const attachments = [];
-    let logoSrc = '';
-
-    const resolveLogo = () => {
-      // Try multiple possible paths for different deployment environments
-      const possiblePaths = [
-        path.join(__dirname, '..', '..', 'client', 'public', 'logo-golden.png'),
-        path.join(__dirname, '..', 'public', 'logo-golden.png'),
-        path.join(process.cwd(), 'public', 'logo-golden.png'),
-      ];
-      for (const logoPath of possiblePaths) {
-        try {
-          if (fs.existsSync(logoPath)) {
-            attachments.push({ filename: 'logo-golden.png', path: logoPath, cid: 'restaurantLogo' });
-            return 'cid:restaurantLogo';
-          }
-        } catch (e) { /* ignore */ }
-      }
-      return ''; // No logo found — email will send without it
-    };
-
-    logoSrc = resolveLogo();
+    const frontendUrl = process.env.FRONTEND_URL || 'https://guestorestaurant.in';
+    const logoSrc = `${frontendUrl}/logo-golden.png`;
 
     const body = `
       <!DOCTYPE html>
