@@ -11,7 +11,7 @@ const mailSender = async (email, title, body, attachments = []) => {
     }
 
     const { data, error } = await resend.emails.send({
-      from: 'GuestO Restaurant <onboarding@resend.dev>', // Resend free tier restriction
+      from: process.env.RESEND_FROM_EMAIL || 'GuestO Restaurant <onboarding@resend.dev>',
       to: email,
       subject: title,
       html: body
