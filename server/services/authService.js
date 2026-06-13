@@ -22,27 +22,28 @@ class AuthService {
   async _sendStylishEmail(email, title, headerText, subText, otp, settings) {
     const restaurantName = settings.restaurantDetails.name || "GuestO";
     
-    let primaryLogoPath = '/logo-golden.png';
-    
     const attachments = [];
     let logoSrc = '';
 
-    const resolveLogo = (logoPathToUse, cidName) => {
-      const logoFileName = 'logo-golden.png';
-      const logoPath = path.join(__dirname, '..', '..', 'client', 'public', logoFileName);
-        
-      if (fs.existsSync(logoPath)) {
-        attachments.push({
-          filename: logoFileName,
-          path: logoPath,
-          cid: cidName
-        });
-        return `cid:${cidName}`;
+    const resolveLogo = () => {
+      // Try multiple possible paths for different deployment environments
+      const possiblePaths = [
+        path.join(__dirname, '..', '..', 'client', 'public', 'logo-golden.png'),
+        path.join(__dirname, '..', 'public', 'logo-golden.png'),
+        path.join(process.cwd(), 'public', 'logo-golden.png'),
+      ];
+      for (const logoPath of possiblePaths) {
+        try {
+          if (fs.existsSync(logoPath)) {
+            attachments.push({ filename: 'logo-golden.png', path: logoPath, cid: 'restaurantLogo' });
+            return 'cid:restaurantLogo';
+          }
+        } catch (e) { /* ignore */ }
       }
-      return '';
+      return ''; // No logo found — email will send without it
     };
 
-    logoSrc = resolveLogo(primaryLogoPath, 'restaurantLogo');
+    logoSrc = resolveLogo();
 
     const body = `
       <!DOCTYPE html>

@@ -310,7 +310,7 @@ const OrdersPage = () => {
           <div className="absolute top-0 right-0 w-64 h-64 bg-background-card/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
         </div>
 
-        <main className={`max-w-7xl mx-auto px-6 pt-24 md:pt-32 ${hasOrders ? '' : 'min-h-[70vh] flex items-center justify-center'} relative z-10 pb-24`}>
+        <main className={`max-w-7xl mx-auto px-3 sm:px-6 pt-24 md:pt-32 ${hasOrders ? '' : 'min-h-[70vh] flex items-center justify-center'} relative z-10 pb-24`}>
           {loading ? (
             <div className="max-w-6xl mx-auto w-full space-y-6 relative z-10 pt-10">
               <div className="grid grid-cols-1 gap-6">
@@ -354,7 +354,7 @@ const OrdersPage = () => {
             <div className="max-w-6xl mx-auto w-full space-y-6 relative z-10">
               {}
               <div className="space-y-8 relative z-10">
-                <div className="bg-background-card rounded-[2.5rem] p-6 md:p-8 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.03)] min-h-[400px] flex flex-col relative overflow-hidden">
+                <div className="bg-background-card rounded-xl sm:rounded-[2.5rem] p-4 sm:p-6 md:p-8 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.03)] min-h-[400px] flex flex-col relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
 
                   <div className="relative z-10 flex justify-between items-center mb-10">
@@ -385,58 +385,58 @@ const OrdersPage = () => {
                         className="bg-background rounded-xl border border-border/60 hover:shadow-md transition-all duration-300 overflow-hidden group cursor-pointer active:scale-[0.99]"
                       >
                         {}
-                        <div className="p-5 md:p-6 flex flex-col md:flex-row items-start md:items-center gap-6">
+                        <div className="p-3 sm:p-5 md:p-6 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6">
 
                           {}
-                          <div className="w-20 h-20 md:w-24 md:h-24 bg-background-muted/30 rounded-lg p-2 border border-border/20 flex-shrink-0 flex items-center justify-center relative">
+                          <div className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-background-muted/30 rounded-lg p-1 sm:p-2 border border-border/20 flex-shrink-0 flex items-center justify-center relative">
                             <img
                               src={order.items[0]?.image || order.items[0]?.menuItem?.image || '/placeholder-food.jpg'}
                               alt="order item"
                               className="w-full h-full object-contain"
                             />
                             {order.items.length > 1 && (
-                              <div className="absolute -bottom-2 -right-2 bg-primary text-white text-[8px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
+                              <div className="absolute -bottom-1.5 -right-1.5 sm:-bottom-2 sm:-right-2 bg-primary text-white text-[7px] sm:text-[8px] font-black w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center border-2 border-white">
                                 +{order.items.length - 1}
                               </div>
                             )}
                           </div>
 
                           {}
-                          <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex-1 min-w-0 space-y-0.5">
                             <div className="space-y-0.5">
-                              <h4 className="text-sm md:text-base font-black text-text-primary tracking-tight truncate capitalize group-hover:text-primary transition-colors">
+                              <h4 className="text-xs sm:text-sm md:text-base font-black text-text-primary tracking-tight truncate capitalize group-hover:text-primary transition-colors">
                                 {order.items[0]?.name || order.items[0]?.menuItem?.name}
                               </h4>
                               {order.items.length > 1 && (
-                                <p className="text-[11px] font-bold text-text-muted hover:text-primary transition-colors cursor-pointer">
+                                <p className="text-[10px] sm:text-[11px] font-bold text-text-muted hover:text-primary transition-colors cursor-pointer">
                                   + {order.items.length - 1} more item{order.items.length - 1 > 1 ? 's' : ''}
                                 </p>
                               )}
                             </div>
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                              <p className="text-[11px] font-medium text-text-muted">
-                                Order ID: <span className="font-bold text-text-primary uppercase tracking-wider">{order.orderNumber || order._id.slice(-8).toUpperCase()}</span>
+                            <div className="flex flex-wrap items-center gap-x-2 sm:gap-x-4 gap-y-0.5">
+                              <p className="text-[9px] sm:text-[11px] font-medium text-text-muted">
+                                Order: <span className="font-bold text-text-primary uppercase tracking-wider">{order.orderNumber || order._id.slice(-8).toUpperCase()}</span>
                               </p>
                               {order.items[0]?.size && (
-                                <p className="text-[11px] font-medium text-text-muted">
+                                <p className="text-[9px] sm:text-[11px] font-medium text-text-muted">
                                   Size: <span className="font-bold text-text-primary uppercase">{order.items[0].size}</span>
                                 </p>
                               )}
-                              <p className="text-[11px] font-medium text-text-muted">
+                              <p className="text-[9px] sm:text-[11px] font-medium text-text-muted">
                                 Qty: <span className="font-bold text-text-primary">{order.items.reduce((acc, item) => acc + item.quantity, 0)}</span>
                               </p>
                             </div>
-                            <p className="text-[10px] font-medium text-text-muted opacity-60">
-                              Placed on {new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            <p className="text-[8px] sm:text-[10px] font-medium text-text-muted opacity-60">
+                              {new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                             </p>
                           </div>
 
                           {}
-                          <div className="w-full md:w-auto md:min-w-[120px] md:text-center">
-                            <p className="text-lg font-black text-text-primary tracking-tighter">₹{Math.round((order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0))}</p>
-                            <div className="flex items-center gap-1.5 md:justify-center mt-0.5">
+                          <div className="w-full sm:w-auto sm:min-w-[100px] sm:text-center">
+                            <p className="text-base sm:text-lg font-black text-text-primary tracking-tighter">₹{Math.round((order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0))}</p>
+                            <div className="flex items-center gap-1 sm:justify-center mt-0.5">
                               {order.orderStatus !== 'cancelled' && (
-                                <span className={`text-[9px] font-bold uppercase tracking-wider ${order.paymentStatus === 'paid' ? 'text-emerald-600' : 'text-orange-600 animate-pulse'}`}>
+                                <span className={`text-[8px] sm:text-[9px] font-bold uppercase tracking-wide ${order.paymentStatus === 'paid' ? 'text-emerald-600' : 'text-orange-600 animate-pulse'}`}>
                                   {order.paymentStatus}
                                 </span>
                               )}
@@ -444,44 +444,44 @@ const OrdersPage = () => {
                           </div>
 
                           {}
-                          <div className="w-full md:w-auto md:min-w-[200px] space-y-1.5">
-                            <div className="flex items-center gap-2">
-                              <div className={`w-2.5 h-2.5 rounded-full ${order.orderStatus === 'delivered' ? 'bg-emerald-500' :
+                          <div className="w-full sm:w-auto sm:min-w-[180px] space-y-1">
+                            <div className="flex items-center gap-1.5">
+                              <div className={`w-2 h-2 rounded-full ${order.orderStatus === 'delivered' ? 'bg-emerald-500' :
                                   order.orderStatus === 'cancelled' ? 'bg-red-500' :
                                     'bg-primary animate-pulse'
                                 }`}></div>
-                              <span className="text-sm font-black text-text-primary tracking-tight">
+                              <span className="text-xs sm:text-sm font-black text-text-primary tracking-tight">
                                 {getStatusLabel(order.orderStatus)}
                               </span>
                             </div>
-                            <div className="text-[11px] font-medium leading-tight">
+                            <div className="text-[9px] sm:text-[11px] font-medium leading-tight">
                               {order.orderStatus === 'delivered' ? <p className="text-text-muted">Your meal has been delivered</p> :
                                 order.orderStatus === 'cancelled' ? (
                                   order.rejectionReason ? (
-                                    <div className="bg-red-500/10 border border-red-500/20 rounded-md p-2 mt-1.5 inline-block">
+                                    <div className="bg-red-500/10 border border-red-500/20 rounded-md p-1.5 mt-1 inline-block">
                                       <p className="text-red-600 font-bold tracking-wide">
-                                        <span className="opacity-70 uppercase text-[9px] mr-1">Reason:</span>
+                                        <span className="opacity-70 uppercase text-[8px] mr-1">Reason:</span>
                                         {order.rejectionReason}
                                       </p>
                                     </div>
                                   ) : <p className="text-text-muted">This order was cancelled</p>
                                 ) :
-                                  order.orderStatus === 'processing' ? <p className="text-text-muted">Your feast is being prepared by our chef</p> :
-                                    <p className="text-text-muted">Your order is being processed</p>}
+                                  order.orderStatus === 'processing' ? <p className="text-text-muted">Being prepared by our chef</p> :
+                                    <p className="text-text-muted">Order is being processed</p>}
                             </div>
                           </div>
 
                           {}
-                          <div className="w-full md:w-auto flex items-center justify-end gap-4 min-w-[150px]">
+                          <div className="w-full sm:w-auto flex items-center justify-end gap-3">
                             {order.orderStatus !== 'cancelled' && (
-                              <div className="flex items-center gap-3 w-full justify-end">
+                              <div className="flex items-center gap-2 w-full justify-end sm:justify-start">
                                 {}
 
                                 <button
                                   onClick={(e) => { e.stopPropagation(); navigate(`/track-order/${order._id}`); }}
-                                  className="flex-1 md:flex-none px-6 py-3 bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all active:scale-95 flex items-center justify-center gap-2"
+                                  className="flex-1 sm:flex-none px-4 sm:px-6 py-2.5 sm:py-3 bg-primary text-white text-[9px] sm:text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2"
                                 >
-                                  <Truck size={14} strokeWidth={3} />
+                                  <Truck size={12} strokeWidth={3} />
                                   Track Order
                                 </button>
                               </div>
@@ -517,12 +517,12 @@ const OrdersPage = () => {
             className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
             onClick={() => setShowDetailsModal(false)}
           />
-          <div className="relative w-full max-w-xl bg-white dark:bg-background-card rounded-[2.5rem] shadow-[0_30px_100px_rgba(0,0,0,0.4)] overflow-hidden animate-in zoom-in-95 duration-300">
+          <div className="relative w-full max-w-xl bg-white dark:bg-background-card rounded-xl sm:rounded-[2.5rem] shadow-[0_30px_100px_rgba(0,0,0,0.4)] overflow-hidden animate-in zoom-in-95 duration-300">
             {}
-            <div className="p-6 md:p-8 border-b border-border/10 flex items-center justify-between">
-              <div className="space-y-1">
-                <p className="text-[10px] font-black text-primary uppercase tracking-widest">Order Details</p>
-                <h3 className="text-xl font-black text-text-primary tracking-tight">#{selectedOrder.orderNumber || selectedOrder._id.slice(-8).toUpperCase()}</h3>
+            <div className="p-4 sm:p-6 md:p-8 border-b border-border/10 flex items-center justify-between">
+              <div className="space-y-0.5">
+                <p className="text-[9px] sm:text-[10px] font-black text-primary uppercase tracking-widest">Order Details</p>
+                <h3 className="text-base sm:text-xl font-black text-text-primary tracking-tight">#{selectedOrder.orderNumber || selectedOrder._id.slice(-8).toUpperCase()}</h3>
               </div>
               <button
                 onClick={() => setShowDetailsModal(false)}
@@ -533,26 +533,26 @@ const OrdersPage = () => {
             </div>
 
             {}
-            <div className="p-6 md:p-8 max-h-[60vh] overflow-y-auto custom-scrollbar space-y-6">
-              <div className="space-y-4">
+            <div className="p-4 sm:p-6 md:p-8 max-h-[60vh] overflow-y-auto custom-scrollbar space-y-4">
+              <div className="space-y-3">
                 {selectedOrder.items.map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-4 rounded-2xl bg-background-muted/20 border border-border/5">
-                    <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 rounded-xl bg-background border border-border/10 p-2 flex-shrink-0">
+                  <div key={idx} className="flex items-start justify-between p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-background-muted/20 border border-border/5">
+                    <div className="flex items-start gap-3">
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg sm:rounded-xl bg-background border border-border/10 p-1 sm:p-2 flex-shrink-0">
                         <img
                           src={item.image || item.menuItem?.image || '/placeholder-food.jpg'}
                           alt={item.name}
                           className="w-full h-full object-contain"
                         />
                       </div>
-                      <div className="space-y-1">
-                        <h4 className="text-sm font-black text-text-primary tracking-tight capitalize">{item.name || item.menuItem?.name}</h4>
-                        <div className="flex items-center gap-3">
-                          <span className="text-[11px] font-black text-primary uppercase bg-primary/5 px-2 py-0.5 rounded-lg border border-primary/10">
+                      <div className="space-y-0.5">
+                        <h4 className="text-xs sm:text-sm font-black text-text-primary tracking-tight capitalize leading-tight">{item.name || item.menuItem?.name}</h4>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[9px] sm:text-[11px] font-black text-primary uppercase bg-primary/5 px-1.5 sm:px-2 py-0.5 rounded-lg border border-primary/10">
                             Qty: {item.quantity}
                           </span>
                           {item.size && (
-                            <span className="text-[11px] font-bold text-text-muted opacity-60 uppercase">
+                            <span className="text-[9px] sm:text-[11px] font-bold text-text-muted opacity-60 uppercase">
                               {item.size}
                             </span>
                           )}
@@ -560,11 +560,11 @@ const OrdersPage = () => {
 
                         {}
                         {item.comboItems?.length > 0 && (
-                          <div className="mt-1.5 space-y-1 pl-2 border-l-2 border-primary/20">
-                            <span className="text-[8px] font-bold text-primary uppercase tracking-wider block">Combo includes:</span>
+                          <div className="mt-1 pl-2 border-l-2 border-primary/20">
+                            <span className="text-[7px] sm:text-[8px] font-bold text-primary uppercase tracking-wide block">Combo includes:</span>
                             <div className="flex flex-wrap gap-1">
                               {item.comboItems.map((ci, cIdx) => (
-                                <span key={cIdx} className="inline-flex items-center text-text-muted text-[9px] font-semibold">
+                                <span key={cIdx} className="inline-flex items-center text-text-muted text-[8px] sm:text-[9px] font-semibold leading-tight">
                                   {ci.quantity || 1}x {ci.name}
                                 </span>
                               ))}
@@ -574,23 +574,21 @@ const OrdersPage = () => {
 
                         {}
                         {item.bogoItem && (
-                          <div className="mt-1.5 space-y-1 pl-2 border-l-2 border-emerald-500/30">
-                            <span className="text-[8px] font-bold text-emerald-600 uppercase tracking-wider block">Free Add-on:</span>
-                            <div className="flex flex-wrap gap-1">
-                              <span className="inline-flex items-center text-text-muted text-[9px] font-semibold">
-                                🎁 {item.bogoItem.quantity || item.quantity}x {item.bogoItem.name} {item.bogoItem.size ? `(${item.bogoItem.size})` : ''}
-                              </span>
-                            </div>
+                          <div className="mt-1 pl-2 border-l-2 border-emerald-500/30">
+                            <span className="text-[7px] sm:text-[8px] font-bold text-emerald-600 uppercase tracking-wide block">Free Add-on:</span>
+                            <span className="inline-flex items-center text-text-muted text-[8px] sm:text-[9px] font-semibold leading-tight">
+                              🎁 {item.bogoItem.quantity || item.quantity}x {item.bogoItem.name} {item.bogoItem.size ? `(${item.bogoItem.size})` : ''}
+                            </span>
                           </div>
                         )}
 
                         {}
                         {item.includedItems?.length > 0 && (
-                          <div className="mt-1.5 space-y-1 pl-2 border-l-2 border-primary/20">
-                            <span className="text-[8px] font-bold text-primary uppercase tracking-wider block">Includes Add-ons:</span>
+                          <div className="mt-1 pl-2 border-l-2 border-primary/20">
+                            <span className="text-[7px] sm:text-[8px] font-bold text-primary uppercase tracking-wide block">Includes Add-ons:</span>
                             <div className="flex flex-wrap gap-1">
                               {item.includedItems.map((ii, iIdx) => (
-                                <span key={iIdx} className="inline-flex items-center text-text-muted text-[9px] font-semibold">
+                                <span key={iIdx} className="inline-flex items-center text-text-muted text-[8px] sm:text-[9px] font-semibold leading-tight">
                                   {ii.quantity || 1}x {ii.name}
                                 </span>
                               ))}

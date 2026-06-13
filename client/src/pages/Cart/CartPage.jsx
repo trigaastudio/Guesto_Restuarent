@@ -506,9 +506,9 @@ const CartPage = () => {
       <Navbar user={user} cartItems={cartItems} showUserDropdown={showUserDropdown} setShowUserDropdown={setShowUserDropdown} handleLogout={handleLogout} navigate={navigate} dropdownRef={dropdownRef} />
       <div className="relative">
         <div className="absolute top-0 left-0 w-full h-[120px] bg-primary z-0"></div>
-        <main className="max-w-7xl mx-auto px-6 pt-24 md:pt-32 relative z-10 pb-24">
+        <main className="max-w-7xl mx-auto px-3 sm:px-6 pt-24 md:pt-32 relative z-10 pb-24">
           <div className="flex flex-col lg:flex-row gap-8 items-start relative">
-            <div className="flex-1 space-y-4 w-full lg:h-[calc(100vh-200px)] lg:overflow-y-auto no-scrollbar pr-2">
+            <div className="flex-1 space-y-4 w-full lg:h-[calc(100vh-200px)] lg:overflow-y-auto no-scrollbar pr-0 sm:pr-2">
               {dineInTableId ? (
                 <div className="bg-primary/10 rounded-2xl p-4 md:p-6 border border-primary/20 shadow-sm flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -594,31 +594,30 @@ const CartPage = () => {
                     const isMaxReached = maxStock <= sameItemQty;
 
                     return (
-                      <div key={`${item._id}-${item.selectedSize}`} className={`p-4 md:p-6 transition-all hover:bg-primary/[0.01] group relative border-b border-border/5 last:border-0 ${item.isBlocked || getStock(item) < item.quantity ? 'opacity-60' : ''}`}>
-                        <div className="flex gap-4 md:gap-6 items-center">
-                          {/* Image Block - Scaled Down */}
+                      <div key={`${item._id}-${item.selectedSize}`} className={`p-3 sm:p-4 md:p-6 transition-all hover:bg-primary/[0.01] group relative border-b border-border/5 last:border-0 ${item.isBlocked || getStock(item) < item.quantity ? 'opacity-60' : ''}`}>
+                        <div className="flex gap-2.5 sm:gap-4 md:gap-6 items-start">
+                          {/* Image Block */}
                           <div className="relative shrink-0">
-                            <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden border border-border/10 bg-background p-1 group-hover:border-primary/20 transition-all duration-500 shadow-sm relative z-10">
-                              <img src={item.image} alt={item.name} loading="lazy" className="w-full h-full object-cover rounded-xl group-hover:scale-110 transition-transform duration-700" />
+                            <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-xl sm:rounded-2xl overflow-hidden border border-border/10 bg-background p-0.5 sm:p-1 group-hover:border-primary/20 transition-all duration-500 shadow-sm relative z-10">
+                              <img src={item.image} alt={item.name} loading="lazy" className="w-full h-full object-cover rounded-lg sm:rounded-xl group-hover:scale-110 transition-transform duration-700" />
                             </div>
                           </div>
 
                           {/* Content Block */}
                           <div className="flex-1 min-w-0 space-y-1">
-                            <div className="flex justify-between items-start gap-2">
-                              <div className="min-w-0">
-                                <h3 className="text-base md:text-lg font-black text-text-primary leading-tight capitalize truncate group-hover:text-primary transition-colors">{item.name}</h3>
-                                <p className="text-[9px] font-black text-text-muted uppercase tracking-widest opacity-60">
+                            <div className="flex justify-between items-start gap-1.5">
+                              <div className="min-w-0 flex-1">
+                                <h3 className="text-sm sm:text-base md:text-lg font-black text-text-primary leading-tight capitalize truncate group-hover:text-primary transition-colors">{item.name}</h3>
+                                <p className="text-[8px] sm:text-[9px] font-black text-text-muted uppercase tracking-wider opacity-60">
                                   {item.selectedSize ? `size: ${item.selectedSize}` : (item.category?.name || 'Main Course')}
                                 </p>
 
-                                { }
                                 {item.isCombo && item.comboItems?.length > 0 && (
-                                  <div className="mt-2 space-y-1 pl-2 border-l border-primary/30">
-                                    <span className="text-[8px] font-black text-primary uppercase tracking-wider block">Combo includes:</span>
-                                    <div className="flex flex-wrap gap-1.5">
+                                  <div className="mt-1.5 pl-2 border-l border-primary/30">
+                                    <span className="text-[7px] font-black text-primary uppercase tracking-wide block mb-0.5">Combo:</span>
+                                    <div className="flex flex-wrap gap-1">
                                       {item.comboItems.map((ci, idx) => (
-                                        <span key={idx} className="inline-flex items-center bg-primary/5 text-primary text-[9px] font-bold px-2 py-0.5 rounded-lg border border-primary/10">
+                                        <span key={idx} className="inline-flex items-center bg-primary/5 text-primary text-[7px] sm:text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-primary/10 leading-tight">
                                           {ci.quantity || 1}x {ci.menuItem?.name || ci.name || 'Item'}
                                         </span>
                                       ))}
@@ -626,13 +625,12 @@ const CartPage = () => {
                                   </div>
                                 )}
 
-                                { }
                                 {!item.isCombo && item.variants?.find(v => v.size === item.selectedSize)?.includedItems?.length > 0 && (
-                                  <div className="mt-2 space-y-1 pl-2 border-l border-primary/30">
-                                    <span className="text-[8px] font-black text-primary uppercase tracking-wider block">Includes Add-ons:</span>
-                                    <div className="flex flex-wrap gap-1.5">
+                                  <div className="mt-1.5 pl-2 border-l border-primary/30">
+                                    <span className="text-[7px] font-black text-primary uppercase tracking-wide block mb-0.5">Add-ons:</span>
+                                    <div className="flex flex-wrap gap-1">
                                       {item.variants.find(v => v.size === item.selectedSize).includedItems.map((ii, idx) => (
-                                        <span key={idx} className="inline-flex items-center bg-primary/5 text-primary text-[9px] font-bold px-2 py-0.5 rounded-lg border border-primary/10">
+                                        <span key={idx} className="inline-flex items-center bg-primary/5 text-primary text-[7px] sm:text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-primary/10 leading-tight">
                                           {ii.quantity || 1}x {ii.menuItem?.name || ii.name || 'Item'}
                                         </span>
                                       ))}
@@ -640,35 +638,33 @@ const CartPage = () => {
                                   </div>
                                 )}
 
-                                { }
                                 {item.bogoItem && item.variants?.find(v => v.size === item.selectedSize)?.isBOGO && (
-                                  <div className="mt-2 space-y-1 pl-2 border-l border-emerald-500/30">
-                                    <span className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">Buy 1 Get 1 Free Add-on:</span>
-                                    <div className="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-emerald-500/20">
-                                      🎁 Free {item.bogoItem.name} {item.bogoItem.size ? `(${item.bogoItem.size})` : ''} x {item.bogoItem.quantity || item.quantity}
-                                    </div>
+                                  <div className="mt-1.5 pl-2 border-l border-emerald-500/30">
+                                    <span className="text-[7px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wide block mb-0.5">BOGO Free:</span>
+                                    <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[7px] sm:text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-emerald-500/20 leading-tight">
+                                      🎁 {item.bogoItem.name} {item.bogoItem.size ? `(${item.bogoItem.size})` : ''} x{item.bogoItem.quantity || item.quantity}
+                                    </span>
                                   </div>
                                 )}
 
                               </div>
-                              <button onClick={() => removeFromCart(item._id)} className="text-text-muted/20 hover:text-red-500 transition-colors p-1"><Trash2 size={16} /></button>
+                              <button onClick={() => removeFromCart(item._id)} className="text-text-muted/20 hover:text-red-500 transition-colors p-1 shrink-0"><Trash2 size={14} /></button>
                             </div>
 
-                            <div className="flex justify-between items-center w-full pt-2 mt-auto">
-                              {/* Compact Quantity Control */}
-                              <div className="flex flex-col gap-1.5 shrink-0">
+                            <div className="flex justify-between items-center w-full pt-1.5 mt-auto">
+                              <div className="flex flex-col gap-1 shrink-0">
                                 <QuantityInput item={item} updateQuantity={updateQuantity} getStock={getStock} />
                                 {getStock(item) < item.quantity && (
-                                  <span className="text-[9px] font-black text-red-500 tracking-wider">
-                                    {getStock(item) === 0 ? 'Out of stock' : `Only ${getStock(item)} left in stock`}
+                                  <span className="text-[7px] sm:text-[9px] font-black text-red-500">
+                                    {getStock(item) === 0 ? 'Out of stock' : `Only ${getStock(item)} left`}
                                   </span>
                                 )}
                               </div>
 
-                              <div className="flex flex-col items-end gap-0.5 ml-2 shrink-0">
-                                <span className="text-[13px] sm:text-base font-black text-text-primary">₹{(finalPrice * item.quantity).toFixed(0)}</span>
+                              <div className="flex flex-col items-end gap-0.5 ml-1 shrink-0">
+                                <span className="text-xs sm:text-[13px] font-black text-text-primary">₹{(finalPrice * item.quantity).toFixed(0)}</span>
                                 {basePrice > finalPrice && (
-                                  <span className="text-[10px] sm:text-xs font-bold text-text-muted line-through opacity-50">₹{(basePrice * item.quantity).toFixed(0)}</span>
+                                  <span className="text-[8px] sm:text-[10px] font-bold text-text-muted line-through opacity-50">₹{(basePrice * item.quantity).toFixed(0)}</span>
                                 )}
                               </div>
                             </div>
@@ -689,69 +685,69 @@ const CartPage = () => {
                   })}
                 </div>
               </div>
-              <div className="bg-background-card rounded-[2.5rem] p-6 md:p-10 border border-border/20 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-2 h-8 bg-primary rounded-full"></div>
-                  <h3 className="text-lg font-black text-text-primary lowercase">special instructions</h3>
+              <div className="bg-background-card rounded-2xl sm:rounded-[2.5rem] p-4 sm:p-6 md:p-10 border border-border/20 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-1.5 h-6 bg-primary rounded-full"></div>
+                  <h3 className="text-sm sm:text-lg font-black text-text-primary lowercase">special instructions</h3>
                 </div>
                 <textarea
                   value={additionalNote}
                   onChange={(e) => setAdditionalNote(e.target.value)}
                   placeholder="Any specific requests for your meal?"
-                  className="w-full bg-background border border-border/40 rounded-3xl p-6 text-sm font-bold text-text-primary focus:border-primary/40 outline-none min-h-[140px] shadow-inner transition-all placeholder:text-text-muted/30"
+                  className="w-full bg-background border border-border/40 rounded-2xl sm:rounded-3xl p-4 sm:p-6 text-sm font-bold text-text-primary focus:border-primary/40 outline-none min-h-[100px] sm:min-h-[140px] shadow-inner transition-all placeholder:text-text-muted/30"
                 ></textarea>
               </div>
             </div>
             { }
             <div className="w-full lg:w-[450px] sticky top-32">
-              <div className="bg-background-card rounded-[3rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-border/20 p-8 md:p-12 space-y-10 relative overflow-hidden">
+              <div className="bg-background-card rounded-2xl sm:rounded-[3rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-border/20 p-5 sm:p-8 md:p-12 space-y-6 sm:space-y-10 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
 
-                <h2 className="text-xl font-black text-text-primary uppercase tracking-[0.1em] flex items-center gap-4 relative z-10">
-                  <div className="p-3 bg-primary/10 text-primary rounded-2xl">
-                    <ShoppingCart size={22} strokeWidth={2.5} />
+                <h2 className="text-base sm:text-xl font-black text-text-primary uppercase tracking-[0.1em] flex items-center gap-3 relative z-10">
+                  <div className="p-2 sm:p-3 bg-primary/10 text-primary rounded-xl sm:rounded-2xl">
+                    <ShoppingCart size={18} strokeWidth={2.5} />
                   </div>
                   Bill Summary
                 </h2>
-                <div className="space-y-5">
+                <div className="space-y-3 sm:space-y-5">
                   <div className="flex justify-between items-center">
-                    <span className="text-[11px] font-black text-text-muted uppercase">Actual Price</span>
-                    <span className="text-sm font-black text-text-primary">₹{Math.round(originalTotal)}</span>
+                    <span className="text-[10px] sm:text-[11px] font-black text-text-muted uppercase">Actual Price</span>
+                    <span className="text-xs sm:text-sm font-black text-text-primary">₹{Math.round(originalTotal)}</span>
                   </div>
 
                   <div className="flex justify-between items-center text-green-500">
-                    <span className="text-[11px] font-black uppercase tracking-widest opacity-80">Total Savings</span>
-                    <span className="text-sm font-black">-₹{discount}</span>
+                    <span className="text-[10px] sm:text-[11px] font-black uppercase opacity-80">Total Savings</span>
+                    <span className="text-xs sm:text-sm font-black">-₹{discount}</span>
                   </div>
 
-                  <div className="flex justify-between items-center bg-primary/5 -mx-4 px-4 py-2 rounded-xl">
-                    <span className="text-[11px] font-black text-primary uppercase">Final Price (Items)</span>
-                    <span className="text-sm font-black text-primary">₹{subtotal}</span>
+                  <div className="flex justify-between items-center bg-primary/5 -mx-2 sm:-mx-4 px-2 sm:px-4 py-2 rounded-xl">
+                    <span className="text-[10px] sm:text-[11px] font-black text-primary uppercase">Final Price (Items)</span>
+                    <span className="text-xs sm:text-sm font-black text-primary">₹{subtotal}</span>
                   </div>
 
-                  <div className="flex justify-between items-center pt-2">
+                  <div className="flex justify-between items-center">
                     <div className="flex flex-col">
-                      <span className="text-[11px] font-black text-text-muted uppercase">Delivery Fee</span>
+                      <span className="text-[10px] sm:text-[11px] font-black text-text-muted uppercase">Delivery Fee</span>
                       {calculatedDistance && (
-                        <span className="text-[9px] font-bold text-primary/60 uppercase tracking-tight flex items-center gap-1">
-                          <MapPin size={8} /> {calculatedDistance} KM away
+                        <span className="text-[8px] sm:text-[9px] font-bold text-primary/60 uppercase tracking-tight flex items-center gap-1">
+                          <MapPin size={7} /> {calculatedDistance} KM away
                         </span>
                       )}
                     </div>
-                    <span className={`text-sm font-black ${deliveryFee === 0 ? 'text-green-500' : 'text-text-primary'} flex items-center gap-2`}>
+                    <span className={`text-xs sm:text-sm font-black ${deliveryFee === 0 ? 'text-green-500' : 'text-text-primary'} flex items-center gap-2`}>
                       {isCalculatingFee ? <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></div> : (deliveryFee === 0 ? 'FREE' : `₹${deliveryFee}`)}
                     </span>
                   </div>
 
                   <div className="flex justify-between items-center">
-                    <span className="text-[11px] font-black text-text-muted uppercase">Platform Fee</span>
-                    <span className="text-sm font-black text-text-primary">₹{platformFee}</span>
+                    <span className="text-[10px] sm:text-[11px] font-black text-text-muted uppercase">Platform Fee</span>
+                    <span className="text-xs sm:text-sm font-black text-text-primary">₹{platformFee}</span>
                   </div>
 
-                  <div className="h-px bg-border/20 my-2"></div>
+                  <div className="h-px bg-border/20 my-1"></div>
                   <div className="flex justify-between items-center">
-                    <span className="text-lg font-black text-text-primary uppercase">Grand Total</span>
-                    <span className="text-3xl font-black text-primary tracking-tighter">₹{total}</span>
+                    <span className="text-sm sm:text-lg font-black text-text-primary uppercase">Grand Total</span>
+                    <span className="text-2xl sm:text-3xl font-black text-primary tracking-tighter">₹{total}</span>
                   </div>
 
                   <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-xl border border-primary/10 mt-3">

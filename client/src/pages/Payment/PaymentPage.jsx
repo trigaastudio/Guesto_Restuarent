@@ -301,72 +301,75 @@ const PaymentPage = () => {
     Swal.fire({
       html: `
         <div class="overflow-hidden">
-          <!-- Premium Header with Celebration -->
-          <div class="bg-primary/5 py-12 relative overflow-hidden">
+          <!-- Header -->
+          <div class="bg-primary/5 py-5 relative overflow-hidden">
             <div class="absolute inset-0 opacity-20">
-              <div class="absolute top-0 left-1/4 w-2 h-2 bg-primary rounded-full animate-ping"></div>
-              <div class="absolute top-1/2 right-1/4 w-3 h-3 bg-primary rounded-full animate-pulse"></div>
-              <div class="absolute bottom-1/4 left-1/2 w-2 h-2 bg-primary rounded-full animate-bounce"></div>
+              <div class="absolute top-0 left-1/4 w-1.5 h-1.5 bg-primary rounded-full animate-ping"></div>
+              <div class="absolute top-1/2 right-1/4 w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+              <div class="absolute bottom-1/4 left-1/2 w-1.5 h-1.5 bg-primary rounded-full animate-bounce"></div>
             </div>
-            
             <div class="relative z-10">
-              <div class="w-24 h-24 bg-white rounded-full mx-auto flex items-center justify-center shadow-2xl border-8 border-primary/10 relative">
-                <div class="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin duration-1000"></div>
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="text-primary animate-in zoom-in duration-500 delay-200">
+              <div class="w-12 h-12 bg-white rounded-full mx-auto flex items-center justify-center shadow-xl border-4 border-primary/10 relative">
+                <div class="absolute inset-0 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="text-primary">
                   <polyline points="20 6 9 17 4 12"></polyline>
                 </svg>
               </div>
-              <div class="mt-6 space-y-1">
-                <h2 class="text-3xl font-black text-text-primary tracking-tighter uppercase">Order <span class="text-primary">Success!</span></h2>
-                <p class="text-[10px] font-black text-text-muted uppercase tracking-[0.3em] opacity-60">We've received your feast</p>
+              <div class="mt-3 space-y-0.5">
+                <h2 class="text-base font-black text-text-primary tracking-tight uppercase leading-none">Order <span class="text-primary">Success!</span></h2>
+                <p class="text-[7px] font-black text-text-muted uppercase tracking-[0.15em] opacity-60">We've received your feast</p>
               </div>
             </div>
           </div>
 
-            <!-- Order Details Card -->
-            <div class="p-4 sm:p-8 space-y-4 sm:space-y-8">
-              <div class="flex items-center justify-center gap-4 sm:gap-8">
-                <div class="text-center max-w-[45%]">
-                  <p class="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1 opacity-50">Order ID</p>
-                  <p class="text-[12px] sm:text-xl font-black text-text-primary tracking-tight break-all">${order.orderNumber}</p>
-                </div>
-                <div class="w-px h-10 bg-border/40"></div>
-                <div class="text-center">
-                  <p class="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1 opacity-50">Delivery ETA</p>
-                  <p class="text-lg sm:text-xl font-black text-primary tracking-tight">35-45 mins</p>
-                </div>
-              </div>
+          <!-- Order Details -->
+          <div class="px-3 pb-3 pt-2.5 space-y-2.5">
 
-              <div class="bg-background-muted/50 rounded-[1.5rem] sm:rounded-3xl p-4 sm:p-6 border border-border/40 relative group overflow-hidden">
-                <div class="absolute inset-0 bg-primary/5 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
-                <div class="relative z-10 flex items-center gap-4 sm:gap-5">
-                  <div class="w-10 h-10 sm:w-12 sm:h-12 shrink-0 bg-white rounded-xl sm:rounded-2xl shadow-lg flex items-center justify-center text-primary">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sm:w-6 sm:h-6"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                  </div>
-                  <div class="text-left">
-                    <h4 class="text-[11px] sm:text-xs font-black text-text-primary uppercase tracking-wider mb-0.5">Secure Preparation</h4>
-                    <p class="text-[9px] sm:text-[10px] font-bold text-text-muted opacity-60">Your kitchen is maintaining top hygiene standards.</p>
-                  </div>
-                </div>
+            <!-- Order ID + ETA row -->
+            <div class="flex items-center justify-center gap-3 w-full bg-background-muted/40 rounded-xl p-2.5 border border-border/30">
+              <div class="text-center flex-1">
+                <p class="text-[6px] font-black text-text-muted uppercase tracking-widest opacity-50 mb-0.5">Order ID</p>
+                <p class="text-[11px] font-black text-text-primary tracking-tight leading-none">${order.orderNumber}</p>
               </div>
-
-              <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-2 sm:mt-4">
-                <button id="track-order-btn" class="flex-1 w-full bg-primary hover:bg-primary-dark text-white font-black py-3.5 sm:py-4 px-2 rounded-2xl transition-all duration-300 shadow-xl shadow-primary/20 active:scale-95 text-[9px] sm:text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 group">
-                  Track Order
-                  <svg class="group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                </button>
-                <button id="home-btn" class="flex-1 w-full bg-background-card hover:bg-background border border-border/60 text-text-primary font-black py-3.5 sm:py-4 px-2 rounded-2xl transition-all duration-300 active:scale-95 text-[9px] sm:text-[10px] uppercase tracking-widest flex items-center justify-center">
-                  Go Shopping
-                </button>
+              <div class="w-px h-7 bg-border/40 shrink-0"></div>
+              <div class="text-center flex-1">
+                <p class="text-[6px] font-black text-text-muted uppercase tracking-widest opacity-50 mb-0.5">Delivery ETA</p>
+                <p class="text-[11px] font-black text-primary tracking-tight leading-none">35-45 mins</p>
               </div>
             </div>
+
+            <!-- Secure Preparation -->
+            <div class="bg-background-muted/40 rounded-xl p-2.5 border border-border/30">
+              <div class="flex items-center gap-2.5">
+                <div class="w-7 h-7 shrink-0 bg-white rounded-lg shadow flex items-center justify-center text-primary">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </div>
+                <div class="text-left">
+                  <h4 class="text-[8px] font-black text-text-primary uppercase tracking-wide leading-none mb-0.5">Secure Preparation</h4>
+                  <p class="text-[7px] font-bold text-text-muted opacity-60 leading-tight">Your kitchen maintains top hygiene standards.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="flex flex-row gap-2 pt-0.5">
+              <button id="track-order-btn" class="flex-1 bg-primary text-white font-black py-2 px-1 rounded-xl text-[8px] uppercase tracking-wide flex items-center justify-center gap-1 group active:scale-95 transition-all shadow-lg shadow-primary/20">
+                <span class="whitespace-nowrap">Track Order</span>
+                <svg class="group-hover:translate-x-0.5 transition-transform w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+              <button id="home-btn" class="flex-1 bg-background-card border border-border/60 text-text-primary font-black py-2 px-1 rounded-xl text-[8px] uppercase tracking-wide flex items-center justify-center whitespace-nowrap active:scale-95 transition-all">
+                Go Shopping
+              </button>
+            </div>
+
+          </div>
         </div>
       `,
       showConfirmButton: false,
       padding: '0',
-      width: 'min(92%, 520px)',
+      width: 'min(88%, 440px)',
       customClass: {
-        popup: 'rounded-[2rem] sm:rounded-[3.5rem] border-none shadow-[0_60px_120px_rgba(0,0,0,0.18)] overflow-hidden bg-background-card',
+        popup: 'rounded-[1.5rem] border-none shadow-[0_30px_80px_rgba(0,0,0,0.2)] overflow-hidden bg-background-card',
       },
       didOpen: () => {
         document.getElementById('track-order-btn').addEventListener('click', () => {
@@ -401,7 +404,7 @@ const PaymentPage = () => {
           <div className="absolute top-0 right-0 w-64 h-64 bg-background-card/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
         </div>
 
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-24 md:pt-32 relative z-10 pb-24">
+        <main className="max-w-7xl mx-auto px-3 sm:px-6 pt-24 md:pt-32 relative z-10 pb-24">
           <div className="flex flex-col lg:flex-row gap-10 items-start">
 
             {}
@@ -499,30 +502,29 @@ const PaymentPage = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {cartItems.map((item) => (
-                    <div key={item._id} className="flex items-center gap-2 sm:gap-5 p-2 sm:p-4 rounded-[1.25rem] sm:rounded-[2rem] bg-background border border-border/40 group hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all duration-500">
-                      <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-[0.75rem] sm:rounded-2xl shrink-0 overflow-hidden group-hover:rotate-3 transition-transform duration-500">
+                    <div key={item._id} className="flex items-start gap-2 sm:gap-5 p-2 sm:p-4 rounded-xl sm:rounded-[2rem] bg-background border border-border/40 group hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all duration-500">
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl shrink-0 overflow-hidden group-hover:rotate-3 transition-transform duration-500">
                         <img src={item.image || '/placeholder-food.jpg'} alt={item.name} className="w-full h-full object-contain" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h4 className="text-sm font-black text-text-primary tracking-tight group-hover:text-primary transition-colors duration-500 truncate capitalize">
+                        <h4 className="text-xs sm:text-sm font-black text-text-primary tracking-tight group-hover:text-primary transition-colors duration-500 truncate capitalize">
                           {item.name}
                         </h4>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] font-black text-text-muted uppercase tracking-wider opacity-60">qty: {item.quantity}</span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[8px] sm:text-[10px] font-black text-text-muted uppercase tracking-wider opacity-60">qty: {item.quantity}</span>
                           {item.selectedSize && (
-                            <span className="text-[9px] font-black text-primary bg-primary/5 px-2 py-0.5 rounded-lg uppercase border border-primary/10">
+                            <span className="text-[7px] sm:text-[9px] font-black text-primary bg-primary/5 px-1.5 py-0.5 rounded-lg uppercase border border-primary/10">
                               {item.selectedSize}
                             </span>
                           )}
                         </div>
 
-                        {}
                         {item.isCombo && item.comboItems?.length > 0 && (
-                          <div className="mt-2 space-y-1 pl-2 border-l border-primary/30">
-                            <span className="text-[8px] font-black text-primary uppercase tracking-wider block">Combo includes:</span>
-                            <div className="flex flex-wrap gap-1.5">
+                          <div className="mt-1 pl-2 border-l border-primary/30">
+                            <span className="text-[7px] font-black text-primary uppercase tracking-wide block">Combo:</span>
+                            <div className="flex flex-wrap gap-1">
                               {item.comboItems.map((ci, idx) => (
-                                <span key={idx} className="inline-flex items-center bg-primary/5 text-primary text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-primary/10">
+                                <span key={idx} className="inline-flex items-center bg-primary/5 text-primary text-[7px] font-bold px-1 py-0.5 rounded border border-primary/10 leading-tight">
                                   {ci.quantity || 1}x {ci.menuItem?.name || ci.name || 'Item'}
                                 </span>
                               ))}
@@ -530,13 +532,12 @@ const PaymentPage = () => {
                           </div>
                         )}
 
-                        {}
                         {!item.isCombo && item.variants?.find(v => v.size === item.selectedSize)?.includedItems?.length > 0 && (
-                          <div className="mt-2 space-y-1 pl-2 border-l border-primary/30">
-                            <span className="text-[8px] font-black text-primary uppercase tracking-wider block">Includes Add-ons:</span>
-                            <div className="flex flex-wrap gap-1.5">
+                          <div className="mt-1 pl-2 border-l border-primary/30">
+                            <span className="text-[7px] font-black text-primary uppercase tracking-wide block">Add-ons:</span>
+                            <div className="flex flex-wrap gap-1">
                               {item.variants.find(v => v.size === item.selectedSize).includedItems.map((ii, idx) => (
-                                <span key={idx} className="inline-flex items-center bg-primary/5 text-primary text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-primary/10">
+                                <span key={idx} className="inline-flex items-center bg-primary/5 text-primary text-[7px] font-bold px-1 py-0.5 rounded border border-primary/10 leading-tight">
                                   {ii.quantity || 1}x {ii.menuItem?.name || ii.name || 'Item'}
                                 </span>
                               ))}
@@ -544,17 +545,17 @@ const PaymentPage = () => {
                           </div>
                         )}
 
-                        {}
                         {item.bogoItem && item.variants?.find(v => v.size === item.selectedSize)?.isBOGO && (
-                          <div className="mt-2 space-y-1 pl-2 border-l border-emerald-500/30">
-                            <span className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">Buy 1 Get 1 Free Add-on:</span>
-                            <div className="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-emerald-500/20">
-                              🎁 Free {item.bogoItem.name} {item.bogoItem.size ? `(${item.bogoItem.size})` : ''} x {item.bogoItem.quantity || item.quantity}
-                            </div>
+                          <div className="mt-1 pl-2 border-l border-emerald-500/30">
+                            <span className="text-[7px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wide block">BOGO Free:</span>
+                            <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[7px] font-bold px-1 py-0.5 rounded border border-emerald-500/20 leading-tight">
+                              🎁 {item.bogoItem.name} {item.bogoItem.size ? `(${item.bogoItem.size})` : ''} x{item.bogoItem.quantity || item.quantity}
+                            </span>
                           </div>
                         )}
+
                       </div>
-                      <div className="text-[13px] sm:text-lg font-black text-text-primary tracking-tighter pr-1 sm:pr-2 shrink-0">
+                      <div className="text-[11px] sm:text-lg font-black text-text-primary tracking-tighter pr-0 sm:pr-2 shrink-0">
                         ₹{(() => {
                           const variants = item.variants || item.sizes || [];
                           const sizeData = variants.find(v => v.size === item.selectedSize);
