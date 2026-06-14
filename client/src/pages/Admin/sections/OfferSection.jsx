@@ -349,29 +349,7 @@ const OfferSection = () => {
                 <textarea required value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full p-4 bg-background border border-border/40 rounded-2xl focus:border-primary outline-none transition-all font-bold min-h-[80px]" placeholder="Describe the offer..." />
               </div>
 
-              {}
-              <div className="space-y-4 pt-2 border-t border-border/20">
-                <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Active Schedule</label>
-                <div className="flex items-center justify-between p-4 bg-background rounded-2xl border border-border/40">
-                  <div>
-                    <p className="text-[11px] font-black text-text-primary uppercase">Weekend Only</p>
-                    <p className="text-[9px] text-text-muted mt-0.5">Active only on Sat & Sun</p>
-                  </div>
-                  <button type="button" onClick={() => setFormData({ ...formData, isWeekendOnly: !formData.isWeekendOnly, specificDays: [] })} className="transition-all">
-                    {formData.isWeekendOnly ? <ToggleRight size={32} className="text-primary" /> : <ToggleLeft size={32} className="text-text-muted/40" />}
-                  </button>
-                </div>
-                {!formData.isWeekendOnly && (
-                  <div className="space-y-2">
-                    <p className="text-[9px] font-black text-text-muted uppercase ml-1">Specific Days <span className="opacity-50 normal-case font-medium">(empty = every day)</span></p>
-                    <div className="flex flex-wrap gap-2">
-                      {DAYS.map(day => (
-                        <button key={day} type="button" onClick={() => toggleDay(day)} className={`px-3 py-2 rounded-xl text-[9px] font-black uppercase border-2 transition-all ${formData.specificDays.includes(day) ? 'bg-primary border-primary text-white' : 'bg-background border-border/40 text-text-muted'}`}>{day.slice(0, 3)}</button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+
 
 
 
