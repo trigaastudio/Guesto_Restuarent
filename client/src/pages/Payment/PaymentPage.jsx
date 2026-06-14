@@ -502,73 +502,82 @@ const PaymentPage = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {cartItems.map((item) => (
-                    <div key={item._id} className="flex items-start gap-2 sm:gap-5 p-2 sm:p-4 rounded-xl sm:rounded-[2rem] bg-background border border-border/40 group hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all duration-500">
-                      <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl shrink-0 overflow-hidden group-hover:rotate-3 transition-transform duration-500">
-                        <img src={item.image || '/placeholder-food.jpg'} alt={item.name} className="w-full h-full object-contain" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h4 className="text-xs sm:text-sm font-black text-text-primary tracking-tight group-hover:text-primary transition-colors duration-500 truncate capitalize">
-                          {item.name}
-                        </h4>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-[8px] sm:text-[10px] font-black text-text-muted uppercase tracking-wider opacity-60">qty: {item.quantity}</span>
-                          {item.selectedSize && (
-                            <span className="text-[7px] sm:text-[9px] font-black text-primary bg-primary/5 px-1.5 py-0.5 rounded-lg uppercase border border-primary/10">
-                              {item.selectedSize}
-                            </span>
-                          )}
+                    <div key={item._id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-5 p-3 sm:p-4 rounded-xl sm:rounded-[2rem] bg-background border border-border/40 group hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all duration-500">
+                      
+                      {/* Left: Image and Info */}
+                      <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0 w-full sm:w-auto">
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl shrink-0 overflow-hidden group-hover:rotate-3 transition-transform duration-500 bg-background-muted/10 p-1 border border-border/20">
+                          <img src={item.image || '/placeholder-food.jpg'} alt={item.name} className="w-full h-full object-contain" />
                         </div>
+                        
+                        <div className="min-w-0 flex-1 pt-0.5">
+                          <h4 className="text-[13px] sm:text-sm font-black text-text-primary tracking-tight leading-snug group-hover:text-primary transition-colors duration-500 line-clamp-2 capitalize">
+                            {item.name}
+                          </h4>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <span className="text-[9px] sm:text-[10px] font-black text-text-muted uppercase tracking-wider opacity-60">qty: {item.quantity}</span>
+                            {item.selectedSize && (
+                              <span className="text-[8px] sm:text-[9px] font-black text-primary bg-primary/5 px-1.5 py-0.5 rounded-lg uppercase border border-primary/10">
+                                {item.selectedSize}
+                              </span>
+                            )}
+                          </div>
 
-                        {item.isCombo && item.comboItems?.length > 0 && (
-                          <div className="mt-1 pl-2 border-l border-primary/30">
-                            <span className="text-[7px] font-black text-primary uppercase tracking-wide block">Combo:</span>
-                            <div className="flex flex-wrap gap-1">
-                              {item.comboItems.map((ci, idx) => (
-                                <span key={idx} className="inline-flex items-center bg-primary/5 text-primary text-[7px] font-bold px-1 py-0.5 rounded border border-primary/10 leading-tight">
-                                  {ci.quantity || 1}x {ci.menuItem?.name || ci.name || 'Item'}
-                                </span>
-                              ))}
+                          {item.isCombo && item.comboItems?.length > 0 && (
+                            <div className="mt-1.5 pl-2 border-l border-primary/30">
+                              <span className="text-[7px] font-black text-primary uppercase tracking-wide block">Combo:</span>
+                              <div className="flex flex-wrap gap-1 mt-0.5">
+                                {item.comboItems.map((ci, idx) => (
+                                  <span key={idx} className="inline-flex items-center bg-primary/5 text-primary text-[7px] font-bold px-1.5 py-0.5 rounded border border-primary/10 leading-tight">
+                                    {ci.quantity || 1}x {ci.menuItem?.name || ci.name || 'Item'}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
 
-                        {!item.isCombo && item.variants?.find(v => v.size === item.selectedSize)?.includedItems?.length > 0 && (
-                          <div className="mt-1 pl-2 border-l border-primary/30">
-                            <span className="text-[7px] font-black text-primary uppercase tracking-wide block">Add-ons:</span>
-                            <div className="flex flex-wrap gap-1">
-                              {item.variants.find(v => v.size === item.selectedSize).includedItems.map((ii, idx) => (
-                                <span key={idx} className="inline-flex items-center bg-primary/5 text-primary text-[7px] font-bold px-1 py-0.5 rounded border border-primary/10 leading-tight">
-                                  {ii.quantity || 1}x {ii.menuItem?.name || ii.name || 'Item'}
-                                </span>
-                              ))}
+                          {!item.isCombo && item.variants?.find(v => v.size === item.selectedSize)?.includedItems?.length > 0 && (
+                            <div className="mt-1.5 pl-2 border-l border-primary/30">
+                              <span className="text-[7px] font-black text-primary uppercase tracking-wide block">Add-ons:</span>
+                              <div className="flex flex-wrap gap-1 mt-0.5">
+                                {item.variants.find(v => v.size === item.selectedSize).includedItems.map((ii, idx) => (
+                                  <span key={idx} className="inline-flex items-center bg-primary/5 text-primary text-[7px] font-bold px-1.5 py-0.5 rounded border border-primary/10 leading-tight">
+                                    {ii.quantity || 1}x {ii.menuItem?.name || ii.name || 'Item'}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
 
-                        {item.bogoItem && item.variants?.find(v => v.size === item.selectedSize)?.isBOGO && (
-                          <div className="mt-1 pl-2 border-l border-emerald-500/30">
-                            <span className="text-[7px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wide block">BOGO Free:</span>
-                            <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[7px] font-bold px-1 py-0.5 rounded border border-emerald-500/20 leading-tight">
-                              🎁 {item.bogoItem.name} {item.bogoItem.size ? `(${item.bogoItem.size})` : ''} x{item.bogoItem.quantity || item.quantity}
-                            </span>
-                          </div>
-                        )}
+                          {item.bogoItem && item.variants?.find(v => v.size === item.selectedSize)?.isBOGO && (
+                            <div className="mt-1.5 pl-2 border-l border-emerald-500/30">
+                              <span className="text-[7px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wide block">BOGO Free:</span>
+                              <span className="inline-flex items-center gap-1 mt-0.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[7px] font-bold px-1.5 py-0.5 rounded border border-emerald-500/20 leading-tight">
+                                🎁 {item.bogoItem.name} {item.bogoItem.size ? `(${item.bogoItem.size})` : ''} x{item.bogoItem.quantity || item.quantity}
+                              </span>
+                            </div>
+                          )}
 
+                        </div>
                       </div>
-                      <div className="text-[11px] sm:text-lg font-black text-text-primary tracking-tighter pr-0 sm:pr-2 shrink-0">
-                        ₹{(() => {
-                          const variants = item.variants || item.sizes || [];
-                          const sizeData = variants.find(v => v.size === item.selectedSize);
-                        const basePrice = sizeData ? sizeData.price : (item.offerPrice || item.price || 0);
-                        // Apply item/category discount to match cart page calculation
-                        const menuDiscount = item.discountPercentage || 0;
-                        const categoryDiscount = item.category?.discountPercentage || 0;
-                        const maxDiscount = Math.max(menuDiscount, categoryDiscount);
-                        const discountedPrice = item.isCombo
-                        ? Math.round(basePrice)
-                            : Math.round(maxDiscount > 0 ? basePrice * (1 - maxDiscount / 100) : basePrice);
-                        return discountedPrice * item.quantity;
-                        })()}
+
+                      {/* Right: Price */}
+                      <div className="flex justify-end w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/10">
+                        <div className="text-[14px] sm:text-lg font-black text-text-primary tracking-tighter pr-1 shrink-0">
+                          ₹{(() => {
+                            const variants = item.variants || item.sizes || [];
+                            const sizeData = variants.find(v => v.size === item.selectedSize);
+                          const basePrice = sizeData ? sizeData.price : (item.offerPrice || item.price || 0);
+                          // Apply item/category discount to match cart page calculation
+                          const menuDiscount = item.discountPercentage || 0;
+                          const categoryDiscount = item.category?.discountPercentage || 0;
+                          const maxDiscount = Math.max(menuDiscount, categoryDiscount);
+                          const discountedPrice = item.isCombo
+                          ? Math.round(basePrice)
+                              : Math.round(maxDiscount > 0 ? basePrice * (1 - maxDiscount / 100) : basePrice);
+                          return discountedPrice * item.quantity;
+                          })()}
+                        </div>
                       </div>
                     </div>
                   ))}
