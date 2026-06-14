@@ -299,22 +299,7 @@ const SettingsSection = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-text-secondary uppercase ml-1">Tagline</label>
-                    <div className="relative">
-                      <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
-                      <input
-                        type="text"
-                        value={settings.restaurantDetails.tagline}
-                        onChange={(e) => setSettings({
-                          ...settings,
-                          restaurantDetails: { ...settings.restaurantDetails, tagline: e.target.value }
-                        })}
-                        className="w-full pl-12 pr-4 py-3 bg-background-muted/50 rounded-2xl border border-transparent focus:border-primary/30 focus:bg-white focus:text-black transition-all outline-none font-medium text-text-primary"
-                        placeholder="e.g. Taste of Tradition"
-                      />
-                    </div>
-                  </div>
+
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
