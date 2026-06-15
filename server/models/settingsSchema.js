@@ -73,6 +73,7 @@ const settingsSchema = new mongoose.Schema({
     minOrderAmount: { type: Number, default: 0 },
     preparationTime: { type: Number, default: 30 },
     isStoreOpen: { type: Boolean, default: true },
+    isMaintenanceMode: { type: Boolean, default: false },
     isHolidayMode: { type: Boolean, default: false },
     isBusyMode: { type: Boolean, default: false },
     busyModeExtraTime: { type: Number, default: 15 },

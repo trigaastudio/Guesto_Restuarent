@@ -44,8 +44,10 @@ const ErrorPage = lazyWithRetry(() => import('./pages/Error/ErrorPage'));
 const PrivacyPage = lazyWithRetry(() => import('./pages/Legal/PrivacyPage'));
 const TermsPage = lazyWithRetry(() => import('./pages/Legal/TermsPage'));
 const CookiesPage = lazyWithRetry(() => import('./pages/Legal/CookiesPage'));
+const MaintenancePage = lazyWithRetry(() => import('./pages/Maintenance/MaintenancePage'));
 
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
+import MaintenanceGuard from './components/ProtectedRoute/MaintenanceGuard';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
 import { ThemeProvider } from './context/ThemeContext';
 import { CartProvider } from './context/CartContext';
@@ -99,49 +101,50 @@ function App() {
                   } />
 
                   {}
-                  <Route path="/" element={<LandingPage />} />
-                  <Route path="/register" element={<RegisterPage />} />
-                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/" element={<MaintenanceGuard><LandingPage /></MaintenanceGuard>} />
+                  <Route path="/register" element={<MaintenanceGuard><RegisterPage /></MaintenanceGuard>} />
+                  <Route path="/login" element={<MaintenanceGuard><LoginPage /></MaintenanceGuard>} />
                   <Route path="/error" element={<ErrorPage />} />
+                  <Route path="/maintenance" element={<MaintenancePage />} />
 
                   {}
                   <Route path="/home" element={
                     <ProtectedRoute>
-                      <HomePage />
+                      <MaintenanceGuard><HomePage /></MaintenanceGuard>
                     </ProtectedRoute>
                   } />
                   <Route path="/cart" element={
                     <ProtectedRoute>
-                      <CartPage />
+                      <MaintenanceGuard><CartPage /></MaintenanceGuard>
                     </ProtectedRoute>
                   } />
                   <Route path="/payment" element={
                     <ProtectedRoute>
-                      <PaymentPage />
+                      <MaintenanceGuard><PaymentPage /></MaintenanceGuard>
                     </ProtectedRoute>
                   } />
                   <Route path="/profile" element={
                     <ProtectedRoute>
-                      <ProfilePage />
+                      <MaintenanceGuard><ProfilePage /></MaintenanceGuard>
                     </ProtectedRoute>
                   } />
                   <Route path="/my-orders" element={
                     <ProtectedRoute>
-                      <OrdersPage />
+                      <MaintenanceGuard><OrdersPage /></MaintenanceGuard>
                     </ProtectedRoute>
                   } />
                   <Route path="/track-order/:orderId" element={
                     <ProtectedRoute>
-                      <TrackOrderPage />
+                      <MaintenanceGuard><TrackOrderPage /></MaintenanceGuard>
                     </ProtectedRoute>
                   } />
                   <Route path="/menu/:id" element={
                     <ProtectedRoute>
-                      <MenuDetailPage />
+                      <MaintenanceGuard><MenuDetailPage /></MaintenanceGuard>
                     </ProtectedRoute>
                   } />
-                  <Route path="/about" element={<AboutPage />} />
-                  <Route path="/digital-menu" element={<DigitalMenu />} />
+                  <Route path="/about" element={<MaintenanceGuard><AboutPage /></MaintenanceGuard>} />
+                  <Route path="/digital-menu" element={<MaintenanceGuard><DigitalMenu /></MaintenanceGuard>} />
                   <Route path="/privacy" element={<PrivacyPage />} />
                   <Route path="/terms" element={<TermsPage />} />
                   <Route path="/cookies" element={<CookiesPage />} />
