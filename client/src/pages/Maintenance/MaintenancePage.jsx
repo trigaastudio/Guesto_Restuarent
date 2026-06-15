@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, Mail, MapPin, Wrench } from 'lucide-react';
+import { Phone, Mail, MapPin } from 'lucide-react';
 import api from '../../api/axiosInstance';
 import Loader from '../../components/Loader/Loader';
+import { useTheme } from '../../context/ThemeContext';
 
 const MaintenancePage = () => {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { theme } = useTheme();
+  const isDarkMode = theme === 'dark';
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -26,12 +29,15 @@ const MaintenancePage = () => {
   const contactNumbers = settings?.restaurantDetails?.contactNumber?.split(',').map(n => n.trim()) || [];
   const email = settings?.restaurantDetails?.email || '';
   const address = settings?.restaurantDetails?.address || '';
+  const logo = isDarkMode 
+    ? settings?.branding?.logoGold || '/logo-golden.png' 
+    : settings?.branding?.logoDark || '/logo-dark.png';
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="max-w-md w-full bg-background-card rounded-[2.5rem] p-8 md:p-10 text-center shadow-2xl border border-border/40 animate-in slide-in-from-bottom-10 fade-in duration-700">
-        <div className="w-24 h-24 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-6">
-          <Wrench size={48} strokeWidth={1.5} />
+        <div className="flex items-center justify-center mx-auto mb-8 h-20">
+          <img src={logo} alt="Restaurant Logo" className="max-h-full max-w-full object-contain drop-shadow-xl" />
         </div>
         
         <h1 className="text-3xl font-black text-text-primary tracking-tight mb-3">System Maintenance</h1>
