@@ -311,10 +311,10 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
         }
 
         const totalQtyInCart = cart.reduce((acc, c) => c.menuItem === cartItem.menuItem ? acc + c.quantity : acc, 0);
+        const effectiveStock = getEffectiveStock(menuItem);
 
-        if (menuItem.totalStock === undefined || totalQtyInCart > menuItem.totalStock) {
-          const availableStock = menuItem.totalStock !== undefined ? menuItem.totalStock : 0;
-          showToast('error', `Insufficient stock for ${cartItem.name}. Available: ${availableStock}, Requested: ${totalQtyInCart}`);
+        if (totalQtyInCart > effectiveStock) {
+          showToast('error', `Insufficient stock for ${cartItem.name}. Available: ${effectiveStock}, Requested: ${totalQtyInCart}`);
           return false;
         }
       }
