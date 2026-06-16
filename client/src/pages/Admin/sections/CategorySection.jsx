@@ -12,7 +12,7 @@ import Pagination from '../../../components/Pagination/Pagination';
 const CategorySection = ({ refreshKey }) => {
   const [categories, setCategories] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentCategory, setCurrentCategory] = useState({ name: '', isActive: true, image: '', discountPercentage: 0, isSharedStock: false, totalStock: 0 });
+  const [currentCategory, setCurrentCategory] = useState({ name: '', isActive: true, image: '', discountPercentage: 0, isSharedStock: false, totalStock: 0, hideFromCustomer: false });
   const [isEditing, setIsEditing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -61,7 +61,7 @@ const CategorySection = ({ refreshKey }) => {
   const fetchCategories = async (silent = false) => {
     if (!silent) setIsLoading(true);
     try {
-      const response = await api.get('/api/categories');
+      const response = await api.get('/api/categories?all=true');
       setCategories(response.data);
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -79,11 +79,12 @@ const CategorySection = ({ refreshKey }) => {
         image: category.image || '',
         discountPercentage: category.discountPercentage || 0,
         isSharedStock: category.isSharedStock || false,
-        totalStock: category.totalStock || 0
+        totalStock: category.totalStock || 0,
+        hideFromCustomer: category.hideFromCustomer || false
       });
       setIsEditing(true);
     } else {
-      setCurrentCategory({ name: '', isActive: true, image: '', discountPercentage: 0, isSharedStock: false, totalStock: 0 });
+      setCurrentCategory({ name: '', isActive: true, image: '', discountPercentage: 0, isSharedStock: false, totalStock: 0, hideFromCustomer: false });
       setIsEditing(false);
     }
     setIsModalOpen(true);
@@ -438,6 +439,11 @@ const CategorySection = ({ refreshKey }) => {
                         {category.isActive ? <CheckCircle size={12} /> : <XCircle size={12} />}
                         <span>{category.isActive ? 'Active' : 'Inactive'}</span>
                       </span>
+                      {category.hideFromCustomer && (
+                        <span className="mt-1 flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-orange-500/10 text-orange-500">
+                          <span>Hidden</span>
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-4 font-medium text-text-secondary">{category.itemCount || 0} Items</td>
                     <td className="px-3 py-4" onDoubleClick={() => { setEditingDiscountId(category._id); setDiscountValue(category.discountPercentage || 0); }}>
@@ -584,6 +590,21 @@ const CategorySection = ({ refreshKey }) => {
                   </span>
                 </div>
               )}
+
+              <div className="flex items-center space-x-3 pt-2">
+                <label className="text-sm font-semibold text-text-secondary">Hide from Customer UI</label>
+                <button
+                  onClick={() => setCurrentCategory({ ...currentCategory, hideFromCustomer: !currentCategory.hideFromCustomer })}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${currentCategory.hideFromCustomer ? 'bg-orange-500' : 'bg-text-muted'
+                    }`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${currentCategory.hideFromCustomer ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                </button>
+                <span className="text-sm text-text-primary font-medium">
+                  {currentCategory.hideFromCustomer ? 'Hidden' : 'Visible'}
+                </span>
+              </div>
 
               <div className="space-y-3 pt-2">
                 <label className="text-sm font-semibold text-text-secondary">Category Image</label>

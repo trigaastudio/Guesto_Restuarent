@@ -1015,11 +1015,7 @@ class OrderController {
         await restoreStock(originalOrder.items);
       }
 
-      
-      if (updateData.orderStatus === 'delivered') {
-        updateData.paymentStatus = 'paid';
-        updateData.paidAmount = updateData.totalAmount ?? originalOrder.totalAmount;
-      }
+      // Removed automatic paymentStatus = 'paid' when orderStatus === 'delivered'
 
       if (updateData.cashReceived !== undefined || updateData.totalAmount !== undefined) {
         const cash = updateData.cashReceived ?? originalOrder.cashReceived;

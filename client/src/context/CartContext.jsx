@@ -265,6 +265,12 @@ export const CartProvider = ({ children }) => {
   };
 
   const checkStoreStatus = useCallback(() => {
+    const isStaffPath = window.location.pathname.startsWith('/admin') || 
+                        window.location.pathname.startsWith('/staff') || 
+                        window.location.pathname.startsWith('/kitchen') || 
+                        window.location.pathname.startsWith('/waiter');
+    if (isStaffPath) return { isOpen: true };
+
     if (!settings?.operationalSettings) return { isOpen: true };
     const { isStoreOpen, isHolidayMode, businessHours } = settings.operationalSettings;
 

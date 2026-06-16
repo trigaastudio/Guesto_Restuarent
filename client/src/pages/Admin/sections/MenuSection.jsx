@@ -36,7 +36,8 @@ const MenuSection = () => {
     comboItems: [],
     offerPercentage: 0,
     discountPercentage: 0,
-    includedItems: [] 
+    includedItems: [],
+    hideFromCustomer: false
   });
 
 
@@ -111,7 +112,8 @@ const MenuSection = () => {
             quantity: inc.quantity
           })) || []
         })) || [],
-        price: menu.price || 0
+        price: menu.price || 0,
+        hideFromCustomer: menu.hideFromCustomer || false
       });
       setIsEditing(true);
     } else {
@@ -130,7 +132,8 @@ const MenuSection = () => {
         comboItems: [],
         offerPercentage: 0,
         discountPercentage: 0,
-        price: ''
+        price: '',
+        hideFromCustomer: false
       });
       setIsEditing(false);
     }
@@ -225,7 +228,8 @@ const MenuSection = () => {
       isCombo: isComboCategory,
       price: finalPrice,
       totalStock: isComboCategory ? 0 : currentMenu.totalStock,
-      variants: isComboCategory ? [] : cleanedVariants
+      variants: isComboCategory ? [] : cleanedVariants,
+      hideFromCustomer: currentMenu.hideFromCustomer
     };
 
     try {
@@ -585,6 +589,11 @@ const MenuSection = () => {
                         </div>
                         <div className="flex flex-col justify-center">
                           <p className="font-bold text-text-primary text-sm leading-tight">{menu.name}</p>
+                          {menu.hideFromCustomer && (
+                            <span className="mt-1 w-fit px-1.5 py-0.5 bg-orange-500/10 text-orange-500 border border-orange-500/20 text-[8px] font-black uppercase rounded">
+                              Hidden from Customer
+                            </span>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -866,6 +875,22 @@ const MenuSection = () => {
                       <input type="radio" name="foodType" value="non-veg" checked={currentMenu.foodType === 'non-veg'} onChange={() => setCurrentMenu({ ...currentMenu, foodType: 'non-veg' })} className="accent-red-500 w-4 h-4" />
                       <span className="text-xs font-black text-red-500 uppercase tracking-wider">Non-Veg</span>
                     </label>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-text-secondary">Hide from Customer UI</label>
+                  <div className="flex items-center h-[42px] bg-background-muted/50 px-4 rounded-xl border border-border-main">
+                    <button
+                      onClick={() => setCurrentMenu({ ...currentMenu, hideFromCustomer: !currentMenu.hideFromCustomer })}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${currentMenu.hideFromCustomer ? 'bg-orange-500' : 'bg-text-muted'
+                        }`}
+                    >
+                      <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${currentMenu.hideFromCustomer ? 'translate-x-5' : 'translate-x-1'
+                        }`} />
+                    </button>
+                    <span className="ml-3 text-xs font-bold text-text-primary">
+                      {currentMenu.hideFromCustomer ? 'Hidden' : 'Visible'}
+                    </span>
                   </div>
                 </div>
               </div>

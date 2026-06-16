@@ -8,8 +8,8 @@ class CategoryService {
     return result;
   }
 
-  async getAllCategories() {
-    return await categoryRepository.findAll();
+  async getAllCategories(filter = {}) {
+    return await categoryRepository.findAll(filter);
   }
 
   async updateCategory(id, data) {

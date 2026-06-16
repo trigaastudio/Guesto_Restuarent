@@ -81,7 +81,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
 
   const fetchMenu = async () => {
     try {
-      const response = await api.get('/api/menus');
+      const response = await api.get('/api/menus?all=true');
       setMenuItems(response.data.filter(m => !m.isBlocked));
     } catch (error) {
       console.error('Error fetching menu:', error);
@@ -297,7 +297,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
 
   const validateCartStock = async () => {
     try {
-      const response = await api.get('/api/menus');
+      const response = await api.get('/api/menus?all=true');
       const latestMenu = response.data.filter(m => !m.isBlocked);
 
 

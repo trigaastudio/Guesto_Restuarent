@@ -41,6 +41,11 @@ const categorySchema = new mongoose.Schema({
   stockactive: {
     type: Boolean,
     default: false
+  },
+
+  hideFromCustomer: {
+    type: Boolean,
+    default: false
   }
 
 }, { timestamps: true });

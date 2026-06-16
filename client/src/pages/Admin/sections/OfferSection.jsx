@@ -54,7 +54,7 @@ const OfferSection = () => {
     try {
       const [offersRes, catsRes, menusRes] = await Promise.all([
         api.get('/api/offers'),
-        api.get('/api/categories'),
+        api.get('/api/categories?all=true'),
         api.get('/api/menus?all=true')
       ]);
       setOffers(offersRes.data.data || []);

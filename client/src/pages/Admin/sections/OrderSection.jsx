@@ -443,7 +443,7 @@ const OrderSection = () => {
 
   const fetchMenu = async () => {
     try {
-      const response = await api.get(`/api/menus`);
+      const response = await api.get(`/api/menus?all=true`);
       setMenuItems(response.data.filter(m => !m.isBlocked));
     } catch (error) {
       console.error('Error fetching menu:', error);
@@ -873,8 +873,6 @@ const OrderSection = () => {
       const updateData = { paymentStatus: newStatus };
 
       if (newStatus === 'paid') {
-        updateData.orderStatus = 'delivered';
-
         const orderToUpdate = orders.find(o => o._id === orderId);
         if (orderToUpdate) {
           updateData.paidAmount = orderToUpdate.totalAmount;
@@ -883,7 +881,7 @@ const OrderSection = () => {
 
       const response = await api.patch(`/api/orders/${orderId}/status`, updateData);
       if (response.data.success) {
-        showToast('success', `Payment marked as ${newStatus}${newStatus === 'paid' ? ' and order Delivered' : ''}`);
+        showToast('success', `Payment marked as ${newStatus}`);
         setOrders(orders.map(o => o._id === orderId ? response.data.data : o));
         if (selectedOrder?._id === orderId) setSelectedOrder(response.data.data);
       }
@@ -917,7 +915,6 @@ const OrderSection = () => {
       const change = payMethod === 'cash' ? Math.max(0, cashReceived - totalAmount) : 0;
       const updateData = {
         paymentStatus: 'paid',
-        orderStatus: 'delivered',
         paymentMethod: payMethod,
         paidAmount: totalAmount
       };
@@ -2356,7 +2353,7 @@ const OrderSection = () => {
                   </button>
                 )}
 
-                {['placed', 'pending', 'processing', 'out-for-delivery'].includes(selectedOrder.orderStatus) && activeTab !== 'dine-in' && selectedOrder.orderType !== 'dine-in' && selectedOrder.orderType !== 'dining' && (
+                {!['cancelled', 'completed', 'delivered'].includes(selectedOrder.orderStatus) && (
                   <button
                     onClick={() => {
                       Swal.fire({

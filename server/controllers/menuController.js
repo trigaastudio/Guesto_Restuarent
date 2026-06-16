@@ -37,6 +37,7 @@ export const getMenus = async (req, res) => {
     }
 
     let filter = {};
+    filter.hideFromCustomer = { $ne: true };
     
     
     const Category = mongoose.model('Category');
@@ -202,7 +203,7 @@ export const getTopSelling = async (req, res) => {
 
     const ids = topRaw.map(d => d._id);
     const Menu = mongoose.model('Menu');
-    const menus = await Menu.find({ _id: { $in: ids }, isBlocked: { $ne: true } })
+    const menus = await Menu.find({ _id: { $in: ids }, isBlocked: { $ne: true }, hideFromCustomer: { $ne: true } })
       .populate('category')
       .populate('variants.bogoItem', 'name image')
       .populate('comboItems.menuItem', 'name image price')

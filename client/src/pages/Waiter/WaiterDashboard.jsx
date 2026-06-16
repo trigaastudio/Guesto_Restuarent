@@ -1221,7 +1221,37 @@ const WaiterDashboard = () => {
 
             {}
             <div className="p-6 bg-background-card border-t border-border-light flex justify-between items-center shrink-0 gap-3">
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                {!['cancelled', 'completed', 'delivered'].includes(selectedOrderForView?.orderStatus) && (
+                  <button
+                    onClick={() => {
+                      Swal.fire({
+                        title: 'Cancel Order?',
+                        text: "Are you sure you want to cancel this order?",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#ef4444',
+                        cancelButtonColor: '#6b7280',
+                        confirmButtonText: 'Yes, Cancel',
+                        customClass: {
+                          popup: 'rounded-3xl border border-border-light shadow-2xl p-6 bg-white dark:bg-gray-900',
+                          confirmButton: 'px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider text-white bg-red-500 hover:bg-red-600 transition-all',
+                          cancelButton: 'px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider text-text-secondary bg-background-muted border border-border-light transition-all'
+                        }
+                      }).then((result) => {
+                        if (result.isConfirmed) {
+                          handleUpdateOrderStatus(selectedOrderForView._id, 'cancelled');
+                          setIsDetailsModalOpen(false);
+                          setSelectedOrderForView(null);
+                        }
+                      });
+                    }}
+                    className="px-4 py-3 bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-2xl font-black uppercase tracking-wider text-xs transition-all shadow-sm active:scale-95 flex items-center gap-2"
+                  >
+                    <X size={16} strokeWidth={2.5} />
+                    <span>Cancel</span>
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setIsDetailsModalOpen(false);

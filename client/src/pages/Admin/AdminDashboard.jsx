@@ -82,7 +82,6 @@ const AdminDashboard = () => {
       const isFromUser = data.order?.orderSource === 'user' || data.order?.orderSource === 'online';
 
       if (!isDelivery || !isFromUser) {
-        setRefreshKey(prev => prev + 1);
         return;
       }
 
@@ -105,14 +104,12 @@ const AdminDashboard = () => {
 
       showToast('success', data.message);
       notificationSound.current.play().catch(e => console.log('Audio play blocked'));
-      setRefreshKey(prev => prev + 1);
     });
 
     
     socket.off('stockAlert');
 
     const handleDbChange = () => {
-      setRefreshKey(prev => prev + 1);
     };
     window.addEventListener('db_change', handleDbChange);
 

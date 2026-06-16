@@ -18,13 +18,19 @@ export const createCategory = async (req, res) => {
 
 export const getCategories = async (req, res) => {
   try {
-    const cacheKey = 'all_categories';
+    const { all } = req.query;
+    const cacheKey = `all_categories_${all === 'true' ? 'admin' : 'customer'}`;
     const cachedData = categoryCache.get(cacheKey);
     if (cachedData) return res.status(200).json(cachedData);
 
+    let filter = {};
+    if (all !== 'true') {
+      filter.hideFromCustomer = { $ne: true };
+    }
+
     const categories = categoryService 
-      ? await categoryService.getAllCategories() 
-      : await categoryRepository.getAll();
+      ? await categoryService.getAllCategories(filter) 
+      : await categoryRepository.findAll(filter);
     
     categoryCache.set(cacheKey, categories);
     res.status(200).json(categories);
