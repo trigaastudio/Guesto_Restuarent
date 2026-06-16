@@ -41,7 +41,7 @@ class CategoryRepository {
         }
       },
       { $sort: { createdAt: -1 } }
-    ]);
+    );
     return await Category.aggregate(pipeline);
   }
 
