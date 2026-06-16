@@ -400,7 +400,7 @@ const CategorySection = ({ refreshKey }) => {
                 </th>
                 <th className="px-3 py-4">Items</th>
                 <th className="px-3 py-4">Discount</th>
-                <th className="px-3 py-4">Total Stock</th>
+                <th className="px-3 py-4 text-center">Total Stock</th>
                 <th className="px-3 py-4 text-center">Actions</th>
               </tr>
             </thead>
@@ -494,8 +494,8 @@ const CategorySection = ({ refreshKey }) => {
                         </div>
                       )}
                     </td>
-                    <td className="px-3 py-4">
-                      <div className="flex items-center space-x-3">
+                    <td className="px-3 py-4 text-center">
+                      <div className="flex items-center justify-center space-x-3">
                         {category.totalStock > 0 ? (
                           <div className="flex items-center justify-center w-full">
                             <span className="font-bold text-text-primary">{category.totalStock}</span>
