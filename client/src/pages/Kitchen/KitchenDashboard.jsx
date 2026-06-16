@@ -17,7 +17,7 @@ import { logoutStaff } from '../../utils/auth';
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://guest-o-backend.onrender.com/api';
 const SOCKET_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'https://guest-o-backend.onrender.com';
 
-const NOTIFICATION_SOUND = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
+const NOTIFICATION_SOUND = '/sounds/notification.mp3';
 
 const KITCHEN_STATUSES = [
   { value: 'placed', label: 'Placed', bg: 'bg-amber-500/10', text: 'text-amber-600', border: 'border-amber-400/40', dot: 'bg-amber-500' },
@@ -346,7 +346,7 @@ const KitchenDashboard = () => {
 
     let typeMatch = false;
     if (activeTab === 'delivery') typeMatch = o.orderType === 'delivery' || o.orderType === 'online';
-    else if (activeTab === 'takeaway') typeMatch = o.orderType === 'takeaway' || o.orderType === 'take-away';
+    else if (activeTab === 'takeaway') typeMatch = o.orderType === 'takeaway' || o.orderType === 'take-away' || o.orderType === 'counter';
     else if (activeTab === 'dine-in') typeMatch = o.orderType === 'dine-in' || o.orderType === 'dining';
     else typeMatch = o.orderType === activeTab;
 
@@ -429,7 +429,7 @@ const KitchenDashboard = () => {
               const count = orders.filter(o => {
                 let typeMatch = false;
                 if (tab.type === 'delivery') typeMatch = o.orderType === 'delivery' || o.orderType === 'online';
-                else if (tab.type === 'takeaway') typeMatch = o.orderType === 'takeaway' || o.orderType === 'take-away';
+                else if (tab.type === 'takeaway') typeMatch = o.orderType === 'takeaway' || o.orderType === 'take-away' || o.orderType === 'counter';
                 else if (tab.type === 'dine-in') typeMatch = o.orderType === 'dine-in' || o.orderType === 'dining';
                 else typeMatch = o.orderType === tab.type;
 
@@ -594,7 +594,7 @@ const KitchenDashboard = () => {
               const tabOrders = orders.filter(o => {
                 let typeMatch = false;
                 if (activeTab === 'delivery') typeMatch = o.orderType === 'delivery' || o.orderType === 'online';
-                else if (activeTab === 'takeaway') typeMatch = o.orderType === 'takeaway' || o.orderType === 'take-away';
+                else if (activeTab === 'takeaway') typeMatch = o.orderType === 'takeaway' || o.orderType === 'take-away' || o.orderType === 'counter';
                 else if (activeTab === 'dine-in') typeMatch = o.orderType === 'dine-in' || o.orderType === 'dining';
                 else typeMatch = o.orderType === activeTab;
                 if (!typeMatch) return false;
@@ -693,11 +693,11 @@ const KitchenDashboard = () => {
                           <Printer size={14} />
                         </button>
                         <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border shadow-sm
-                          ${order.orderType === 'takeaway' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                          ${(order.orderType === 'takeaway' || order.orderType === 'counter') ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
                             order.orderType === 'dine-in' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
                               'bg-orange-500/10 text-orange-500 border-orange-500/20'}
                         `}>
-                          {order.orderType === 'takeaway' ? 'CTR' : order.orderType === 'dine-in' ? 'DNE' : 'DLV'}
+                          {(order.orderType === 'takeaway' || order.orderType === 'counter') ? 'CTR' : order.orderType === 'dine-in' ? 'DNE' : 'DLV'}
                         </span>
                       </div>
                     </div>
@@ -858,28 +858,13 @@ const KitchenDashboard = () => {
                     <div className="px-4 pb-4 space-y-2">
                       { }
                       {activeStatusFilter === 'new' && order.items?.some(i => (i.kitchenStatus || 'placed') === 'placed') && (
-                        <div className="relative w-full">
-                          <select
-                            value=""
-                            onChange={(e) => {
-                              const newStatus = e.target.value;
-                              if (newStatus === 'preparing') handleStartPreparation(order);
-                              else if (newStatus) handleBulkUpdateOrderItems(order._id, newStatus, order.orderNumber);
-                            }}
-                            className="appearance-none w-full py-3 bg-background-card text-text-primary border border-border-light rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-sm hover:border-primary/50 transition-all cursor-pointer text-center outline-none"
-                            style={{ textAlignLast: 'center' }}
-                          >
-                            <option value="">-- Update All Items --</option>
-                            <option value="preparing">Preparing (Start All)</option>
-                            <option value="delayed">Delayed</option>
-                            <option value="ready">Ready</option>
-                          </select>
-                          <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-text-muted">
-                            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                              <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
-                            </svg>
-                          </div>
-                        </div>
+                        <button
+                          onClick={() => handleStartPreparation(order)}
+                          className="w-full flex items-center justify-center space-x-2 py-3 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all hover:scale-[1.01] active:scale-95 shadow-sm"
+                        >
+                          <ChefHat size={14} />
+                          <span>Send to Preparing</span>
+                        </button>
                       )}
 
                       {allReady && (

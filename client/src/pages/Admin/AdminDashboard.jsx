@@ -70,7 +70,7 @@ const AdminDashboard = () => {
   const admin = JSON.parse(localStorage.getItem('admin_user') || '{}');
 
   
-  const notificationSound = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'));
+  const notificationSound = useRef(new Audio('/sounds/notification.mp3'));
 
   useEffect(() => {
     const socketUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'https://guest-o-backend.onrender.com';

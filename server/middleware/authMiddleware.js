@@ -52,3 +52,11 @@ export const admin = (req, res, next) => {
     return res.status(403).json({ success: false, message: 'Not authorized as an admin' });
   }
 };
+
+export const adminOrStaff = (req, res, next) => {
+  if (req.user && ['admin', 'kitchen', 'waiter', 'cashier', 'staff'].includes(req.user.role)) {
+    next();
+  } else {
+    return res.status(403).json({ success: false, message: 'Not authorized for this action' });
+  }
+};
