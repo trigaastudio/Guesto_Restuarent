@@ -809,7 +809,8 @@ const MenuSection = () => {
                     type="text"
                     value={currentMenu.name}
                     onChange={(e) => {
-                      setCurrentMenu({ ...currentMenu, name: e.target.value });
+                      const formattedName = e.target.value.split(' ').map(word => word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : '').join(' ');
+                      setCurrentMenu({ ...currentMenu, name: formattedName });
                       if (errors.name) setErrors({ ...errors, name: false });
                     }}
                     className={`w-full px-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all ${

@@ -563,7 +563,8 @@ const CategorySection = ({ refreshKey }) => {
                   type="text"
                   value={currentCategory.name}
                   onChange={(e) => {
-                    setCurrentCategory({ ...currentCategory, name: e.target.value });
+                    const formattedName = e.target.value.split(' ').map(word => word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : '').join(' ');
+                    setCurrentCategory({ ...currentCategory, name: formattedName });
                     if (errors.name) setErrors({ ...errors, name: false });
                   }}
                   className={`w-full px-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all ${errors.name
