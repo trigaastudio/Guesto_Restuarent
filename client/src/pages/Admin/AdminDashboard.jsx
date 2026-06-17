@@ -36,7 +36,8 @@ import {
   AlertTriangle,
   Trash2,
   Ticket,
-  ExternalLink
+  ExternalLink,
+  Share2
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import CategorySection from './sections/CategorySection';
@@ -235,6 +236,27 @@ const AdminDashboard = () => {
     return { label: order.orderStatus, color: 'bg-background-muted/10 text-text-muted border-border-light' };
   };
 
+  const handleShareWebsite = async () => {
+    const websiteUrl = 'https://guestorestaurant.in';
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Guesto Restaurant',
+          text: 'Check out our restaurant!',
+          url: websiteUrl,
+        });
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          navigator.clipboard.writeText(websiteUrl);
+          showToast('success', 'Website link copied to clipboard!');
+        }
+      }
+    } else {
+      navigator.clipboard.writeText(websiteUrl);
+      showToast('success', 'Website link copied to clipboard!');
+    }
+  };
+
   return (
     <div className={`flex h-screen bg-background text-text-primary overflow-hidden transition-colors duration-300`}>
       {isMobileMenuOpen && (
@@ -407,6 +429,14 @@ const AdminDashboard = () => {
             >
               <ExternalLink size={20} className="group-hover:scale-110 transition-transform" />
               <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Website</span>
+            </button>
+            <button
+              onClick={handleShareWebsite}
+              className="p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all flex items-center space-x-2 group"
+              title="Share Website Link"
+            >
+              <Share2 size={20} className="group-hover:scale-110 transition-transform" />
+              <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Share</span>
             </button>
             <button
               onClick={toggleTheme}
