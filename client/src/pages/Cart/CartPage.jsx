@@ -607,7 +607,7 @@ const CartPage = () => {
                           <div className="flex-1 min-w-0 space-y-1">
                             <div className="flex justify-between items-start gap-1.5">
                               <div className="min-w-0 flex-1">
-                                <h3 className="text-sm sm:text-base md:text-lg font-black text-text-primary leading-tight capitalize truncate group-hover:text-primary transition-colors">{item.name}</h3>
+                                <h3 className="text-xs sm:text-sm md:text-base font-black text-text-primary leading-tight capitalize line-clamp-2 group-hover:text-primary transition-colors">{item.name}</h3>
                                 <p className="text-[8px] sm:text-[9px] font-black text-text-muted uppercase tracking-wider opacity-60">
                                   {item.selectedSize ? `size: ${item.selectedSize}` : (item.category?.name || 'Main Course')}
                                 </p>

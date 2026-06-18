@@ -2474,7 +2474,7 @@ const OrderSection = () => {
                         </div>
                         <div className="flex flex-col mb-2">
                           <div className="flex items-center justify-between mb-1">
-                            <p className="font-bold text-text-primary text-xs line-clamp-1">{item.name}</p>
+                            <p className="font-bold text-text-primary text-[10px] leading-tight line-clamp-2">{item.name}</p>
                             <span className={`shrink-0 ml-2 text-[8px] font-black px-1.5 py-0.5 rounded-full ${isItemOutOfStock ? 'bg-red-500/10 text-red-500' : (item.isCombo ? 'bg-primary/10 text-primary' : (getEffectiveStock(item) > 10 ? 'bg-primary/10 text-primary' : 'bg-amber-500/10 text-amber-500'))}`}>
                               {item.isCombo ? (isItemOutOfStock ? 'Out of Stock' : 'Available') : `${getEffectiveStock(item)} Left`}
                             </span>
@@ -2611,7 +2611,7 @@ const OrderSection = () => {
                   cart.map((item, idx) => (
                     <div key={idx} className="flex items-start gap-3 group p-3 bg-background-card hover:bg-background-muted/40 rounded-2xl border border-border-light hover:border-border transition-all duration-300">
                       <div className="flex-1 min-w-0">
-                        <p className="font-black text-text-primary text-[11px] leading-tight mb-0.5 truncate">{item.name}</p>
+                        <p className="font-black text-text-primary text-[10px] leading-tight mb-0.5 line-clamp-2">{item.name}</p>
                         <p className="text-[9px] text-text-muted font-bold uppercase mb-1.5">{item.size} · ₹{Math.round(item.unitPrice || 0)}</p>
                         <div className="flex flex-wrap gap-1">
                           {item.comboItems?.length > 0 && (

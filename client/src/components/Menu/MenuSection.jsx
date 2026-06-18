@@ -200,7 +200,7 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
 
                   {/* Content */}
                   <div className="flex-1 flex flex-col min-w-0">
-                    <h3 className="font-black text-[11px] sm:text-sm text-text-primary group-hover:text-white group-active:text-white transition-colors leading-tight mb-1 tracking-tight truncate">
+                    <h3 className="font-black text-[10px] sm:text-xs text-text-primary group-hover:text-white group-active:text-white transition-colors leading-tight mb-1 tracking-tight line-clamp-2">
                       {menu.name}
                     </h3>
 

@@ -858,7 +858,7 @@ const WaiterDashboard = () => {
                                         <div key={idx} className="flex items-center justify-between bg-white dark:bg-black/20 p-2.5 rounded-xl border border-border-light/50 shadow-[0_2px_10px_rgba(0,0,0,0.02)] h-[52px]">
                                           <div className="min-w-0 flex-1 pr-2 pl-1">
                                             <div className="text-xs md:text-sm font-extrabold text-text-primary truncate capitalize tracking-normal flex items-center gap-1.5">
-                                              <span className="truncate">{item.name || 'Item'} {item.size ? `(${item.size})` : ''}</span>
+                                            <span className="line-clamp-2 leading-tight">{item.name || 'Item'} {item.size ? `(${item.size})` : ''}</span>
                                               {isLastSlotAndMore && (
                                                 <span className="bg-primary/10 text-primary text-[8px] font-black px-1.5 py-0.5 rounded-full shrink-0">
                                                   +{order.items.length - 3} more

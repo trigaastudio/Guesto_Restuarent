@@ -7,7 +7,7 @@ import ImageCropper from '../../../components/ImageCropper/ImageCropper';
 import TableSkeleton from '../../../components/Skeleton/TableSkeleton';
 import Pagination from '../../../components/Pagination/Pagination';
 
-const STANDARD_VARIANTS = ['Piece', 'Quarter', 'Half', 'Full'];
+const STANDARD_VARIANTS = ['Piece', 'Quarter', 'Half', 'Full', 'Roll', 'Plate'];
 
 const MenuSection = () => {
   const [menus, setMenus] = useState([]);
@@ -169,8 +169,8 @@ const MenuSection = () => {
 
     if (!currentMenu.name || !currentMenu.name.trim()) {
       newErrors.name = 'Item Name is required';
-    } else if (currentMenu.name.length > 20) {
-      newErrors.name = 'Maximum length is 20 characters';
+    } else if (currentMenu.name.length > 50) {
+      newErrors.name = 'Maximum length is 50 characters';
     } else if (!textRegex.test(currentMenu.name)) {
       newErrors.name = 'Only alphabets and numbers are allowed';
     }

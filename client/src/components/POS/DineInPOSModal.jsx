@@ -494,7 +494,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                   </div>
                   <div className="flex flex-col mb-2">
                     <div className="flex items-center justify-between mb-1.5">
-                      <p className="font-bold text-text-primary text-sm md:text-base line-clamp-1">{item.name}</p>
+                      <p className="font-bold text-text-primary text-xs md:text-sm line-clamp-2 leading-tight">{item.name}</p>
                       <span className={`text-[9px] md:text-[10px] font-black px-2 py-0.5 rounded-full ${rawStock > 10 ? 'bg-primary/10 text-primary' : rawStock > 0 ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'}`}>
                         {rawStock} Left
                       </span>
@@ -563,7 +563,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
               cart.map((item, index) => (
                 <div key={`${item.menuItem}-${item.size}-${index}`} className="flex items-start gap-3 p-3 bg-background-card rounded-2xl border border-border-light shadow-sm hover:bg-background-muted/40 transition-all duration-300">
                   <div className="flex-1 min-w-0 pr-2">
-                    <p className="font-black text-text-primary text-sm md:text-base truncate">{item.name}</p>
+                    <p className="font-black text-text-primary text-xs md:text-sm line-clamp-2 leading-tight">{item.name}</p>
                     <p className="text-[10px] md:text-[11px] font-bold text-text-muted uppercase tracking-wider mt-0.5">{item.size} · ₹{item.unitPrice}</p>
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {item.comboItems?.length > 0 && (
@@ -664,7 +664,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                 {cart.map((item, idx) => (
                   <div key={idx} className="flex justify-between items-center bg-background p-4 rounded-xl shadow-sm">
                     <div className="min-w-0 flex-1 pr-3">
-                      <p className="font-bold text-text-primary text-[15px] truncate">{item.name}</p>
+                      <p className="font-bold text-text-primary text-sm line-clamp-2 leading-tight">{item.name}</p>
                       <p className="text-[11px] text-text-muted uppercase font-black tracking-widest mt-1">{item.size} x {item.quantity}</p>
                     </div>
                     <p className="font-black text-text-primary text-base shrink-0">₹{Math.round(item.totalPrice || 0)}</p>

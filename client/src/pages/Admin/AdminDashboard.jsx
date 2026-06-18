@@ -842,7 +842,7 @@ const AdminDashboard = () => {
                                     {item.image ? <img src={item.image} alt={item.name} className="w-full h-full object-cover" /> : <Package size={18} className="text-text-muted" />}
                                   </div>
                                   <div className="truncate">
-                                    <p className="font-bold text-sm text-text-primary truncate group-hover:text-primary transition-colors">{item.name}</p>
+                                    <p className="font-bold text-xs text-text-primary line-clamp-2 leading-tight group-hover:text-primary transition-colors">{item.name}</p>
                                     <p className="text-[9px] text-text-muted font-bold uppercase">{item.category?.name || 'Item'}</p>
                                   </div>
                                 </div>

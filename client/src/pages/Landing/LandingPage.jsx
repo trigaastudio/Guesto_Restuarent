@@ -361,7 +361,7 @@ const LandingPage = () => {
                         })()}
                       </div>
                       <div className="px-1">
-                        <h3 className="text-base font-black text-text-primary mb-2 group-hover:text-primary transition-colors truncate">{item.name}</h3>
+                        <h3 className="text-[13px] sm:text-sm font-black text-text-primary mb-2 group-hover:text-primary transition-colors line-clamp-2 leading-tight">{item.name}</h3>
                         <div className="flex items-center justify-between border-t border-border/10 pt-3">
                           {(() => {
                             const originalPrice = item.offerPrice || item.price || (item.variants && item.variants.length > 0 ? Math.min(...item.variants.map(v => v.price)) : 0);

@@ -474,7 +474,7 @@ const HomePage = () => {
                     </div>
 
                     <div className="px-1.5 flex flex-col flex-1 pb-1">
-                      <h3 className="text-xs md:text-sm font-black text-text-primary mb-0.5 group-hover:text-primary transition-colors truncate">{item.name}</h3>
+                      <h3 className="text-[10px] md:text-xs font-black text-text-primary mb-0.5 group-hover:text-primary transition-colors line-clamp-2 leading-tight">{item.name}</h3>
                       <p className="text-[9px] font-medium text-text-muted opacity-80 line-clamp-1 mb-0.5">{item.description || "A delicious favorite from our menu."}</p>
                     </div>
                   </div>
