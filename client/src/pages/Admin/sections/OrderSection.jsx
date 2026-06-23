@@ -1952,7 +1952,13 @@ const OrderSection = () => {
                               <>
 
                                 <button
-                                  onClick={() => handlePrintKOT(order)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePrintKOT(order);
+                                    if (order.orderStatus !== 'delivered' && order.orderStatus !== 'billed') {
+                                      handleUpdateOrderStatus(order._id, 'billed');
+                                    }
+                                  }}
                                   className="p-2 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all"
                                   title="Print KOT"
                                 >

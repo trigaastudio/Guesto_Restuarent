@@ -1247,12 +1247,8 @@ const WaiterDashboard = () => {
                     }
                     setIsDetailsModalOpen(false);
                   }}
-                  disabled={selectedOrderForView.kitchenStatus !== 'ready'}
-                  title={selectedOrderForView.kitchenStatus !== 'ready' ? 'Kitchen has not marked this order as Ready yet' : 'Print Bill'}
-                  className={`px-4 py-3 rounded-2xl font-black uppercase tracking-wider text-xs transition-all shadow-sm flex items-center gap-2 ${selectedOrderForView.kitchenStatus !== 'ready'
-                    ? 'bg-background-muted border border-border-light text-text-muted cursor-not-allowed opacity-60'
-                    : 'bg-background border border-border-light text-text-secondary hover:text-primary hover:border-primary/50 hover:bg-primary/5 active:scale-95'
-                    }`}
+                  title="Print Bill"
+                  className="px-4 py-3 bg-background border border-border-light text-text-secondary hover:text-primary hover:border-primary/50 hover:bg-primary/5 rounded-2xl font-black uppercase tracking-wider text-xs transition-all shadow-sm active:scale-95 flex items-center gap-2"
                 >
                   <span>Print</span>
                 </button>
