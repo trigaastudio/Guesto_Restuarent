@@ -400,7 +400,7 @@ const KitchenDashboard = () => {
                   : (isDarkMode ? (settings?.branding?.logoGold || '/logo-golden.png') : (settings?.branding?.logoDark || '/logo-dark.png'))
               }
               alt="Logo"
-              className={`${(isSidebarCollapsed && !isMobileMenuOpen) ? 'h-8' : 'h-10'} w-auto transition-all duration-500`}
+              className={`hidden lg:block ${(isSidebarCollapsed && !isMobileMenuOpen) ? 'h-8' : 'h-10'} w-auto transition-all duration-500`}
             />
             <button
               onClick={() => setIsMobileMenuOpen(false)}

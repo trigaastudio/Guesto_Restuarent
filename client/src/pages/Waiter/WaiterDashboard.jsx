@@ -31,6 +31,8 @@ const WaiterDashboard = () => {
   const [selectedOrderForView, setSelectedOrderForView] = useState(null);
   const [isMergeMode, setIsMergeMode] = useState(false);
   const [selectedMergeTableNumbers, setSelectedMergeTableNumbers] = useState([]);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
 
   const staff = JSON.parse(localStorage.getItem('staff_user') || '{}');
   const navigate = useNavigate();
@@ -38,6 +40,17 @@ const WaiterDashboard = () => {
   const { settings } = useCart();
   const isDarkMode = theme === 'dark';
   const socketRef = useRef();
+
+  // Close user menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const fetchTables = async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -608,42 +621,126 @@ const WaiterDashboard = () => {
     <div className="flex h-screen bg-background text-text-primary overflow-hidden transition-colors duration-300">
       { }
       <main className="flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out">
-        <header className="h-20 bg-background-card border-b border-border-main flex items-center justify-between px-4 lg:px-8 shrink-0">
-          <div className="flex items-center space-x-4">
-            <img
-              src={isDarkMode ? (settings?.branding?.logoGold || '/logo-golden.png') : (settings?.branding?.logoDark || '/logo-dark.png')}
-              alt="Logo"
-              className="h-10 w-auto transition-all duration-500 mr-2"
-            />
+        {/* ═══════════════════════════════════════════════
+             NAVBAR — Mobile-first redesign
+             Mobile : icon badge + title | avatar dropdown
+             Desktop: logo + title | name/ID + icons + logout
+        ═══════════════════════════════════════════════ */}
+        <header className="bg-background-card border-b border-border-main shrink-0 overflow-hidden">
 
-          </div>
+          {/* ── MOBILE NAV (hidden on sm+) ── */}
+          <div className="flex sm:hidden items-center justify-between px-4 h-14">
 
-          <div className="flex items-center space-x-2 sm:space-x-4">
-            <button onClick={toggleTheme} className="p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all">
-              {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-            <button onClick={() => fetchTables()} className="p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all group">
-              <RefreshCw size={20} className={`${isLoading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
-            </button>
-            <div className="flex items-center space-x-3 border-l border-r pr-4 sm:pr-6 pl-4 sm:pl-6 border-border-light">
-              <div className="hidden sm:block text-right">
-                <p className="text-sm font-bold text-text-primary">{staff.name || 'User'}</p>
-                <p className="text-[10px] text-text-secondary uppercase tracking-wider">{staff.employeeId || 'Staff'}</p>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-purple-500/20 border-2 border-purple-500/10 flex items-center justify-center text-purple-500 font-black shrink-0 text-sm">
-                {staff.name?.charAt(0) || 'W'}
+            {/* Left: brand icon only */}
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center shrink-0">
+                <UtensilsCrossed size={18} className="text-primary" />
               </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="p-2 text-status-unavailable hover:bg-status-off/5 rounded-lg transition-all flex items-center space-x-1.5"
-              title="Logout"
-            >
-              <LogOut size={20} />
-              <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Logout</span>
-            </button>
+
+            {/* Right: avatar pill → opens dropdown */}
+            <div className="relative" ref={userMenuRef}>
+              <button
+                onClick={() => setIsUserMenuOpen(v => !v)}
+                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-2xl border transition-all ${
+                  isUserMenuOpen
+                    ? 'bg-primary/10 border-primary/30'
+                    : 'bg-background-muted border-border-light hover:border-primary/30'
+                }`}
+              >
+                <div className="w-7 h-7 rounded-full bg-purple-500/20 border-2 border-purple-500/30 flex items-center justify-center text-purple-500 font-black text-xs shrink-0">
+                  {staff.name?.charAt(0)?.toUpperCase() || 'W'}
+                </div>
+                <div className="text-left">
+                  <p className="text-xs font-black text-text-primary leading-none">{staff.name?.split(' ')[0] || 'User'}</p>
+                  <p className="text-[9px] text-text-muted font-bold uppercase leading-tight">{staff.employeeId || 'Staff'}</p>
+                </div>
+                <ChevronDown size={14} className={`text-text-muted transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Dropdown panel */}
+              {isUserMenuOpen && (
+                <div className="absolute right-0 top-[calc(100%+8px)] w-56 bg-background-card border border-border-light rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+
+                  {/* Staff info header */}
+                  <div className="px-4 py-3 border-b border-border-light bg-background-muted/30">
+                    <p className="text-xs font-black text-text-primary">{staff.name || 'User'}</p>
+                    <p className="text-[10px] text-text-muted font-bold uppercase tracking-wider mt-0.5">{staff.employeeId || 'Staff'} · Waiter</p>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="p-2 space-y-0.5">
+                    <button
+                      onClick={() => { toggleTheme(); setIsUserMenuOpen(false); }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-text-secondary hover:bg-background-muted hover:text-text-primary transition-all text-left"
+                    >
+                      {isDarkMode ? <Sun size={15} className="text-amber-500" /> : <Moon size={15} className="text-indigo-400" />}
+                      <span className="text-xs font-bold">{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => { fetchTables(); setIsUserMenuOpen(false); }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-text-secondary hover:bg-background-muted hover:text-text-primary transition-all text-left"
+                    >
+                      <RefreshCw size={15} className={isLoading ? 'animate-spin text-primary' : 'text-text-muted'} />
+                      <span className="text-xs font-bold">Refresh Tables</span>
+                    </button>
+
+                    <div className="border-t border-border-light my-1" />
+
+                    <button
+                      onClick={() => { handleLogout(); setIsUserMenuOpen(false); }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-status-unavailable hover:bg-status-off/10 transition-all text-left"
+                    >
+                      <LogOut size={15} />
+                      <span className="text-xs font-bold">Logout</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* ── DESKTOP NAV (hidden below sm) ── */}
+          <div className="hidden sm:flex items-center justify-between h-20 px-4 lg:px-8">
+            <div className="flex items-center gap-4">
+              <img
+                src={isDarkMode ? (settings?.branding?.logoGold || '/logo-golden.png') : (settings?.branding?.logoDark || '/logo-dark.png')}
+                alt="Logo"
+                className="h-10 w-auto shrink-0"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button onClick={toggleTheme} className="p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all">
+                {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
+              <button onClick={() => fetchTables()} className="p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all group">
+                <RefreshCw size={20} className={isLoading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'} />
+              </button>
+              <div className="flex items-center gap-3 border-l border-r px-4 border-border-light">
+                <div className="text-right">
+                  <p className="text-sm font-bold text-text-primary">{staff.name || 'User'}</p>
+                  <p className="text-[10px] text-text-secondary uppercase tracking-wider">{staff.employeeId || 'Staff'}</p>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-purple-500/20 border-2 border-purple-500/10 flex items-center justify-center text-purple-500 font-black text-sm">
+                  {staff.name?.charAt(0)?.toUpperCase() || 'W'}
+                </div>
+              </div>
+              <button onClick={handleLogout} className="p-2 text-status-unavailable hover:bg-status-off/5 rounded-lg transition-all flex items-center gap-1.5" title="Logout">
+                <LogOut size={20} />
+                <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Logout</span>
+              </button>
+            </div>
+          </div>
+
         </header>
+
+        {/* ── Page Title Banner (below navbar, all screen sizes) ── */}
+        <div className="px-4 sm:px-6 lg:px-8 py-3 sm:py-4 bg-background border-b border-border-light shrink-0">
+          <h1 className="text-lg sm:text-xl font-black text-text-primary tracking-tight leading-tight">Waiter Dashboard</h1>
+          <p className="text-[10px] sm:text-xs text-text-muted font-bold uppercase tracking-widest mt-0.5">Table & Dine-in Management</p>
+        </div>
 
         <div className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-8">
           {isLoading ? (
