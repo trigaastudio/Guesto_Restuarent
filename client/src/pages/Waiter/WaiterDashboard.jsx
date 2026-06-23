@@ -615,12 +615,7 @@ const WaiterDashboard = () => {
               alt="Logo"
               className="h-10 w-auto transition-all duration-500 mr-2"
             />
-            <div className="border-l border-border-light pl-4">
-              <h1 className="text-lg font-black text-text-primary tracking-tight">Waiter Dashboard</h1>
-              <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest hidden sm:block">
-                Table & Dine-in Management
-              </p>
-            </div>
+
           </div>
 
           <div className="flex items-center space-x-2 sm:space-x-4">
@@ -662,7 +657,9 @@ const WaiterDashboard = () => {
               <div className="w-28 h-28 bg-background-muted/50 rounded-full flex items-center justify-center border-2 border-dashed border-border-light">
                 <Hash size={40} className="text-text-muted opacity-30" />
               </div>
+
               <div>
+
                 <h2 className="text-2xl font-black text-text-primary">No Tables Available!</h2>
                 <p className="text-text-secondary font-medium mt-1">Please ask an admin to configure tables.</p>
               </div>
@@ -1138,10 +1135,10 @@ const WaiterDashboard = () => {
                     const status = getComputedOrderStatus(selectedOrderForView);
                     return (
                       <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mt-1 ${status === 'completed' || status === 'delivered' || status === 'ready'
-                          ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-                          : status === 'placed'
-                            ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                            : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                        ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                        : status === 'placed'
+                          ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                          : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
                         }`}>
                         {status}
                       </span>
@@ -1182,7 +1179,7 @@ const WaiterDashboard = () => {
                             </div>
                           )}
 
-                          {}
+                          { }
                           {item.bogoItem && (
                             <div className="mt-1.5 pl-2 border-l border-emerald-500/30">
                               <span className="text-[9px] font-black text-emerald-500 uppercase tracking-wider block mb-0.5">Free Item:</span>
@@ -1194,7 +1191,7 @@ const WaiterDashboard = () => {
                             </div>
                           )}
 
-                          {}
+                          { }
                           {item.includedItems?.length > 0 && (
                             <div className="mt-1.5 pl-2 border-l border-primary/30">
                               <span className="text-[9px] font-black text-primary uppercase tracking-wider block mb-0.5">Includes Add-ons:</span>
@@ -1219,7 +1216,7 @@ const WaiterDashboard = () => {
               </div>
             </div>
 
-            {}
+            { }
             <div className="p-6 bg-background-card border-t border-border-light flex justify-between items-center shrink-0 gap-3">
               <div className="flex flex-wrap gap-2">
                 {!['cancelled', 'completed', 'delivered'].includes(selectedOrderForView?.orderStatus) && (

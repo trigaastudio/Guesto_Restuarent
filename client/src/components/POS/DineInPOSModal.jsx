@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Minus, X, ShoppingCart, User, Phone, CheckCircle2, Zap } from 'lucide-react';
+import { Search, Plus, Minus, X, ShoppingCart, User, CheckCircle2, Zap, UtensilsCrossed } from 'lucide-react';
 import { io } from 'socket.io-client';
 import { getEffectiveStock } from '../../utils/stockHelpers';
 import api from '../../api/axiosInstance';
@@ -416,37 +416,73 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
     }
   };
 
+  const [mobileActiveTab, setMobileActiveTab] = useState('menu');
+
   if (!isOpen) return null;
 
   const filteredMenu = menuItems.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const cartItemCount = cart.length;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose}></div>
-      <div className="bg-background-card w-full max-w-6xl h-[85vh] rounded-[2.5rem] shadow-2xl relative z-10 flex overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="bg-background-card w-full max-w-6xl h-[92vh] sm:h-[85vh] rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl relative z-10 flex flex-col lg:flex-row overflow-hidden animate-in zoom-in-95 duration-200">
 
-        { }
-        <div className="flex-1 flex flex-col border-r border-border-light bg-background">
-          <div className="p-6 border-b border-border-light bg-background-card">
-            <div className="flex justify-between items-center mb-4">
+        {/* Mobile Tab Switcher */}
+        <div className="lg:hidden flex items-center border-b border-border-light bg-background-card shrink-0">
+          <button
+            onClick={() => setMobileActiveTab('menu')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-black uppercase tracking-widest transition-all ${
+              mobileActiveTab === 'menu'
+                ? 'text-primary border-b-2 border-primary bg-primary/5'
+                : 'text-text-muted hover:text-text-primary'
+            }`}
+          >
+            <UtensilsCrossed size={15} />
+            Menu
+          </button>
+          <button
+            onClick={() => setMobileActiveTab('cart')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-black uppercase tracking-widest transition-all relative ${
+              mobileActiveTab === 'cart'
+                ? 'text-primary border-b-2 border-primary bg-primary/5'
+                : 'text-text-muted hover:text-text-primary'
+            }`}
+          >
+            <ShoppingCart size={15} />
+            Cart
+            {cartItemCount > 0 && (
+              <span className="absolute top-2 right-[calc(50%-28px)] min-w-[18px] h-[18px] bg-primary text-white text-[9px] font-black flex items-center justify-center rounded-full px-1">
+                {cartItemCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Left Column: Menu */}
+        <div className={`flex-1 flex-col border-r border-border-light bg-background ${
+          mobileActiveTab === 'menu' ? 'flex' : 'hidden'
+        } lg:flex`}>
+          <div className="p-4 sm:p-6 border-b border-border-light bg-background-card">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
               <div>
-                <h3 className="text-xl font-black text-text-primary tracking-tight">Table {table?.tableNumber} Menu</h3>
-                <p className="text-xs font-bold text-text-muted mt-1 uppercase tracking-widest">Select items to order</p>
+                <h3 className="text-lg sm:text-xl font-black text-text-primary tracking-tight">Table {table?.tableNumber} Menu</h3>
+                <p className="text-xs font-bold text-text-muted mt-0.5 uppercase tracking-widest">Select items to order</p>
               </div>
-              <div className="relative w-64 md:w-72 lg:w-80">
-                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted" />
+              <div className="relative w-full sm:w-64 md:w-72 lg:w-80">
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" />
                 <input
                   type="text"
                   placeholder="Search menu..."
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 md:py-3.5 bg-background border border-border-light rounded-2xl focus:outline-none focus:border-primary font-bold text-sm md:text-base"
+                  className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-background border border-border-light rounded-2xl focus:outline-none focus:border-primary font-bold text-sm"
                 />
               </div>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 grid grid-cols-2 lg:grid-cols-3 gap-4 no-scrollbar">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 no-scrollbar">
             {filteredMenu.map(item => {
               const rawStock = getDynamicRawStock(item);
               const isFullyOutOfStock = item.totalStock !== undefined && rawStock <= 0;
@@ -524,9 +560,11 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
           </div>
         </div>
 
-        { }
-        <div className="w-[40%] min-w-[340px] max-w-[450px] flex flex-col bg-background-card flex-shrink-0 overflow-hidden">
-          <div className="p-5 md:p-6 border-b border-border-light flex justify-between items-center shrink-0 bg-background-muted/30">
+        {/* Right Column: Cart */}
+        <div className={`w-full lg:w-[40%] lg:min-w-[340px] lg:max-w-[450px] flex-col bg-background-card flex-shrink-0 overflow-hidden ${
+          mobileActiveTab === 'cart' ? 'flex' : 'hidden'
+        } lg:flex`}>
+          <div className="p-4 sm:p-5 md:p-6 border-b border-border-light flex justify-between items-center shrink-0 bg-background-muted/30">
             <div className="flex items-center gap-2.5">
               <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shadow-inner border border-primary/10 shrink-0">
                 <ShoppingCart size={18} strokeWidth={2.5} />
@@ -552,7 +590,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-5 md:p-6 space-y-4 bg-background min-h-0">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 md:p-6 space-y-4 bg-background min-h-0">
             {cart.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-text-muted/50">
                 <ShoppingCart size={48} className="mb-4 opacity-50" />
@@ -620,7 +658,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
             )}
           </div>
 
-          <div className="p-5 md:p-6 border-t border-border-light space-y-4 bg-primary/5 shrink-0">
+          <div className="p-4 sm:p-5 md:p-6 border-t border-border-light space-y-4 bg-primary/5 shrink-0">
             <div>
               <label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1 mb-1 block">Customer Name (Optional)</label>
               <div className="relative">
@@ -636,7 +674,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
             </div>
           </div>
 
-          <div className="p-4 md:p-5 bg-background-card border-t border-border-light shadow-[0_-10px_40px_rgba(0,0,0,0.05)] flex justify-between items-center shrink-0">
+          <div className="p-3 sm:p-4 md:p-5 bg-background-card border-t border-border-light shadow-[0_-10px_40px_rgba(0,0,0,0.05)] flex justify-between items-center shrink-0">
             <div>
               <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-0.5">Total Amount</p>
               <p className="text-2xl font-black text-primary tracking-tight leading-none">
@@ -657,7 +695,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
         { }
         {showConfirmModal && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px] animate-in fade-in duration-200">
-            <div className="bg-background-card w-full max-w-md md:max-w-lg lg:max-w-xl p-6 md:p-8 rounded-[2rem] shadow-2xl animate-in zoom-in-95 duration-200 m-4">
+            <div className="bg-background-card w-full max-w-md md:max-w-lg lg:max-w-xl p-5 sm:p-6 md:p-8 rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl animate-in zoom-in-95 duration-200 m-3 sm:m-4">
               <h3 className="text-xl md:text-2xl font-black text-text-primary mb-5 md:mb-6 uppercase tracking-tight text-center">Confirm Order</h3>
 
               <div className="space-y-3 min-h-[35vh] max-h-[50vh] overflow-y-auto mb-6 pr-2 no-scrollbar bg-background-muted/20 p-4 rounded-2xl">

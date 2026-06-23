@@ -608,44 +608,62 @@ const WaiterDashboard = () => {
     <div className="flex h-screen bg-background text-text-primary overflow-hidden transition-colors duration-300">
       { }
       <main className="flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out">
-        <header className="h-20 bg-background-card border-b border-border-main flex items-center justify-between px-4 lg:px-8 shrink-0">
-          <div className="flex items-center space-x-4">
+        <header className="h-14 sm:h-20 bg-background-card border-b border-border-main flex items-center justify-between px-3 sm:px-4 lg:px-8 shrink-0 overflow-hidden">
+
+          {/* LEFT — Mobile: icon + title only | Desktop: logo + divider + title */}
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 overflow-hidden">
+
+            {/* Logo — hidden on mobile, shown on sm+ */}
             <img
               src={isDarkMode ? (settings?.branding?.logoGold || '/logo-golden.png') : (settings?.branding?.logoDark || '/logo-dark.png')}
               alt="Logo"
-              className="h-10 w-auto transition-all duration-500 mr-2"
+              className="hidden sm:block h-10 w-auto transition-all duration-500 shrink-0"
             />
-            <div className="border-l border-border-light pl-4">
-              <h1 className="text-lg font-black text-text-primary tracking-tight">Waiter Dashboard</h1>
-              <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest hidden sm:block">
+
+            {/* Mobile icon badge instead of logo */}
+            <div className="sm:hidden w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+              <UtensilsCrossed size={16} className="text-primary" />
+            </div>
+
+            <div className="border-l border-border-light pl-2 sm:pl-4 min-w-0">
+              <h1 className="text-sm sm:text-lg font-black text-text-primary tracking-tight leading-none">Waiter</h1>
+              <p className="text-[9px] sm:text-[10px] text-text-muted font-bold uppercase tracking-widest mt-0.5 hidden sm:block">
                 Table & Dine-in Management
               </p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 sm:space-x-4">
-            <button onClick={toggleTheme} className="p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all">
-              {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+          {/* RIGHT — Mobile: compact icons only | Desktop: full with name/ID */}
+          <div className="flex items-center gap-0.5 sm:gap-2 shrink-0">
+
+            {/* Theme */}
+            <button onClick={toggleTheme} className="p-1.5 sm:p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all" title="Toggle theme">
+              {isDarkMode ? <Sun size={17} /> : <Moon size={17} />}
             </button>
-            <button onClick={() => fetchTables()} className="p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all group">
-              <RefreshCw size={20} className={`${isLoading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
+
+            {/* Refresh */}
+            <button onClick={() => fetchTables()} className="p-1.5 sm:p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all group" title="Refresh">
+              <RefreshCw size={17} className={isLoading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'} />
             </button>
-            <div className="flex items-center space-x-3 border-l border-r pr-4 sm:pr-6 pl-4 sm:pl-6 border-border-light">
+
+            {/* Staff — name+ID hidden on mobile, only avatar shown */}
+            <div className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-border-light ml-1">
               <div className="hidden sm:block text-right">
-                <p className="text-sm font-bold text-text-primary">{staff.name || 'User'}</p>
-                <p className="text-[10px] text-text-secondary uppercase tracking-wider">{staff.employeeId || 'Staff'}</p>
+                <p className="text-sm font-bold text-text-primary leading-tight">{staff.name || 'User'}</p>
+                <p className="text-[10px] text-text-secondary uppercase tracking-wider leading-tight">{staff.employeeId || 'Staff'}</p>
               </div>
-              <div className="w-10 h-10 rounded-full bg-purple-500/20 border-2 border-purple-500/10 flex items-center justify-center text-purple-500 font-black shrink-0 text-sm">
-                {staff.name?.charAt(0) || 'W'}
+              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-purple-500/20 border-2 border-purple-500/30 flex items-center justify-center text-purple-500 font-black shrink-0 text-xs">
+                {staff.name?.charAt(0)?.toUpperCase() || 'W'}
               </div>
             </div>
+
+            {/* Logout */}
             <button
               onClick={handleLogout}
-              className="p-2 text-status-unavailable hover:bg-status-off/5 rounded-lg transition-all flex items-center space-x-1.5"
+              className="p-1.5 sm:p-2 text-status-unavailable hover:bg-status-off/5 rounded-lg transition-all"
               title="Logout"
             >
-              <LogOut size={20} />
-              <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Logout</span>
+              <LogOut size={17} />
             </button>
           </div>
         </header>
@@ -858,7 +876,7 @@ const WaiterDashboard = () => {
                                         <div key={idx} className="flex items-center justify-between bg-white dark:bg-black/20 p-2.5 rounded-xl border border-border-light/50 shadow-[0_2px_10px_rgba(0,0,0,0.02)] h-[52px]">
                                           <div className="min-w-0 flex-1 pr-2 pl-1">
                                             <div className="text-xs md:text-sm font-extrabold text-text-primary truncate capitalize tracking-normal flex items-center gap-1.5">
-                                            <span className="line-clamp-2 leading-tight">{item.name || 'Item'} {item.size ? `(${item.size})` : ''}</span>
+                                              <span className="line-clamp-2 leading-tight">{item.name || 'Item'} {item.size ? `(${item.size})` : ''}</span>
                                               {isLastSlotAndMore && (
                                                 <span className="bg-primary/10 text-primary text-[8px] font-black px-1.5 py-0.5 rounded-full shrink-0">
                                                   +{order.items.length - 3} more
@@ -1138,10 +1156,10 @@ const WaiterDashboard = () => {
                     const status = getComputedOrderStatus(selectedOrderForView);
                     return (
                       <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mt-1 ${status === 'completed' || status === 'delivered' || status === 'ready'
-                          ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-                          : status === 'placed'
-                            ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                            : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                        ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                        : status === 'placed'
+                          ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                          : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
                         }`}>
                         {status}
                       </span>
@@ -1182,7 +1200,7 @@ const WaiterDashboard = () => {
                             </div>
                           )}
 
-                          {}
+                          { }
                           {item.includedItems?.length > 0 && (
                             <div className="mt-1.5 pl-2 border-l border-primary/30">
                               <span className="text-[9px] font-black text-primary uppercase tracking-wider block mb-0.5">Includes Add-ons:</span>
@@ -1207,7 +1225,7 @@ const WaiterDashboard = () => {
               </div>
             </div>
 
-            {}
+            { }
             <div className="p-6 bg-background-card border-t border-border-light flex justify-between items-center shrink-0 gap-3">
               <div className="flex gap-2">
                 <button
