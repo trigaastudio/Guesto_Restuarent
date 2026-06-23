@@ -443,7 +443,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
           </button>
           <button
             onClick={() => setMobileActiveTab('cart')}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-black uppercase tracking-widest transition-all relative ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-black uppercase tracking-widest transition-all ${
               mobileActiveTab === 'cart'
                 ? 'text-primary border-b-2 border-primary bg-primary/5'
                 : 'text-text-muted hover:text-text-primary'
@@ -452,7 +452,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
             <ShoppingCart size={15} />
             Cart
             {cartItemCount > 0 && (
-              <span className="absolute top-2 right-[calc(50%-28px)] min-w-[18px] h-[18px] bg-primary text-white text-[9px] font-black flex items-center justify-center rounded-full px-1">
+              <span className="min-w-[18px] h-[18px] bg-primary text-white text-[9px] font-black flex items-center justify-center rounded-full px-1 ml-0.5">
                 {cartItemCount}
               </span>
             )}
@@ -460,7 +460,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
         </div>
 
         {/* Left Column: Menu */}
-        <div className={`flex-1 flex-col border-r border-border-light bg-background ${
+        <div className={`flex-1 flex-col min-h-0 border-r border-border-light bg-background ${
           mobileActiveTab === 'menu' ? 'flex' : 'hidden'
         } lg:flex`}>
           <div className="p-4 sm:p-6 border-b border-border-light bg-background-card">
@@ -561,7 +561,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
         </div>
 
         {/* Right Column: Cart */}
-        <div className={`w-full lg:w-[40%] lg:min-w-[340px] lg:max-w-[450px] flex-col bg-background-card flex-shrink-0 overflow-hidden ${
+        <div className={`w-full flex-1 min-h-0 lg:flex-none lg:w-[40%] lg:min-w-[340px] lg:max-w-[450px] flex-col bg-background-card flex-shrink-0 overflow-hidden ${
           mobileActiveTab === 'cart' ? 'flex' : 'hidden'
         } lg:flex`}>
           <div className="p-4 sm:p-5 md:p-6 border-b border-border-light flex justify-between items-center shrink-0 bg-background-muted/30">
