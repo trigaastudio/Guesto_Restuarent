@@ -29,6 +29,7 @@ export const logoutToLanding = async (navigate) => {
     localStorage.removeItem('user');
     localStorage.removeItem('dineInTableId');
     localStorage.removeItem('dineInTableNumber');
+    window.dispatchEvent(new Event('auth-logout'));
     navigate('/', { replace: true });
   }
 };
@@ -52,6 +53,7 @@ export const logoutAdmin = async (navigate) => {
     localStorage.removeItem('orderStatusFilter');
     localStorage.removeItem('orderSearchTerm');
     localStorage.removeItem('menuSearchTerm');
+    window.dispatchEvent(new Event('auth-logout'));
     navigate('/admin/login', { replace: true });
   }
 };
@@ -70,6 +72,7 @@ export const logoutStaff = async (navigate) => {
   if (result.isConfirmed) {
     try { await api.post('/api/auth/logout'); } catch (err) {}
     localStorage.removeItem('staff_user');
+    window.dispatchEvent(new Event('auth-logout'));
     navigate('/staff/login', { replace: true });
   }
 };

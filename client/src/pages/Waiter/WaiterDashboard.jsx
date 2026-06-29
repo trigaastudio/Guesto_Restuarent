@@ -642,11 +642,10 @@ const WaiterDashboard = () => {
             <div className="relative" ref={userMenuRef}>
               <button
                 onClick={() => setIsUserMenuOpen(v => !v)}
-                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-2xl border transition-all ${
-                  isUserMenuOpen
+                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-2xl border transition-all ${isUserMenuOpen
                     ? 'bg-primary/10 border-primary/30'
                     : 'bg-background-muted border-border-light hover:border-primary/30'
-                }`}
+                  }`}
               >
                 <div className="w-7 h-7 rounded-full bg-purple-500/20 border-2 border-purple-500/30 flex items-center justify-center text-purple-500 font-black text-xs shrink-0">
                   {staff.name?.charAt(0)?.toUpperCase() || 'W'}

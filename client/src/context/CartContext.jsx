@@ -70,11 +70,17 @@ export const CartProvider = ({ children }) => {
       }
     });
 
+    const handleAuthLogout = () => {
+      setCartItems([]);
+    };
+    window.addEventListener('auth-logout', handleAuthLogout);
+
     return () => {
       socket.off('stockUpdate');
       socket.off('offerUpdate');
       socket.off('categoryUpdate');
       socket.off('settingsUpdate');
+      window.removeEventListener('auth-logout', handleAuthLogout);
       if (pendingUpdatesRef.current) {
         Object.values(pendingUpdatesRef.current).forEach(clearTimeout);
       }
