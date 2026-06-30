@@ -28,7 +28,8 @@ import {
   Shield,
   Lock,
   KeyRound,
-  ChevronLeft
+  ChevronLeft,
+  Wrench
 } from 'lucide-react';
 import { showToast, showAlert } from '../../../utils/sweetAlert';
 import ImageCropper from '../../../components/ImageCropper/ImageCropper';
@@ -299,22 +300,7 @@ const SettingsSection = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-text-secondary uppercase ml-1">Tagline</label>
-                    <div className="relative">
-                      <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
-                      <input
-                        type="text"
-                        value={settings.restaurantDetails.tagline}
-                        onChange={(e) => setSettings({
-                          ...settings,
-                          restaurantDetails: { ...settings.restaurantDetails, tagline: e.target.value }
-                        })}
-                        className="w-full pl-12 pr-4 py-3 bg-background-muted/50 rounded-2xl border border-transparent focus:border-primary/30 focus:bg-white focus:text-black transition-all outline-none font-medium text-text-primary"
-                        placeholder="e.g. Taste of Tradition"
-                      />
-                    </div>
-                  </div>
+
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
@@ -565,6 +551,35 @@ const SettingsSection = () => {
         {activeSubTab === 'operational' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {}
+              <div className={`group p-8 rounded-[2.5rem] border transition-all duration-500 ${settings.operationalSettings?.isMaintenanceMode ? 'bg-orange-500/10 border-orange-500/30 shadow-lg shadow-orange-500/10' : 'bg-background-muted/20 border-border-light hover:border-orange-500/20'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-5">
+                    <div className={`p-4 rounded-[1.5rem] transition-all duration-500 ${settings.operationalSettings?.isMaintenanceMode ? 'bg-orange-500 text-white scale-110 shadow-lg shadow-orange-500/20' : 'bg-background-muted text-text-muted'}`}>
+                      <Wrench size={24} />
+                    </div>
+                    <div>
+                      <h4 className={`text-base font-black uppercase tracking-tight transition-colors ${settings.operationalSettings?.isMaintenanceMode ? 'text-orange-500' : 'text-text-primary'}`}>Maintenance Mode</h4>
+                      <p className="text-[10px] text-text-muted font-black uppercase tracking-[0.1em] mt-1">Block Customer Access</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSettings({
+                      ...settings,
+                      operationalSettings: { ...settings.operationalSettings, isMaintenanceMode: !settings.operationalSettings?.isMaintenanceMode }
+                    })}
+                    className={`w-14 h-7 rounded-full transition-all relative ${settings.operationalSettings?.isMaintenanceMode ? 'bg-orange-500' : 'bg-background-muted-dark'}`}
+                  >
+                    <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all shadow-md ${settings.operationalSettings?.isMaintenanceMode ? 'left-8' : 'left-1'}`} />
+                  </button>
+                </div>
+                {settings.operationalSettings?.isMaintenanceMode && (
+                  <div className="mt-6 p-4 bg-orange-500/10 rounded-2xl border border-orange-500/10 animate-in slide-in-from-top-4 duration-300">
+                    <p className="text-[10px] font-black text-orange-500 uppercase leading-relaxed text-center">Customers will see a Maintenance page instead of the app.</p>
+                  </div>
+                )}
+              </div>
+
               {}
               <div className={`group p-8 rounded-[2.5rem] border transition-all duration-500 ${settings.operationalSettings?.isHolidayMode ? 'bg-red-500/10 border-red-500/30 shadow-lg shadow-red-500/10' : 'bg-background-muted/20 border-border-light hover:border-red-500/20'}`}>
                 <div className="flex items-center justify-between">

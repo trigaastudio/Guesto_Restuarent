@@ -275,7 +275,7 @@ const TrackOrderPage = () => {
                   </h1>
                   <p className="text-xs text-text-muted mb-2 font-medium">Order ID: <span className="font-bold text-text-primary">#{order.orderNumber || order._id.slice(-8).toUpperCase()}</span></p>
                   <div className="flex items-center gap-2">
-                    <span className="text-lg font-black text-text-primary">₹{(order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0)}</span>
+                    <span className="text-lg font-black text-text-primary">₹{Math.round((order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0))}</span>
                     {order.orderStatus !== 'cancelled' && (
                       <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${order.paymentStatus === 'paid' ? 'text-emerald-500 bg-emerald-500/10' : 'text-primary bg-primary/10'}`}>
                         {order.paymentStatus === 'paid' ? 'Paid' : 'Payment pending'}
@@ -480,7 +480,7 @@ const TrackOrderPage = () => {
                         )}
                       </div>
                       <div className="text-sm font-bold text-text-primary">
-                        ₹{item.totalPrice}
+                        ₹{Math.round(item.totalPrice)}
                       </div>
                     </div>
                   </div>
@@ -504,29 +504,29 @@ const TrackOrderPage = () => {
               <div className="space-y-4 relative z-10">
                 <div className="flex justify-between items-center text-xs font-semibold text-text-muted">
                   <span>Listing price</span>
-                  <span className="font-bold text-text-primary">₹{(order.subtotal || 0) + (order.discount || 0)}</span>
+                  <span className="font-bold text-text-primary">₹{Math.round((order.subtotal || 0) + (order.discount || 0))}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs font-semibold text-text-muted">
                   <span className="flex items-center gap-1.5">
                     Delivery fees <HelpCircle size={12} className="text-text-muted/60" />
                   </span>
-                  <span className="font-bold text-text-primary">₹{order.deliveryFee || 0}</span>
+                  <span className="font-bold text-text-primary">₹{Math.round(order.deliveryFee || 0)}</span>
                 </div>
                 {order.platformFee > 0 && (
                   <div className="flex justify-between items-center text-xs font-semibold text-text-muted">
                     <span>Platform fee</span>
-                    <span className="font-bold text-text-primary">₹{order.platformFee}</span>
+                    <span className="font-bold text-text-primary">₹{Math.round(order.platformFee || 0)}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center text-xs font-semibold text-green-600">
                   <span>Special discount</span>
-                  <span className="font-bold">-₹{order.discount || 0}</span>
+                  <span className="font-bold">-₹{Math.round(order.discount || 0)}</span>
                 </div>
 
                 <div className="pt-4 border-t border-border/40 border-dashed">
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-sm font-bold text-text-primary">Total amount</span>
-                    <span className="text-2xl font-bold text-text-primary tracking-tighter">₹{(order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0)}</span>
+                    <span className="text-2xl font-bold text-text-primary tracking-tighter">₹{Math.round((order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0))}</span>
                   </div>
                   <div className="flex items-center justify-between text-[10px] font-bold text-text-muted opacity-60">
                     <span>Paid by</span>

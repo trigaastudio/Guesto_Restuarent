@@ -235,6 +235,25 @@ class AuthController {
       res.status(400).json({ success: false, message: error.message });
     }
   }
+
+  async testEmail(req, res) {
+    try {
+      const mailSender = (await import('../Utilities/mailSender.js')).default;
+      const { email } = req.body;
+      const info = await mailSender(email || process.env.NODEMAILER_EMAIL, "Test Email from Render", "<h1>It works!</h1>");
+      res.status(200).json({ success: true, message: 'Email sent successfully', info });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false, 
+        message: 'Nodemailer Error: ' + error.message,
+        stack: error.stack,
+        emailConfig: {
+          user: process.env.NODEMAILER_EMAIL ? "Set" : "Missing",
+          passLength: process.env.NODEMAILER_PASSWORD ? process.env.NODEMAILER_PASSWORD.length : 0
+        }
+      });
+    }
+  }
 }
 
 export default new AuthController();

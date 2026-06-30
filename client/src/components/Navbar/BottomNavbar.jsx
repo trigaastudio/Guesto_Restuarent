@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { logoutToLanding } from '../../utils/auth';
-import { Home, Utensils, ShoppingCart, User, MapPin, LogOut, Package, X } from 'lucide-react';
+import { Home, Utensils, ShoppingCart, User, MapPin, LogOut, Package, X, LogIn } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import Swal from 'sweetalert2';
 
@@ -31,8 +31,16 @@ const BottomNavbar = () => {
       ));
     };
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+    window.addEventListener('auth-change', handleStorageChange);
+    
+    // Also re-check user state whenever location changes
+    handleStorageChange();
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('auth-change', handleStorageChange);
+    };
+  }, [location.pathname]);
 
   useEffect(() => {
     let ticking = false;
@@ -59,13 +67,18 @@ const BottomNavbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [location.pathname, activeSection]);
 
+  const excludedPaths = ['/login', '/register', '/admin/login', '/admin/dashboard', '/digital-menu', '/waiter/dashboard', '/kitchen/dashboard'];
+  if (excludedPaths.includes(location.pathname) || location.pathname.startsWith('/admin') || location.pathname.startsWith('/waiter') || location.pathname.startsWith('/kitchen')) {
+    return null;
+  }
+
   const isLoggedIn = user && Object.keys(user).length > 0 && user.name;
 
   const navItems = [
     { name: 'Home', icon: Home, path: '/home', isHome: true },
     { name: 'Menu', icon: Utensils, path: '/home', isMenu: true },
     { name: 'Cart', icon: ShoppingCart, path: '/cart', showBadge: true },
-    { name: isLoggedIn ? 'Profile' : 'Sign In', icon: User, path: isLoggedIn ? '/profile' : '/login', isProfile: !!isLoggedIn },
+    { name: isLoggedIn ? 'Profile' : 'Sign In', icon: isLoggedIn ? User : LogIn, path: isLoggedIn ? '/profile' : '/login', isProfile: true },
   ];
 
   const isActive = (path, item) => {
@@ -146,7 +159,11 @@ const BottomNavbar = () => {
         navigate('/home');
       }
     } else if (item.isProfile) {
-      setShowProfileOptions(!showProfileOptions);
+      if (isLoggedIn) {
+        setShowProfileOptions(!showProfileOptions);
+      } else {
+        navigate('/login');
+      }
     } else {
       navigate(item.path);
     }

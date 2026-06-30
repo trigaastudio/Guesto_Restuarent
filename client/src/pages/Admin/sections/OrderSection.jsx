@@ -62,7 +62,7 @@ const OrderSection = () => {
       `--------------------------\n` +
       `📦 *Items:*\n${itemsText}\n` +
       `--------------------------\n` +
-      `💰 *Total:* ₹${order.totalAmount}\n` +
+      `💰 *Total:* ₹${Math.round(order.totalAmount)}\n` +
       `💳 *Payment:* ${order.paymentMethod?.toUpperCase()} (${order.paymentStatus?.toUpperCase()})\n` +
       locationUrl;
 
@@ -214,8 +214,8 @@ const OrderSection = () => {
       <tr>
         <td style="width: 40%;"></td>
         <td style="width: 15%; text-align: left;">${item.quantity} P</td>
-        <td style="width: 20%; text-align: right;">${unitPrice.toFixed(2)}</td>
-        <td style="width: 25%; text-align: right;">${totalPrice.toFixed(2)}</td>
+        <td style="width: 20%; text-align: right;">${unitPrice.toFixed(0)}</td>
+        <td style="width: 25%; text-align: right;">${totalPrice.toFixed(0)}</td>
       </tr>
     `;
     }).join('');
@@ -296,39 +296,39 @@ const OrderSection = () => {
           <div style="font-size: 13px; font-weight: normal; margin-bottom: 5px;">
             <div style="display: flex; justify-content: space-between;">
               <span>Listing Price:</span>
-              <span>₹${((order.subtotal || 0) + (order.discount || 0)).toFixed(2)}</span>
+              <span>₹${((order.subtotal || 0) + (order.discount || 0)).toFixed(0)}</span>
             </div>
             ${order.deliveryFee > 0 ? `
               <div style="display: flex; justify-content: space-between;">
                 <span>Delivery Fee:</span>
-                <span>${order.deliveryFee.toFixed(2)}</span>
+                <span>${order.deliveryFee.toFixed(0)}</span>
               </div>
             ` : ''}
             ${order.platformFee > 0 ? `
               <div style="display: flex; justify-content: space-between;">
                 <span>Platform Fee:</span>
-                <span>${order.platformFee.toFixed(2)}</span>
+                <span>${order.platformFee.toFixed(0)}</span>
               </div>
             ` : ''}
             ${order.discount > 0 ? `
               <div style="display: flex; justify-content: space-between; color: green; font-weight: bold;">
                 <span>Discount:</span>
-                <span>-${order.discount.toFixed(2)}</span>
+                <span>-${order.discount.toFixed(0)}</span>
               </div>
             ` : ''}
           </div>
           <div class="total-section" style="border-top: 1px dashed #000; padding-top: 5px;">
             <span>TOTAL :</span>
-            <span>${(order.totalAmount || order.subtotal || 0).toFixed(2)}</span>
+            <span>${(order.totalAmount || order.subtotal || 0).toFixed(0)}</span>
           </div>
           ${order.paidAmount > 0 && (order.totalAmount || order.subtotal) > order.paidAmount ? `
             <div style="font-size: 13px; font-weight: bold; margin-top: 5px; display: flex; justify-content: space-between;">
               <span>PAID AMOUNT:</span>
-              <span>₹${order.paidAmount.toFixed(2)}</span>
+              <span>₹${order.paidAmount.toFixed(0)}</span>
             </div>
             <div style="font-size: 14px; font-weight: bold; margin-top: 3px; display: flex; justify-content: space-between; border: 1px solid #000; padding: 4px;">
               <span>BALANCE DUE:</span>
-              <span>₹${((order.totalAmount || order.subtotal) - order.paidAmount).toFixed(2)}</span>
+              <span>₹${((order.totalAmount || order.subtotal) - order.paidAmount).toFixed(0)}</span>
             </div>
           ` : ''}
           <div class="divider"></div>
@@ -336,11 +336,11 @@ const OrderSection = () => {
             ${order.paymentMethod === 'cash' ? `
               <div style="display: flex; justify-content: space-between;">
                 <span>CASH RECEIVED :</span>
-                <span>${(order.cashReceived || order.totalAmount || order.subtotal || 0).toFixed(2)}</span>
+                <span>${(order.cashReceived || order.totalAmount || order.subtotal || 0).toFixed(0)}</span>
               </div>
               <div style="display: flex; justify-content: space-between; margin-top: 3px;">
                 <span>CHANGE :</span>
-                <span>${(order.balance || 0).toFixed(2)}</span>
+                <span>${(order.balance || 0).toFixed(0)}</span>
               </div>
             ` : (order.orderType === 'dine-in' && order.orderStatus !== 'delivered') ? `
               <div style="display: flex; justify-content: space-between;">
@@ -443,7 +443,7 @@ const OrderSection = () => {
 
   const fetchMenu = async () => {
     try {
-      const response = await api.get(`/api/menus`);
+      const response = await api.get(`/api/menus?all=true`);
       setMenuItems(response.data.filter(m => !m.isBlocked));
     } catch (error) {
       console.error('Error fetching menu:', error);
@@ -773,29 +773,29 @@ const OrderSection = () => {
             <div class="pt-3 border-t-2 border-dashed border-border-light flex flex-col gap-1 px-1">
               <div class="flex justify-between items-center">
                 <span class="text-[10px] font-black text-text-muted uppercase tracking-widest">Listing Price</span>
-                <span class="text-[11px] font-black text-text-primary">₹${(order.subtotal || 0) + (order.discount || 0)}</span>
+                <span class="text-[11px] font-black text-text-primary">₹${Math.round((order.subtotal || 0) + (order.discount || 0))}</span>
               </div>
               ${order.deliveryFee > 0 ? `
                 <div class="flex justify-between items-center text-text-muted">
                   <span class="text-[10px] font-black uppercase tracking-widest">Delivery Fee</span>
-                  <span class="text-[11px] font-black">+₹${order.deliveryFee}</span>
+                  <span class="text-[11px] font-black">+₹${Math.round(order.deliveryFee)}</span>
                 </div>
               ` : ''}
               ${order.platformFee > 0 ? `
                 <div class="flex justify-between items-center text-text-muted">
                   <span class="text-[10px] font-black uppercase tracking-widest">Platform Fee</span>
-                  <span class="text-[11px] font-black">+₹${order.platformFee}</span>
+                  <span class="text-[11px] font-black">+₹${Math.round(order.platformFee)}</span>
                 </div>
               ` : ''}
               ${order.discount > 0 ? `
                 <div class="flex justify-between items-center text-green-600">
                   <span class="text-[10px] font-black uppercase tracking-widest">Discount</span>
-                  <span class="text-[11px] font-black">-₹${order.discount}</span>
+                  <span class="text-[11px] font-black">-₹${Math.round(order.discount)}</span>
                 </div>
               ` : ''}
               <div class="flex justify-between items-center mt-2 pt-2 border-t border-border-light/50">
                 <p class="text-[11px] font-black text-text-primary uppercase tracking-widest">Total Payable</p>
-                <p class="text-[18px] font-black text-primary">₹${(order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0)}</p>
+                <p class="text-[18px] font-black text-primary">₹${Math.round((order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0))}</p>
               </div>
             </div>
           </div>
@@ -873,8 +873,6 @@ const OrderSection = () => {
       const updateData = { paymentStatus: newStatus };
 
       if (newStatus === 'paid') {
-        updateData.orderStatus = 'delivered';
-
         const orderToUpdate = orders.find(o => o._id === orderId);
         if (orderToUpdate) {
           updateData.paidAmount = orderToUpdate.totalAmount;
@@ -883,7 +881,7 @@ const OrderSection = () => {
 
       const response = await api.patch(`/api/orders/${orderId}/status`, updateData);
       if (response.data.success) {
-        showToast('success', `Payment marked as ${newStatus}${newStatus === 'paid' ? ' and order Delivered' : ''}`);
+        showToast('success', `Payment marked as ${newStatus}`);
         setOrders(orders.map(o => o._id === orderId ? response.data.data : o));
         if (selectedOrder?._id === orderId) setSelectedOrder(response.data.data);
       }
@@ -917,7 +915,6 @@ const OrderSection = () => {
       const change = payMethod === 'cash' ? Math.max(0, cashReceived - totalAmount) : 0;
       const updateData = {
         paymentStatus: 'paid',
-        orderStatus: 'delivered',
         paymentMethod: payMethod,
         paidAmount: totalAmount
       };
@@ -1103,8 +1100,11 @@ const OrderSection = () => {
     const menuDiscount = item.discountPercentage || 0;
     const categoryDiscount = item.category?.discountPercentage || 0;
     const discountPercent = Math.max(menuDiscount, categoryDiscount);
-    const basePrice = variant.price || item.price || 0;
-    const currentPrice = item.isCombo ? basePrice : Math.round(discountPercent > 0 ? basePrice * (1 - discountPercent / 100) : basePrice);
+    const comboOriginalPrice = item.isCombo 
+      ? item.comboItems?.reduce((sum, ci) => sum + ((ci.price || ci.menuItem?.price) || 0), 0)
+      : null;
+    const basePrice = item.isCombo && comboOriginalPrice ? comboOriginalPrice : (variant.price || item.price || 0);
+    const currentPrice = Math.round(item.isCombo ? (item.price || basePrice) : (discountPercent > 0 ? basePrice * (1 - discountPercent / 100) : basePrice));
 
     setCart(prevCart => {
       const existingIndex = prevCart.findIndex(c => c.menuItem === item._id && c.size === sizeName);
@@ -1881,7 +1881,7 @@ const OrderSection = () => {
                           </div>
                         </td>
                       )}
-                      <td className="px-2 py-2.5 font-black text-text-primary">₹{(order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0)}</td>
+                      <td className="px-2 py-2.5 font-black text-text-primary">₹{Math.round((order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0))}</td>
                       <td className="px-2 py-2.5 text-center">
                         {(() => {
                           const status = getFriendlyStatus(order);
@@ -1952,7 +1952,13 @@ const OrderSection = () => {
                               <>
 
                                 <button
-                                  onClick={() => handlePrintKOT(order)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePrintKOT(order);
+                                    if (order.orderStatus !== 'delivered' && order.orderStatus !== 'billed') {
+                                      handleUpdateOrderStatus(order._id, 'billed');
+                                    }
+                                  }}
                                   className="p-2 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all"
                                   title="Print KOT"
                                 >
@@ -2090,7 +2096,7 @@ const OrderSection = () => {
                               {item?.name && item.name !== 'Unknown Item' ? item.name : (item?.menuItem?.name || item?.name || 'Menu Item')}
                             </p>
                             <p className="text-[9px] text-text-muted font-bold uppercase">
-                              {item?.size} • ₹{item?.unitPrice || item?.price} x {item?.quantity}
+                              {item?.size} • ₹{Math.round(item?.unitPrice || item?.price || 0)} x {item?.quantity}
                             </p>
                             { }
                             {item?.bogoItem && (
@@ -2138,7 +2144,7 @@ const OrderSection = () => {
                             {ks}
                           </span>
                           <p className="text-xs font-black text-text-primary">
-                            ₹{item?.totalPrice || ((item?.unitPrice || item?.price || 0) * item?.quantity)}
+                            ₹{Math.round(item?.totalPrice || ((item?.unitPrice || item?.price || 0) * item?.quantity))}
                           </p>
                         </div>
                       </div>
@@ -2284,28 +2290,28 @@ const OrderSection = () => {
                 <div className="space-y-1">
                   <div className="flex flex-col mb-1 space-y-0.5">
                     <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">
-                      Listing Price: ₹{(selectedOrder.subtotal || 0) + (selectedOrder.discount || 0)}
+                      Listing Price: ₹{Math.round((selectedOrder.subtotal || 0) + (selectedOrder.discount || 0))}
                     </span>
                     {selectedOrder.platformFee > 0 && (
                       <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">
-                        Platform Fee: +₹{selectedOrder.platformFee}
+                        Platform Fee: +₹{Math.round(selectedOrder.platformFee)}
                       </span>
                     )}
                     {selectedOrder.deliveryFee > 0 && (
                       <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">
-                        Delivery Fee: +₹{selectedOrder.deliveryFee}
+                        Delivery Fee: +₹{Math.round(selectedOrder.deliveryFee)}
                       </span>
                     )}
                     {selectedOrder.discount > 0 && (
                       <span className="text-[10px] text-green-600 font-bold uppercase tracking-widest">
-                        Discount: -₹{selectedOrder.discount}
+                        Discount: -₹{Math.round(selectedOrder.discount)}
                       </span>
                     )}
                   </div>
                   <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Total Bill Amount</p>
                   <div className="flex items-baseline space-x-2">
                     <span className="text-4xl font-black text-text-primary">
-                      ₹{(selectedOrder.subtotal || 0) + (selectedOrder.deliveryFee || 0) + (selectedOrder.platformFee || 0) + (selectedOrder.tax || 0)}
+                      ₹{Math.round((selectedOrder.subtotal || 0) + (selectedOrder.deliveryFee || 0) + (selectedOrder.platformFee || 0) + (selectedOrder.tax || 0))}
                     </span>
                     {selectedOrder.paidAmount > 0 && (selectedOrder.totalAmount || selectedOrder.subtotal) > selectedOrder.paidAmount && (
                       <span className="px-2 py-0.5 bg-status-off/10 text-status-unavailable text-[10px] font-black rounded-lg uppercase tracking-tighter">
@@ -2325,11 +2331,11 @@ const OrderSection = () => {
                         <p className="text-[10px] font-black text-status-unavailable uppercase tracking-widest mb-0.5">Balance to Collect</p>
                         <div className="flex items-baseline space-x-3">
                           <span className="text-2xl font-black text-text-primary">
-                            ₹{(selectedOrder?.totalAmount || selectedOrder?.subtotal || 0) - (selectedOrder?.paidAmount || 0)}
+                            ₹{Math.round((selectedOrder?.totalAmount || selectedOrder?.subtotal || 0) - (selectedOrder?.paidAmount || 0))}
                           </span>
                           <div className="h-4 w-[1px] bg-border-light" />
                           <span className="text-[10px] font-bold text-text-muted uppercase">
-                            Paid: ₹{selectedOrder?.paidAmount || 0}
+                            Paid: ₹{Math.round(selectedOrder?.paidAmount || 0)}
                           </span>
                         </div>
                       </div>
@@ -2353,7 +2359,7 @@ const OrderSection = () => {
                   </button>
                 )}
 
-                {['placed', 'pending', 'processing', 'out-for-delivery'].includes(selectedOrder.orderStatus) && activeTab !== 'dine-in' && selectedOrder.orderType !== 'dine-in' && selectedOrder.orderType !== 'dining' && (
+                {!['cancelled', 'completed', 'delivered'].includes(selectedOrder.orderStatus) && (
                   <button
                     onClick={() => {
                       Swal.fire({
@@ -2474,7 +2480,7 @@ const OrderSection = () => {
                         </div>
                         <div className="flex flex-col mb-2">
                           <div className="flex items-center justify-between mb-1">
-                            <p className="font-bold text-text-primary text-xs line-clamp-1">{item.name}</p>
+                            <p className="font-bold text-text-primary text-[10px] leading-tight line-clamp-2">{item.name}</p>
                             <span className={`shrink-0 ml-2 text-[8px] font-black px-1.5 py-0.5 rounded-full ${isItemOutOfStock ? 'bg-red-500/10 text-red-500' : (item.isCombo ? 'bg-primary/10 text-primary' : (getEffectiveStock(item) > 10 ? 'bg-primary/10 text-primary' : 'bg-amber-500/10 text-amber-500'))}`}>
                               {item.isCombo ? (isItemOutOfStock ? 'Out of Stock' : 'Available') : `${getEffectiveStock(item)} Left`}
                             </span>
@@ -2483,21 +2489,29 @@ const OrderSection = () => {
                           {}
                           <div className="flex items-center gap-1.5 mb-1.5">
                             {(() => {
+                              const originalPrice = item.isCombo
+                                ? item.comboItems?.reduce((sum, ci) => sum + ((ci.price || ci.menuItem?.price) || 0), 0)
+                                : (item.variants?.length > 0 ? Math.min(...item.variants.map(v => v.price)) : (item.price || 0));
+
                               const menuDiscount = item.discountPercentage || 0;
                               const categoryDiscount = item.category?.discountPercentage || 0;
                               const discountPercent = Math.max(menuDiscount, categoryDiscount);
-                              const basePrice = item.price > 0 ? item.price : (item.variants?.[0]?.price || 0);
+                              
+                              const currentPrice = item.isCombo
+                                ? (item.price || originalPrice)
+                                : Math.round(discountPercent > 0 ? originalPrice * (1 - discountPercent / 100) : originalPrice);
 
-                              if (discountPercent > 0 && !item.isCombo && basePrice > 0) {
-                                const currentPrice = Math.round(basePrice * (1 - discountPercent / 100));
+                              const hasSavings = originalPrice > currentPrice;
+
+                              if (hasSavings) {
                                 return (
                                   <>
-                                    <span className="text-[10px] line-through text-text-muted font-bold">₹{basePrice}</span>
-                                    <span className="text-[11px] font-black text-status-available">₹{currentPrice} {item.variants?.length > 1 && <span className="text-[8px] text-text-muted ml-0.5">onwards</span>}</span>
+                                    <span className="text-[10px] line-through text-text-muted font-bold">₹{Math.round(originalPrice)}</span>
+                                    <span className="text-[11px] font-black text-status-available">₹{Math.round(currentPrice)} {item.variants?.length > 1 && <span className="text-[8px] text-text-muted ml-0.5">onwards</span>}</span>
                                   </>
                                 );
                               }
-                              return <span className="text-[11px] font-black text-text-primary">₹{basePrice} {item.variants?.length > 1 && <span className="text-[8px] text-text-muted ml-0.5">onwards</span>}</span>;
+                              return <span className="text-[11px] font-black text-text-primary">₹{Math.round(currentPrice)} {item.variants?.length > 1 && <span className="text-[8px] text-text-muted ml-0.5">onwards</span>}</span>;
                             })()}
                           </div>
 
@@ -2603,8 +2617,8 @@ const OrderSection = () => {
                   cart.map((item, idx) => (
                     <div key={idx} className="flex items-start gap-3 group p-3 bg-background-card hover:bg-background-muted/40 rounded-2xl border border-border-light hover:border-border transition-all duration-300">
                       <div className="flex-1 min-w-0">
-                        <p className="font-black text-text-primary text-[11px] leading-tight mb-0.5 truncate">{item.name}</p>
-                        <p className="text-[9px] text-text-muted font-bold uppercase mb-1.5">{item.size} · ₹{item.unitPrice}</p>
+                        <p className="font-black text-text-primary text-[10px] leading-tight mb-0.5 line-clamp-2">{item.name}</p>
+                        <p className="text-[9px] text-text-muted font-bold uppercase mb-1.5">{item.size} · ₹{Math.round(item.unitPrice || 0)}</p>
                         <div className="flex flex-wrap gap-1">
                           {item.comboItems?.length > 0 && (
                             <div className="flex flex-wrap gap-1">
@@ -2635,7 +2649,7 @@ const OrderSection = () => {
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-2 shrink-0">
-                        <p className="font-black text-[11px] text-text-primary">₹{item.totalPrice}</p>
+                        <p className="font-black text-[11px] text-text-primary">₹{Math.round(item.totalPrice)}</p>
                         <div className="flex items-center gap-1.5">
                           <div className="flex items-center gap-1 bg-background-card px-2 py-1 rounded-lg border border-border-light">
                             <button onClick={() => updateCartQuantity(idx, -1)} disabled={item.quantity <= 1} className="text-text-muted hover:text-primary font-black text-xs disabled:opacity-30 w-4 h-4 flex items-center justify-center">−</button>
@@ -2664,17 +2678,17 @@ const OrderSection = () => {
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-text-muted/60 text-[10px] font-bold">
                     <span>Listing Price</span>
-                    <span>₹{cart.reduce((acc, item) => acc + ((item.originalPrice || item.unitPrice) * item.quantity), 0)}</span>
+                    <span>₹{Math.round(cart.reduce((acc, item) => acc + ((item.originalPrice || item.unitPrice) * item.quantity), 0))}</span>
                   </div>
                   {cart.reduce((acc, item) => acc + (Math.max(0, (item.originalPrice || item.unitPrice) - item.unitPrice) * item.quantity), 0) > 0 && (
                     <div className="flex items-center justify-between text-status-available text-[10px] font-black">
                       <span className="flex items-center gap-1"><Zap size={9} /> Savings</span>
-                      <span>-₹{cart.reduce((acc, item) => acc + (Math.max(0, (item.originalPrice || item.unitPrice) - item.unitPrice) * item.quantity), 0)}</span>
+                      <span>-₹{Math.round(cart.reduce((acc, item) => acc + (Math.max(0, (item.originalPrice || item.unitPrice) - item.unitPrice) * item.quantity), 0))}</span>
                     </div>
                   )}
                   <div className="flex items-center justify-between text-primary text-[10px] font-black bg-primary/10 -mx-4 px-4 py-1.5 border-y border-primary/10">
                     <span>Items Total</span>
-                    <span>₹{cart.reduce((acc, i) => acc + i.totalPrice, 0)}</span>
+                    <span>₹{Math.round(cart.reduce((acc, i) => acc + i.totalPrice, 0))}</span>
                   </div>
                   {posOrderType === 'delivery' && (
                     <div className="flex items-center justify-between text-text-primary text-[10px] font-bold">
@@ -2924,7 +2938,7 @@ const OrderSection = () => {
                 </button>
                 {cart.length > 0 && (
                   <p className="text-center text-[9px] text-text-muted/50 font-bold mt-2.5 uppercase tracking-wider">
-                    {cart.reduce((a, i) => a + i.quantity, 0)} items · ₹{cart.reduce((acc, i) => acc + i.totalPrice, 0) + (posOrderType === 'delivery' ? (parseFloat(deliveryFee) || 0) : 0)} total
+                    {cart.reduce((a, i) => a + i.quantity, 0)} items · ₹{Math.round(cart.reduce((acc, i) => acc + i.totalPrice, 0) + (posOrderType === 'delivery' ? (parseFloat(deliveryFee) || 0) : 0))} total
                   </p>
                 )}
               </div>
@@ -3078,7 +3092,7 @@ const OrderSection = () => {
                       <div className="text-right">
                         <span className={`text-3xl font-black tracking-tighter ${cash > 0 && cashValid ? 'text-primary' : 'text-text-muted'
                           }`}>
-                          ₹{cash > 0 && cashValid ? change.toFixed(2) : '0.00'}
+                          ₹{cash > 0 && cashValid ? change.toFixed(0) : '0.00'}
                         </span>
                       </div>
                     </div>
@@ -3144,7 +3158,7 @@ const OrderSection = () => {
             const discountPercent = Math.max(menuDiscount, categoryDiscount);
 
             const basePrice = viewItemSelectedSize?.price || item.price || 0;
-            const currentPrice = item.isCombo ? basePrice : Math.round(discountPercent > 0 ? basePrice * (1 - discountPercent / 100) : basePrice);
+            const currentPrice = Math.round(item.isCombo ? basePrice : (discountPercent > 0 ? basePrice * (1 - discountPercent / 100) : basePrice));
             const hasSavings = discountPercent > 0 && !item.isCombo && basePrice > currentPrice;
 
             const availableStock = getEffectiveStock(item);
@@ -3255,7 +3269,7 @@ const OrderSection = () => {
                         <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">Total Price</p>
                         <div className="flex flex-col">
                           {hasSavings && (
-                            <span className="text-xs font-black text-text-muted line-through opacity-50">₹{basePrice * viewItemQuantity}</span>
+                            <span className="text-xs font-black text-text-muted line-through opacity-50">₹{Math.round(basePrice * viewItemQuantity)}</span>
                           )}
                           <span className="text-2xl font-black text-primary leading-none">₹{currentPrice * viewItemQuantity}</span>
                         </div>

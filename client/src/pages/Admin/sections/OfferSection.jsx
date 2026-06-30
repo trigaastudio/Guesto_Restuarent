@@ -54,7 +54,7 @@ const OfferSection = () => {
     try {
       const [offersRes, catsRes, menusRes] = await Promise.all([
         api.get('/api/offers'),
-        api.get('/api/categories'),
+        api.get('/api/categories?all=true'),
         api.get('/api/menus?all=true')
       ]);
       setOffers(offersRes.data.data || []);
@@ -263,7 +263,7 @@ const OfferSection = () => {
                 <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider ${offer.offerType === 'bogo' ? 'bg-orange-600 text-white' : offer.offerType === 'combo' ? 'bg-blue-600 text-white' : 'bg-green-600 text-white'}`}>{offer.offerType}</span>
               </div>
               <div className="absolute top-3 right-3 flex gap-2">
-                <button onClick={() => toggleStatus(offer)} className="p-1.5 bg-black/20 backdrop-blur-md rounded-xl text-white hover:bg-black/40 transition-all border border-white/10">{offer.isActive ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}</button>
+                <button onClick={() => handleToggleStatus(offer)} className="p-1.5 bg-black/20 backdrop-blur-md rounded-xl text-white hover:bg-black/40 transition-all border border-white/10">{offer.isActive ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}</button>
               </div>
             </div>
             <div className="p-5 space-y-3">
@@ -349,32 +349,15 @@ const OfferSection = () => {
                 <textarea required value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full p-4 bg-background border border-border/40 rounded-2xl focus:border-primary outline-none transition-all font-bold min-h-[80px]" placeholder="Describe the offer..." />
               </div>
 
-              {}
-              <div className="space-y-4 pt-2 border-t border-border/20">
-                <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Active Schedule</label>
-                <div className="flex items-center justify-between p-4 bg-background rounded-2xl border border-border/40">
-                  <div>
-                    <p className="text-[11px] font-black text-text-primary uppercase">Weekend Only</p>
-                    <p className="text-[9px] text-text-muted mt-0.5">Active only on Sat & Sun</p>
-                  </div>
-                  <button type="button" onClick={() => setFormData({ ...formData, isWeekendOnly: !formData.isWeekendOnly, specificDays: [] })} className="transition-all">
-                    {formData.isWeekendOnly ? <ToggleRight size={32} className="text-primary" /> : <ToggleLeft size={32} className="text-text-muted/40" />}
-                  </button>
+              <div className="flex items-center justify-between p-4 bg-background rounded-2xl border border-border/40">
+                <div>
+                  <p className="text-[11px] font-black text-text-primary uppercase">Promotion Status</p>
+                  <p className="text-[9px] text-text-muted mt-0.5">{formData.isActive ? 'Active and visible to customers' : 'Inactive and hidden'}</p>
                 </div>
-                {!formData.isWeekendOnly && (
-                  <div className="space-y-2">
-                    <p className="text-[9px] font-black text-text-muted uppercase ml-1">Specific Days <span className="opacity-50 normal-case font-medium">(empty = every day)</span></p>
-                    <div className="flex flex-wrap gap-2">
-                      {DAYS.map(day => (
-                        <button key={day} type="button" onClick={() => toggleDay(day)} className={`px-3 py-2 rounded-xl text-[9px] font-black uppercase border-2 transition-all ${formData.specificDays.includes(day) ? 'bg-primary border-primary text-white' : 'bg-background border-border/40 text-text-muted'}`}>{day.slice(0, 3)}</button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <button type="button" onClick={() => setFormData({ ...formData, isActive: !formData.isActive })} className="transition-all">
+                  {formData.isActive ? <ToggleRight size={32} className="text-primary" /> : <ToggleLeft size={32} className="text-text-muted/40" />}
+                </button>
               </div>
-
-
-
               <div className="flex gap-4 pt-4">
                 <button type="button" onClick={() => setShowModal(false)} className="flex-1 p-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-background-muted transition-all">Cancel</button>
                 <button type="submit" className="flex-1 p-4 bg-primary text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all">{editingOffer ? 'Save Changes' : 'Launch Campaign'}</button>

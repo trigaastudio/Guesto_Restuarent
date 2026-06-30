@@ -22,27 +22,9 @@ class AuthService {
   async _sendStylishEmail(email, title, headerText, subText, otp, settings) {
     const restaurantName = settings.restaurantDetails.name || "GuestO";
     
-    let primaryLogoPath = '/logo-golden.png';
-    
     const attachments = [];
-    let logoSrc = '';
-
-    const resolveLogo = (logoPathToUse, cidName) => {
-      const logoFileName = 'logo-golden.png';
-      const logoPath = path.join(__dirname, '..', '..', 'client', 'public', logoFileName);
-        
-      if (fs.existsSync(logoPath)) {
-        attachments.push({
-          filename: logoFileName,
-          path: logoPath,
-          cid: cidName
-        });
-        return `cid:${cidName}`;
-      }
-      return '';
-    };
-
-    logoSrc = resolveLogo(primaryLogoPath, 'restaurantLogo');
+    const frontendUrl = process.env.FRONTEND_URL || 'https://guestorestaurant.in';
+    const logoSrc = `${frontendUrl}/logo-golden.png`;
 
     const body = `
       <!DOCTYPE html>

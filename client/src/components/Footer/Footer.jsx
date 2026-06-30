@@ -2,7 +2,7 @@ import React from 'react';
 import { Mail, MapPin, Phone, Share2, Globe, Heart } from 'lucide-react';
 import './Footer.css';
 import { useCart } from '../../context/CartContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const Footer = React.memo(() => {
   const currentYear = new Date().getFullYear();
@@ -163,21 +163,32 @@ const Footer = React.memo(() => {
             <p className="text-[10px] font-black text-white/60 dark:text-text-muted/40 tracking-[0.2em] uppercase">
               © {currentYear} {brandName}
             </p>
-            <p className="text-[8px] font-bold text-white/40 dark:text-text-muted/20 tracking-widest uppercase">
-              Designed with Logic Loop Solution
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-[8px] font-bold text-white/40 dark:text-text-muted/20 tracking-widest uppercase">
+                Designed by
+              </p>
+              <img 
+                src="/developer-logo.png" 
+                alt="Developer Logo" 
+                className="h-4 sm:h-5 object-contain opacity-70 hover:opacity-100 transition-opacity"
+              />
+              <a href="tel:9048136161" className="text-[8px] font-bold text-white/40 dark:text-text-muted/20 tracking-widest hover:text-white dark:hover:text-primary transition-colors">
+                | +91 9048136161
+              </a>
+            </div>
           </div>
 
           <div className="flex gap-10">
             {['Privacy', 'Terms', 'Cookies'].map((link) => (
-              <a
+              <Link
                 key={link}
-                href="#"
+                to={`/${link.toLowerCase()}`}
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                 className="text-[10px] font-black text-white/60 dark:text-text-muted/40 hover:text-white dark:hover:text-primary transition-all tracking-[0.2em] uppercase relative group"
               >
                 {link}
                 <span className="absolute -bottom-1 left-0 w-0 h-[2px] bg-white dark:bg-primary transition-all group-hover:w-full"></span>
-              </a>
+              </Link>
             ))}
           </div>
         </div>

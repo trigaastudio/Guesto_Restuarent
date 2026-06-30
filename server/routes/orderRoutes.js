@@ -1,11 +1,11 @@
 import express from 'express';
 import orderController from '../controllers/orderController.js';
-import { protect, admin } from '../middleware/authMiddleware.js';
+import { protect, admin, adminOrStaff } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
 
-router.post('/validate-cart', orderController.validateCart);           
+router.post('/validate-cart', protect, orderController.validateCart);
 router.post('/', protect, orderController.placeOrder);
 router.get('/my-orders', protect, orderController.getMyOrders);
 router.put('/:id/cancel', protect, orderController.cancelOrder);
@@ -13,9 +13,9 @@ router.put('/:id/cancel', protect, orderController.cancelOrder);
 
 
 
-router.get('/', protect, orderController.getOrders);                   
-router.put('/:id/status', protect, orderController.updateOrderStatus);
-router.patch('/:id/status', protect, orderController.updateOrderStatus);
+router.get('/', protect, adminOrStaff, orderController.getOrders);                   
+router.put('/:id/status', protect, adminOrStaff, orderController.updateOrderStatus);
+router.patch('/:id/status', protect, adminOrStaff, orderController.updateOrderStatus);
 
 
 router.post('/counter', protect, orderController.createCounterOrder);

@@ -36,7 +36,8 @@ import {
   AlertTriangle,
   Trash2,
   Ticket,
-  ExternalLink
+  ExternalLink,
+  Share2
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import CategorySection from './sections/CategorySection';
@@ -70,7 +71,7 @@ const AdminDashboard = () => {
   const admin = JSON.parse(localStorage.getItem('admin_user') || '{}');
 
   
-  const notificationSound = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'));
+  const notificationSound = useRef(new Audio('/sounds/notification.mp3'));
 
   useEffect(() => {
     const socketUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'https://guest-o-backend.onrender.com';
@@ -82,7 +83,6 @@ const AdminDashboard = () => {
       const isFromUser = data.order?.orderSource === 'user' || data.order?.orderSource === 'online';
 
       if (!isDelivery || !isFromUser) {
-        setRefreshKey(prev => prev + 1);
         return;
       }
 
@@ -105,14 +105,12 @@ const AdminDashboard = () => {
 
       showToast('success', data.message);
       notificationSound.current.play().catch(e => console.log('Audio play blocked'));
-      setRefreshKey(prev => prev + 1);
     });
 
     
     socket.off('stockAlert');
 
     const handleDbChange = () => {
-      setRefreshKey(prev => prev + 1);
     };
     window.addEventListener('db_change', handleDbChange);
 
@@ -236,6 +234,27 @@ const AdminDashboard = () => {
     }
 
     return { label: order.orderStatus, color: 'bg-background-muted/10 text-text-muted border-border-light' };
+  };
+
+  const handleShareWebsite = async () => {
+    const websiteUrl = 'https://guestorestaurant.in';
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Guesto Restaurant',
+          text: 'Check out our restaurant!',
+          url: websiteUrl,
+        });
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          navigator.clipboard.writeText(websiteUrl);
+          showToast('success', 'Website link copied to clipboard!');
+        }
+      }
+    } else {
+      navigator.clipboard.writeText(websiteUrl);
+      showToast('success', 'Website link copied to clipboard!');
+    }
   };
 
   return (
@@ -412,6 +431,14 @@ const AdminDashboard = () => {
               <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Website</span>
             </button>
             <button
+              onClick={handleShareWebsite}
+              className="p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all flex items-center space-x-2 group"
+              title="Share Website Link"
+            >
+              <Share2 size={20} className="group-hover:scale-110 transition-transform" />
+              <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Share</span>
+            </button>
+            <button
               onClick={toggleTheme}
               className="p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all"
             >
@@ -539,7 +566,7 @@ const AdminDashboard = () => {
 
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {}
                     <div
                       onClick={() => navigateWithFilter('Orders', 'history')}
@@ -559,33 +586,6 @@ const AdminDashboard = () => {
                         <div className="text-[9px] font-black text-text-muted uppercase mb-1 opacity-60">Today</div>
                       </div>
                       <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-125" />
-                    </div>
-
-                    {}
-                    <div
-                      onClick={() => navigateWithFilter('Orders', 'dine-in')}
-                      className="bg-background-card p-6 rounded-[2rem] border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)] transition-all relative overflow-hidden group cursor-pointer active:scale-[0.98]"
-                    >
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="p-2.5 bg-primary/10 text-primary rounded-xl group-hover:scale-110 transition-transform">
-                            <UtensilsCrossed size={18} />
-                          </div>
-                          <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Dining Status</span>
-                        </div>
-                        <ChevronRight size={16} className="text-text-muted group-hover:translate-x-1 transition-transform" />
-                      </div>
-                      <div className="flex items-end space-x-3">
-                        <div className="flex items-baseline space-x-1.5">
-                          <span className="text-4xl font-black text-text-primary tracking-tighter">{stats.tableStats.available}</span>
-                          <span className="text-lg font-bold text-text-muted">/{stats.tableStats.total}</span>
-                        </div>
-                        <div className="flex items-center space-x-1 mb-1 text-status-available text-[9px] font-black uppercase">
-                          <span>{stats.tableStats.total > 0 ? Math.round(((stats.tableStats.total - stats.tableStats.available) / stats.tableStats.total) * 100) : 0}%</span>
-                          <span className="text-text-muted opacity-40 font-bold">Occupied</span>
-                        </div>
-                      </div>
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-125" />
                     </div>
 
                     {}
@@ -842,7 +842,7 @@ const AdminDashboard = () => {
                                     {item.image ? <img src={item.image} alt={item.name} className="w-full h-full object-cover" /> : <Package size={18} className="text-text-muted" />}
                                   </div>
                                   <div className="truncate">
-                                    <p className="font-bold text-sm text-text-primary truncate group-hover:text-primary transition-colors">{item.name}</p>
+                                    <p className="font-bold text-xs text-text-primary line-clamp-2 leading-tight group-hover:text-primary transition-colors">{item.name}</p>
                                     <p className="text-[9px] text-text-muted font-bold uppercase">{item.category?.name || 'Item'}</p>
                                   </div>
                                 </div>

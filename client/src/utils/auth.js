@@ -1,4 +1,5 @@
 import api from '../api/axiosInstance';
+import Swal from 'sweetalert2';
 
 
 export const clearAllAuth = () => {

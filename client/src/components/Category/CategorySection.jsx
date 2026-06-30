@@ -14,7 +14,7 @@ const CategorySection = React.memo(({ categories, selectedCategory, handleCatego
 
   return (
     <section className="bg-background pt-0 md:pt-2 pb-4 w-full">
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full">
         <div className="flex items-center justify-between mb-6">
           <div className="space-y-1">
             <h2 className="text-xl md:text-4xl font-black text-text-primary tracking-tighter flex items-center gap-3">
@@ -71,14 +71,14 @@ const CategorySection = React.memo(({ categories, selectedCategory, handleCatego
               >
                 <div className={`w-16 h-16 md:w-24 md:h-24 shrink-0 rounded-full flex items-center justify-center transition-all duration-500 ${
                   selectedCategory === category._id 
-                    ? 'bg-primary shadow-[0_10px_30px_rgba(185,28,28,0.4)] scale-105' 
+                    ? 'bg-primary shadow-[0_10px_30px_rgba(185,28,28,0.4)]' 
                     : 'bg-background-card shadow-sm hover:shadow-md hover:-translate-y-1'
                 }`}>
                   <img 
                     src={category.image || '/placeholder-category.png'} 
                     alt={category.name}
                     loading="lazy"
-                    className={`w-10 h-10 md:w-14 md:h-14 object-contain transition-transform duration-500 ${selectedCategory === category._id ? 'scale-110' : 'group-hover:scale-110'}`}
+                    className={`w-12 h-12 md:w-20 md:h-20 rounded-full object-cover transition-transform duration-500 ${selectedCategory === category._id ? 'scale-110' : 'group-hover:scale-110'}`}
                   />
                 </div>
                 <span className={`text-[9px] md:text-[10px] font-black tracking-widest uppercase text-center transition-colors duration-300 line-clamp-1 w-full px-1 ${

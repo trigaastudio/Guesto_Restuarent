@@ -1,5 +1,11 @@
 import 'dotenv/config.js';
 import express from 'express';
+import dns from 'dns';
+
+// Force IPv4 for all DNS resolutions to fix Render Nodemailer IPv6 connection issues
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -80,6 +86,7 @@ app.use(helmet({
     },
   },
   crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
 }));
 
 
@@ -96,8 +103,8 @@ app.use('/api/', limiter);
 connectDB();
 
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(cookieParser());
 
 

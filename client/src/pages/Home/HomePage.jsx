@@ -78,7 +78,17 @@ const HomePage = () => {
 
   useEffect(() => {
     document.title = "GuestO | Fresh & Delicious";
-    window.scrollTo(0, 0);
+    if (window.location.hash) {
+      setTimeout(() => {
+        const id = window.location.hash.replace('#', '');
+        const element = document.getElementById(id);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 300);
+    } else {
+      window.scrollTo(0, 0);
+    }
     fetchCategories();
     fetchMenus();
     fetchTrendingDishes();
@@ -185,12 +195,12 @@ const HomePage = () => {
 
   const fetchTrendingDishes = async () => {
     try {
-      const response = await api.get('/api/dashboard/stats');
+      const response = await api.get('/api/menus/top-selling');
       if (response.data && response.data.success) {
-        setTrendingItems(response.data.data.topDishes || []);
+        setTrendingItems(response.data.data || []);
       }
     } catch (error) {
-      console.error('Error fetching trending dishes:', error);
+      console.error('Error fetching top-selling dishes:', error);
     }
   };
 
@@ -334,7 +344,7 @@ const HomePage = () => {
   }
 
   return (
-    <div className={`min-h-screen bg-background font-sans ${theme}`}>
+    <div className={`min-h-screen bg-background font-sans overflow-x-hidden w-full ${theme}`}>
       <div className="relative w-full overflow-hidden flex flex-col bg-[#B91C1C]">
         <div className="absolute inset-0 z-0 bg-[#B91C1C]"></div>
 
@@ -359,7 +369,7 @@ const HomePage = () => {
         />
       </div>
 
-      <main className="relative z-10 max-w-7xl mx-auto px-6 -mt-6 sm:-mt-10 md:-mt-36 lg:-mt-40 pb-0">
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 -mt-6 sm:-mt-10 md:-mt-36 lg:-mt-40 pb-0 w-full">
         <div className="mb-12">
           <OffersCarousel
             onOfferClick={(offer) => {
@@ -378,8 +388,8 @@ const HomePage = () => {
 
         {}
         {trendingItems.length > 0 && (
-          <div className="mb-0 relative group/slider mt-12">
-            <div className="flex items-center justify-between mb-8 px-6">
+          <div className="mb-0 relative group/slider mt-12 w-full">
+            <div className="flex items-center justify-between mb-8 px-4 sm:px-6">
               <div className="space-y-1">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-primary/10 rounded-2xl flex items-center justify-center">
@@ -410,7 +420,7 @@ const HomePage = () => {
 
             <div
               ref={scrollContainerRef}
-              className="flex overflow-x-auto no-scrollbar gap-6 px-6 pb-6 snap-x"
+              className="flex overflow-x-auto no-scrollbar gap-4 sm:gap-6 px-4 sm:px-6 pb-6 snap-x w-full"
             >
               {trendingItems.filter(item => !item.isBlocked).map((item, idx) => {
                 const isItemOutOfStock = getEffectiveStock(item) < 1 || isClosed;
@@ -464,7 +474,7 @@ const HomePage = () => {
                     </div>
 
                     <div className="px-1.5 flex flex-col flex-1 pb-1">
-                      <h3 className="text-xs md:text-sm font-black text-text-primary mb-0.5 group-hover:text-primary transition-colors truncate">{item.name}</h3>
+                      <h3 className="text-[10px] md:text-xs font-black text-text-primary mb-0.5 group-hover:text-primary transition-colors line-clamp-2 leading-tight">{item.name}</h3>
                       <p className="text-[9px] font-medium text-text-muted opacity-80 line-clamp-1 mb-0.5">{item.description || "A delicious favorite from our menu."}</p>
                     </div>
                   </div>

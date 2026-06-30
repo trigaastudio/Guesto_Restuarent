@@ -11,13 +11,13 @@ const PaymentPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { cartItems, subtotal, clearCart, settings, checkStoreStatus } = useCart();
-  const [paymentMethod, setPaymentMethod] = useState('online'); 
+  const [paymentMethod, setPaymentMethod] = useState('online');
   const [loading, setLoading] = useState(false);
   const [isOrderSuccess, setIsOrderSuccess] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const dropdownRef = useRef(null);
 
-    const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(() => {
     const currentUser = JSON.parse(localStorage.getItem('user') || localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || '{}');
     if (currentUser.role === 'admin') {
       localStorage.removeItem('admin_token');
@@ -36,7 +36,7 @@ const PaymentPage = () => {
 
   const user = JSON.parse(localStorage.getItem('user') || localStorage.getItem('staff_user') || localStorage.getItem('admin_user') || 'null');
 
-  
+
   const deliveryAddress = location.state?.deliveryAddress;
   const additionalNote = location.state?.additionalNote || '';
   const deliveryFee = location.state?.deliveryFee || 0;
@@ -55,7 +55,7 @@ const PaymentPage = () => {
     script.async = true;
     document.body.appendChild(script);
 
-    
+
     const storeStatus = checkStoreStatus ? checkStoreStatus() : { isOpen: true };
     if (!isOrderSuccess && !storeStatus.isOpen) {
       let message = 'Store is currently closed.';
@@ -68,7 +68,7 @@ const PaymentPage = () => {
       } else if (storeStatus.reason) {
         message = `The store is currently closed (${storeStatus.reason}).`;
       }
-      
+
       Swal.fire({
         title: 'Store Closed',
         text: message,
@@ -81,7 +81,7 @@ const PaymentPage = () => {
       return;
     }
 
-    
+
     if (!isOrderSuccess && (!(deliveryAddress || dineInTableId) || cartItems.length === 0 || total < 140)) {
       navigate('/cart');
     }
@@ -94,7 +94,7 @@ const PaymentPage = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
-      
+
       if (document.body.contains(script)) {
         document.body.removeChild(script);
       }
@@ -133,16 +133,16 @@ const PaymentPage = () => {
         const sizeData = variants.find(v => v.size === item.selectedSize);
         const basePrice = sizeData ? sizeData.price : (item.offerPrice || item.price || 0);
 
-        
+
         const menuDiscount = item.discountPercentage || 0;
         const categoryDiscount = item.category?.discountPercentage || 0;
         const maxDiscount = Math.max(menuDiscount, categoryDiscount);
         const discountedPrice = item.isCombo
-          ? basePrice
+          ? Math.round(basePrice)
           : Math.round(maxDiscount > 0 ? basePrice * (1 - maxDiscount / 100) : basePrice);
 
         return {
-          menuItem: item.menuItemId || item._id, 
+          menuItem: item.menuItemId || item._id,
           name: item.name,
           image: item.image || '',
           size: item.selectedSize,
@@ -170,7 +170,7 @@ const PaymentPage = () => {
       };
 
       if (paymentMethod === 'online') {
-        
+
         const { data: { data: razorpayOrder } } = await api.post('/api/payments/create-order', {
           amount: total,
           currency: 'INR',
@@ -186,7 +186,7 @@ const PaymentPage = () => {
           image: `${window.location.origin}${settings?.branding?.logoGold || '/logo-golden.png'}`,
           order_id: razorpayOrder.id,
           handler: async function (paymentResponse) {
-            
+
             try {
               const orderDataWithPayment = {
                 ...orderData,
@@ -240,7 +240,7 @@ const PaymentPage = () => {
         const rzp = new window.Razorpay(options);
         rzp.open();
       } else {
-        
+
         const response = await api.post('/api/orders', orderData);
         const createdOrder = response.data.data;
 
@@ -301,72 +301,75 @@ const PaymentPage = () => {
     Swal.fire({
       html: `
         <div class="overflow-hidden">
-          <!-- Premium Header with Celebration -->
-          <div class="bg-primary/5 py-12 relative overflow-hidden">
+          <!-- Header -->
+          <div class="bg-primary/5 py-5 relative overflow-hidden">
             <div class="absolute inset-0 opacity-20">
-              <div class="absolute top-0 left-1/4 w-2 h-2 bg-primary rounded-full animate-ping"></div>
-              <div class="absolute top-1/2 right-1/4 w-3 h-3 bg-primary rounded-full animate-pulse"></div>
-              <div class="absolute bottom-1/4 left-1/2 w-2 h-2 bg-primary rounded-full animate-bounce"></div>
+              <div class="absolute top-0 left-1/4 w-1.5 h-1.5 bg-primary rounded-full animate-ping"></div>
+              <div class="absolute top-1/2 right-1/4 w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+              <div class="absolute bottom-1/4 left-1/2 w-1.5 h-1.5 bg-primary rounded-full animate-bounce"></div>
             </div>
-            
             <div class="relative z-10">
-              <div class="w-24 h-24 bg-white rounded-full mx-auto flex items-center justify-center shadow-2xl border-8 border-primary/10 relative">
-                <div class="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin duration-1000"></div>
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="text-primary animate-in zoom-in duration-500 delay-200">
+              <div class="w-12 h-12 bg-white rounded-full mx-auto flex items-center justify-center shadow-xl border-4 border-primary/10 relative">
+                <div class="absolute inset-0 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="text-primary">
                   <polyline points="20 6 9 17 4 12"></polyline>
                 </svg>
               </div>
-              <div class="mt-6 space-y-1">
-                <h2 class="text-3xl font-black text-text-primary tracking-tighter uppercase">Order <span class="text-primary">Success!</span></h2>
-                <p class="text-[10px] font-black text-text-muted uppercase tracking-[0.3em] opacity-60">We've received your feast</p>
+              <div class="mt-3 space-y-0.5">
+                <h2 class="text-base font-black text-text-primary tracking-tight uppercase leading-none">Order <span class="text-primary">Success!</span></h2>
+                <p class="text-[7px] font-black text-text-muted uppercase tracking-[0.15em] opacity-60">We've received your feast</p>
               </div>
             </div>
           </div>
 
-          <!-- Order Details Card -->
-          <div class="p-8 space-y-8">
-            <div class="flex items-center justify-center gap-8">
-              <div class="text-center">
-                <p class="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1 opacity-50">Order ID</p>
-                <p class="text-xl font-black text-text-primary tracking-tight">${order.orderNumber}</p>
+          <!-- Order Details -->
+          <div class="px-3 pb-3 pt-2.5 space-y-2.5">
+
+            <!-- Order ID + ETA row -->
+            <div class="flex items-center justify-center gap-3 w-full bg-background-muted/40 rounded-xl p-2.5 border border-border/30">
+              <div class="text-center flex-1">
+                <p class="text-[6px] font-black text-text-muted uppercase tracking-widest opacity-50 mb-0.5">Order ID</p>
+                <p class="text-[11px] font-black text-text-primary tracking-tight leading-none">${order.orderNumber}</p>
               </div>
-              <div class="w-px h-10 bg-border/40"></div>
-              <div class="text-center">
-                <p class="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1 opacity-50">Delivery ETA</p>
-                <p class="text-xl font-black text-primary tracking-tight">35-45 mins</p>
+              <div class="w-px h-7 bg-border/40 shrink-0"></div>
+              <div class="text-center flex-1">
+                <p class="text-[6px] font-black text-text-muted uppercase tracking-widest opacity-50 mb-0.5">Delivery ETA</p>
+                <p class="text-[11px] font-black text-primary tracking-tight leading-none">35-45 mins</p>
               </div>
             </div>
 
-            <div class="bg-background-muted/50 rounded-3xl p-6 border border-border/40 relative group overflow-hidden">
-              <div class="absolute inset-0 bg-primary/5 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
-              <div class="relative z-10 flex items-center gap-5">
-                <div class="w-12 h-12 bg-white rounded-2xl shadow-lg flex items-center justify-center text-primary">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <!-- Secure Preparation -->
+            <div class="bg-background-muted/40 rounded-xl p-2.5 border border-border/30">
+              <div class="flex items-center gap-2.5">
+                <div class="w-7 h-7 shrink-0 bg-white rounded-lg shadow flex items-center justify-center text-primary">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                 </div>
                 <div class="text-left">
-                  <h4 class="text-xs font-black text-text-primary uppercase tracking-wider mb-0.5">Secure Preparation</h4>
-                  <p class="text-[10px] font-bold text-text-muted opacity-60">Your kitchen is maintaining top hygiene standards.</p>
+                  <h4 class="text-[8px] font-black text-text-primary uppercase tracking-wide leading-none mb-0.5">Secure Preparation</h4>
+                  <p class="text-[7px] font-bold text-text-muted opacity-60 leading-tight">Your kitchen maintains top hygiene standards.</p>
                 </div>
               </div>
             </div>
 
-            <div class="flex flex-col sm:flex-row gap-4 mt-4">
-              <button id="track-order-btn" class="flex-1 w-full bg-primary hover:bg-primary-dark text-white font-black py-4 px-2 rounded-2xl transition-all duration-300 shadow-xl shadow-primary/20 active:scale-95 text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 group">
-                Track Order
-                <svg class="group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            <!-- Buttons -->
+            <div class="flex flex-row gap-2 pt-0.5">
+              <button id="track-order-btn" class="flex-1 bg-primary text-white font-black py-2 px-1 rounded-xl text-[8px] uppercase tracking-wide flex items-center justify-center gap-1 group active:scale-95 transition-all shadow-lg shadow-primary/20">
+                <span class="whitespace-nowrap">Track Order</span>
+                <svg class="group-hover:translate-x-0.5 transition-transform w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
               </button>
-              <button id="home-btn" class="flex-1 w-full bg-background-card hover:bg-background border border-border/60 text-text-primary font-black py-4 px-2 rounded-2xl transition-all duration-300 active:scale-95 text-[10px] uppercase tracking-widest flex items-center justify-center">
+              <button id="home-btn" class="flex-1 bg-background-card border border-border/60 text-text-primary font-black py-2 px-1 rounded-xl text-[8px] uppercase tracking-wide flex items-center justify-center whitespace-nowrap active:scale-95 transition-all">
                 Go Shopping
               </button>
             </div>
+
           </div>
         </div>
       `,
       showConfirmButton: false,
       padding: '0',
-      width: '520px',
+      width: 'min(88%, 440px)',
       customClass: {
-        popup: 'rounded-[3.5rem] border-none shadow-[0_60px_120px_rgba(0,0,0,0.18)] overflow-hidden bg-background-card',
+        popup: 'rounded-[1.5rem] border-none shadow-[0_30px_80px_rgba(0,0,0,0.2)] overflow-hidden bg-background-card',
       },
       didOpen: () => {
         document.getElementById('track-order-btn').addEventListener('click', () => {
@@ -401,13 +404,13 @@ const PaymentPage = () => {
           <div className="absolute top-0 right-0 w-64 h-64 bg-background-card/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
         </div>
 
-        <main className="max-w-7xl mx-auto px-6 pt-24 md:pt-32 relative z-10 pb-24">
+        <main className="max-w-7xl mx-auto px-3 sm:px-6 pt-24 md:pt-32 relative z-10 pb-24">
           <div className="flex flex-col lg:flex-row gap-10 items-start">
 
-            {}
+            { }
             <div className="flex-1 space-y-6 w-full">
-              {}
-              <div className="bg-background-card rounded-[3rem] p-8 md:p-10 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.04)] relative overflow-hidden group">
+              { }
+              <div className="bg-background-card rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-8 md:p-10 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.04)] relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-80 h-80 bg-primary/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 group-hover:bg-primary/10 transition-colors duration-1000"></div>
                 <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2"></div>
 
@@ -490,8 +493,8 @@ const PaymentPage = () => {
                 )}
               </div>
 
-              {}
-              <div className="bg-background-card rounded-[3rem] p-8 md:p-10 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.04)]">
+              { }
+              <div className="bg-background-card rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-8 md:p-10 border border-border/40 shadow-[0_30px_100px_rgba(0,0,0,0.04)]">
                 <div className="flex items-center gap-4 mb-8">
                   <div className="h-1 w-12 bg-primary rounded-full"></div>
                   <p className="text-[11px] font-black text-primary tracking-[0.3em] uppercase opacity-90">your selection</p>
@@ -499,75 +502,82 @@ const PaymentPage = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {cartItems.map((item) => (
-                    <div key={item._id} className="flex items-center gap-5 p-4 rounded-[2rem] bg-background border border-border/40 group hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all duration-500">
-                      <div className="w-16 h-16 rounded-2xl shrink-0 overflow-hidden group-hover:rotate-3 transition-transform duration-500">
-                        <img src={item.image || '/placeholder-food.jpg'} alt={item.name} className="w-full h-full object-contain" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h4 className="text-sm font-black text-text-primary tracking-tight group-hover:text-primary transition-colors duration-500 truncate capitalize">
-                          {item.name}
-                        </h4>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] font-black text-text-muted uppercase tracking-wider opacity-60">qty: {item.quantity}</span>
-                          {item.selectedSize && (
-                            <span className="text-[9px] font-black text-primary bg-primary/5 px-2 py-0.5 rounded-lg uppercase border border-primary/10">
-                              {item.selectedSize}
-                            </span>
-                          )}
+                    <div key={item._id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-5 p-3 sm:p-4 rounded-xl sm:rounded-[2rem] bg-background border border-border/40 group hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all duration-500">
+                      
+                      {/* Left: Image and Info */}
+                      <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0 w-full sm:w-auto">
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl shrink-0 overflow-hidden group-hover:rotate-3 transition-transform duration-500 bg-background-muted/10 p-1 border border-border/20">
+                          <img src={item.image || '/placeholder-food.jpg'} alt={item.name} className="w-full h-full object-contain" />
                         </div>
-
-                        {}
-                        {item.isCombo && item.comboItems?.length > 0 && (
-                          <div className="mt-2 space-y-1 pl-2 border-l border-primary/30">
-                            <span className="text-[8px] font-black text-primary uppercase tracking-wider block">Combo includes:</span>
-                            <div className="flex flex-wrap gap-1.5">
-                              {item.comboItems.map((ci, idx) => (
-                                <span key={idx} className="inline-flex items-center bg-primary/5 text-primary text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-primary/10">
-                                  {ci.quantity || 1}x {ci.menuItem?.name || ci.name || 'Item'}
-                                </span>
-                              ))}
-                            </div>
+                        
+                        <div className="min-w-0 flex-1 pt-0.5">
+                          <h4 className="text-[13px] sm:text-sm font-black text-text-primary tracking-tight leading-snug group-hover:text-primary transition-colors duration-500 line-clamp-2 capitalize">
+                            {item.name}
+                          </h4>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <span className="text-[9px] sm:text-[10px] font-black text-text-muted uppercase tracking-wider opacity-60">qty: {item.quantity}</span>
+                            {item.selectedSize && (
+                              <span className="text-[8px] sm:text-[9px] font-black text-primary bg-primary/5 px-1.5 py-0.5 rounded-lg uppercase border border-primary/10">
+                                {item.selectedSize}
+                              </span>
+                            )}
                           </div>
-                        )}
 
-                        {}
-                        {!item.isCombo && item.variants?.find(v => v.size === item.selectedSize)?.includedItems?.length > 0 && (
-                          <div className="mt-2 space-y-1 pl-2 border-l border-primary/30">
-                            <span className="text-[8px] font-black text-primary uppercase tracking-wider block">Includes Add-ons:</span>
-                            <div className="flex flex-wrap gap-1.5">
-                              {item.variants.find(v => v.size === item.selectedSize).includedItems.map((ii, idx) => (
-                                <span key={idx} className="inline-flex items-center bg-primary/5 text-primary text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-primary/10">
-                                  {ii.quantity || 1}x {ii.menuItem?.name || ii.name || 'Item'}
-                                </span>
-                              ))}
+                          {item.isCombo && item.comboItems?.length > 0 && (
+                            <div className="mt-1.5 pl-2 border-l border-primary/30">
+                              <span className="text-[7px] font-black text-primary uppercase tracking-wide block">Combo:</span>
+                              <div className="flex flex-wrap gap-1 mt-0.5">
+                                {item.comboItems.map((ci, idx) => (
+                                  <span key={idx} className="inline-flex items-center bg-primary/5 text-primary text-[7px] font-bold px-1.5 py-0.5 rounded border border-primary/10 leading-tight">
+                                    {ci.quantity || 1}x {ci.menuItem?.name || ci.name || 'Item'}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
 
-                        {}
-                        {item.bogoItem && item.variants?.find(v => v.size === item.selectedSize)?.isBOGO && (
-                          <div className="mt-2 space-y-1 pl-2 border-l border-emerald-500/30">
-                            <span className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">Buy 1 Get 1 Free Add-on:</span>
-                            <div className="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-emerald-500/20">
-                              🎁 Free {item.bogoItem.name} {item.bogoItem.size ? `(${item.bogoItem.size})` : ''} x {item.bogoItem.quantity || item.quantity}
+                          {!item.isCombo && item.variants?.find(v => v.size === item.selectedSize)?.includedItems?.length > 0 && (
+                            <div className="mt-1.5 pl-2 border-l border-primary/30">
+                              <span className="text-[7px] font-black text-primary uppercase tracking-wide block">Add-ons:</span>
+                              <div className="flex flex-wrap gap-1 mt-0.5">
+                                {item.variants.find(v => v.size === item.selectedSize).includedItems.map((ii, idx) => (
+                                  <span key={idx} className="inline-flex items-center bg-primary/5 text-primary text-[7px] font-bold px-1.5 py-0.5 rounded border border-primary/10 leading-tight">
+                                    {ii.quantity || 1}x {ii.menuItem?.name || ii.name || 'Item'}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
+
+                          {item.bogoItem && item.variants?.find(v => v.size === item.selectedSize)?.isBOGO && (
+                            <div className="mt-1.5 pl-2 border-l border-emerald-500/30">
+                              <span className="text-[7px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wide block">BOGO Free:</span>
+                              <span className="inline-flex items-center gap-1 mt-0.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[7px] font-bold px-1.5 py-0.5 rounded border border-emerald-500/20 leading-tight">
+                                🎁 {item.bogoItem.name} {item.bogoItem.size ? `(${item.bogoItem.size})` : ''} x{item.bogoItem.quantity || item.quantity}
+                              </span>
+                            </div>
+                          )}
+
+                        </div>
                       </div>
-                      <div className="text-lg font-black text-text-primary tracking-tighter pr-2">
-                        ₹{(() => {
-                          const variants = item.variants || item.sizes || [];
-                          const sizeData = variants.find(v => v.size === item.selectedSize);
+
+                      {/* Right: Price */}
+                      <div className="flex justify-end w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/10">
+                        <div className="text-[14px] sm:text-lg font-black text-text-primary tracking-tighter pr-1 shrink-0">
+                          ₹{(() => {
+                            const variants = item.variants || item.sizes || [];
+                            const sizeData = variants.find(v => v.size === item.selectedSize);
                           const basePrice = sizeData ? sizeData.price : (item.offerPrice || item.price || 0);
                           // Apply item/category discount to match cart page calculation
                           const menuDiscount = item.discountPercentage || 0;
                           const categoryDiscount = item.category?.discountPercentage || 0;
                           const maxDiscount = Math.max(menuDiscount, categoryDiscount);
                           const discountedPrice = item.isCombo
-                            ? basePrice
-                            : Math.round(maxDiscount > 0 ? basePrice * (1 - maxDiscount / 100) : basePrice);
+                          ? Math.round(basePrice)
+                              : Math.round(maxDiscount > 0 ? basePrice * (1 - maxDiscount / 100) : basePrice);
                           return discountedPrice * item.quantity;
-                        })()}
+                          })()}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -577,10 +587,10 @@ const PaymentPage = () => {
 
             {/* Right Column: Payment Method */}
             <div className="w-full lg:w-[420px] sticky top-32">
-              <div className="bg-background-card rounded-[3.5rem] shadow-[0_50px_100px_rgba(0,0,0,0.06)] border border-border/40 overflow-hidden relative group">
+              <div className="bg-background-card rounded-[2rem] sm:rounded-[3.5rem] shadow-[0_50px_100px_rgba(0,0,0,0.06)] border border-border/40 overflow-hidden relative group">
                 <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-r from-primary via-primary-light to-primary"></div>
 
-                <div className="p-6 md:p-8 relative z-10">
+                <div className="p-5 md:p-8 relative z-10">
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-black text-text-primary tracking-tighter uppercase flex items-center gap-3">
                       <div className="p-2 bg-primary/10 text-primary rounded-xl">
@@ -615,7 +625,7 @@ const PaymentPage = () => {
                     </div>
 
 
-                    {}
+                    { }
                     <div
                       onClick={() => setPaymentMethod('cod')}
                       className={`cursor-pointer group/pay p-4 rounded-[1.5rem] border-2 transition-all duration-500 flex items-center justify-between ${paymentMethod === 'cod' ? 'border-primary bg-primary/[0.03] shadow-lg shadow-primary/5 -translate-y-0.5' : 'border-border/20 bg-background hover:border-primary/30 hover:bg-background-card hover:-translate-y-0.5'}`}
@@ -635,7 +645,7 @@ const PaymentPage = () => {
                     </div>
                   </div>
 
-                  {}
+                  { }
                   <div className="bg-background rounded-[2rem] p-6 mb-8 space-y-3 relative border border-border/40 shadow-inner overflow-hidden group/summary">
                     <div className="absolute inset-0 bg-primary/5 -translate-x-full group-hover/summary:translate-x-0 transition-transform duration-700"></div>
                     <div className="relative z-10 flex justify-between text-[10px] font-black text-text-muted uppercase tracking-widest">
@@ -669,14 +679,14 @@ const PaymentPage = () => {
                     </div>
                   </div>
 
-                  {}
+                  { }
                   <button
                     onClick={handlePlaceOrder}
                     disabled={loading}
                     className="w-full bg-primary hover:bg-primary-dark text-white font-black py-5 rounded-[1.75rem] transition-all duration-700 shadow-[0_15px_40px_rgba(185,28,28,0.2)] active:scale-95 flex items-center justify-center gap-4 group/btn disabled:opacity-50 relative overflow-hidden"
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000"></div>
-                    <span className="text-[10px] uppercase tracking-[0.3em] relative z-10">{loading ? 'Processing...' : 'Place Your Order'}</span>
+                    <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.3em] relative z-10">{loading ? 'Processing...' : 'Place Your Order'}</span>
                     {!loading && <ChevronRight size={18} strokeWidth={3} className="group-hover/btn:translate-x-2 transition-transform duration-500 relative z-10" />}
                   </button>
 

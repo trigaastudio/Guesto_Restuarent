@@ -145,6 +145,11 @@ const menuSchema = new mongoose.Schema({
     type: Number,
     default: 0,
     index: true
+  },
+
+  hideFromCustomer: {
+    type: Boolean,
+    default: false
   }
 
 }, { timestamps: true });

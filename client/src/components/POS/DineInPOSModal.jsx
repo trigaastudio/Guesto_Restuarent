@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Minus, X, ShoppingCart, User, Phone, CheckCircle2, Zap } from 'lucide-react';
+import { Search, Plus, Minus, X, ShoppingCart, User, CheckCircle2, Zap, UtensilsCrossed } from 'lucide-react';
 import { io } from 'socket.io-client';
 import { getEffectiveStock } from '../../utils/stockHelpers';
 import api from '../../api/axiosInstance';
@@ -81,7 +81,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
 
   const fetchMenu = async () => {
     try {
-      const response = await api.get('/api/menus');
+      const response = await api.get('/api/menus?all=true');
       setMenuItems(response.data.filter(m => !m.isBlocked));
     } catch (error) {
       console.error('Error fetching menu:', error);
@@ -141,8 +141,11 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
     const menuDiscount = item.discountPercentage || 0;
     const categoryDiscount = item.category?.discountPercentage || 0;
     const discountPercent = Math.max(menuDiscount, categoryDiscount);
-    const basePrice = variant.price || item.price || 0;
-    const currentPrice = item.isCombo ? basePrice : Math.round(discountPercent > 0 ? basePrice * (1 - discountPercent / 100) : basePrice);
+    const comboOriginalPrice = item.isCombo 
+      ? item.comboItems?.reduce((sum, ci) => sum + ((ci.price || ci.menuItem?.price) || 0), 0)
+      : null;
+    const basePrice = item.isCombo && comboOriginalPrice ? comboOriginalPrice : (variant.price || item.price || 0);
+    const currentPrice = Math.round(item.isCombo ? (item.price || basePrice) : (discountPercent > 0 ? basePrice * (1 - discountPercent / 100) : basePrice));
 
     setCart(prevCart => {
       const existingIndex = prevCart.findIndex(c => c.menuItem === item._id && c.size === sizeName);
@@ -294,7 +297,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
 
   const validateCartStock = async () => {
     try {
-      const response = await api.get('/api/menus');
+      const response = await api.get('/api/menus?all=true');
       const latestMenu = response.data.filter(m => !m.isBlocked);
 
 
@@ -308,10 +311,10 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
         }
 
         const totalQtyInCart = cart.reduce((acc, c) => c.menuItem === cartItem.menuItem ? acc + c.quantity : acc, 0);
+        const effectiveStock = getEffectiveStock(menuItem);
 
-        if (menuItem.totalStock === undefined || totalQtyInCart > menuItem.totalStock) {
-          const availableStock = menuItem.totalStock !== undefined ? menuItem.totalStock : 0;
-          showToast('error', `Insufficient stock for ${cartItem.name}. Available: ${availableStock}, Requested: ${totalQtyInCart}`);
+        if (totalQtyInCart > effectiveStock) {
+          showToast('error', `Insufficient stock for ${cartItem.name}. Available: ${effectiveStock}, Requested: ${totalQtyInCart}`);
           return false;
         }
       }
@@ -413,37 +416,73 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
     }
   };
 
+  const [mobileActiveTab, setMobileActiveTab] = useState('menu');
+
   if (!isOpen) return null;
 
   const filteredMenu = menuItems.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const cartItemCount = cart.length;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose}></div>
-      <div className="bg-background-card w-full max-w-6xl h-[85vh] rounded-[2.5rem] shadow-2xl relative z-10 flex overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="bg-background-card w-full max-w-6xl h-[92vh] sm:h-[85vh] rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl relative z-10 flex flex-col lg:flex-row overflow-hidden animate-in zoom-in-95 duration-200">
 
-        { }
-        <div className="flex-1 flex flex-col border-r border-border-light bg-background">
-          <div className="p-6 border-b border-border-light bg-background-card">
-            <div className="flex justify-between items-center mb-4">
+        {/* Mobile Tab Switcher */}
+        <div className="lg:hidden flex items-center border-b border-border-light bg-background-card shrink-0">
+          <button
+            onClick={() => setMobileActiveTab('menu')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-black uppercase tracking-widest transition-all ${
+              mobileActiveTab === 'menu'
+                ? 'text-primary border-b-2 border-primary bg-primary/5'
+                : 'text-text-muted hover:text-text-primary'
+            }`}
+          >
+            <UtensilsCrossed size={15} />
+            Menu
+          </button>
+          <button
+            onClick={() => setMobileActiveTab('cart')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-black uppercase tracking-widest transition-all ${
+              mobileActiveTab === 'cart'
+                ? 'text-primary border-b-2 border-primary bg-primary/5'
+                : 'text-text-muted hover:text-text-primary'
+            }`}
+          >
+            <ShoppingCart size={15} />
+            Cart
+            {cartItemCount > 0 && (
+              <span className="min-w-[18px] h-[18px] bg-primary text-white text-[9px] font-black flex items-center justify-center rounded-full px-1 ml-0.5">
+                {cartItemCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Left Column: Menu */}
+        <div className={`flex-1 flex-col min-h-0 border-r border-border-light bg-background ${
+          mobileActiveTab === 'menu' ? 'flex' : 'hidden'
+        } lg:flex`}>
+          <div className="p-4 sm:p-6 border-b border-border-light bg-background-card">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
               <div>
-                <h3 className="text-xl font-black text-text-primary tracking-tight">Table {table?.tableNumber} Menu</h3>
-                <p className="text-xs font-bold text-text-muted mt-1 uppercase tracking-widest">Select items to order</p>
+                <h3 className="text-lg sm:text-xl font-black text-text-primary tracking-tight">Table {table?.tableNumber} Menu</h3>
+                <p className="text-xs font-bold text-text-muted mt-0.5 uppercase tracking-widest">Select items to order</p>
               </div>
-              <div className="relative w-64 md:w-72 lg:w-80">
-                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted" />
+              <div className="relative w-full sm:w-64 md:w-72 lg:w-80">
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" />
                 <input
                   type="text"
                   placeholder="Search menu..."
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 md:py-3.5 bg-background border border-border-light rounded-2xl focus:outline-none focus:border-primary font-bold text-sm md:text-base"
+                  className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-background border border-border-light rounded-2xl focus:outline-none focus:border-primary font-bold text-sm"
                 />
               </div>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 grid grid-cols-2 lg:grid-cols-3 gap-4 no-scrollbar">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 no-scrollbar">
             {filteredMenu.map(item => {
               const rawStock = getDynamicRawStock(item);
               const isFullyOutOfStock = item.totalStock !== undefined && rawStock <= 0;
@@ -491,7 +530,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                   </div>
                   <div className="flex flex-col mb-2">
                     <div className="flex items-center justify-between mb-1.5">
-                      <p className="font-bold text-text-primary text-sm md:text-base line-clamp-1">{item.name}</p>
+                      <p className="font-bold text-text-primary text-xs md:text-sm line-clamp-2 leading-tight">{item.name}</p>
                       <span className={`text-[9px] md:text-[10px] font-black px-2 py-0.5 rounded-full ${rawStock > 10 ? 'bg-primary/10 text-primary' : rawStock > 0 ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'}`}>
                         {rawStock} Left
                       </span>
@@ -521,9 +560,11 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
           </div>
         </div>
 
-        { }
-        <div className="w-[40%] min-w-[340px] max-w-[450px] flex flex-col bg-background-card flex-shrink-0 overflow-hidden">
-          <div className="p-5 md:p-6 border-b border-border-light flex justify-between items-center shrink-0 bg-background-muted/30">
+        {/* Right Column: Cart */}
+        <div className={`w-full flex-1 min-h-0 lg:flex-none lg:w-[40%] lg:min-w-[340px] lg:max-w-[450px] flex-col bg-background-card flex-shrink-0 overflow-hidden ${
+          mobileActiveTab === 'cart' ? 'flex' : 'hidden'
+        } lg:flex`}>
+          <div className="p-4 sm:p-5 md:p-6 border-b border-border-light flex justify-between items-center shrink-0 bg-background-muted/30">
             <div className="flex items-center gap-2.5">
               <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shadow-inner border border-primary/10 shrink-0">
                 <ShoppingCart size={18} strokeWidth={2.5} />
@@ -549,7 +590,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-5 md:p-6 space-y-4 bg-background min-h-0">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 md:p-6 space-y-4 bg-background min-h-0">
             {cart.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-text-muted/50">
                 <ShoppingCart size={48} className="mb-4 opacity-50" />
@@ -560,7 +601,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
               cart.map((item, index) => (
                 <div key={`${item.menuItem}-${item.size}-${index}`} className="flex items-start gap-3 p-3 bg-background-card rounded-2xl border border-border-light shadow-sm hover:bg-background-muted/40 transition-all duration-300">
                   <div className="flex-1 min-w-0 pr-2">
-                    <p className="font-black text-text-primary text-sm md:text-base truncate">{item.name}</p>
+                    <p className="font-black text-text-primary text-xs md:text-sm line-clamp-2 leading-tight">{item.name}</p>
                     <p className="text-[10px] md:text-[11px] font-bold text-text-muted uppercase tracking-wider mt-0.5">{item.size} · ₹{item.unitPrice}</p>
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {item.comboItems?.length > 0 && (
@@ -592,7 +633,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2 shrink-0">
-                    <p className="font-black text-[13px] md:text-sm text-text-primary">₹{item.totalPrice}</p>
+                    <p className="font-black text-[13px] md:text-sm text-text-primary">₹{Math.round(item.totalPrice || 0)}</p>
                     <div className="flex items-center gap-1.5">
                       <div className="flex items-center bg-background border border-border-light rounded-xl overflow-hidden shadow-inner">
                         <button onClick={() => updateCartQuantity(index, -1)} className="p-2 hover:bg-background-muted text-text-secondary transition-colors"><Minus size={14} /></button>
@@ -617,7 +658,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
             )}
           </div>
 
-          <div className="p-5 md:p-6 border-t border-border-light space-y-4 bg-primary/5 shrink-0">
+          <div className="p-4 sm:p-5 md:p-6 border-t border-border-light space-y-4 bg-primary/5 shrink-0">
             <div>
               <label className="text-[10px] font-black text-text-muted uppercase tracking-widest ml-1 mb-1 block">Customer Name (Optional)</label>
               <div className="relative">
@@ -633,11 +674,11 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
             </div>
           </div>
 
-          <div className="p-4 md:p-5 bg-background-card border-t border-border-light shadow-[0_-10px_40px_rgba(0,0,0,0.05)] flex justify-between items-center shrink-0">
+          <div className="p-3 sm:p-4 md:p-5 bg-background-card border-t border-border-light shadow-[0_-10px_40px_rgba(0,0,0,0.05)] flex justify-between items-center shrink-0">
             <div>
               <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-0.5">Total Amount</p>
               <p className="text-2xl font-black text-primary tracking-tight leading-none">
-                ₹{cart.reduce((acc, item) => acc + item.totalPrice, 0)}
+                ₹{Math.round(cart.reduce((acc, item) => acc + (item.totalPrice || 0), 0))}
               </p>
             </div>
             <button
@@ -654,24 +695,24 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
         { }
         {showConfirmModal && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px] animate-in fade-in duration-200">
-            <div className="bg-background-card w-full max-w-md md:max-w-lg lg:max-w-xl p-6 md:p-8 rounded-[2rem] shadow-2xl animate-in zoom-in-95 duration-200 m-4">
+            <div className="bg-background-card w-full max-w-md md:max-w-lg lg:max-w-xl p-5 sm:p-6 md:p-8 rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl animate-in zoom-in-95 duration-200 m-3 sm:m-4">
               <h3 className="text-xl md:text-2xl font-black text-text-primary mb-5 md:mb-6 uppercase tracking-tight text-center">Confirm Order</h3>
 
               <div className="space-y-3 min-h-[35vh] max-h-[50vh] overflow-y-auto mb-6 pr-2 no-scrollbar bg-background-muted/20 p-4 rounded-2xl">
                 {cart.map((item, idx) => (
                   <div key={idx} className="flex justify-between items-center bg-background p-4 rounded-xl shadow-sm">
                     <div className="min-w-0 flex-1 pr-3">
-                      <p className="font-bold text-text-primary text-[15px] truncate">{item.name}</p>
+                      <p className="font-bold text-text-primary text-sm line-clamp-2 leading-tight">{item.name}</p>
                       <p className="text-[11px] text-text-muted uppercase font-black tracking-widest mt-1">{item.size} x {item.quantity}</p>
                     </div>
-                    <p className="font-black text-text-primary text-base shrink-0">₹{item.totalPrice}</p>
+                    <p className="font-black text-text-primary text-base shrink-0">₹{Math.round(item.totalPrice || 0)}</p>
                   </div>
                 ))}
               </div>
 
               <div className="flex justify-between items-center mb-6 px-2">
                 <span className="text-[11px] font-black text-text-muted uppercase tracking-widest">Total Amount</span>
-                <span className="text-3xl font-black text-primary tracking-tighter">₹{cart.reduce((acc, i) => acc + i.totalPrice, 0)}</span>
+                <span className="text-3xl font-black text-primary tracking-tighter">₹{Math.round(cart.reduce((acc, i) => acc + (i.totalPrice || 0), 0))}</span>
               </div>
 
               <div className="flex gap-3">

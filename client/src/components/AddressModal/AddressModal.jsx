@@ -197,7 +197,15 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
     if (!formData.phone.trim()) newErrors.phone = true;
     if (!formData.address.trim()) newErrors.address = true;
     if (recipientType === 'others' && !formData.landmark.trim()) newErrors.landmark = true;
-    if (recipientType === 'myself' && !formData.location) newErrors.location = true;
+    
+    if (!formData.location || !formData.location.trim()) {
+      newErrors.location = 'Location is required';
+    } else {
+      const locText = formData.location.toLowerCase();
+      if (!locText.includes('google.com/maps') && !locText.includes('maps.app.goo.gl') && !locText.includes('maps.google.com')) {
+        newErrors.location = 'Please paste a valid Google Maps link or click Current Location';
+      }
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;

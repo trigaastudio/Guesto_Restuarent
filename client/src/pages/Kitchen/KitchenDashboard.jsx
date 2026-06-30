@@ -17,7 +17,7 @@ import { logoutStaff } from '../../utils/auth';
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://guest-o-backend.onrender.com/api';
 const SOCKET_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'https://guest-o-backend.onrender.com';
 
-const NOTIFICATION_SOUND = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
+const NOTIFICATION_SOUND = '/sounds/notification.mp3';
 
 const KITCHEN_STATUSES = [
   { value: 'placed', label: 'Placed', bg: 'bg-amber-500/10', text: 'text-amber-600', border: 'border-amber-400/40', dot: 'bg-amber-500' },
@@ -27,38 +27,31 @@ const KITCHEN_STATUSES = [
 ];
 
 const ItemStatusActions = ({ value, onChange }) => {
-  if (value === 'placed') {
-    return (
-      <button onClick={() => onChange('preparing')} className="flex items-center space-x-1 bg-blue-500/10 text-blue-600 border border-blue-500/30 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-500/20 transition-all">
-        <ChefHat size={12} />
-        <span>Start</span>
-      </button>
-    );
-  }
-  if (value === 'preparing' || value === 'delayed') {
-    return (
-      <div className="flex items-center space-x-2">
-        {value === 'preparing' && (
-          <button onClick={() => onChange('delayed')} className="p-1.5 bg-amber-500/10 text-amber-600 border border-amber-500/30 rounded-lg hover:bg-amber-500/20 transition-colors" title="Mark Delayed">
-            <AlertTriangle size={14} />
-          </button>
-        )}
-        <button onClick={() => onChange('ready')} className="flex items-center space-x-1 bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500/20 hover:scale-105 transition-all shadow-sm">
-          <CheckCircle2 size={12} />
-          <span>Ready</span>
-        </button>
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border outline-none appearance-none cursor-pointer transition-colors shadow-sm
+          ${value === 'placed' ? 'bg-amber-500/10 text-amber-600 border-amber-500/30' :
+          value === 'preparing' ? 'bg-blue-500/10 text-blue-600 border-blue-500/30' :
+          value === 'delayed' ? 'bg-red-500/10 text-red-600 border-red-500/30' :
+          'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'
+        }`}
+        style={{ textAlignLast: 'center', paddingRight: '20px' }}
+      >
+        {value === 'placed' && <option value="placed" disabled className="bg-background text-text-primary font-bold">Placed (New)</option>}
+        <option value="preparing" className="bg-background text-text-primary font-bold">Preparing</option>
+        <option value="delayed" className="bg-background text-text-primary font-bold">Delayed</option>
+        <option value="ready" className="bg-background text-text-primary font-bold">Ready</option>
+      </select>
+      <div className="pointer-events-none absolute inset-y-0 right-1 flex items-center px-1 text-inherit opacity-70">
+        <svg className="fill-current h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+          <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+        </svg>
       </div>
-    );
-  }
-  if (value === 'ready') {
-    return (
-      <span className="flex items-center space-x-1 text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg text-[10px] font-black uppercase">
-        <CheckCircle2 size={12} />
-        <span>Done</span>
-      </span>
-    );
-  }
-  return null;
+    </div>
+  );
 };
 
 const TABS = [
@@ -135,7 +128,10 @@ const KitchenDashboard = () => {
     document.title = `Kitchen | ${tabName}`;
 
 
-    socketRef.current = io(SOCKET_URL);
+    const token = localStorage.getItem('staff_token') || localStorage.getItem('admin_token') || '';
+    socketRef.current = io(SOCKET_URL, {
+      auth: { token }
+    });
     socketRef.current.on('ordersUpdated', () => {
       fetchOrders(true);
     });
@@ -350,7 +346,7 @@ const KitchenDashboard = () => {
 
     let typeMatch = false;
     if (activeTab === 'delivery') typeMatch = o.orderType === 'delivery' || o.orderType === 'online';
-    else if (activeTab === 'takeaway') typeMatch = o.orderType === 'takeaway' || o.orderType === 'take-away';
+    else if (activeTab === 'takeaway') typeMatch = o.orderType === 'takeaway' || o.orderType === 'take-away' || o.orderType === 'counter';
     else if (activeTab === 'dine-in') typeMatch = o.orderType === 'dine-in' || o.orderType === 'dining';
     else typeMatch = o.orderType === activeTab;
 
@@ -374,7 +370,7 @@ const KitchenDashboard = () => {
   return (
     <div className="flex h-screen bg-background text-text-primary overflow-hidden transition-colors duration-300">
 
-      { }
+      {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />
       )}
@@ -404,7 +400,7 @@ const KitchenDashboard = () => {
                   : (isDarkMode ? (settings?.branding?.logoGold || '/logo-golden.png') : (settings?.branding?.logoDark || '/logo-dark.png'))
               }
               alt="Logo"
-              className={`${(isSidebarCollapsed && !isMobileMenuOpen) ? 'h-8' : 'h-10'} w-auto transition-all duration-500`}
+              className={`hidden lg:block ${(isSidebarCollapsed && !isMobileMenuOpen) ? 'h-8' : 'h-10'} w-auto transition-all duration-500`}
             />
             <button
               onClick={() => setIsMobileMenuOpen(false)}
@@ -433,7 +429,7 @@ const KitchenDashboard = () => {
               const count = orders.filter(o => {
                 let typeMatch = false;
                 if (tab.type === 'delivery') typeMatch = o.orderType === 'delivery' || o.orderType === 'online';
-                else if (tab.type === 'takeaway') typeMatch = o.orderType === 'takeaway' || o.orderType === 'take-away';
+                else if (tab.type === 'takeaway') typeMatch = o.orderType === 'takeaway' || o.orderType === 'take-away' || o.orderType === 'counter';
                 else if (tab.type === 'dine-in') typeMatch = o.orderType === 'dine-in' || o.orderType === 'dining';
                 else typeMatch = o.orderType === tab.type;
 
@@ -491,35 +487,35 @@ const KitchenDashboard = () => {
       </aside>
 
       {/* Main Content */}
-      <main className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'lg:ml-[5.5rem]' : 'lg:ml-64'}`}>
+      <main className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'lg:ml-[5.5rem]' : 'lg:ml-64'} ml-0`}>
 
         {/* Header */}
-        <header className="h-20 bg-background-card border-b border-border-main flex items-center justify-between px-4 lg:px-8 shrink-0">
-          <div className="flex items-center space-x-4">
+        <header className="h-16 sm:h-20 bg-background-card border-b border-border-main flex items-center justify-between px-3 sm:px-4 lg:px-8 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             {/* Mobile menu toggle */}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="lg:hidden p-2 text-text-secondary hover:bg-background-muted rounded-lg"
+              className="lg:hidden p-2 text-text-secondary hover:bg-background-muted rounded-lg shrink-0"
             >
-              <Menu size={22} />
+              <Menu size={20} />
             </button>
 
-            <div>
-              <h1 className="text-lg font-black text-text-primary tracking-tight">Kitchen Dashboard</h1>
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-lg font-black text-text-primary tracking-tight truncate">Kitchen Dashboard</h1>
               <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest hidden sm:block">
                 {TABS.find(t => t.type === activeTab)?.name} Orders
               </p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 sm:space-x-4">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             {/* Theme toggle */}
             <button
               onClick={toggleTheme}
               className="p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all"
               title="Toggle Theme"
             >
-              {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+              {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
 
             {/* Refresh */}
@@ -528,7 +524,7 @@ const KitchenDashboard = () => {
               className="p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all group"
               title="Refresh Orders"
             >
-              <RefreshCw size={20} className={`${isLoading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
+              <RefreshCw size={18} className={`${isLoading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
             </button>
 
             {/* Notifications */}
@@ -537,29 +533,29 @@ const KitchenDashboard = () => {
                 onClick={() => setShowNotifPanel(!showNotifPanel)}
                 className="relative p-2 text-text-secondary hover:text-primary transition-all bg-background-muted/30 rounded-lg group"
               >
-                <Bell size={22} className="group-hover:rotate-12 transition-transform" />
+                <Bell size={18} className="group-hover:rotate-12 transition-transform" />
                 {notifications.length > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-600 text-white text-[9px] font-bold flex items-center justify-center rounded-full border-2 border-background-card shadow-sm">
+                  <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-red-600 text-white text-[8px] font-bold flex items-center justify-center rounded-full border border-background-card shadow-sm">
                     {notifications.length > 9 ? '9+' : notifications.length}
                   </span>
                 )}
               </button>
 
-              {/* Notification Panel */}
+              {/* Notification Panel — constrained on mobile */}
               {showNotifPanel && (
-                <div className="absolute right-0 top-12 w-80 bg-background-card border border-border-light rounded-2xl shadow-2xl z-50 overflow-hidden animate-in slide-in-from-top-2 duration-200">
-                  <div className="flex items-center justify-between p-4 border-b border-border-light">
-                    <h3 className="text-sm font-black text-text-primary uppercase tracking-widest">Notifications</h3>
+                <div className="absolute right-0 top-11 w-[calc(100vw-2rem)] max-w-xs sm:max-w-sm sm:w-80 bg-background-card border border-border-light rounded-2xl shadow-2xl z-50 overflow-hidden animate-in slide-in-from-top-2 duration-200">
+                  <div className="flex items-center justify-between p-3 sm:p-4 border-b border-border-light">
+                    <h3 className="text-xs sm:text-sm font-black text-text-primary uppercase tracking-widest">Notifications</h3>
                     <button onClick={() => { setNotifications([]); setShowNotifPanel(false); }} className="text-[10px] text-text-muted hover:text-primary font-bold uppercase">Clear All</button>
                   </div>
-                  <div className="max-h-64 overflow-y-auto no-scrollbar">
+                  <div className="max-h-56 overflow-y-auto no-scrollbar">
                     {notifications.length === 0 ? (
-                      <div className="p-6 text-center text-text-muted text-xs font-bold">No new notifications</div>
+                      <div className="p-5 text-center text-text-muted text-xs font-bold">No new notifications</div>
                     ) : (
                       notifications.map(n => (
-                        <div key={n.id} className="flex items-start space-x-3 p-4 border-b border-border-light hover:bg-background-muted/30 transition-colors">
-                          <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
-                          <div>
+                        <div key={n.id} className="flex items-start gap-3 p-3 sm:p-4 border-b border-border-light hover:bg-background-muted/30 transition-colors">
+                          <AlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" />
+                          <div className="min-w-0">
                             <p className="text-xs font-bold text-text-primary">{n.message}</p>
                             <p className="text-[10px] text-text-muted mt-0.5">{n.time}</p>
                           </div>
@@ -571,25 +567,59 @@ const KitchenDashboard = () => {
               )}
             </div>
 
-            {/* Staff info */}
-            <div className="flex items-center space-x-3 border-l pl-4 sm:pl-6 border-border-light">
+            {/* Staff avatar — always visible; name hidden on mobile */}
+            <div className="flex items-center gap-2 border-l border-border-light pl-2 sm:pl-4 ml-1">
               <div className="hidden sm:block text-right">
                 <p className="text-sm font-bold text-text-primary">{staff.name || 'User'}</p>
                 <p className="text-[10px] text-text-secondary uppercase tracking-wider">
                   {staff.role === 'admin' ? 'Administrator' : (staff.employeeId || 'Staff')}
                 </p>
               </div>
-              <div className="w-10 h-10 rounded-full bg-amber-500/20 border-2 border-amber-500/10 flex items-center justify-center text-amber-500 font-black shrink-0 text-sm">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-amber-500/20 border-2 border-amber-500/10 flex items-center justify-center text-amber-500 font-black shrink-0 text-xs sm:text-sm">
                 {staff.name?.charAt(0) || staff.role?.charAt(0)?.toUpperCase() || 'U'}
               </div>
             </div>
           </div>
         </header>
 
+        {/* Mobile Order Type Tabs */}
+        <div className="lg:hidden flex items-center border-b border-border-light bg-background-card shrink-0 overflow-x-auto no-scrollbar">
+          {TABS.map((tab) => {
+            const count = orders.filter(o => {
+              let typeMatch = false;
+              if (tab.type === 'delivery') typeMatch = o.orderType === 'delivery' || o.orderType === 'online';
+              else if (tab.type === 'takeaway') typeMatch = o.orderType === 'takeaway' || o.orderType === 'take-away' || o.orderType === 'counter';
+              else if (tab.type === 'dine-in') typeMatch = o.orderType === 'dine-in' || o.orderType === 'dining';
+              else typeMatch = o.orderType === tab.type;
+              if (!typeMatch) return false;
+              return o.items?.some(i => (i.kitchenStatus || 'placed') === 'placed');
+            }).length;
+            return (
+              <button
+                key={tab.type}
+                onClick={() => handleTabChange(tab.type)}
+                className={`flex-1 min-w-[90px] flex items-center justify-center gap-1.5 py-3 text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${
+                  activeTab === tab.type
+                    ? 'text-primary border-b-2 border-primary bg-primary/5'
+                    : 'text-text-muted hover:text-text-primary'
+                }`}
+              >
+                <tab.icon size={14} />
+                {tab.name}
+                {count > 0 && (
+                  <span className={`min-w-[16px] h-4 text-[9px] font-black flex items-center justify-center rounded-full px-1 ${
+                    activeTab === tab.type ? 'bg-primary text-white' : 'bg-primary/10 text-primary'
+                  }`}>{count}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-6">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-8 space-y-4 sm:space-y-6">
           {/* Status Filter Bar */}
-          <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-md pb-4 pt-1 -mt-1 flex items-center space-x-3 flex-wrap gap-y-2">
+          <div className="sticky top-0 z-30 bg-background/90 backdrop-blur-md pb-3 pt-1 -mt-1 flex items-center gap-2 overflow-x-auto no-scrollbar">
             {[
               { id: 'new', label: 'New Orders', icon: Bell, filterKey: 'placed' },
               { id: 'preparing', label: 'Preparing', icon: ChefHat, filterKey: 'preparing' },
@@ -598,7 +628,7 @@ const KitchenDashboard = () => {
               const tabOrders = orders.filter(o => {
                 let typeMatch = false;
                 if (activeTab === 'delivery') typeMatch = o.orderType === 'delivery' || o.orderType === 'online';
-                else if (activeTab === 'takeaway') typeMatch = o.orderType === 'takeaway' || o.orderType === 'take-away';
+                else if (activeTab === 'takeaway') typeMatch = o.orderType === 'takeaway' || o.orderType === 'take-away' || o.orderType === 'counter';
                 else if (activeTab === 'dine-in') typeMatch = o.orderType === 'dine-in' || o.orderType === 'dining';
                 else typeMatch = o.orderType === activeTab;
                 if (!typeMatch) return false;
@@ -610,7 +640,7 @@ const KitchenDashboard = () => {
                 <button
                   key={filter.id}
                   onClick={() => setActiveStatusFilter(filter.id)}
-                  className={`flex items-center space-x-2 px-5 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all
+                  className={`flex items-center space-x-1.5 sm:space-x-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap flex-shrink-0
                     ${activeStatusFilter === filter.id
                       ? isDelayed ? 'bg-red-500 text-white shadow-lg shadow-red-500/20 scale-105' : 'bg-primary text-white shadow-lg shadow-primary/20 scale-105'
                       : isDelayed && count > 0 ? 'text-red-500 hover:bg-red-500/10 border border-red-500/20 animate-pulse' : 'text-text-muted hover:bg-background-muted hover:text-text-primary'
@@ -632,7 +662,7 @@ const KitchenDashboard = () => {
           </div>
 
           {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {Array.from({ length: 6 }).map((_, i) => (
                 <ListSkeleton key={i} />
               ))}
@@ -650,7 +680,7 @@ const KitchenDashboard = () => {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 items-start animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-8 items-start animate-in fade-in slide-in-from-bottom-4 duration-500">
               {filteredOrders.map((order) => {
                 const allReady = order.items?.every(i => i.kitchenStatus === 'ready');
                 return (
@@ -697,11 +727,11 @@ const KitchenDashboard = () => {
                           <Printer size={14} />
                         </button>
                         <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border shadow-sm
-                          ${order.orderType === 'takeaway' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                          ${(order.orderType === 'takeaway' || order.orderType === 'counter') ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
                             order.orderType === 'dine-in' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
                               'bg-orange-500/10 text-orange-500 border-orange-500/20'}
                         `}>
-                          {order.orderType === 'takeaway' ? 'CTR' : order.orderType === 'dine-in' ? 'DNE' : 'DLV'}
+                          {(order.orderType === 'takeaway' || order.orderType === 'counter') ? 'CTR' : order.orderType === 'dine-in' ? 'DNE' : 'DLV'}
                         </span>
                       </div>
                     </div>
@@ -725,12 +755,26 @@ const KitchenDashboard = () => {
                         </div>
                         {order.items?.some(i => i.kitchenStatus !== 'ready') && (
                           <div className="pt-2 flex justify-end">
-                            <button
-                              onClick={() => handleBulkUpdateOrderItems(order._id, 'ready', order.orderNumber)}
-                              className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[9px] font-black uppercase tracking-widest rounded-xl transition-all shadow-sm shadow-emerald-500/20 active:scale-95"
-                            >
-                              Mark All Ready
-                            </button>
+                            <div className="relative">
+                              <select
+                                value=""
+                                onChange={(e) => {
+                                  const newStatus = e.target.value;
+                                  if (newStatus) handleBulkUpdateOrderItems(order._id, newStatus, order.orderNumber);
+                                }}
+                                className="appearance-none px-4 py-1.5 bg-background-card border border-border-light text-text-primary text-[9px] font-black uppercase tracking-widest rounded-xl transition-all shadow-sm hover:border-primary/50 cursor-pointer pr-8"
+                              >
+                                <option value="">Bulk Update Items</option>
+                                <option value="preparing">All Preparing</option>
+                                <option value="delayed">All Delayed</option>
+                                <option value="ready">All Ready</option>
+                              </select>
+                              <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-text-muted">
+                                <svg className="fill-current h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+                                </svg>
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -755,7 +799,7 @@ const KitchenDashboard = () => {
                       {(activeStatusFilter === 'new'
                         ? order.items?.filter(i => (i.kitchenStatus || 'placed') === 'placed')
                         : order.items
-                      )?.map((item) => {
+                      )?.slice().reverse().map((item) => {
                         const status = item.kitchenStatus || 'placed';
                         return (
                           <div key={item._id} className={`grid ${activeStatusFilter === 'new' ? 'grid-cols-[40px_1fr]' : 'grid-cols-[48px_1fr_auto]'} items-center p-3 bg-background-muted/10 rounded-2xl border border-border-light hover:border-primary/20 transition-all gap-3 group/item`}>
@@ -850,9 +894,9 @@ const KitchenDashboard = () => {
                       {activeStatusFilter === 'new' && order.items?.some(i => (i.kitchenStatus || 'placed') === 'placed') && (
                         <button
                           onClick={() => handleStartPreparation(order)}
-                          className="w-full flex items-center justify-center space-x-3 py-3 bg-primary text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all group"
+                          className="w-full flex items-center justify-center space-x-2 py-3 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all hover:scale-[1.01] active:scale-95 shadow-sm"
                         >
-                          <ChefHat size={16} className="group-hover:rotate-12 transition-transform" />
+                          <ChefHat size={14} />
                           <span>Send to Preparing</span>
                         </button>
                       )}

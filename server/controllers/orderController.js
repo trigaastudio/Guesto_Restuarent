@@ -8,7 +8,9 @@ import Category from '../models/categorySchema.js';
 import Settings from '../models/settingsSchema.js';
 import Table from '../models/tableSchema.js';
 import { getIO, emitStockUpdate, emitCategoryStockUpdate, emitTablesUpdated } from '../socket.js';
-import { logAdminAction } from '../services/auditService.js'; 
+import { logAdminAction } from '../services/auditService.js';
+import { menuCache } from './menuController.js';
+import { categoryCache } from './categoryController.js';
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; 
@@ -89,18 +91,35 @@ const getNextOrderNumber = async () => {
 };
 
 const checkStockAvailability = async (items) => {
+  // First, aggregate total quantity needed per category
+  const categoryNeedsMap = {}; // categoryId -> totalAmountNeeded
+
   for (const item of items) {
-    const menuDoc = await Menu.findById(item.menuItem).populate('category');
+    const menuDoc = await Menu.findById(item.menuItem).populate('category comboItems.menuItem');
     if (!menuDoc) continue;
 
     const variant = menuDoc.variants.find(v => v.size === item.size);
     const multiplier = variant && variant.stockValue ? variant.stockValue : 1;
     const amountNeeded = item.quantity * multiplier;
 
-    if (menuDoc.category && menuDoc.category.stockactive) {
-      if (menuDoc.category.totalStock < amountNeeded) {
-        return { available: false, itemName: menuDoc.name };
+    if (menuDoc.isCombo && menuDoc.comboItems && menuDoc.comboItems.length > 0) {
+      for (const ci of menuDoc.comboItems) {
+        const ciDoc = await Menu.findById(ci.menuItem?._id || ci.menuItem).populate('category');
+        if (!ciDoc) continue;
+        const ciAmountNeeded = item.quantity * (ci.quantity || 1);
+        if (ciDoc.category && ciDoc.category.stockactive) {
+          const catId = ciDoc.category._id.toString();
+          categoryNeedsMap[catId] = (categoryNeedsMap[catId] || 0) + ciAmountNeeded;
+        } else if (ciDoc.totalStock < ciAmountNeeded) {
+          return { available: false, itemName: ciDoc.name };
+        }
       }
+      continue;
+    }
+
+    if (menuDoc.category && menuDoc.category.stockactive) {
+      const catId = menuDoc.category._id.toString();
+      categoryNeedsMap[catId] = (categoryNeedsMap[catId] || 0) + amountNeeded;
     } else if (menuDoc.totalStock < amountNeeded) {
       return { available: false, itemName: menuDoc.name };
     }
@@ -124,22 +143,31 @@ const checkStockAvailability = async (items) => {
         const bogoAmountNeeded = item.quantity * bogoMultiplier;
 
         if (bogoDoc.category && bogoDoc.category.stockactive) {
-          if (bogoDoc.category.totalStock < bogoAmountNeeded) {
-            return { available: false, itemName: `${bogoDoc.name} (Free Item)` };
-          }
+          const bogoCatId = bogoDoc.category._id.toString();
+          categoryNeedsMap[bogoCatId] = (categoryNeedsMap[bogoCatId] || 0) + bogoAmountNeeded;
         } else if (bogoDoc.totalStock < bogoAmountNeeded) {
           return { available: false, itemName: `${bogoDoc.name} (Free Item)` };
         }
       }
     }
   }
+
+  // Now check each category's total need against its current stock
+  for (const [catId, totalNeeded] of Object.entries(categoryNeedsMap)) {
+    const cat = await Category.findById(catId);
+    if (!cat) continue;
+    if (cat.totalStock < totalNeeded) {
+      return { available: false, itemName: `items from ${cat.name} category` };
+    }
+  }
+
   return { available: true };
 };
 
 const handleStock = async (items, type = 'reduce') => {
   for (const item of items) {
     try {
-      const menuDoc = await Menu.findById(item.menuItem).populate('category');
+      const menuDoc = await Menu.findById(item.menuItem).populate('category comboItems.menuItem');
       if (!menuDoc) continue;
 
       const variant = menuDoc.variants.find(v => v.size === item.size);
@@ -147,8 +175,50 @@ const handleStock = async (items, type = 'reduce') => {
       const amount = item.quantity * multiplier;
       const factor = type === 'reduce' ? -1 : 1;
 
+      // --- COMBO: reduce component item stocks, skip combo menu's own stock ---
+      if (menuDoc.isCombo && menuDoc.comboItems && menuDoc.comboItems.length > 0) {
+        for (const ci of menuDoc.comboItems) {
+          const ciDoc = await Menu.findById(ci.menuItem?._id || ci.menuItem).populate('category');
+          if (!ciDoc) continue;
+          const ciAmount = item.quantity * (ci.quantity || 1);
+
+          if (ciDoc.category && ciDoc.category.stockactive) {
+            const updatedCat = await Category.findByIdAndUpdate(
+              ciDoc.category._id,
+              { $inc: { totalStock: factor * ciAmount } },
+              { returnDocument: 'after' }
+            );
+            if (updatedCat && updatedCat.totalStock < 0) {
+              await Category.findByIdAndUpdate(ciDoc.category._id, { totalStock: 0 });
+              updatedCat.totalStock = 0;
+            }
+            if (updatedCat) emitCategoryStockUpdate(updatedCat._id, updatedCat.totalStock);
+          } else {
+            const updatedMenu = await Menu.findByIdAndUpdate(
+              ciDoc._id,
+              { $inc: { totalStock: factor * ciAmount } },
+              { returnDocument: 'after' }
+            );
+            if (updatedMenu && updatedMenu.totalStock < 0) {
+              await Menu.findByIdAndUpdate(ciDoc._id, { totalStock: 0 });
+              updatedMenu.totalStock = 0;
+            }
+            if (updatedMenu) emitStockUpdate(updatedMenu._id, updatedMenu.totalStock);
+
+            if (type === 'reduce' && updatedMenu) {
+              if (updatedMenu.totalStock <= 0) {
+                getIO().emit('stockAlert', { type: 'outOfStock', itemId: updatedMenu._id, name: updatedMenu.name, message: `CRITICAL: ${updatedMenu.name} is now OUT OF STOCK!` });
+              } else if (updatedMenu.totalStock <= 5) {
+                getIO().emit('stockAlert', { type: 'lowStock', itemId: updatedMenu._id, name: updatedMenu.name, message: `ALERT: ${updatedMenu.name} is running low (${updatedMenu.totalStock} left)` });
+              }
+            }
+          }
+        }
+        continue; // skip the rest for combo items
+      }
+
+      // --- CATEGORY STOCK ---
       if (menuDoc.category && menuDoc.category.stockactive) {
-        
         const updatedCategory = await Category.findByIdAndUpdate(
           menuDoc.category._id,
           { $inc: { totalStock: factor * amount } },
@@ -182,14 +252,13 @@ const handleStock = async (items, type = 'reduce') => {
           }
         }
       } else {
-        
+        // --- INDIVIDUAL MENU STOCK ---
         const updatedMenu = await Menu.findByIdAndUpdate(
           item.menuItem,
           { $inc: { totalStock: factor * amount } },
           { returnDocument: 'after' }
         );
 
-        
         if (updatedMenu && updatedMenu.totalStock < 0) {
           await Menu.findByIdAndUpdate(item.menuItem, { totalStock: 0 });
           updatedMenu.totalStock = 0;
@@ -199,7 +268,6 @@ const handleStock = async (items, type = 'reduce') => {
           emitStockUpdate(updatedMenu._id, updatedMenu.totalStock);
         }
 
-        
         if (type === 'reduce' && updatedMenu) {
           if (updatedMenu.totalStock <= 0) {
             getIO().emit('stockAlert', {
@@ -219,7 +287,7 @@ const handleStock = async (items, type = 'reduce') => {
         }
       }
 
-      
+      // --- INCLUDED ITEMS (variant add-ons) ---
       if (variant && variant.includedItems && variant.includedItems.length > 0) {
         for (const included of variant.includedItems) {
           const includedReduction = item.quantity * included.quantity;
@@ -238,7 +306,6 @@ const handleStock = async (items, type = 'reduce') => {
             emitStockUpdate(updatedIncluded._id, updatedIncluded.totalStock);
           }
 
-          
           if (type === 'reduce' && updatedIncluded) {
             if (updatedIncluded.totalStock <= 0) {
               getIO().emit('stockAlert', {
@@ -259,7 +326,7 @@ const handleStock = async (items, type = 'reduce') => {
         }
       }
 
-      
+      // --- BOGO ITEM ---
       if (variant && variant.isBOGO && variant.bogoItem) {
         const bogoDoc = await Menu.findById(variant.bogoItem).populate('category');
         if (bogoDoc) {
@@ -293,16 +360,19 @@ const handleStock = async (items, type = 'reduce') => {
         }
       }
 
-
     } catch (error) {
       console.error(`Error handling stock for item ${item.menuItem}:`, error);
     }
   }
+  // Flush caches so next API calls return fresh data
+  try { menuCache.flushAll(); } catch(e) {}
+  try { categoryCache.flushAll(); } catch(e) {}
 };
-
 const restoreStock = async (items) => {
   await handleStock(items, 'restore');
 };
+
+
 
 const checkStoreStatusHelper = (settings) => {
   if (!settings?.operationalSettings) return { isOpen: true };
@@ -945,11 +1015,7 @@ class OrderController {
         await restoreStock(originalOrder.items);
       }
 
-      
-      if (updateData.orderStatus === 'delivered') {
-        updateData.paymentStatus = 'paid';
-        updateData.paidAmount = updateData.totalAmount ?? originalOrder.totalAmount;
-      }
+      // Removed automatic paymentStatus = 'paid' when orderStatus === 'delivered'
 
       if (updateData.cashReceived !== undefined || updateData.totalAmount !== undefined) {
         const cash = updateData.cashReceived ?? originalOrder.cashReceived;

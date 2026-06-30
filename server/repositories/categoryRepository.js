@@ -9,8 +9,15 @@ class CategoryRepository {
     return await Category.find({ isActive: true });
   }
 
-  async findAll() {
-    return await Category.aggregate([
+  async findAll(filter = {}) {
+    const pipeline = [];
+
+    // Apply the initial filter/match stage if provided
+    if (Object.keys(filter).length > 0) {
+      pipeline.push({ $match: filter });
+    }
+
+    pipeline.push(
       {
         $lookup: {
           from: "menus",
@@ -29,11 +36,13 @@ class CategoryRepository {
           createdAt: 1,
           itemCount: { $size: "$menus" },
           totalStock: "$totalStock",
-          stockactive: 1
+          stockactive: 1,
+          hideFromCustomer: 1
         }
       },
       { $sort: { createdAt: -1 } }
-    ]);
+    );
+    return await Category.aggregate(pipeline);
   }
 
   async findById(id) {

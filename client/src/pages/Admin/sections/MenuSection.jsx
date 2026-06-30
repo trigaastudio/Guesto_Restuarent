@@ -7,7 +7,7 @@ import ImageCropper from '../../../components/ImageCropper/ImageCropper';
 import TableSkeleton from '../../../components/Skeleton/TableSkeleton';
 import Pagination from '../../../components/Pagination/Pagination';
 
-const STANDARD_VARIANTS = ['Piece', 'Quarter', 'Half', 'Full'];
+const STANDARD_VARIANTS = ['Piece', 'Quarter', 'Half', 'Full', 'Roll', 'Plate'];
 
 const MenuSection = () => {
   const [menus, setMenus] = useState([]);
@@ -36,7 +36,8 @@ const MenuSection = () => {
     comboItems: [],
     offerPercentage: 0,
     discountPercentage: 0,
-    includedItems: [] 
+    includedItems: [],
+    hideFromCustomer: false
   });
 
 
@@ -111,7 +112,8 @@ const MenuSection = () => {
             quantity: inc.quantity
           })) || []
         })) || [],
-        price: menu.price || 0
+        price: menu.price || 0,
+        hideFromCustomer: menu.hideFromCustomer || false
       });
       setIsEditing(true);
     } else {
@@ -130,7 +132,8 @@ const MenuSection = () => {
         comboItems: [],
         offerPercentage: 0,
         discountPercentage: 0,
-        price: ''
+        price: '',
+        hideFromCustomer: false
       });
       setIsEditing(false);
     }
@@ -158,26 +161,28 @@ const MenuSection = () => {
     setCurrentMenu({ ...currentMenu, variants: newVariants });
   };
 
+  const isComboCategory = categories.find(c => c._id === currentMenu.category)?.name?.toLowerCase() === 'combo';
+
   const handleSave = async () => {
-    const isComboCategory = categories.find(c => c._id === currentMenu.category)?.name.toLowerCase() === 'combo';
-    
     const newErrors = {};
     const textRegex = /^[a-zA-Z0-9\s]*$/;
-    
+
     if (!currentMenu.name || !currentMenu.name.trim()) {
       newErrors.name = 'Item Name is required';
-    } else if (currentMenu.name.length > 20) {
-      newErrors.name = 'Maximum length is 20 characters';
+    } else if (currentMenu.name.length > 50) {
+      newErrors.name = 'Maximum length is 50 characters';
     } else if (!textRegex.test(currentMenu.name)) {
       newErrors.name = 'Only alphabets and numbers are allowed';
     }
 
     if (!currentMenu.category) newErrors.category = true;
-    
-    if (currentMenu.totalStock === '' || currentMenu.totalStock === undefined || currentMenu.totalStock === null) {
-      newErrors.totalStock = 'Stock is required';
-    } else if (currentMenu.totalStock < 0) {
-      newErrors.totalStock = 'Stock must be a positive value';
+
+    if (!isComboCategory) {
+      if (currentMenu.totalStock === '' || currentMenu.totalStock === undefined || currentMenu.totalStock === null) {
+        newErrors.totalStock = 'Stock is required';
+      } else if (currentMenu.totalStock < 0) {
+        newErrors.totalStock = 'Stock must be a positive value';
+      }
     }
 
     if (currentMenu.description) {
@@ -222,7 +227,9 @@ const MenuSection = () => {
       ...currentMenu,
       isCombo: isComboCategory,
       price: finalPrice,
-      variants: isComboCategory ? [] : cleanedVariants
+      totalStock: isComboCategory ? 0 : currentMenu.totalStock,
+      variants: isComboCategory ? [] : cleanedVariants,
+      hideFromCustomer: currentMenu.hideFromCustomer
     };
 
     try {
@@ -582,6 +589,11 @@ const MenuSection = () => {
                         </div>
                         <div className="flex flex-col justify-center">
                           <p className="font-bold text-text-primary text-sm leading-tight">{menu.name}</p>
+                          {menu.hideFromCustomer && (
+                            <span className="mt-1 w-fit px-1.5 py-0.5 bg-orange-500/10 text-orange-500 border border-orange-500/20 text-[8px] font-black uppercase rounded">
+                              Hidden from Customer
+                            </span>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -590,7 +602,7 @@ const MenuSection = () => {
                       <div className="flex flex-col space-y-2">
                         {menu.isCombo ? (
                           <div className="flex flex-col">
-                            <span className="text-sm font-black text-primary">₹{menu.price?.toFixed(2)}</span>
+                            <span className="text-sm font-black text-primary">₹{menu.price?.toFixed(0)}</span>
                             <span className="text-[9px] text-text-muted font-bold uppercase">Combo Price</span>
                             {menu.offerPercentage > 0 && (
                               <span className="text-[9px] text-status-available font-bold italic">({menu.offerPercentage}% Off)</span>
@@ -797,7 +809,8 @@ const MenuSection = () => {
                     type="text"
                     value={currentMenu.name}
                     onChange={(e) => {
-                      setCurrentMenu({ ...currentMenu, name: e.target.value });
+                      const formattedName = e.target.value.split(' ').map(word => word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : '').join(' ');
+                      setCurrentMenu({ ...currentMenu, name: formattedName });
                       if (errors.name) setErrors({ ...errors, name: false });
                     }}
                     className={`w-full px-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all ${
@@ -830,7 +843,7 @@ const MenuSection = () => {
                     ))}
                   </select>
                 </div>
-                {!categories.find(c => c._id === currentMenu.category)?.stockactive && (
+                {!isComboCategory && !categories.find(c => c._id === currentMenu.category)?.stockactive && (
                   <div className="space-y-1.5">
                     <label className={`text-sm font-semibold ${errors.totalStock ? 'text-primary' : 'text-text-secondary'}`}>Total Stock</label>
                     <input
@@ -863,6 +876,22 @@ const MenuSection = () => {
                       <input type="radio" name="foodType" value="non-veg" checked={currentMenu.foodType === 'non-veg'} onChange={() => setCurrentMenu({ ...currentMenu, foodType: 'non-veg' })} className="accent-red-500 w-4 h-4" />
                       <span className="text-xs font-black text-red-500 uppercase tracking-wider">Non-Veg</span>
                     </label>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-text-secondary">Hide from Customer UI</label>
+                  <div className="flex items-center h-[42px] bg-background-muted/50 px-4 rounded-xl border border-border-main">
+                    <button
+                      onClick={() => setCurrentMenu({ ...currentMenu, hideFromCustomer: !currentMenu.hideFromCustomer })}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${currentMenu.hideFromCustomer ? 'bg-orange-500' : 'bg-text-muted'
+                        }`}
+                    >
+                      <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${currentMenu.hideFromCustomer ? 'translate-x-5' : 'translate-x-1'
+                        }`} />
+                    </button>
+                    <span className="ml-3 text-xs font-bold text-text-primary">
+                      {currentMenu.hideFromCustomer ? 'Hidden' : 'Visible'}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1202,7 +1231,7 @@ const MenuSection = () => {
                     <div className="bg-primary/5 p-4 rounded-xl border border-primary/10 space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-semibold text-text-secondary">Total Original Price</span>
-                        <span className="text-sm font-bold text-text-primary">₹{currentMenu.comboItems.reduce((sum, item) => sum + (item.price || 0), 0).toFixed(2)}</span>
+                        <span className="text-sm font-bold text-text-primary">₹{currentMenu.comboItems.reduce((sum, item) => sum + (item.price || 0), 0).toFixed(0)}</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <label className="text-sm font-semibold text-text-secondary">Offer Percentage (%)</label>
@@ -1227,7 +1256,7 @@ const MenuSection = () => {
                           ₹{(
                             currentMenu.comboItems.reduce((sum, item) => sum + (item.price || 0), 0) *
                             (1 - (currentMenu.offerPercentage || 0) / 100)
-                          ).toFixed(2)}
+                          ).toFixed(0)}
                         </span>
                       </div>
                     </div>

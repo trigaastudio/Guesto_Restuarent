@@ -3,27 +3,51 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import './index.css';
 
+const lazyWithRetry = (componentImport) =>
+  lazy(async () => {
+    const pageHasAlreadyBeenForceRefreshed = JSON.parse(
+      window.sessionStorage.getItem('page-has-been-force-refreshed') || 'false'
+    );
 
-const AdminLogin = lazy(() => import('./pages/Admin/AdminLogin'));
-const AdminDashboard = lazy(() => import('./pages/Admin/AdminDashboard'));
-const RegisterPage = lazy(() => import('./pages/Register/RegisterPage'));
-const LoginPage = lazy(() => import('./pages/Login/LoginPage'));
-const HomePage = lazy(() => import('./pages/Home/HomePage'));
-const LandingPage = lazy(() => import('./pages/Landing/LandingPage'));
-const CartPage = lazy(() => import('./pages/Cart/CartPage'));
-const PaymentPage = lazy(() => import('./pages/Payment/PaymentPage'));
-const ProfilePage = lazy(() => import('./pages/Profile/ProfilePage'));
-const OrdersPage = lazy(() => import('./pages/Orders/OrdersPage'));
-const TrackOrderPage = lazy(() => import('./pages/Orders/TrackOrderPage'));
-const MenuDetailPage = lazy(() => import('./pages/Menu/MenuDetailPage'));
-const StaffLogin = lazy(() => import('./pages/Staff/StaffLogin'));
-const KitchenDashboard = lazy(() => import('./pages/Kitchen/KitchenDashboard'));
-const WaiterDashboard = lazy(() => import('./pages/Waiter/WaiterDashboard'));
-const AboutPage = lazy(() => import('./pages/About/AboutPage'));
-const DigitalMenu = lazy(() => import('./pages/Menu/DigitalMenu'));
-const ErrorPage = lazy(() => import('./pages/Error/ErrorPage'));
+    try {
+      const component = await componentImport();
+      window.sessionStorage.setItem('page-has-been-force-refreshed', 'false');
+      return component;
+    } catch (error) {
+      if (!pageHasAlreadyBeenForceRefreshed) {
+        window.sessionStorage.setItem('page-has-been-force-refreshed', 'true');
+        window.location.reload();
+        return new Promise(() => {});
+      }
+      throw error;
+    }
+  });
+
+const AdminLogin = lazyWithRetry(() => import('./pages/Admin/AdminLogin'));
+const AdminDashboard = lazyWithRetry(() => import('./pages/Admin/AdminDashboard'));
+const RegisterPage = lazyWithRetry(() => import('./pages/Register/RegisterPage'));
+const LoginPage = lazyWithRetry(() => import('./pages/Login/LoginPage'));
+const HomePage = lazyWithRetry(() => import('./pages/Home/HomePage'));
+const LandingPage = lazyWithRetry(() => import('./pages/Landing/LandingPage'));
+const CartPage = lazyWithRetry(() => import('./pages/Cart/CartPage'));
+const PaymentPage = lazyWithRetry(() => import('./pages/Payment/PaymentPage'));
+const ProfilePage = lazyWithRetry(() => import('./pages/Profile/ProfilePage'));
+const OrdersPage = lazyWithRetry(() => import('./pages/Orders/OrdersPage'));
+const TrackOrderPage = lazyWithRetry(() => import('./pages/Orders/TrackOrderPage'));
+const MenuDetailPage = lazyWithRetry(() => import('./pages/Menu/MenuDetailPage'));
+const StaffLogin = lazyWithRetry(() => import('./pages/Staff/StaffLogin'));
+const KitchenDashboard = lazyWithRetry(() => import('./pages/Kitchen/KitchenDashboard'));
+const WaiterDashboard = lazyWithRetry(() => import('./pages/Waiter/WaiterDashboard'));
+const AboutPage = lazyWithRetry(() => import('./pages/About/AboutPage'));
+const DigitalMenu = lazyWithRetry(() => import('./pages/Menu/DigitalMenu'));
+const ErrorPage = lazyWithRetry(() => import('./pages/Error/ErrorPage'));
+const PrivacyPage = lazyWithRetry(() => import('./pages/Legal/PrivacyPage'));
+const TermsPage = lazyWithRetry(() => import('./pages/Legal/TermsPage'));
+const CookiesPage = lazyWithRetry(() => import('./pages/Legal/CookiesPage'));
+const MaintenancePage = lazyWithRetry(() => import('./pages/Maintenance/MaintenancePage'));
 
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
+import MaintenanceGuard from './components/ProtectedRoute/MaintenanceGuard';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
 import { ThemeProvider } from './context/ThemeContext';
 import { CartProvider } from './context/CartContext';
@@ -38,8 +62,16 @@ const PageLoader = () => (
 );
 
 function App() {
+  React.useEffect(() => {
+    const refreshTimer = setInterval(() => {
+      window.location.reload();
+    }, 10 * 60 * 1000); // 10 minutes
+
+    return () => clearInterval(refreshTimer);
+  }, []);
+
   return (
-    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'dummy_client_id_for_dev'}>
       <ThemeProvider>
         <CartProvider>
           <BrowserRouter>
@@ -69,49 +101,53 @@ function App() {
                   } />
 
                   {}
-                  <Route path="/" element={<LandingPage />} />
-                  <Route path="/register" element={<RegisterPage />} />
-                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/" element={<MaintenanceGuard><LandingPage /></MaintenanceGuard>} />
+                  <Route path="/register" element={<MaintenanceGuard><RegisterPage /></MaintenanceGuard>} />
+                  <Route path="/login" element={<MaintenanceGuard><LoginPage /></MaintenanceGuard>} />
                   <Route path="/error" element={<ErrorPage />} />
+                  <Route path="/maintenance" element={<MaintenancePage />} />
 
                   {}
                   <Route path="/home" element={
                     <ProtectedRoute>
-                      <HomePage />
+                      <MaintenanceGuard><HomePage /></MaintenanceGuard>
                     </ProtectedRoute>
                   } />
                   <Route path="/cart" element={
                     <ProtectedRoute>
-                      <CartPage />
+                      <MaintenanceGuard><CartPage /></MaintenanceGuard>
                     </ProtectedRoute>
                   } />
                   <Route path="/payment" element={
                     <ProtectedRoute>
-                      <PaymentPage />
+                      <MaintenanceGuard><PaymentPage /></MaintenanceGuard>
                     </ProtectedRoute>
                   } />
                   <Route path="/profile" element={
                     <ProtectedRoute>
-                      <ProfilePage />
+                      <MaintenanceGuard><ProfilePage /></MaintenanceGuard>
                     </ProtectedRoute>
                   } />
                   <Route path="/my-orders" element={
                     <ProtectedRoute>
-                      <OrdersPage />
+                      <MaintenanceGuard><OrdersPage /></MaintenanceGuard>
                     </ProtectedRoute>
                   } />
                   <Route path="/track-order/:orderId" element={
                     <ProtectedRoute>
-                      <TrackOrderPage />
+                      <MaintenanceGuard><TrackOrderPage /></MaintenanceGuard>
                     </ProtectedRoute>
                   } />
                   <Route path="/menu/:id" element={
                     <ProtectedRoute>
-                      <MenuDetailPage />
+                      <MaintenanceGuard><MenuDetailPage /></MaintenanceGuard>
                     </ProtectedRoute>
                   } />
-                  <Route path="/about" element={<AboutPage />} />
-                  <Route path="/digital-menu" element={<DigitalMenu />} />
+                  <Route path="/about" element={<MaintenanceGuard><AboutPage /></MaintenanceGuard>} />
+                  <Route path="/digital-menu" element={<MaintenanceGuard><DigitalMenu /></MaintenanceGuard>} />
+                  <Route path="/privacy" element={<PrivacyPage />} />
+                  <Route path="/terms" element={<TermsPage />} />
+                  <Route path="/cookies" element={<CookiesPage />} />
                 </Routes>
               </Suspense>
             </ErrorBoundary>

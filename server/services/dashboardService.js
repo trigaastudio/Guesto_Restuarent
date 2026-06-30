@@ -109,7 +109,7 @@ class DashboardService {
       Menu.aggregate([
         { $lookup: { from: 'categories', localField: 'category', foreignField: '_id', as: 'cat' } },
         { $unwind: { path: '$cat', preserveNullAndEmptyArrays: true } },
-        { $addFields: { effectiveStock: { $cond: [{ $eq: ['$cat.isSharedStock', true] }, { $ifNull: ['$cat.totalStock', 0] }, { $ifNull: ['$totalStock', 0] }] } } },
+        { $addFields: { effectiveStock: { $cond: [{ $or: [{ $eq: ['$cat.isSharedStock', true] }, { $eq: ['$cat.stockactive', true] }] }, { $max: [{ $ifNull: ['$cat.totalStock', 0] }, { $ifNull: ['$totalStock', 0] }] }, { $ifNull: ['$totalStock', 0] }] } } },
         { $match: { effectiveStock: { $lte: 0 } } },
         { $count: 'count' }
       ]),
@@ -118,7 +118,7 @@ class DashboardService {
       Menu.aggregate([
         { $lookup: { from: 'categories', localField: 'category', foreignField: '_id', as: 'cat' } },
         { $unwind: { path: '$cat', preserveNullAndEmptyArrays: true } },
-        { $addFields: { effectiveStock: { $cond: [{ $eq: ['$cat.isSharedStock', true] }, { $ifNull: ['$cat.totalStock', 0] }, { $ifNull: ['$totalStock', 0] }] } } },
+        { $addFields: { effectiveStock: { $cond: [{ $or: [{ $eq: ['$cat.isSharedStock', true] }, { $eq: ['$cat.stockactive', true] }] }, { $max: [{ $ifNull: ['$cat.totalStock', 0] }, { $ifNull: ['$totalStock', 0] }] }, { $ifNull: ['$totalStock', 0] }] } } },
         { $match: { effectiveStock: { $gt: 0, $lte: 10 } } },
         { $count: 'count' }
       ]),
@@ -127,7 +127,7 @@ class DashboardService {
       Menu.aggregate([
         { $lookup: { from: 'categories', localField: 'category', foreignField: '_id', as: 'cat' } },
         { $unwind: { path: '$cat', preserveNullAndEmptyArrays: true } },
-        { $addFields: { effectiveStock: { $cond: [{ $eq: ['$cat.isSharedStock', true] }, { $ifNull: ['$cat.totalStock', 0] }, { $ifNull: ['$totalStock', 0] }] } } },
+        { $addFields: { effectiveStock: { $cond: [{ $or: [{ $eq: ['$cat.isSharedStock', true] }, { $eq: ['$cat.stockactive', true] }] }, { $max: [{ $ifNull: ['$cat.totalStock', 0] }, { $ifNull: ['$totalStock', 0] }] }, { $ifNull: ['$totalStock', 0] }] } } },
         { $match: { effectiveStock: { $lte: 10 } } },
         { $sort: { effectiveStock: 1 } },
         { $limit: 5 },

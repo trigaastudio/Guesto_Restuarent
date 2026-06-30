@@ -3,8 +3,10 @@ import menuService from "../services/menuService.js";
 import mongoose from "mongoose";
 import { logAdminAction } from '../services/auditService.js';
 import NodeCache from 'node-cache';
+import Order from '../models/orderSchema.js';
 
 const cache = new NodeCache({ stdTTL: 120, useClones: false }); 
+export const menuCache = cache; 
 
 export const createMenu = async (req, res) => {
   try {
@@ -35,6 +37,7 @@ export const getMenus = async (req, res) => {
     }
 
     let filter = {};
+    filter.hideFromCustomer = { $ne: true };
     
     
     const Category = mongoose.model('Category');
@@ -174,3 +177,51 @@ export const deleteMenu = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// Public – no auth required. Returns top 5 best-selling menu items based on completed order history.
+const topSellingCache = new NodeCache({ stdTTL: 300 }); // 5-minute cache
+
+export const getTopSelling = async (req, res) => {
+  try {
+    const cached = topSellingCache.get('top_selling');
+    if (cached) return res.status(200).json({ success: true, data: cached });
+
+    // Aggregate orders to find most-ordered menu items
+    const topRaw = await Order.aggregate([
+      { $match: { orderStatus: { $ne: 'cancelled' } } },
+      { $unwind: '$items' },
+      {
+        $group: {
+          _id: '$items.menuItem',
+          totalOrders: { $sum: '$items.quantity' }
+        }
+      },
+      { $match: { _id: { $ne: null } } },
+      { $sort: { totalOrders: -1 } },
+      { $limit: 5 }
+    ]);
+
+    const ids = topRaw.map(d => d._id);
+    const Menu = mongoose.model('Menu');
+    const menus = await Menu.find({ _id: { $in: ids }, isBlocked: { $ne: true }, hideFromCustomer: { $ne: true } })
+      .populate('category')
+      .populate('variants.bogoItem', 'name image')
+      .populate('comboItems.menuItem', 'name image price')
+      .lean();
+
+    // Re-order to match topRaw rank and attach order count
+    const result = topRaw
+      .map(d => {
+        const menu = menus.find(m => m._id.toString() === d._id?.toString());
+        return menu ? { ...menu, totalOrders: d.totalOrders } : null;
+      })
+      .filter(Boolean);
+
+    topSellingCache.set('top_selling', result);
+    res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    console.error('Error fetching top selling items:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+

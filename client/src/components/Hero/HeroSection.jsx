@@ -87,8 +87,8 @@ const HeroSection = React.memo(({ searchQuery, setSearchQuery, heroImages, trend
             </div>
 
             <div className="space-y-3 sm:space-y-4 md:space-y-6">
-              <h1 className="text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-black leading-[1.1] md:leading-[0.9] text-white tracking-tighter drop-shadow-[0_20px_50px_rgba(0,0,0,0.2)] uppercase">
-                Taste the <br className="hidden sm:block" />
+              <h1 className="text-2xl min-[360px]:text-3xl min-[400px]:text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black leading-[1.1] md:leading-[0.9] text-white tracking-tighter drop-shadow-[0_20px_50px_rgba(0,0,0,0.2)] uppercase">
+                Taste the <br className="block" />
                 <span className="text-white/90">Extraordinary</span>
               </h1>
               <p className="text-white/70 text-[10px] sm:text-xs md:text-lg lg:text-xl font-bold leading-relaxed max-w-[280px] sm:max-w-md md:max-w-xl mx-auto lg:mx-0 tracking-wide uppercase sm:normal-case">
@@ -136,30 +136,7 @@ const HeroSection = React.memo(({ searchQuery, setSearchQuery, heroImages, trend
                 </button>
               </div>
 
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2 sm:gap-3 md:gap-4 mt-5 sm:mt-6 md:mt-8">
-                <span className="text-[8px] sm:text-[10px] font-black text-white/40 uppercase tracking-widest">Trending:</span>
-                {trendingItems && trendingItems.length > 0 ? (
-                  trendingItems.slice(0, 3).map(item => (
-                    <button
-                      key={item._id}
-                      onClick={() => { setLocalQuery(item.name); setSearchQuery(item.name); const menuElement = document.getElementById('menu'); if (menuElement) menuElement.scrollIntoView({ behavior: 'smooth' }); }}
-                      className="text-[7px] sm:text-[9px] md:text-[10px] font-black text-white hover:text-white/60 transition-all uppercase tracking-widest px-2.5 py-1 sm:px-3 sm:py-1.5 md:px-4 md:py-1.5 bg-white/5 rounded-full border border-white/10"
-                    >
-                      {item.name}
-                    </button>
-                  ))
-                ) : (
-                  ['Burgers', 'Pizzas', 'Pasta'].map(item => (
-                    <button
-                      key={item}
-                      onClick={() => { setLocalQuery(item); setSearchQuery(item); const menuElement = document.getElementById('menu'); if (menuElement) menuElement.scrollIntoView({ behavior: 'smooth' }); }}
-                      className="text-[7px] sm:text-[9px] md:text-[10px] font-black text-white hover:text-white/60 transition-all uppercase tracking-widest px-2.5 py-1 bg-white/5 rounded-full border border-white/10"
-                    >
-                      {item}
-                    </button>
-                  ))
-                )}
-              </div>
+
             </div>
           </div>
         </div>

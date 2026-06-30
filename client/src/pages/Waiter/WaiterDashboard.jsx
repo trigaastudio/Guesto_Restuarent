@@ -31,6 +31,8 @@ const WaiterDashboard = () => {
   const [selectedOrderForView, setSelectedOrderForView] = useState(null);
   const [isMergeMode, setIsMergeMode] = useState(false);
   const [selectedMergeTableNumbers, setSelectedMergeTableNumbers] = useState([]);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
 
   const staff = JSON.parse(localStorage.getItem('staff_user') || '{}');
   const navigate = useNavigate();
@@ -38,6 +40,17 @@ const WaiterDashboard = () => {
   const { settings } = useCart();
   const isDarkMode = theme === 'dark';
   const socketRef = useRef();
+
+  // Close user menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const fetchTables = async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -353,7 +366,7 @@ const WaiterDashboard = () => {
                     if (received > 0) {
                       changeWrap.style.display = 'flex';
                       if (received >= total) {
-                        changeEl.textContent = '₹' + (received - total).toFixed(2);
+                        changeEl.textContent = '₹' + (received - total).toFixed(0);
                         changeEl.style.color = '#10b981';
                       } else {
                         changeEl.textContent = 'Insufficient Cash';
@@ -397,7 +410,7 @@ const WaiterDashboard = () => {
               const cashRec = parseFloat(document.getElementById('swal-cash-received')?.value) || 0;
               const total = orderToUpdate.totalAmount || orderToUpdate.subtotal;
               if (cashRec < total) {
-                Swal.showValidationMessage('Cash received is less than total order amount (₹' + total.toFixed(2) + ')');
+                Swal.showValidationMessage('Cash received is less than total order amount (₹' + total.toFixed(0) + ')');
                 return false;
               }
               return { paymentMethod: 'cash', cashReceived: cashRec, balance: cashRec - total };
@@ -466,8 +479,8 @@ const WaiterDashboard = () => {
       <tr>
         <td style="width: 40%;"></td>
         <td style="width: 15%; text-align: left;">${item.quantity} P</td>
-        <td style="width: 20%; text-align: right;">${unitPrice.toFixed(2)}</td>
-        <td style="width: 25%; text-align: right;">${totalPrice.toFixed(2)}</td>
+        <td style="width: 20%; text-align: right;">${unitPrice.toFixed(0)}</td>
+        <td style="width: 25%; text-align: right;">${totalPrice.toFixed(0)}</td>
       </tr>
     `;
     }).join('');
@@ -547,16 +560,16 @@ const WaiterDashboard = () => {
           <div class="divider"></div>
           <div class="total-section">
             <span>TOTAL :</span>
-            <span>${(order.totalAmount || order.subtotal || 0).toFixed(2)}</span>
+            <span>${(order.totalAmount || order.subtotal || 0).toFixed(0)}</span>
           </div>
           ${order.paidAmount > 0 && (order.totalAmount || order.subtotal) > order.paidAmount ? `
             <div style="font-size: 13px; font-weight: bold; margin-top: 5px; display: flex; justify-content: space-between;">
               <span>PAID AMOUNT:</span>
-              <span>₹${order.paidAmount.toFixed(2)}</span>
+              <span>₹${order.paidAmount.toFixed(0)}</span>
             </div>
             <div style="font-size: 14px; font-weight: bold; margin-top: 3px; display: flex; justify-content: space-between; border: 1px solid #000; padding: 4px;">
               <span>BALANCE DUE:</span>
-              <span>₹${((order.totalAmount || order.subtotal) - order.paidAmount).toFixed(2)}</span>
+              <span>₹${((order.totalAmount || order.subtotal) - order.paidAmount).toFixed(0)}</span>
             </div>
           ` : ''}
           <div class="divider"></div>
@@ -564,11 +577,11 @@ const WaiterDashboard = () => {
             ${order.paymentMethod === 'cash' ? `
               <div style="display: flex; justify-content: space-between;">
                 <span>CASH RECEIVED :</span>
-                <span>${(order.cashReceived || order.totalAmount || order.subtotal || 0).toFixed(2)}</span>
+                <span>${(order.cashReceived || order.totalAmount || order.subtotal || 0).toFixed(0)}</span>
               </div>
               <div style="display: flex; justify-content: space-between; margin-top: 3px;">
                 <span>CHANGE :</span>
-                <span>${(order.balance || 0).toFixed(2)}</span>
+                <span>${(order.balance || 0).toFixed(0)}</span>
               </div>
             ` : (order.orderType === 'dine-in' && order.orderStatus !== 'delivered') ? `
               <div style="display: flex; justify-content: space-between;">
@@ -608,47 +621,125 @@ const WaiterDashboard = () => {
     <div className="flex h-screen bg-background text-text-primary overflow-hidden transition-colors duration-300">
       { }
       <main className="flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out">
-        <header className="h-20 bg-background-card border-b border-border-main flex items-center justify-between px-4 lg:px-8 shrink-0">
-          <div className="flex items-center space-x-4">
-            <img
-              src={isDarkMode ? (settings?.branding?.logoGold || '/logo-golden.png') : (settings?.branding?.logoDark || '/logo-dark.png')}
-              alt="Logo"
-              className="h-10 w-auto transition-all duration-500 mr-2"
-            />
-            <div className="border-l border-border-light pl-4">
-              <h1 className="text-lg font-black text-text-primary tracking-tight">Waiter Dashboard</h1>
-              <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest hidden sm:block">
-                Table & Dine-in Management
-              </p>
+        {/* ═══════════════════════════════════════════════
+             NAVBAR — Mobile-first redesign
+             Mobile : icon badge + title | avatar dropdown
+             Desktop: logo + title | name/ID + icons + logout
+        ═══════════════════════════════════════════════ */}
+        <header className="bg-background-card border-b border-border-main shrink-0 overflow-hidden">
+
+          {/* ── MOBILE NAV (hidden on sm+) ── */}
+          <div className="flex sm:hidden items-center justify-between px-4 h-14">
+
+            {/* Left: brand icon only */}
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center shrink-0">
+                <UtensilsCrossed size={18} className="text-primary" />
+              </div>
+            </div>
+
+            {/* Right: avatar pill → opens dropdown */}
+            <div className="relative" ref={userMenuRef}>
+              <button
+                onClick={() => setIsUserMenuOpen(v => !v)}
+                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-2xl border transition-all ${isUserMenuOpen
+                    ? 'bg-primary/10 border-primary/30'
+                    : 'bg-background-muted border-border-light hover:border-primary/30'
+                  }`}
+              >
+                <div className="w-7 h-7 rounded-full bg-purple-500/20 border-2 border-purple-500/30 flex items-center justify-center text-purple-500 font-black text-xs shrink-0">
+                  {staff.name?.charAt(0)?.toUpperCase() || 'W'}
+                </div>
+                <div className="text-left">
+                  <p className="text-xs font-black text-text-primary leading-none">{staff.name?.split(' ')[0] || 'User'}</p>
+                  <p className="text-[9px] text-text-muted font-bold uppercase leading-tight">{staff.employeeId || 'Staff'}</p>
+                </div>
+                <ChevronDown size={14} className={`text-text-muted transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Dropdown panel */}
+              {isUserMenuOpen && (
+                <div className="absolute right-0 top-[calc(100%+8px)] w-56 bg-background-card border border-border-light rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+
+                  {/* Staff info header */}
+                  <div className="px-4 py-3 border-b border-border-light bg-background-muted/30">
+                    <p className="text-xs font-black text-text-primary">{staff.name || 'User'}</p>
+                    <p className="text-[10px] text-text-muted font-bold uppercase tracking-wider mt-0.5">{staff.employeeId || 'Staff'} · Waiter</p>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="p-2 space-y-0.5">
+                    <button
+                      onClick={() => { toggleTheme(); setIsUserMenuOpen(false); }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-text-secondary hover:bg-background-muted hover:text-text-primary transition-all text-left"
+                    >
+                      {isDarkMode ? <Sun size={15} className="text-amber-500" /> : <Moon size={15} className="text-indigo-400" />}
+                      <span className="text-xs font-bold">{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => { fetchTables(); setIsUserMenuOpen(false); }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-text-secondary hover:bg-background-muted hover:text-text-primary transition-all text-left"
+                    >
+                      <RefreshCw size={15} className={isLoading ? 'animate-spin text-primary' : 'text-text-muted'} />
+                      <span className="text-xs font-bold">Refresh Tables</span>
+                    </button>
+
+                    <div className="border-t border-border-light my-1" />
+
+                    <button
+                      onClick={() => { handleLogout(); setIsUserMenuOpen(false); }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-status-unavailable hover:bg-status-off/10 transition-all text-left"
+                    >
+                      <LogOut size={15} />
+                      <span className="text-xs font-bold">Logout</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 sm:space-x-4">
-            <button onClick={toggleTheme} className="p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all">
-              {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-            <button onClick={() => fetchTables()} className="p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all group">
-              <RefreshCw size={20} className={`${isLoading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
-            </button>
-            <div className="flex items-center space-x-3 border-l border-r pr-4 sm:pr-6 pl-4 sm:pl-6 border-border-light">
-              <div className="hidden sm:block text-right">
-                <p className="text-sm font-bold text-text-primary">{staff.name || 'User'}</p>
-                <p className="text-[10px] text-text-secondary uppercase tracking-wider">{staff.employeeId || 'Staff'}</p>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-purple-500/20 border-2 border-purple-500/10 flex items-center justify-center text-purple-500 font-black shrink-0 text-sm">
-                {staff.name?.charAt(0) || 'W'}
-              </div>
+          {/* ── DESKTOP NAV (hidden below sm) ── */}
+          <div className="hidden sm:flex items-center justify-between h-20 px-4 lg:px-8">
+            <div className="flex items-center gap-4">
+              <img
+                src={isDarkMode ? (settings?.branding?.logoGold || '/logo-golden.png') : (settings?.branding?.logoDark || '/logo-dark.png')}
+                alt="Logo"
+                className="h-10 w-auto shrink-0"
+              />
             </div>
-            <button
-              onClick={handleLogout}
-              className="p-2 text-status-unavailable hover:bg-status-off/5 rounded-lg transition-all flex items-center space-x-1.5"
-              title="Logout"
-            >
-              <LogOut size={20} />
-              <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Logout</span>
-            </button>
+
+            <div className="flex items-center gap-2">
+              <button onClick={toggleTheme} className="p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all">
+                {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
+              <button onClick={() => fetchTables()} className="p-2 text-text-secondary hover:text-primary hover:bg-background-muted rounded-lg transition-all group">
+                <RefreshCw size={20} className={isLoading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'} />
+              </button>
+              <div className="flex items-center gap-3 border-l border-r px-4 border-border-light">
+                <div className="text-right">
+                  <p className="text-sm font-bold text-text-primary">{staff.name || 'User'}</p>
+                  <p className="text-[10px] text-text-secondary uppercase tracking-wider">{staff.employeeId || 'Staff'}</p>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-purple-500/20 border-2 border-purple-500/10 flex items-center justify-center text-purple-500 font-black text-sm">
+                  {staff.name?.charAt(0)?.toUpperCase() || 'W'}
+                </div>
+              </div>
+              <button onClick={handleLogout} className="p-2 text-status-unavailable hover:bg-status-off/5 rounded-lg transition-all flex items-center gap-1.5" title="Logout">
+                <LogOut size={20} />
+                <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Logout</span>
+              </button>
+            </div>
           </div>
+
         </header>
+
+        {/* ── Page Title Banner (below navbar, all screen sizes) ── */}
+        <div className="px-4 sm:px-6 lg:px-8 py-3 sm:py-4 bg-background border-b border-border-light shrink-0">
+          <h1 className="text-lg sm:text-xl font-black text-text-primary tracking-tight leading-tight">Waiter Dashboard</h1>
+          <p className="text-[10px] sm:text-xs text-text-muted font-bold uppercase tracking-widest mt-0.5">Table & Dine-in Management</p>
+        </div>
 
         <div className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-8">
           {isLoading ? (
@@ -662,7 +753,9 @@ const WaiterDashboard = () => {
               <div className="w-28 h-28 bg-background-muted/50 rounded-full flex items-center justify-center border-2 border-dashed border-border-light">
                 <Hash size={40} className="text-text-muted opacity-30" />
               </div>
+
               <div>
+
                 <h2 className="text-2xl font-black text-text-primary">No Tables Available!</h2>
                 <p className="text-text-secondary font-medium mt-1">Please ask an admin to configure tables.</p>
               </div>
@@ -843,7 +936,7 @@ const WaiterDashboard = () => {
                                       </div>
                                       <div className="min-w-0">
                                         <p className="text-base md:text-lg font-extrabold text-text-primary truncate leading-tight">{order.customerDetails?.name || 'Walk-in'}</p>
-                                        <p className="text-xs md:text-sm text-text-muted font-bold tracking-wide mt-0.5">₹{order.totalAmount} • {order.items?.length || 0} items</p>
+                                        <p className="text-xs md:text-sm text-text-muted font-bold tracking-wide mt-0.5">₹{Math.round(order.totalAmount || 0)} • {order.items?.length || 0} items</p>
                                       </div>
                                     </div>
                                   </div>
@@ -858,7 +951,7 @@ const WaiterDashboard = () => {
                                         <div key={idx} className="flex items-center justify-between bg-white dark:bg-black/20 p-2.5 rounded-xl border border-border-light/50 shadow-[0_2px_10px_rgba(0,0,0,0.02)] h-[52px]">
                                           <div className="min-w-0 flex-1 pr-2 pl-1">
                                             <div className="text-xs md:text-sm font-extrabold text-text-primary truncate capitalize tracking-normal flex items-center gap-1.5">
-                                              <span className="truncate">{item.name || 'Item'} {item.size ? `(${item.size})` : ''}</span>
+                                              <span className="line-clamp-2 leading-tight">{item.name || 'Item'} {item.size ? `(${item.size})` : ''}</span>
                                               {isLastSlotAndMore && (
                                                 <span className="bg-primary/10 text-primary text-[8px] font-black px-1.5 py-0.5 rounded-full shrink-0">
                                                   +{order.items.length - 3} more
@@ -1138,10 +1231,10 @@ const WaiterDashboard = () => {
                     const status = getComputedOrderStatus(selectedOrderForView);
                     return (
                       <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mt-1 ${status === 'completed' || status === 'delivered' || status === 'ready'
-                          ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-                          : status === 'placed'
-                            ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                            : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                        ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                        : status === 'placed'
+                          ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                          : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
                         }`}>
                         {status}
                       </span>
@@ -1182,7 +1275,7 @@ const WaiterDashboard = () => {
                             </div>
                           )}
 
-                          {}
+                          { }
                           {item.bogoItem && (
                             <div className="mt-1.5 pl-2 border-l border-emerald-500/30">
                               <span className="text-[9px] font-black text-emerald-500 uppercase tracking-wider block mb-0.5">Free Item:</span>
@@ -1194,7 +1287,7 @@ const WaiterDashboard = () => {
                             </div>
                           )}
 
-                          {}
+                          { }
                           {item.includedItems?.length > 0 && (
                             <div className="mt-1.5 pl-2 border-l border-primary/30">
                               <span className="text-[9px] font-black text-primary uppercase tracking-wider block mb-0.5">Includes Add-ons:</span>
@@ -1219,9 +1312,39 @@ const WaiterDashboard = () => {
               </div>
             </div>
 
-            {}
+            { }
             <div className="p-6 bg-background-card border-t border-border-light flex justify-between items-center shrink-0 gap-3">
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                {!['cancelled', 'completed', 'delivered'].includes(selectedOrderForView?.orderStatus) && (
+                  <button
+                    onClick={() => {
+                      Swal.fire({
+                        title: 'Cancel Order?',
+                        text: "Are you sure you want to cancel this order?",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#ef4444',
+                        cancelButtonColor: '#6b7280',
+                        confirmButtonText: 'Yes, Cancel',
+                        customClass: {
+                          popup: 'rounded-3xl border border-border-light shadow-2xl p-6 bg-white dark:bg-gray-900',
+                          confirmButton: 'px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider text-white bg-red-500 hover:bg-red-600 transition-all',
+                          cancelButton: 'px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider text-text-secondary bg-background-muted border border-border-light transition-all'
+                        }
+                      }).then((result) => {
+                        if (result.isConfirmed) {
+                          handleUpdateOrderStatus(selectedOrderForView._id, 'cancelled');
+                          setIsDetailsModalOpen(false);
+                          setSelectedOrderForView(null);
+                        }
+                      });
+                    }}
+                    className="px-4 py-3 bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-2xl font-black uppercase tracking-wider text-xs transition-all shadow-sm active:scale-95 flex items-center gap-2"
+                  >
+                    <X size={16} strokeWidth={2.5} />
+                    <span>Cancel</span>
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setIsDetailsModalOpen(false);
@@ -1241,12 +1364,8 @@ const WaiterDashboard = () => {
                     }
                     setIsDetailsModalOpen(false);
                   }}
-                  disabled={selectedOrderForView.kitchenStatus !== 'ready'}
-                  title={selectedOrderForView.kitchenStatus !== 'ready' ? 'Kitchen has not marked this order as Ready yet' : 'Print Bill'}
-                  className={`px-4 py-3 rounded-2xl font-black uppercase tracking-wider text-xs transition-all shadow-sm flex items-center gap-2 ${selectedOrderForView.kitchenStatus !== 'ready'
-                    ? 'bg-background-muted border border-border-light text-text-muted cursor-not-allowed opacity-60'
-                    : 'bg-background border border-border-light text-text-secondary hover:text-primary hover:border-primary/50 hover:bg-primary/5 active:scale-95'
-                    }`}
+                  title="Print Bill"
+                  className="px-4 py-3 bg-background border border-border-light text-text-secondary hover:text-primary hover:border-primary/50 hover:bg-primary/5 rounded-2xl font-black uppercase tracking-wider text-xs transition-all shadow-sm active:scale-95 flex items-center gap-2"
                 >
                   <span>Print</span>
                 </button>

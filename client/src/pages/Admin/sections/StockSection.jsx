@@ -33,8 +33,8 @@ const StockSection = ({ refreshKey }) => {
     if (!silent) setIsLoading(true);
     try {
       const [catRes, menuRes] = await Promise.all([
-        api.get('/api/categories'),
-        api.get('/api/menus')
+        api.get('/api/categories?all=true'),
+        api.get('/api/menus?all=true')
       ]);
       setCategories(catRes.data);
       setMenus(menuRes.data);
