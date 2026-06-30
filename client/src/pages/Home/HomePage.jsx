@@ -28,7 +28,7 @@ const HomePage = () => {
   const [trendingItems, setTrendingItems] = useState([]);
   const [isFirstVisit] = useState(() => !sessionStorage.getItem('home_visited'));
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [offerFilter, setOfferFilter] = useState(null); 
+  const [offerFilter, setOfferFilter] = useState(null);
   const [offerName, setOfferName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
@@ -56,14 +56,14 @@ const HomePage = () => {
   const storeStatus = checkStoreStatus ? checkStoreStatus() : { isOpen: true };
   const isClosed = !storeStatus.isOpen;
   const { theme } = useTheme();
-  
+
   const [user, setUser] = useState(() => JSON.parse(
     localStorage.getItem('user') ||
     localStorage.getItem('admin_user') ||
     '{}'
   ));
 
-  
+
   useEffect(() => {
     const handleStorageChange = () => {
       setUser(JSON.parse(
@@ -101,7 +101,7 @@ const HomePage = () => {
     };
     document.addEventListener('mousedown', handleClickOutside);
 
-    
+
     if (!socket.connected) socket.connect();
 
     socket.on('stockUpdate', ({ itemId, totalStock, isBlocked }) => {
@@ -322,8 +322,8 @@ const HomePage = () => {
   };
 
   const filteredMenus = useMemo(() => {
-    
-    
+
+
     return menus.filter(menu => !menu.isBlocked);
   }, [menus]);
 
@@ -386,10 +386,10 @@ const HomePage = () => {
           />
         </div>
 
-        {}
+        { }
         {trendingItems.length > 0 && (
           <div className="mb-0 relative group/slider mt-12 w-full">
-            <div className="flex items-center justify-between mb-8 px-4 sm:px-6">
+            <div className="flex items-center justify-between mb-8">
               <div className="space-y-1">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-primary/10 rounded-2xl flex items-center justify-center">
@@ -420,7 +420,7 @@ const HomePage = () => {
 
             <div
               ref={scrollContainerRef}
-              className="flex overflow-x-auto no-scrollbar gap-4 sm:gap-6 px-4 sm:px-6 pb-6 snap-x w-full"
+              className="flex overflow-x-auto no-scrollbar gap-4 sm:gap-6 pb-6 snap-x w-full"
             >
               {trendingItems.filter(item => !item.isBlocked).map((item, idx) => {
                 const isItemOutOfStock = getEffectiveStock(item) < 1 || isClosed;
@@ -428,12 +428,12 @@ const HomePage = () => {
                   <div
                     key={idx}
                     onClick={() => { if (!isItemOutOfStock) { setSelectedMenuForModal(item); setIsModalOpen(true); } }}
-                    className={`flex-shrink-0 w-[150px] md:w-[190px] bg-background-card rounded-[1.5rem] p-2.5 border border-border/10 shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all duration-500 group snap-center relative overflow-hidden flex flex-col ${isItemOutOfStock
+                    className={`flex-shrink-0 w-[calc(50%-0.5rem)] sm:w-[calc(33.333%-1rem)] md:w-[calc(25%-1rem)] lg:w-[calc(20%-1.2rem)] bg-background-card rounded-[1.25rem] p-2.5 border border-border/10 shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all duration-500 group snap-start relative overflow-hidden flex flex-col ${isItemOutOfStock
                       ? 'grayscale opacity-60 pointer-events-none'
                       : 'hover:shadow-[0_20px_50px_rgba(185,28,28,0.15)] hover:-translate-y-1 cursor-pointer'
                       }`}
                   >
-                    <div className="relative h-28 md:h-36 rounded-xl overflow-hidden mb-3 bg-background-muted flex-shrink-0">
+                    <div className="relative h-[28vw] max-h-[110px] md:max-h-none md:h-32 rounded-xl overflow-hidden mb-2 bg-background-muted flex-shrink-0">
                       <img
                         src={item.image || '/placeholder-food.jpg'}
                         alt={item.name}
@@ -532,7 +532,7 @@ const HomePage = () => {
         onAction={addToCart}
       />
 
-      {}
+      { }
       <Footer />
 
       <style dangerouslySetInnerHTML={{

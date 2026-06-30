@@ -21,6 +21,7 @@ export const CartProvider = ({ children }) => {
                         window.location.pathname.startsWith('/kitchen') || 
                         window.location.pathname.startsWith('/waiter');
     const hasUser = !!localStorage.getItem('user');
+    const isStaffUser = !!(localStorage.getItem('staff_user') || localStorage.getItem('admin_user'));
                         
     if (!isStaffUser && !isStaffPath && hasUser) {
       fetchCart();

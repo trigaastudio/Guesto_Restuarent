@@ -47,7 +47,7 @@ const CategorySection = React.memo(({ categories, selectedCategory, handleCatego
             {}
             <button
               onClick={() => handleCategoryChange('all')}
-              className="flex-shrink-0 group relative flex flex-col items-center gap-3 w-20 md:w-28 transition-all duration-500"
+              className="flex-shrink-0 group relative flex flex-col items-center gap-3 w-[calc(25%-12px)] md:w-28 transition-all duration-500"
             >
               <div className={`w-16 h-16 md:w-24 md:h-24 shrink-0 rounded-full flex items-center justify-center transition-all duration-500 ${
                 selectedCategory === 'all' 
@@ -67,7 +67,7 @@ const CategorySection = React.memo(({ categories, selectedCategory, handleCatego
               <button
                 key={category._id}
                 onClick={() => handleCategoryChange(category._id)}
-                className="flex-shrink-0 group relative flex flex-col items-center gap-3 w-20 md:w-28 transition-all duration-500"
+                className="flex-shrink-0 group relative flex flex-col items-center gap-3 w-[calc(25%-12px)] md:w-28 transition-all duration-500"
               >
                 <div className={`w-16 h-16 md:w-24 md:h-24 shrink-0 rounded-full flex items-center justify-center transition-all duration-500 ${
                   selectedCategory === category._id 
