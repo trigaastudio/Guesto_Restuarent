@@ -282,9 +282,8 @@ const LandingPage = () => {
         />
       </div>
 
-      <div className="relative z-10 bg-background rounded-t-[3rem] -mt-12 md:-mt-20">
-        <main className="max-w-7xl mx-auto px-6 pt-16 pb-0">
-          <div className="mb-12">
+      <main className="relative z-10 max-w-7xl mx-auto px-6 -mt-6 sm:-mt-10 md:-mt-36 lg:-mt-40 pb-0 w-full">
+        <div className="mb-12">
             <OffersCarousel
               onOfferClick={(offer) => {
                 setSelectedCategory('all');
@@ -302,18 +301,18 @@ const LandingPage = () => {
 
           { }
           {trendingItems.length > 0 && (
-            <div className="mb-20 relative group/slider mt-12">
-              <div className="flex items-center justify-between mb-8 px-6">
+            <div className="mb-0 relative group/slider mt-12 w-full">
+              <div className="flex items-center justify-between mb-8">
                 <div className="space-y-1">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-primary/10 rounded-2xl flex items-center justify-center">
-                      <Flame size={24} className="text-primary animate-pulse" />
+                    <div className="w-10 h-10 bg-primary/10 md:bg-white/20 rounded-2xl flex items-center justify-center">
+                      <Flame size={24} className="text-primary md:text-white animate-pulse" />
                     </div>
-                    <h2 className="text-3xl font-black text-text-primary tracking-tighter">
-                      Most Loved <span className="text-primary italic">Dishes</span>
+                    <h2 className="text-3xl font-black text-text-primary md:text-white tracking-tighter">
+                      Most Loved <span className="text-primary md:text-white/90 italic">Dishes</span>
                     </h2>
                   </div>
-                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest opacity-60 ml-14">Most loved by our community</p>
+                  <p className="text-[10px] font-bold text-text-muted md:text-white/80 uppercase tracking-widest opacity-60 md:opacity-100 ml-14">Most loved by our community</p>
                 </div>
 
                 <div className="hidden md:flex items-center gap-4">
@@ -334,7 +333,7 @@ const LandingPage = () => {
 
               <div
                 ref={scrollContainerRef}
-                className="flex overflow-x-auto no-scrollbar gap-6 px-6 pb-6 snap-x"
+                className="flex overflow-x-auto no-scrollbar gap-4 sm:gap-6 pb-6 snap-x w-full"
               >
                 {trendingItems.filter(item => !item.isBlocked).map((item, idx) => {
                   const isItemOutOfStock = getEffectiveStock(item) < 1 || isClosed;
@@ -342,17 +341,19 @@ const LandingPage = () => {
                     <div
                       key={idx}
                       onClick={() => { if (!isItemOutOfStock) { setSelectedMenu(item); setIsModalOpen(true); } }}
-                      className={`flex-shrink-0 w-[200px] md:w-[260px] bg-background-muted rounded-[2rem] p-4 border border-border/5 shadow-xl transition-all duration-500 group snap-center relative overflow-hidden ${isItemOutOfStock
+                      className={`flex-shrink-0 w-[calc(50%-0.5rem)] sm:w-[calc(33.333%-1rem)] md:w-[calc(25%-1rem)] lg:w-[calc(20%-1.2rem)] bg-background-card rounded-[1.25rem] p-2.5 border border-border/10 shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all duration-500 group snap-start relative overflow-hidden flex flex-col ${isItemOutOfStock
                         ? 'grayscale opacity-60 pointer-events-none'
-                        : 'hover:shadow-[0_20px_50px_rgba(185,28,28,0.1)] cursor-pointer'
+                        : 'hover:shadow-[0_20px_50px_rgba(185,28,28,0.15)] hover:-translate-y-1 cursor-pointer'
                         }`}
                     >
-                      <div className="relative h-40 md:h-48 rounded-[1.5rem] overflow-hidden mb-4">
+                      <div className="relative h-[28vw] max-h-[110px] md:max-h-none md:h-32 rounded-xl overflow-hidden mb-2 bg-background-muted flex-shrink-0">
                         <img
                           src={item.image || '/placeholder-food.jpg'}
                           alt={item.name}
-                          className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 ${isClosed ? 'grayscale brightness-50' : ''}`}
+                          className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out ${isClosed ? 'grayscale brightness-50' : ''}`}
                         />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
                         {isItemOutOfStock && (
                           <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px] z-20">
                             <span className="bg-white text-black text-[9px] font-black px-3 py-1.5 rounded-lg uppercase tracking-widest shadow-xl border border-black/10">
@@ -360,43 +361,34 @@ const LandingPage = () => {
                             </span>
                           </div>
                         )}
+
                         {(() => {
                           const menuDiscount = item.discountPercentage || 0;
                           const cat = categories.find(c => c._id === item.category);
                           const categoryDiscount = cat?.discountPercentage || 0;
                           const maxDiscountPercent = Math.max(menuDiscount, categoryDiscount);
-                          return maxDiscountPercent > 0 && !item.isCombo && !isItemOutOfStock ? (
-                            <div className="absolute top-3 left-3 bg-primary text-white text-[9px] font-black px-2 py-1 rounded-lg shadow-lg z-10">
-                              {`${maxDiscountPercent}% OFF`}
-                            </div>
-                          ) : null;
-                        })()}
-                      </div>
-                      <div className="px-1">
-                        <h3 className="text-[13px] sm:text-sm font-black text-text-primary mb-2 group-hover:text-primary transition-colors line-clamp-2 leading-tight">{item.name}</h3>
-                        <div className="flex items-center justify-between border-t border-border/10 pt-3">
-                          {(() => {
-                            const originalPrice = item.offerPrice || item.price || (item.variants && item.variants.length > 0 ? Math.min(...item.variants.map(v => v.price)) : 0);
-                            const menuDiscount = item.discountPercentage || 0;
-                            const cat = categories.find(c => c._id === item.category);
-                            const categoryDiscount = cat?.discountPercentage || 0;
-                            const maxDiscountPercent = Math.max(menuDiscount, categoryDiscount);
-                            const discountedPrice = maxDiscountPercent > 0 && !item.isCombo ? originalPrice * (1 - maxDiscountPercent / 100) : originalPrice;
 
+                          if (maxDiscountPercent > 0 && !item.isCombo && !isItemOutOfStock) {
                             return (
-                              <div className="flex flex-col">
-                                {maxDiscountPercent > 0 && !item.isCombo && (
-                                  <span className="text-[9px] text-text-muted line-through opacity-60">
-                                    ₹{Math.round(originalPrice)}
-                                  </span>
-                                )}
-                                <span className="text-lg font-black text-text-primary">
-                                  ₹{Math.round(discountedPrice)}
-                                </span>
+                              <div className="absolute top-3 left-3 bg-primary text-white text-[10px] font-black px-2.5 py-1 rounded-lg shadow-lg z-10 animate-bounce-slow">
+                                {`${maxDiscountPercent}% OFF`}
                               </div>
                             );
-                          })()}
-                        </div>
+                          }
+                          if (item.isCombo && !isItemOutOfStock) {
+                            return (
+                              <div className="absolute top-3 left-3 bg-amber-500 text-white text-[10px] font-black px-2.5 py-1 rounded-lg shadow-lg z-10 uppercase tracking-wider">
+                                Combo Deal
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+
+                      <div className="px-1.5 flex flex-col flex-1 pb-1">
+                        <h3 className="text-[10px] md:text-xs font-black text-text-primary mb-0.5 group-hover:text-primary transition-colors line-clamp-2 leading-tight">{item.name}</h3>
+                        <p className="text-[9px] font-medium text-text-muted opacity-80 line-clamp-1 mb-0.5">{item.description || "A delicious favorite from our menu."}</p>
                       </div>
                     </div>
                   );
@@ -459,7 +451,6 @@ const LandingPage = () => {
             />
           </div>
         </main>
-      </div>
 
       <Footer />
 

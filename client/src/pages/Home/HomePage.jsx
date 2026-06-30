@@ -392,14 +392,14 @@ const HomePage = () => {
             <div className="flex items-center justify-between mb-8">
               <div className="space-y-1">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary/10 rounded-2xl flex items-center justify-center">
-                    <Flame size={24} className="text-primary animate-pulse" />
+                  <div className="w-10 h-10 bg-primary/10 md:bg-white/20 rounded-2xl flex items-center justify-center">
+                    <Flame size={24} className="text-primary md:text-white animate-pulse" />
                   </div>
-                  <h2 className="text-3xl font-black text-text-primary tracking-tighter">
-                    Most Loved <span className="text-primary italic">Dishes</span>
+                  <h2 className="text-3xl font-black text-text-primary md:text-white tracking-tighter">
+                    Most Loved <span className="text-primary md:text-white/90 italic">Dishes</span>
                   </h2>
                 </div>
-                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest opacity-60 ml-14">Most loved by our community</p>
+                <p className="text-[10px] font-bold text-text-muted md:text-white/80 uppercase tracking-widest opacity-60 md:opacity-100 ml-14">Most loved by our community</p>
               </div>
 
               <div className="hidden md:flex items-center gap-4">
