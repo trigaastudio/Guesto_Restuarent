@@ -123,7 +123,7 @@ const LoginPage = () => {
     } finally { setLoading(false); }
   };
 
-  
+
   const inputCls = (field) =>
     `w-full bg-background-muted border rounded-2xl py-2.5 sm:py-3.5 pl-10 sm:pl-12 pr-4 text-xs sm:text-sm font-semibold
      placeholder:text-text-muted/50 focus:outline-none transition-all text-text-primary ${errors[field]
@@ -134,15 +134,15 @@ const LoginPage = () => {
   return (
     <div className="min-h-screen w-full bg-background font-sans select-none flex">
 
-      {}
+      { }
       <div className="hidden lg:flex w-1/2 relative overflow-hidden">
-        {}
+        { }
         <img
           src="/heroSection/hero.png"
           alt="Guesto Restaurant"
           className="absolute inset-0 w-full h-full object-cover animate-slow-zoom"
         />
-        {}
+        { }
         <div className="absolute inset-0 bg-gradient-to-br from-primary/90 via-primary/70 to-black/80 z-10" />
 
         <div className="relative z-20 flex flex-col items-center justify-center text-center px-14 w-full page-fade-in">
@@ -163,7 +163,7 @@ const LoginPage = () => {
           <p className="text-base text-white/75 font-medium leading-relaxed max-w-xs">
             Sign in to unlock exclusive dining experiences & personalized recommendations.
           </p>
-          {}
+          { }
           <div className="mt-12 flex gap-2">
             <span className="w-2 h-2 rounded-full bg-primary-light opacity-80"></span>
             <span className="w-2 h-2 rounded-full bg-white/40"></span>
@@ -174,40 +174,40 @@ const LoginPage = () => {
 
       <div ref={containerRef} className="w-full lg:w-1/2 flex flex-col justify-start sm:justify-center items-center px-3 xs:px-4 sm:px-12 pt-3 pb-12 sm:py-6 relative min-h-screen lg:h-screen lg:overflow-y-auto no-scrollbar">
 
-        {}
+        { }
         <div className="lg:hidden fixed inset-0 pointer-events-none">
           <div className="absolute inset-0 bg-background" />
           <img src="/heroSection/hero.png" alt="" className="w-full h-full object-cover opacity-25" />
           <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-background/80 to-background/95" />
         </div>
 
-        {}
+        { }
         <div className="lg:hidden flex justify-center mb-12 mt-2 cursor-pointer z-20" onClick={() => navigate('/')}>
           <img src={logoSrc} alt="Logo" className="h-12 xs:h-14 sm:h-16 object-contain" />
         </div>
 
         <div className="w-full max-w-[330px] xs:max-w-[360px] md:max-w-[440px] lg:max-w-[420px] relative z-10 page-fade-in mt-1 sm:my-auto">
 
-          {}
+          { }
           <div className="relative h-16 sm:h-20 w-full overflow-visible z-20">
             <FunnyDumpling isHiding={activeField === 'password'} activeField={activeField} />
           </div>
 
-          {}
+          { }
           <div className="bg-background-card border border-border rounded-[1.5rem] sm:rounded-[2rem] px-4 py-6 xs:px-5 xs:py-7 sm:p-10 shadow-xl relative overflow-hidden">
 
-            {}
+            { }
             <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/15 rounded-full blur-[50px] pointer-events-none" />
             <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-primary-light/10 rounded-full blur-[50px] pointer-events-none" />
 
             <div className="relative z-10 space-y-6">
-              {}
+              { }
               <div className="text-center space-y-1">
                 <h1 className="text-2xl font-black tracking-tight text-text-primary">Welcome Back</h1>
                 <p className="text-[11px] text-text-muted font-semibold uppercase tracking-widest">Sign in to your account</p>
               </div>
 
-              {}
+              { }
               {apiError && (
                 <div className="bg-primary/10 border border-primary/25 text-primary px-4 py-3 rounded-xl text-xs font-bold text-center animate-shake flex items-center justify-center gap-2">
                   {apiError}
@@ -215,7 +215,7 @@ const LoginPage = () => {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                {}
+                { }
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest ml-1">
                     Email Address
@@ -237,7 +237,7 @@ const LoginPage = () => {
                   )}
                 </div>
 
-                {}
+                { }
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest ml-1">
                     Password
@@ -266,7 +266,7 @@ const LoginPage = () => {
                   )}
                 </div>
 
-                {}
+                { }
                 <div className="flex justify-end">
                   <button
                     type="button"
@@ -277,7 +277,7 @@ const LoginPage = () => {
                   </button>
                 </div>
 
-                {}
+                { }
                 <button
                   type="submit"
                   disabled={loading}
@@ -297,14 +297,14 @@ const LoginPage = () => {
                 </button>
               </form>
 
-              {}
+              { }
               <div className="flex items-center gap-3">
                 <div className="flex-grow h-px bg-border" />
                 <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">Or</span>
                 <div className="flex-grow h-px bg-border" />
               </div>
 
-              {}
+              { }
               <button
                 type="button"
                 onClick={() => googleLogin()}
@@ -314,7 +314,7 @@ const LoginPage = () => {
                 Continue with Google
               </button>
 
-              {}
+              { }
               <p className="text-center text-[11px] sm:text-xs font-semibold text-text-muted">
                 Don't have an account?{' '}
                 <Link

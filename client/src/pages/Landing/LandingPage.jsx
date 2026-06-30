@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
-import '../Home/HomePage.css'; 
+import '../Home/HomePage.css';
 import api from '../../api/axiosInstance';
 import Footer from '../../components/Footer/Footer';
 import Navbar from '../../components/Navbar/Navbar';
@@ -26,7 +26,7 @@ const LandingPage = () => {
   const [categories, setCategories] = useState([]);
   const [trendingItems, setTrendingItems] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [offerFilter, setOfferFilter] = useState(null); 
+  const [offerFilter, setOfferFilter] = useState(null);
   const [offerName, setOfferName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
@@ -54,8 +54,8 @@ const LandingPage = () => {
     if (token) {
       navigate('/home', { replace: true });
     }
-    
-    
+
+
   }, [navigate]);
 
   useEffect(() => {
@@ -107,7 +107,7 @@ const LandingPage = () => {
         search: debouncedSearchQuery || undefined,
         dietary: dietaryFilter !== 'all' ? dietaryFilter : undefined,
         sortBy: sortBy !== 'default' ? sortBy : undefined,
-        
+
         offerId: filterOverride && filterOverride.length === 24 ? filterOverride : undefined,
         bogo: filterOverride === 'bogo' ? 'true' : undefined,
         combo: filterOverride === 'combo' ? 'true' : undefined,
@@ -207,8 +207,8 @@ const LandingPage = () => {
 
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const dropdownRef = useRef(null);
-  
-  
+
+
   const user = JSON.parse(
     localStorage.getItem('user') ||
     localStorage.getItem('admin_user') ||
@@ -229,9 +229,9 @@ const LandingPage = () => {
   }, []);
 
   const handleLogout = () => {
-    
-    
-    
+
+
+
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('admin_token');
@@ -240,7 +240,7 @@ const LandingPage = () => {
     localStorage.removeItem('dineInTableId');
     localStorage.removeItem('dineInTableNumber');
 
-    
+
     window.location.href = '/';
   };
 
@@ -289,7 +289,7 @@ const LandingPage = () => {
             />
           </div>
 
-          {}
+          { }
           {trendingItems.length > 0 && (
             <div className="mb-20 relative group/slider mt-12">
               <div className="flex items-center justify-between mb-8 px-6">

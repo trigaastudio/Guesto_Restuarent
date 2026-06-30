@@ -21,8 +21,9 @@ export const CartProvider = ({ children }) => {
                         window.location.pathname.startsWith('/staff') || 
                         window.location.pathname.startsWith('/kitchen') || 
                         window.location.pathname.startsWith('/waiter');
+    const hasUser = !!localStorage.getItem('user');
                         
-    if (!isStaffUser && !isStaffPath) {
+    if (!isStaffUser && !isStaffPath && hasUser) {
       fetchCart();
     } else {
       setLoading(false);
@@ -67,10 +68,26 @@ export const CartProvider = ({ children }) => {
       }
     });
 
+    const handleAuthChange = () => {
+      const isStaffUser = !!(localStorage.getItem('staff_user') || localStorage.getItem('admin_user'));
+      const hasUser = !!localStorage.getItem('user');
+      
+      if (!isStaffUser && !isStaffPath && hasUser) {
+        fetchCart();
+      } else if (!hasUser) {
+        setCartItems([]);
+      }
+    };
+    
+    window.addEventListener('cart-refresh', handleAuthChange);
+    window.addEventListener('storage', handleAuthChange);
+
     return () => {
       socket.off('stockUpdate');
       socket.off('offerUpdate');
       socket.off('settingsUpdate');
+      window.removeEventListener('cart-refresh', handleAuthChange);
+      window.removeEventListener('storage', handleAuthChange);
       if (pendingUpdatesRef.current) {
         Object.values(pendingUpdatesRef.current).forEach(clearTimeout);
       }
@@ -79,7 +96,7 @@ export const CartProvider = ({ children }) => {
 
   const fetchCart = async () => {
     try {
-      const response = await api.get('/api/cart');
+      const response = await api.get(`/api/cart?t=${new Date().getTime()}`);
       if (response.data.success) {
         setCartItems(response.data.data.items || []);
       }

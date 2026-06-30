@@ -1,16 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { logoutToLanding } from '../../utils/auth';
 import { Home, Utensils, ShoppingCart, User, MapPin, LogOut, Package, X } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
+import Swal from 'sweetalert2';
 
 const BottomNavbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { cartItems } = useCart();
   const [showProfileOptions, setShowProfileOptions] = useState(false);
-  const [activeSection, setActiveSection] = useState('hero'); 
-  const [isVisible, setIsVisible] = useState(true); 
+  const [activeSection, setActiveSection] = useState('hero');
+  const [isVisible, setIsVisible] = useState(true);
+  const closeTimeoutRef = useRef(null);
+  const navbarRef = useRef(null);
+  const floatingIconsRef = useRef(null);
 
   const [user, setUser] = useState(() => JSON.parse(
     localStorage.getItem('user') ||
@@ -76,7 +80,39 @@ const BottomNavbar = () => {
     return location.pathname === path;
   };
 
-  
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showProfileOptions && 
+          navbarRef.current && !navbarRef.current.contains(event.target) &&
+          floatingIconsRef.current && !floatingIconsRef.current.contains(event.target)) {
+        setShowProfileOptions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [showProfileOptions]);
+
+  useEffect(() => {
+    const handleScrollClose = () => {
+      if (showProfileOptions) {
+        setShowProfileOptions(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScrollClose, { passive: true });
+    
+    return () => {
+      window.removeEventListener('scroll', handleScrollClose);
+    };
+  }, [showProfileOptions]);
+
   const excludedPaths = ['/login', '/register', '/admin/login', '/admin/dashboard', '/digital-menu', '/waiter/dashboard', '/kitchen/dashboard'];
   if (excludedPaths.includes(location.pathname) || location.pathname.startsWith('/admin') || location.pathname.startsWith('/waiter') || location.pathname.startsWith('/kitchen')) {
     return null;
@@ -84,6 +120,12 @@ const BottomNavbar = () => {
 
   const handleItemClick = (item) => {
     setShowProfileOptions(false);
+    
+    if (item.name === 'Cart' && !isLoggedIn) {
+      navigate('/login');
+      return;
+    }
+
     if (item.isMenu) {
       if (['/home', '/'].includes(location.pathname)) {
         const menuSection = document.getElementById('menu');
@@ -111,15 +153,45 @@ const BottomNavbar = () => {
   };
 
   const handleLogout = () => {
-    logoutToLanding(navigate);
-    setShowProfileOptions(false);
+    Swal.fire({
+      title: 'Are you sure?',
+      text: "You will be signed out of your account.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#B91C1C',
+      cancelButtonColor: '#9CA3AF',
+      confirmButtonText: 'Yes, sign out!'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        await logoutToLanding(navigate);
+        setShowProfileOptions(false);
+      }
+    });
+  };
+
+  const handleMouseLeave = () => {
+    const timeout = setTimeout(() => {
+      setShowProfileOptions(false);
+    }, 400);
+    closeTimeoutRef.current = timeout;
+  };
+
+  const handleMouseEnter = () => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+    }
   };
 
   return (
     <>
-      {}
-      <div className={`fixed bottom-[100px] md:bottom-[120px] right-6 md:right-10 z-[1001] transition-all duration-700 cubic-bezier(0.4, 0, 0.2, 1) ${showProfileOptions ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}>
-        {}
+      { }
+      <div 
+        ref={floatingIconsRef}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        className={`fixed bottom-[100px] md:bottom-[120px] right-6 md:right-10 z-[1001] transition-all duration-700 cubic-bezier(0.4, 0, 0.2, 1) ${showProfileOptions ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}
+      >
+        { }
         <button
           onClick={() => { navigate('/profile'); setShowProfileOptions(false); }}
           className={`absolute bottom-0 right-0 w-11 h-11 md:w-12 md:h-12 bg-blue-500 text-white rounded-2xl flex items-center justify-center shadow-[0_20px_50px_rgba(59,130,246,0.3)] transition-all duration-500 transform hover:scale-110 active:scale-90 ${showProfileOptions ? '-translate-y-28 md:-translate-y-32 scale-100 rotate-0' : 'translate-y-0 scale-0 rotate-45'}`}
@@ -128,7 +200,7 @@ const BottomNavbar = () => {
           <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-background-card/90 backdrop-blur-sm text-blue-500 text-[8px] font-black px-2.5 py-1.5 rounded-xl shadow-xl border border-blue-500/20 uppercase tracking-widest whitespace-nowrap">Address</div>
         </button>
 
-        {}
+        { }
         <button
           onClick={() => { navigate('/my-orders'); setShowProfileOptions(false); }}
           className={`absolute bottom-0 right-0 w-11 h-11 md:w-12 md:h-12 bg-orange-500 text-white rounded-2xl flex items-center justify-center shadow-[0_20px_50px_rgba(249,115,22,0.3)] transition-all duration-500 delay-75 transform hover:scale-110 active:scale-90 ${showProfileOptions ? '-translate-y-20 -translate-x-20 md:-translate-y-24 md:-translate-x-24 scale-100 rotate-0' : 'translate-y-0 scale-0 rotate-45'}`}
@@ -137,7 +209,7 @@ const BottomNavbar = () => {
           <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-background-card/90 backdrop-blur-sm text-orange-500 text-[8px] font-black px-2.5 py-1.5 rounded-xl shadow-xl border border-orange-500/20 uppercase tracking-widest whitespace-nowrap">Orders</div>
         </button>
 
-        {}
+        { }
         <button
           onClick={handleLogout}
           className={`absolute bottom-0 right-0 w-11 h-11 md:w-12 md:h-12 bg-red-500 text-white rounded-2xl flex items-center justify-center shadow-[0_20px_50px_rgba(239,68,68,0.3)] transition-all duration-500 delay-150 transform hover:scale-110 active:scale-90 ${showProfileOptions ? '-translate-x-28 md:-translate-x-32 scale-100 rotate-0' : 'translate-x-0 scale-0 rotate-45'}`}
@@ -147,10 +219,15 @@ const BottomNavbar = () => {
         </button>
       </div>
 
-      {}
-      <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[1000] w-[92%] sm:w-[85%] md:w-[70%] max-w-[500px] transition-all duration-500 translate-y-0 opacity-100 visible">
+      { }
+      <div 
+        ref={navbarRef}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[1000] w-[92%] sm:w-[85%] md:w-[70%] max-w-[500px] transition-all duration-500 translate-y-0 opacity-100 visible"
+      >
         <div className="bg-[#1A1A1A]/95 backdrop-blur-md border border-white/10 shadow-[0_25px_80px_rgba(0,0,0,0.5)] rounded-[2rem] px-2 py-2 flex items-center justify-around transition-all duration-500">
-          
+
           {navItems.map((item) => {
             const ActiveIcon = item.isProfile && showProfileOptions ? X : item.icon;
             const active = isActive(item.path, item) && !showProfileOptions;
@@ -165,9 +242,9 @@ const BottomNavbar = () => {
                   <div className={`p-1.5 rounded-xl transition-all duration-500 ${active ? 'bg-primary/10 text-primary' : 'text-white'}`}>
                     <ActiveIcon size={20} strokeWidth={active ? 3 : 2} />
                   </div>
-                  
-                  {}
-                  {item.showBadge && cartItems.length > 0 && (
+
+                  { }
+                  {item.showBadge && cartItems.length > 0 && isLoggedIn && (
                     <span className="absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center rounded-full bg-primary text-white text-[8px] font-black border-2 border-[#1A1A1A]">
                       {cartItems.length}
                     </span>
@@ -178,7 +255,7 @@ const BottomNavbar = () => {
                   </span>
                 </div>
 
-                {}
+                { }
                 {active && (
                   <div className="absolute -bottom-1 w-1 h-1 bg-primary rounded-full shadow-[0_0_10px_#B91C1C]"></div>
                 )}

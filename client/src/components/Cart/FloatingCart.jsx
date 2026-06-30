@@ -25,7 +25,15 @@ const FloatingCart = () => {
     }, 0);
   }, [cartItems]);
 
-  if (cartItems.length === 0) return null;
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('user'));
+
+  useEffect(() => {
+    const handleStorage = () => setIsLoggedIn(!!localStorage.getItem('user'));
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
+  if (cartItems.length === 0 || !isLoggedIn) return null;
 
   const excludedPaths = ['/cart', '/payment', '/login', '/register', '/admin/login', '/admin/dashboard', '/digital-menu', '/waiter/dashboard', '/kitchen/dashboard'];
   if (

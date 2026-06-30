@@ -34,10 +34,11 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       const path = window.location.pathname;
       const isLoginRequest = error.config?.url?.includes('/api/auth/login');
+      const isLogoutRequest = error.config?.url?.includes('/api/auth/logout');
       const publicPaths = ['/', '/login', '/register', '/admin/login', '/staff/login', '/about', '/digital-menu'];
 
       
-      if (isLoginRequest || publicPaths.includes(path)) {
+      if (isLoginRequest || isLogoutRequest || publicPaths.includes(path)) {
         return Promise.reject(error);
       }
 

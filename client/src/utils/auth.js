@@ -11,26 +11,29 @@ export const clearAllAuth = () => {
 };
 
 export const logoutToLanding = async (navigate) => {
-  try { await api.post('/api/auth/logout'); } catch (err) {}
+  try { await api.post('/api/auth/logout'); } catch (err) { }
   localStorage.removeItem('user');
+  localStorage.removeItem('token');
   localStorage.removeItem('dineInTableId');
   localStorage.removeItem('dineInTableNumber');
-  navigate('/', { replace: true });
+  window.location.href = '/';
 };
 
 export const logoutAdmin = async (navigate) => {
-  try { await api.post('/api/auth/logout'); } catch (err) {}
+  try { await api.post('/api/auth/logout'); } catch (err) { }
   localStorage.removeItem('admin_user');
+  localStorage.removeItem('admin_token');
   localStorage.removeItem('admin_notifications');
   localStorage.removeItem('orderActiveTab');
   localStorage.removeItem('orderStatusFilter');
   localStorage.removeItem('orderSearchTerm');
   localStorage.removeItem('menuSearchTerm');
-  navigate('/admin/login', { replace: true });
+  window.location.href = '/admin/login';
 };
 
 export const logoutStaff = async (navigate) => {
-  try { await api.post('/api/auth/logout'); } catch (err) {}
+  try { await api.post('/api/auth/logout'); } catch (err) { }
   localStorage.removeItem('staff_user');
-  navigate('/staff/login', { replace: true });
+  localStorage.removeItem('staff_token');
+  window.location.href = '/staff/login';
 };

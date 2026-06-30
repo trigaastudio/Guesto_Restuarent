@@ -650,7 +650,9 @@ const CartPage = () => {
                                 )}
 
                               </div>
-                              <button onClick={() => removeFromCart(item._id)} className="text-text-muted/20 hover:text-red-500 transition-colors p-1"><Trash2 size={16} /></button>
+                              <button onClick={() => removeFromCart(item._id)} className="text-red-500/70 hover:text-red-600 bg-red-500/10 hover:bg-red-500/20 transition-colors p-2 rounded-xl flex-shrink-0">
+                                <Trash2 size={16} />
+                              </button>
                             </div>
 
                             <div className="flex flex-wrap items-center gap-4 pt-2">
