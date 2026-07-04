@@ -845,8 +845,8 @@ class OrderController {
         }
 
         
-        const actualPrice = item.unitPrice !== undefined ? item.unitPrice : (variant ? variant.price : (menuDoc?.hasOffer && menuDoc?.offerPrice != null ? menuDoc.offerPrice : menuDoc?.price || 0));
-        const calculatedTotalPrice = item.totalPrice !== undefined ? item.totalPrice : actualPrice * item.quantity;
+        const actualPrice = variant ? variant.price : (menuDoc?.hasOffer && menuDoc?.offerPrice != null ? menuDoc.offerPrice : menuDoc?.price || 0);
+        const calculatedTotalPrice = actualPrice * (item.quantity || 1);
 
         return {
           ...item,
@@ -992,7 +992,11 @@ class OrderController {
   async updateOrderStatus(req, res) {
     try {
       const { id } = req.params;
-      const updateData = { ...req.body };
+      const ALLOWED_STATUS_UPDATES = ['orderStatus', 'kitchenStatus', 'paymentStatus', 'paymentMethod', 'assignedDeliveryBoy', 'cashReceived', 'totalAmount', 'paidAmount', 'rejectionReason', 'remarks'];
+      const updateData = {};
+      for (const key of ALLOWED_STATUS_UPDATES) {
+        if (req.body[key] !== undefined) updateData[key] = req.body[key];
+      }
 
       const originalOrder = await Order.findById(id);
       if (!originalOrder) return res.status(404).json({ success: false, message: 'Order not found' });

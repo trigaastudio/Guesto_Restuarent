@@ -18,13 +18,13 @@ router.put('/:id/status', protect, adminOrStaff, orderController.updateOrderStat
 router.patch('/:id/status', protect, adminOrStaff, orderController.updateOrderStatus);
 
 
-router.post('/counter', protect, orderController.createCounterOrder);
-router.patch('/:id/add-items', protect, orderController.addItems);
-router.patch('/:id/items', protect, orderController.updateOrderItems);
-router.patch('/:orderId/items/:itemId/remove', protect, orderController.removeItem);
-router.patch('/:orderId/items/bulk-status', protect, orderController.updateAllItemsStatus);
-router.patch('/:orderId/items/:itemId/status', protect, orderController.updateItemStatus);
-router.patch('/:orderId/items/:itemId/quantity', protect, orderController.updateItemQuantity);
+router.post('/counter', protect, adminOrStaff, orderController.createCounterOrder);
+router.patch('/:id/add-items', protect, adminOrStaff, orderController.addItems);
+router.patch('/:id/items', protect, adminOrStaff, orderController.updateOrderItems);
+router.patch('/:orderId/items/:itemId/remove', protect, adminOrStaff, orderController.removeItem);
+router.patch('/:orderId/items/bulk-status', protect, adminOrStaff, orderController.updateAllItemsStatus);
+router.patch('/:orderId/items/:itemId/status', protect, adminOrStaff, orderController.updateItemStatus);
+router.patch('/:orderId/items/:itemId/quantity', protect, adminOrStaff, orderController.updateItemQuantity);
 
 
 router.delete('/clear-history', protect, admin, orderController.clearHistory);
