@@ -1,12 +1,21 @@
 import express from 'express';
 import orderController from '../controllers/orderController.js';
 import { protect, admin, adminOrStaff } from '../middleware/authMiddleware.js';
+import rateLimit from 'express-rate-limit';
 
 const router = express.Router();
 
+const orderLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { success: false, message: 'Too many order requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 
 router.post('/validate-cart', protect, orderController.validateCart);
-router.post('/', protect, orderController.placeOrder);
+router.post('/', protect, orderLimiter, orderController.placeOrder);
 router.get('/my-orders', protect, orderController.getMyOrders);
 router.put('/:id/cancel', protect, orderController.cancelOrder);
 

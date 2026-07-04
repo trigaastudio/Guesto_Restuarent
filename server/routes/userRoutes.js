@@ -24,8 +24,8 @@ router.put('/address/:addressId/default', protect, userController.setDefaultAddr
 router.put('/address/:addressId', protect, userController.updateAddress);
 router.post('/send-change-email-otp', protect, otpLimiter, userController.sendChangeEmailOTP);
 router.post('/send-change-password-otp', protect, otpLimiter, userController.sendChangePasswordOTP);
-router.put('/change-email', protect, userController.changeEmail);
-router.put('/change-password', protect, userController.changePassword);
+router.put('/change-email', protect, otpLimiter, userController.changeEmail);
+router.put('/change-password', protect, otpLimiter, userController.changePassword);
 router.delete('/address/:addressId', protect, userController.deleteAddress);
 
 

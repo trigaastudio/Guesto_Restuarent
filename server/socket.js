@@ -70,15 +70,22 @@ export const initSocket = (httpServer) => {
     }
     
     
-    socket.on('joinOrder', (orderId) => {
+    socket.on('joinOrder', async (orderId) => {
       if (!socket.isAuthenticated) return;
       
       const isStaff = ['admin', 'staff', 'waiter', 'kitchen', 'cashier', 'delivery'].includes(socket.userRole);
       if (isStaff) {
         socket.join(orderId);
       } else {
-        
-        socket.join(orderId);
+        try {
+          const Order = (await import('./models/orderSchema.js')).default;
+          const order = await Order.findOne({ _id: orderId, customer: socket.userId }).lean();
+          if (order) {
+            socket.join(orderId);
+          }
+        } catch (err) {
+          console.error("Error joining order room:", err);
+        }
       }
     });
 

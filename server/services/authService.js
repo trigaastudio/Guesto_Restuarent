@@ -84,7 +84,7 @@ class AuthService {
     const otp = crypto.randomInt(100000, 999999).toString();
     await OTP.updateOne(
       { email: email.toLowerCase() },
-      { $set: { otp, createdAt: Date.now(), attempts: 0 } },
+      { $set: { otp: crypto.createHash('sha256').update(otp).digest('hex'), createdAt: Date.now(), attempts: 0 } },
       { upsert: true }
     );
 
@@ -112,7 +112,8 @@ class AuthService {
       throw new Error('OTP invalidated due to too many failed attempts. Please request a new OTP.');
     }
 
-    if (data.otp.toString().trim() === otp.toString().trim()) {
+    const hashedInput = crypto.createHash('sha256').update(otp.toString().trim()).digest('hex');
+    if (data.otp === hashedInput) {
       await OTP.deleteOne({ email: email.toLowerCase() });
       return true;
     }
@@ -148,7 +149,7 @@ class AuthService {
     const otp = crypto.randomInt(100000, 999999).toString();
     await OTP.updateOne(
       { email: email.toLowerCase() },
-      { $set: { otp, createdAt: Date.now(), attempts: 0 } },
+      { $set: { otp: crypto.createHash('sha256').update(otp).digest('hex'), createdAt: Date.now(), attempts: 0 } },
       { upsert: true }
     );
 
@@ -176,7 +177,7 @@ class AuthService {
     const otp = crypto.randomInt(100000, 999999).toString();
     await OTP.updateOne(
       { email: newEmail.toLowerCase() },
-      { $set: { otp, createdAt: Date.now(), attempts: 0 } },
+      { $set: { otp: crypto.createHash('sha256').update(otp).digest('hex'), createdAt: Date.now(), attempts: 0 } },
       { upsert: true }
     );
 
@@ -199,7 +200,7 @@ class AuthService {
     const otp = crypto.randomInt(100000, 999999).toString();
     await OTP.updateOne(
       { email: email.toLowerCase() },
-      { $set: { otp, createdAt: Date.now(), attempts: 0 } },
+      { $set: { otp: crypto.createHash('sha256').update(otp).digest('hex'), createdAt: Date.now(), attempts: 0 } },
       { upsert: true }
     );
 
