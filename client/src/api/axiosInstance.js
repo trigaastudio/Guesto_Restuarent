@@ -8,7 +8,29 @@ const api = axios.create({
   baseURL: BASE_URL,
   withCredentials: true,
 });
-// JWTs are now sent via httpOnly cookies automatically by the browser.
+// Attach JWT via Authorization header as a fallback for browsers blocking cross-site cookies
+api.interceptors.request.use((config) => {
+  const isStaffPath = window.location.pathname.startsWith('/admin') || 
+                      window.location.pathname.startsWith('/staff') || 
+                      window.location.pathname.startsWith('/kitchen') || 
+                      window.location.pathname.startsWith('/waiter');
+
+  let token = null;
+  if (window.location.pathname.startsWith('/admin')) {
+    token = localStorage.getItem('admin_token');
+  } else if (isStaffPath) {
+    token = localStorage.getItem('staff_token');
+  } else {
+    token = localStorage.getItem('token');
+  }
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// JWTs are also sent via httpOnly cookies automatically by the browser.
 api.interceptors.response.use(
   (response) => response,
   (error) => {

@@ -39,7 +39,8 @@ class AuthController {
           phone: user.phone,
           avatar: user.avatar,
           role: user.role,
-          createdAt: user.createdAt
+          createdAt: user.createdAt,
+          token
         }
       });
     } catch (error) {
@@ -68,7 +69,8 @@ class AuthController {
           phone: user.phone,
           avatar: user.avatar,
           role: user.role,
-          createdAt: user.createdAt
+          createdAt: user.createdAt,
+          token
         }
       });
     } catch (error) {
@@ -98,7 +100,8 @@ class AuthController {
           phone: user.phone,
           avatar: user.avatar,
           role: user.role,
-          createdAt: user.createdAt
+          createdAt: user.createdAt,
+          token
         }
       });
     } catch (error) {
@@ -130,7 +133,8 @@ class AuthController {
           phone: user.phone,
           avatar: user.avatar,
           role: user.role,
-          createdAt: user.createdAt
+          createdAt: user.createdAt,
+          token: jwtToken
         }
       });
     } catch (error) {
@@ -185,7 +189,8 @@ class AuthController {
           phone: user.phone,
           avatar: user.avatar,
           role: user.role,
-          createdAt: user.createdAt
+          createdAt: user.createdAt,
+          token
         }
       });
     } catch (error) {

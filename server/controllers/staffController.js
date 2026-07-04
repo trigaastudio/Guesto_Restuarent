@@ -24,7 +24,8 @@ class StaffController {
           id: staff._id,
           name: staff.name,
           employeeId: staff.employeeId,
-          role: staff.role
+          role: staff.role,
+          token
         }
       });
     } catch (error) {
