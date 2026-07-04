@@ -108,9 +108,25 @@ const verifyPayment = async (req, res) => {
         return res.status(404).json({ success: false, message: 'Order not found' });
       }
 
-      
+      // Ownership check
       if (order.customer && order.customer.toString() !== req.user._id.toString()) {
         return res.status(403).json({ success: false, message: 'Unauthorized' });
+      }
+
+      // SEC-03 Guard 1: Prevent re-paying an already-paid or refunded order
+      if (order.paymentStatus === 'paid') {
+        return res.status(409).json({ success: false, message: 'This order has already been paid.' });
+      }
+
+      // SEC-03 Guard 2: Ensure razorpay_order_id matches what was stored for this order
+      if (order.razorpayOrderId && order.razorpayOrderId !== razorpay_order_id) {
+        return res.status(400).json({ success: false, message: 'Payment order ID mismatch. Verification failed.' });
+      }
+
+      // SEC-03 Guard 3: Prevent replay — ensure this payment_id has never been used before
+      const duplicate = await Order.findOne({ razorpayPaymentId: razorpay_payment_id });
+      if (duplicate) {
+        return res.status(409).json({ success: false, message: 'This payment has already been processed.' });
       }
 
       order.paymentStatus = 'paid';
