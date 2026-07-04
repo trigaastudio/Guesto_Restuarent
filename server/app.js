@@ -44,7 +44,7 @@ app.use(compression({ threshold: 1024 }));
 
 
 
-app.set('trust proxy', process.env.TRUST_PROXY === 'true' ? 1 : false);
+app.set('trust proxy', 1);
 
 app.set('query parser', function (str) {
   return qs.parse(str, {
