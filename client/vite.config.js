@@ -17,6 +17,7 @@ export default defineConfig({
     include: ['jspdf', 'jspdf-autotable', 'exceljs', 'file-saver'],
   },
   build: {
+    sourcemap: false,
     rollupOptions: {
       output: {
         manualChunks(id) {

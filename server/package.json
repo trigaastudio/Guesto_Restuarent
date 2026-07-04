@@ -31,11 +31,13 @@
     "multer": "^2.2.0",
     "multer-storage-cloudinary": "^4.0.0",
     "node-cache": "^5.1.2",
-    "nodemon": "^3.1.14",
     "qs": "^6.15.2",
     "razorpay": "^2.9.6",
     "resend": "^6.12.4",
     "socket.io": "^4.8.3",
     "ws": "^8.21.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }
