@@ -132,7 +132,14 @@ const LoginPage = () => {
     }`;
 
   return (
-    <div className="min-h-screen w-full bg-background font-sans select-none flex">
+    <div className="min-h-screen w-full bg-background font-sans select-none flex relative">
+      <button 
+        onClick={() => navigate(-1)} 
+        className="absolute top-4 left-4 sm:top-6 sm:left-6 z-[100] p-2 sm:p-2.5 bg-background-card/80 backdrop-blur-md rounded-full border border-border text-text-primary hover:bg-primary hover:text-white transition-all shadow-lg group flex items-center justify-center"
+        title="Go Back"
+      >
+        <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+      </button>
 
       { }
       <div className="hidden lg:flex w-1/2 relative overflow-hidden">
