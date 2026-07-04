@@ -10,6 +10,12 @@ class StaffController {
       
       
       const token = staffService.generateToken(staff._id);
+      res.cookie('staff_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 24 * 60 * 60 * 1000
+      });
 
       res.status(200).json({
         success: true,
@@ -18,8 +24,7 @@ class StaffController {
           id: staff._id,
           name: staff.name,
           employeeId: staff.employeeId,
-          role: staff.role,
-          token: token
+          role: staff.role
         }
       });
     } catch (error) {

@@ -75,7 +75,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     const socketUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'https://guest-o-backend.onrender.com';
-    const socket = io(socketUrl);
+    const socket = io(socketUrl, { withCredentials: true });
 
     socket.on('newOrder', (data) => {
       

@@ -143,7 +143,7 @@ const OrderSection = () => {
     fetchDeliveryStaff();
 
     // Socket Setup for Real-time updates
-    socketRef.current = io(SOCKET_URL);
+    socketRef.current = io(SOCKET_URL, { withCredentials: true });
     socketRef.current.on('ordersUpdated', () => {
 
     });

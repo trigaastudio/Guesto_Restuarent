@@ -4,13 +4,20 @@ import authService from '../services/authService.js';
 
 
 const setAuthCookie = (res, role, token) => {
-  
-  
-  return;
+  const cookieName = role === 'admin' ? 'admin_token' : role === 'user' ? 'token' : 'staff_token';
+  res.cookie(cookieName, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 24 * 60 * 60 * 1000
+  });
 };
 
 class AuthController {
   async logout(req, res) {
+    res.clearCookie('token');
+    res.clearCookie('admin_token');
+    res.clearCookie('staff_token');
     res.status(200).json({ success: true, message: 'Logged out successfully' });
   }
 
@@ -32,8 +39,7 @@ class AuthController {
           phone: user.phone,
           avatar: user.avatar,
           role: user.role,
-          createdAt: user.createdAt,
-          token: jwtToken
+          createdAt: user.createdAt
         }
       });
     } catch (error) {
@@ -62,8 +68,7 @@ class AuthController {
           phone: user.phone,
           avatar: user.avatar,
           role: user.role,
-          createdAt: user.createdAt,
-          token: token
+          createdAt: user.createdAt
         }
       });
     } catch (error) {
@@ -93,8 +98,7 @@ class AuthController {
           phone: user.phone,
           avatar: user.avatar,
           role: user.role,
-          createdAt: user.createdAt,
-          token: token
+          createdAt: user.createdAt
         }
       });
     } catch (error) {
@@ -126,8 +130,7 @@ class AuthController {
           phone: user.phone,
           avatar: user.avatar,
           role: user.role,
-          createdAt: user.createdAt,
-          token: jwtToken
+          createdAt: user.createdAt
         }
       });
     } catch (error) {
@@ -182,8 +185,7 @@ class AuthController {
           phone: user.phone,
           avatar: user.avatar,
           role: user.role,
-          createdAt: user.createdAt,
-          token: token
+          createdAt: user.createdAt
         }
       });
     } catch (error) {

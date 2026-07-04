@@ -90,7 +90,7 @@ const DineInSection = () => {
   useEffect(() => {
     fetchTables();
 
-    socketRef.current = io(SOCKET_URL);
+    socketRef.current = io(SOCKET_URL, { withCredentials: true });
 
     socketRef.current.on('ordersUpdated', () => {
       fetchTables(true);

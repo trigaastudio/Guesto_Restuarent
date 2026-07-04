@@ -130,7 +130,7 @@ const KitchenDashboard = () => {
 
     const token = localStorage.getItem('staff_token') || localStorage.getItem('admin_token') || '';
     socketRef.current = io(SOCKET_URL, {
-      auth: { token }
+      withCredentials: true
     });
     socketRef.current.on('ordersUpdated', () => {
       fetchOrders(true);

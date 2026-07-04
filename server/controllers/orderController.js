@@ -576,7 +576,10 @@ class OrderController {
           .update(body.toString())
           .digest("hex");
 
-        const isAuthentic = expectedSignature === razorpaySignature;
+        const isAuthentic = crypto.timingSafeEqual(
+          Buffer.from(expectedSignature, 'hex'),
+          Buffer.from(razorpaySignature, 'hex')
+        );
         if (!isAuthentic) {
           return res.status(400).json({ success: false, message: 'Invalid payment signature.' });
         }

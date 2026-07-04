@@ -8,26 +8,7 @@ const api = axios.create({
   baseURL: BASE_URL,
   withCredentials: true,
 });
-api.interceptors.request.use((config) => {
-  const path = window.location.pathname;
-  let token;
-
-  
-  if (path.startsWith('/admin')) {
-    token = localStorage.getItem('admin_token');
-  } else if (path.startsWith('/kitchen') || path.startsWith('/waiter') || path.startsWith('/staff')) {
-    token = localStorage.getItem('staff_token');
-  } else {
-    
-    
-    token = localStorage.getItem('token') || localStorage.getItem('admin_token');
-  }
-
-  if (token) {
-    config.headers['Authorization'] = `Bearer ${token}`;
-  }
-  return config;
-});
+// JWTs are now sent via httpOnly cookies automatically by the browser.
 api.interceptors.response.use(
   (response) => response,
   (error) => {

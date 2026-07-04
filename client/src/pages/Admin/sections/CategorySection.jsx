@@ -35,7 +35,7 @@ const CategorySection = ({ refreshKey }) => {
   useEffect(() => {
     fetchCategories();
 
-    socketRef.current = io(SOCKET_URL);
+    socketRef.current = io(SOCKET_URL, { withCredentials: true });
     socketRef.current.on('categoryUpdate', () => {
       fetchCategories(true);
     });

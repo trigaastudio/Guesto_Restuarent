@@ -57,7 +57,7 @@ const WaiterDashboard = () => {
     document.title = 'Waiter | Dashboard';
 
 
-    socketRef.current = io(SOCKET_URL);
+    socketRef.current = io(SOCKET_URL, { withCredentials: true });
 
 
     socketRef.current.on('ordersUpdated', () => {

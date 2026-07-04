@@ -20,7 +20,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
     if (!isOpen) return;
 
     const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
-    const socket = io(SOCKET_URL);
+    const socket = io(SOCKET_URL, { withCredentials: true });
 
     socket.on('stockUpdate', ({ itemId, totalStock, isBlocked }) => {
       setMenuItems(prevItems =>
