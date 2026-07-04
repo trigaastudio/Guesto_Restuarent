@@ -58,13 +58,16 @@ api.interceptors.response.use(
         localStorage.removeItem('user');
         window.location.replace('/login');
       }
-    } else if (error.response?.status >= 500 || (!error.response && !axios.isCancel(error))) {
+    } else if (error.response?.status >= 500) {
       
       const path = window.location.pathname;
       if (path !== '/error') {
-        const message = error.response?.data?.message || error.message || 'Unable to connect to the server.';
+        const message = error.response?.data?.message || 'Unable to connect to the server.';
         window.location.replace(`/error?type=server&message=${encodeURIComponent(message)}`);
       }
+    } else if (!error.response && !axios.isCancel(error)) {
+      // Network error (e.g., CORS, offline)
+      console.error('Network Error:', error.message);
     }
     return Promise.reject(error);
   }

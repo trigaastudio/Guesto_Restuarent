@@ -56,7 +56,11 @@ app.set('query parser', function (str) {
 
 
 const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? [process.env.FRONTEND_URL]
+  ? [
+      process.env.FRONTEND_URL,
+      process.env.FRONTEND_URL?.replace('https://', 'https://www.'),
+      process.env.FRONTEND_URL?.replace('https://www.', 'https://')
+    ].filter(Boolean)
   : ['http://localhost:5173', 'http://127.0.0.1:5173'];
 
 app.use(cors({
