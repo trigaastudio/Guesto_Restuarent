@@ -37,25 +37,16 @@ export const getSettings = async (req, res) => {
         _id: settings._id,
         restaurantDetails: {
           name: settings.restaurantDetails?.name,
-          logo: settings.restaurantDetails?.logo,
-          contact: settings.restaurantDetails?.contact,
-          address: settings.restaurantDetails?.address
+          tagline: settings.restaurantDetails?.tagline,
+          contactNumber: settings.restaurantDetails?.contactNumber,
+          email: settings.restaurantDetails?.email,
+          address: settings.restaurantDetails?.address,
+          location: settings.restaurantDetails?.location
         },
-        businessHours: settings.businessHours,
-        operationalSettings: {
-          isOnlineOrderingEnabled: settings.operationalSettings?.isOnlineOrderingEnabled,
-          isDineInEnabled: settings.operationalSettings?.isDineInEnabled,
-          maintenanceMode: settings.operationalSettings?.maintenanceMode
-        },
-        deliverySettings: {
-          deliveryFee: settings.deliverySettings?.deliveryFee,
-          platformFee: settings.deliverySettings?.platformFee,
-          minOrderValue: settings.deliverySettings?.minOrderValue
-        },
-        taxSettings: {
-          taxPercentage: settings.taxSettings?.taxPercentage,
-          isTaxEnabled: settings.taxSettings?.isTaxEnabled
-        }
+        branding: settings.branding,
+        operationalSettings: settings.operationalSettings,
+        deliverySettings: settings.deliverySettings,
+        paymentSettings: settings.paymentSettings
       };
       
       res.status(200).json({
