@@ -12,8 +12,13 @@ export const getSettings = async (req, res) => {
     let userRole = 'public';
     let token = null;
     
-    if (req.cookies?.admin_token) token = req.cookies.admin_token;
-    else if (req.cookies?.staff_token) token = req.cookies.staff_token;
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+      token = req.headers.authorization.split(' ')[1];
+    } else if (req.cookies?.admin_token) {
+      token = req.cookies.admin_token;
+    } else if (req.cookies?.staff_token) {
+      token = req.cookies.staff_token;
+    }
     
     if (token) {
       try {
@@ -24,7 +29,7 @@ export const getSettings = async (req, res) => {
       }
     }
     
-    const isStaff = ['admin', 'staff', 'manager'].includes(userRole);
+    const isStaff = ['admin', 'staff', 'manager', 'kitchen', 'waiter', 'cashier'].includes(userRole);
     
     if (isStaff) {
       res.status(200).json({
