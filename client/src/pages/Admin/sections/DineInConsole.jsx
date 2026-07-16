@@ -1112,6 +1112,7 @@ const WaiterDashboard = () => {
         editingOrder={selectedOrderForEdit}
         orderSource={staff.role || "waiter"}
         occupiedSeats={selectedOrderSeats}
+        handlePrintKOT={handlePrintKOT}
       />
 
       {isDetailsModalOpen && selectedOrderForView && (
@@ -1242,9 +1243,6 @@ const WaiterDashboard = () => {
                 <button
                   onClick={() => {
                     handlePrintKOT(selectedOrderForView);
-                    if (selectedOrderForView.orderStatus !== 'delivered') {
-                      handleUpdateOrderStatus(selectedOrderForView._id, 'billed', false);
-                    }
                     setIsDetailsModalOpen(false);
                   }}
                   title="Print Bill"

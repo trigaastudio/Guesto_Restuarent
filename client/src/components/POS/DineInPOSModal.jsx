@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Minus, X, ShoppingCart, User, CheckCircle2, Zap, UtensilsCrossed } from 'lucide-react';
+import { Search, Plus, Minus, X, ShoppingCart, User, CheckCircle2, Zap, UtensilsCrossed, Filter, Printer, ChevronRight } from 'lucide-react';
 import { io } from 'socket.io-client';
 import { getEffectiveStock } from '../../utils/stockHelpers';
 import api from '../../api/axiosInstance';
 import { showToast } from '../../utils/sweetAlert';
 import MenuModal from '../Menu/MenuModal';
 
-const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, orderSource = 'admin', occupiedSeats }) => {
+const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, orderSource = 'admin', occupiedSeats, handlePrintKOT }) => {
   const [menuItems, setMenuItems] = useState([]);
   const [cart, setCart] = useState([]);
   const [customer, setCustomer] = useState({ name: '', phone: '' });
   const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [existingItems, setExistingItems] = useState([]);
@@ -75,6 +76,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
         setCustomer({ name: '', phone: '' });
       }
       setSearchTerm('');
+      setCategoryFilter('all');
       setShowConfirmModal(false);
     }
   }, [isOpen, editingOrder]);
@@ -337,7 +339,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
     setShowConfirmModal(true);
   };
 
-  const handleConfirmOrder = async () => {
+  const handleConfirmOrder = async (shouldPrintBill = false) => {
     setIsSubmitting(true);
     try {
       const isValid = await validateCartStock();
@@ -373,6 +375,9 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
           showToast('success', 'Order updated successfully!');
           onClose();
           fetchTables();
+          if (shouldPrintBill && handlePrintKOT) {
+            handlePrintKOT(res.data.data || editingOrder); // Print updated order
+          }
         }
       } else {
         const orderData = {
@@ -406,6 +411,9 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
           showToast('success', 'Order sent to kitchen!');
           onClose();
           fetchTables();
+          if (shouldPrintBill && handlePrintKOT) {
+            handlePrintKOT(res.data.data);
+          }
         }
       }
     } catch (error) {
@@ -420,7 +428,11 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
 
   if (!isOpen) return null;
 
-  const filteredMenu = menuItems.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredMenu = menuItems.filter(item => {
+    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = categoryFilter === 'all' || (item.category && (item.category._id || item.category) === categoryFilter);
+    return matchesSearch && matchesCategory;
+  });
   const cartItemCount = cart.length;
 
   return (
@@ -469,15 +481,36 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                 <h3 className="text-lg sm:text-xl font-black text-text-primary tracking-tight">Table {table?.tableNumber} Menu</h3>
                 <p className="text-xs font-bold text-text-muted mt-0.5 uppercase tracking-widest">Select items to order</p>
               </div>
-              <div className="relative w-full sm:w-64 md:w-72 lg:w-80">
-                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" />
-                <input
-                  type="text"
-                  placeholder="Search menu..."
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-background border border-border-light rounded-2xl focus:outline-none focus:border-primary font-bold text-sm"
-                />
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" size={12} />
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    className="pl-8 pr-7 py-2.5 sm:py-3 bg-background-muted/60 border-border-light rounded-xl text-xs sm:text-sm outline-none focus:ring-1 focus:ring-primary/50 border focus:border-primary/30 transition-all appearance-none cursor-pointer font-bold text-text-primary"
+                  >
+                    <option value="all">All Categories</option>
+                    {[...new Map(
+                      menuItems
+                        .filter(item => item.category)
+                        .map(item => [item.category._id || item.category, item.category])
+                    ).values()].map(cat => (
+                      <option key={cat._id || cat} value={cat._id || cat}>
+                        {cat.name || cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="relative w-full sm:w-64 md:w-72 lg:w-80">
+                  <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" />
+                  <input
+                    type="text"
+                    placeholder="Search menu..."
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-background border border-border-light rounded-2xl focus:outline-none focus:border-primary font-bold text-sm"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -719,24 +752,37 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                 <button
                   onClick={() => setShowConfirmModal(false)}
                   disabled={isSubmitting}
-                  className="flex-1 py-4 rounded-xl font-black uppercase tracking-widest text-[11px] border-2 border-border-light text-text-secondary hover:bg-background-muted hover:text-text-primary transition-all disabled:opacity-50"
+                  className="flex-1 py-3 rounded-xl font-black uppercase tracking-widest text-[10px] border-2 border-border-light text-text-secondary hover:bg-background-muted hover:text-text-primary transition-all disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={handleConfirmOrder}
+                  onClick={() => handleConfirmOrder(false)}
                   disabled={isSubmitting}
-                  className="flex-1 py-4 bg-primary text-white rounded-xl font-black uppercase tracking-widest text-[11px] shadow-lg shadow-primary/20 hover:bg-primary-light active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-background-card text-primary rounded-xl font-black uppercase tracking-widest text-[10px] shadow-sm border border-primary/30 hover:border-primary/50 hover:bg-primary/5 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? (
+                    'Placing...'
+                  ) : (
+                    <>
+                      {editingOrder ? 'Update' : 'Place Order'}
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => handleConfirmOrder(true)}
+                  disabled={isSubmitting}
+                  className="flex-[1.5] py-3 bg-primary text-white rounded-xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20 hover:bg-primary-light active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {isSubmitting ? (
                     <>
                       <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                      Processing...
+                      Placing...
                     </>
                   ) : (
                     <>
-                      <CheckCircle2 size={16} />
-                      Place Order
+                      {editingOrder ? 'Update & Print' : 'Place & Print'}
+                      <Printer size={16} />
                     </>
                   )}
                 </button>

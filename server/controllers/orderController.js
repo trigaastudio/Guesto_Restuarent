@@ -1004,19 +1004,6 @@ class OrderController {
       const originalOrder = await Order.findById(id);
       if (!originalOrder) return res.status(404).json({ success: false, message: 'Order not found' });
 
-      
-      if (
-        originalOrder.orderStatus === 'processing' &&
-        updateData.orderStatus &&
-        updateData.orderStatus !== 'processing' &&
-        updateData.orderStatus !== 'cancelled' &&
-        originalOrder.kitchenStatus !== 'ready'
-      ) {
-        return res.status(403).json({
-          success: false,
-          message: 'Order status cannot be updated until the Kitchen marks all items as "Ready".'
-        });
-      }
 
       if (updateData.orderStatus === 'cancelled' && originalOrder.orderStatus !== 'cancelled') {
         await restoreStock(originalOrder.items);

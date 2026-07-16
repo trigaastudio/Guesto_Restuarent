@@ -453,7 +453,7 @@ const OrderSection = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleCreateOrder = async () => {
+  const handleCreateOrder = async (shouldPrintBill = false) => {
     if (cart.length === 0) {
       showToast('warning', 'Please add at least one item');
       return;
@@ -523,6 +523,9 @@ const OrderSection = () => {
           setCart([]);
           setSelectedOrder(response.data.data);
           setOrders(orders.map(o => o._id === selectedOrder._id ? response.data.data : o));
+          if (shouldPrintBill) {
+            handlePrintKOT(response.data.data);
+          }
         }
         return;
       }
@@ -576,6 +579,9 @@ const OrderSection = () => {
         setCart([]);
         setCustomer({ name: 'Walk-in', phone: '' });
         fetchOrders(true);
+        if (shouldPrintBill) {
+          handlePrintKOT(response.data.data);
+        }
       }
     } catch (error) {
       console.error('Error creating order:', error);
@@ -590,17 +596,7 @@ const OrderSection = () => {
       const orderToUpdate = orders.find(o => o._id === orderId);
       const updateData = { orderStatus: newStatus, ...extraData };
 
-      if (['out-for-delivery', 'delivered'].includes(newStatus)) {
-        const notReadyItems = orderToUpdate.items.filter(item => {
-          const ks = item.kitchenStatus || 'placed';
-          return ks !== 'ready';
-        });
 
-        if (notReadyItems.length > 0) {
-          showToast('warning', `${notReadyItems.length} item(s) not ready from kitchen yet`);
-          return;
-        }
-      }
 
       const response = await api.patch(`/api/orders/${orderId}/status`, updateData);
       if (response.data.success) {
@@ -1101,7 +1097,7 @@ const OrderSection = () => {
     const menuDiscount = item.discountPercentage || 0;
     const categoryDiscount = item.category?.discountPercentage || 0;
     const discountPercent = Math.max(menuDiscount, categoryDiscount);
-    const comboOriginalPrice = item.isCombo 
+    const comboOriginalPrice = item.isCombo
       ? item.comboItems?.reduce((sum, ci) => sum + ((ci.price || ci.menuItem?.price) || 0), 0)
       : null;
     const basePrice = item.isCombo && comboOriginalPrice ? comboOriginalPrice : (variant.price || item.price || 0);
@@ -1348,6 +1344,7 @@ const OrderSection = () => {
     if (order.orderStatus === 'placed') return { label: 'New Order', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' };
     if (order.orderStatus === 'out-for-delivery') return { label: 'Out for Delivery', color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' };
     if (order.orderStatus === 'billed') return { label: 'Billed', color: 'bg-purple-500/10 text-purple-500 border-purple-500/20' };
+    if (order.orderStatus === 'ready') return { label: 'Ready', color: 'bg-status-on/10 text-status-available border-status-on/20' };
 
     if (order.orderStatus === 'processing') {
       const items = order.items || [];
@@ -1886,9 +1883,9 @@ const OrderSection = () => {
                       <td className="px-2 py-2.5 text-center">
                         {(() => {
                           const status = getFriendlyStatus(order);
-                          const isActionable = status.label === 'Ready' && activeTab !== 'dine-in';
+                          const isHistory = activeTab === 'history';
 
-                          if (isActionable) {
+                          if (!isHistory) {
                             return (
                               <select
                                 value={order.orderStatus === 'completed' ? 'delivered' : order.orderStatus}
@@ -1902,11 +1899,15 @@ const OrderSection = () => {
                                 onClick={(e) => e.stopPropagation()}
                                 className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border cursor-pointer outline-none transition-all text-center ${status.color}`}
                               >
-                                <option value={order.orderStatus} className="bg-background-card text-text-primary">{status.label}</option>
+                                <option value="placed" className="bg-background-card text-text-primary">New Order</option>
+                                <option value="processing" className="bg-background-card text-text-primary">Processing</option>
+                                <option value="ready" className="bg-background-card text-text-primary">Ready</option>
+                                <option value="billed" className="bg-background-card text-text-primary">Billed</option>
                                 {order.orderType === 'delivery' && (
                                   <option value="out-for-delivery" className="bg-background-card text-text-primary">Out for Delivery</option>
                                 )}
-                                <option value="delivered" className="bg-background-card text-text-primary">Delivered</option>
+                                <option value="delivered" className="bg-background-card text-text-primary">Delivered / Completed</option>
+                                <option value="cancelled" className="bg-background-card text-text-primary">Cancelled</option>
                               </select>
                             );
                           }
@@ -1956,9 +1957,6 @@ const OrderSection = () => {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handlePrintKOT(order);
-                                    if (order.orderStatus !== 'delivered' && order.orderStatus !== 'billed') {
-                                      handleUpdateOrderStatus(order._id, 'billed');
-                                    }
                                   }}
                                   className="p-2 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all"
                                   title="Print KOT"
@@ -2397,9 +2395,9 @@ const OrderSection = () => {
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-hidden print:hidden">
           <div className="bg-background-card w-full max-w-6xl h-[88vh] rounded-[2.5rem] border border-border/40 shadow-[0_40px_80px_rgba(0,0,0,0.4)] flex overflow-hidden animate-in zoom-in-95 duration-300">
 
-            {}
+            { }
             <div className="flex-1 flex flex-col border-r border-border-light/60 min-w-0">
-              {}
+              { }
               <div className="p-5 border-b border-border-light/60 flex items-center justify-between shrink-0 bg-gradient-to-r from-background-card to-background-muted/10">
                 <div>
                   <p className="text-[9px] font-black text-primary uppercase tracking-[0.25em] mb-0.5">Step 1</p>
@@ -2486,7 +2484,7 @@ const OrderSection = () => {
                         <div className="w-full aspect-square bg-background-card rounded-xl mb-3 overflow-hidden border border-border-light relative">
                           <img src={item.image || '/placeholder-dish.png'} alt={item.name} className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${isItemOutOfStock ? 'grayscale' : ''}`} />
 
-                          {}
+                          { }
                           <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
                             {item.isCombo && (
                               <span className="bg-primary/90 backdrop-blur-sm text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm border border-primary/20">Combo Deal</span>
@@ -2525,7 +2523,7 @@ const OrderSection = () => {
                             </span>
                           </div>
 
-                          {}
+                          { }
                           <div className="flex items-center gap-1.5 mb-1.5">
                             {(() => {
                               const originalPrice = item.isCombo
@@ -2535,7 +2533,7 @@ const OrderSection = () => {
                               const menuDiscount = item.discountPercentage || 0;
                               const categoryDiscount = item.category?.discountPercentage || 0;
                               const discountPercent = Math.max(menuDiscount, categoryDiscount);
-                              
+
                               const currentPrice = item.isCombo
                                 ? (item.price || originalPrice)
                                 : Math.round(discountPercent > 0 ? originalPrice * (1 - discountPercent / 100) : originalPrice);
@@ -2554,7 +2552,7 @@ const OrderSection = () => {
                             })()}
                           </div>
 
-                          {}
+                          { }
                           <div className="flex flex-col gap-1 mb-2">
                             {item.isCombo && item.comboItems?.length > 0 && (
                               <div className="flex flex-wrap gap-1">
@@ -2712,7 +2710,7 @@ const OrderSection = () => {
                 )}
               </div>
 
-              {}
+              { }
               <div className="p-4 border-t border-border-light space-y-2 shrink-0 bg-background-card">
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-text-muted/60 text-[10px] font-bold">
@@ -2757,9 +2755,9 @@ const OrderSection = () => {
               </div>
             </div>
 
-            {}
+            { }
             <div className="w-[280px] shrink-0 flex flex-col bg-background-card">
-              {}
+              { }
               <div className="p-5 border-b border-border-light/60 shrink-0 flex items-start justify-between">
                 <div>
                   <p className="text-[9px] font-black text-primary uppercase tracking-[0.25em] mb-0.5">Step 3</p>
@@ -2772,7 +2770,7 @@ const OrderSection = () => {
 
               <div className="flex-1 overflow-y-auto no-scrollbar p-5 space-y-5">
 
-                {}
+                { }
                 {!selectedOrder && (
                   <div>
                     <label className="text-[9px] font-black text-text-muted/70 uppercase tracking-widest mb-2 block">Order Type</label>
@@ -2801,7 +2799,7 @@ const OrderSection = () => {
                   </div>
                 )}
 
-                {}
+                { }
                 <div className="space-y-2">
                   <label className="text-[9px] font-black text-text-muted/70 uppercase tracking-widest block">Customer Info</label>
                   <div className="relative">
@@ -2838,7 +2836,7 @@ const OrderSection = () => {
                   </div>
                   {errors.customerPhone && <p className="text-[9px] font-bold text-primary px-1">Phone is required</p>}
 
-                  {}
+                  { }
                   {showSuggestions && (
                     <div className="bg-background-card border border-primary/20 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
                       <div className="p-3 border-b border-border-light bg-primary/5 flex items-center justify-between">
@@ -2874,7 +2872,7 @@ const OrderSection = () => {
                   )}
                 </div>
 
-                {}
+                { }
                 {posOrderType === 'delivery' && (
                   <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
                     <label className="text-[9px] font-black text-text-muted/70 uppercase tracking-widest block">Delivery Details</label>
@@ -2943,38 +2941,66 @@ const OrderSection = () => {
 
               </div>
 
-              {/* Place Order Button */}
+              {/* Place Order Buttons */}
               <div className="p-5 border-t border-border-light shrink-0">
-                <button
-                  onClick={() => {
-                    const cartItemsHtml = cart.map(i => `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>${i.name}</span><span>x${i.quantity}</span></div>`).join('');
-                    const isEdit = !!selectedOrder;
-                    Swal.fire({
-                      title: isEdit ? 'Confirm Updates' : 'Confirm Order',
-                      html: `<div style="max-height:150px;overflow-y:auto;background:rgba(0,0,0,0.02);padding:12px;border-radius:12px;border:1px solid #e5e7eb;font-size:14px;text-align:left;margin-bottom:16px">${cartItemsHtml}</div><p style="font-weight:bold;margin:0">${isEdit ? 'Send updated items to the kitchen?' : 'Send this order to the kitchen?'}</p>`,
-                      icon: 'question',
-                      showCancelButton: true,
-                      confirmButtonColor: '#10b981',
-                      cancelButtonColor: '#6b7280',
-                      confirmButtonText: 'Yes, Send to Kitchen',
-                      customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-6 py-3 font-black tracking-widest uppercase', cancelButton: 'rounded-xl px-6 py-3 font-black tracking-widest uppercase text-white' }
-                    }).then((result) => {
-                      if (result.isConfirmed) handleCreateOrder();
-                    });
-                  }}
-                  disabled={isSubmitting || cart.length === 0}
-                  className={`w-full py-4 rounded-[1.25rem] font-black text-[13px] uppercase tracking-[0.2em] transition-all duration-300 relative overflow-hidden group ${isSubmitting || cart.length === 0
-                    ? 'bg-background-muted text-text-muted/60 cursor-not-allowed border border-border-light'
-                    : 'bg-primary text-white hover:scale-[1.01] active:scale-[0.98] shadow-[0_12px_30px_rgba(239,68,68,0.35)] border border-primary/50'}`}
-                >
-                  <span className="relative z-10 flex items-center justify-center gap-2">
-                    {isSubmitting ? 'Placing Order...' : (selectedOrder ? 'Update Order' : 'Place Order')}
-                    {!isSubmitting && cart.length > 0 && <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />}
-                  </span>
-                  {!isSubmitting && cart.length > 0 && (
-                    <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:animate-[shimmer_2s_infinite]" />
-                  )}
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      const cartItemsHtml = cart.map(i => `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>${i.name}</span><span>x${i.quantity}</span></div>`).join('');
+                      const isEdit = !!selectedOrder;
+                      Swal.fire({
+                        title: isEdit ? 'Confirm Updates' : 'Confirm Order',
+                        html: `<div style="max-height:150px;overflow-y:auto;background:rgba(0,0,0,0.02);padding:12px;border-radius:12px;border:1px solid #e5e7eb;font-size:14px;text-align:left;margin-bottom:16px">${cartItemsHtml}</div><p style="font-weight:bold;margin:0">${isEdit ? 'Send updated items to the kitchen?' : 'Send this order to the kitchen?'}</p>`,
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#10b981',
+                        cancelButtonColor: '#6b7280',
+                        confirmButtonText: 'Yes, Send to Kitchen',
+                        customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-6 py-3 font-black tracking-widest uppercase', cancelButton: 'rounded-xl px-6 py-3 font-black tracking-widest uppercase text-white' }
+                      }).then((result) => {
+                        if (result.isConfirmed) handleCreateOrder(false);
+                      });
+                    }}
+                    disabled={isSubmitting || cart.length === 0}
+                    className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-[0.1em] transition-all duration-300 relative overflow-hidden group ${isSubmitting || cart.length === 0
+                      ? 'bg-background-muted text-text-muted/60 cursor-not-allowed border border-border-light'
+                      : 'bg-background-card text-primary hover:bg-primary/5 shadow-sm border border-primary/30 hover:border-primary/50'}`}
+                  >
+                    <span className="relative z-10 flex items-center justify-center gap-2">
+                      {isSubmitting ? 'Placing...' : (selectedOrder ? 'Update' : 'Place Order')}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const cartItemsHtml = cart.map(i => `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>${i.name}</span><span>x${i.quantity}</span></div>`).join('');
+                      const isEdit = !!selectedOrder;
+                      Swal.fire({
+                        title: isEdit ? 'Confirm & Print' : 'Confirm & Print',
+                        html: `<div style="max-height:150px;overflow-y:auto;background:rgba(0,0,0,0.02);padding:12px;border-radius:12px;border:1px solid #e5e7eb;font-size:14px;text-align:left;margin-bottom:16px">${cartItemsHtml}</div><p style="font-weight:bold;margin:0">${isEdit ? 'Update and print bill?' : 'Place order and print bill?'}</p>`,
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#10b981',
+                        cancelButtonColor: '#6b7280',
+                        confirmButtonText: 'Yes, Place & Print',
+                        customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-6 py-3 font-black tracking-widest uppercase', cancelButton: 'rounded-xl px-6 py-3 font-black tracking-widest uppercase text-white' }
+                      }).then((result) => {
+                        if (result.isConfirmed) handleCreateOrder(true);
+                      });
+                    }}
+                    disabled={isSubmitting || cart.length === 0}
+                    className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-[0.1em] transition-all duration-300 relative overflow-hidden group ${isSubmitting || cart.length === 0
+                      ? 'bg-background-muted text-text-muted/60 cursor-not-allowed border border-border-light'
+                      : 'bg-primary text-white hover:scale-[1.01] active:scale-[0.98] shadow-[0_8px_20px_rgba(239,68,68,0.3)] border border-primary/50'}`}
+                  >
+                    <span className="relative z-10 flex items-center justify-center gap-2">
+                      {isSubmitting ? 'Placing...' : (selectedOrder ? 'Update & Print' : 'Place & Print')}
+                      {!isSubmitting && cart.length > 0 && <Printer size={16} className="group-hover:translate-x-1 transition-transform" />}
+                    </span>
+                    {!isSubmitting && cart.length > 0 && (
+                      <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:animate-[shimmer_2s_infinite]" />
+                    )}
+                  </button>
+                </div>
                 {cart.length > 0 && (
                   <p className="text-center text-[9px] text-text-muted/50 font-bold mt-2.5 uppercase tracking-wider">
                     {cart.reduce((a, i) => a + i.quantity, 0)} items · ₹{Math.round(cart.reduce((acc, i) => acc + i.totalPrice, 0) + (posOrderType === 'delivery' ? (parseFloat(deliveryFee) || 0) : 0))} total

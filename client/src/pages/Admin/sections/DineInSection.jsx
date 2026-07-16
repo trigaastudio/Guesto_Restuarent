@@ -1009,6 +1009,7 @@ const DineInSection = () => {
         editingOrder={selectedOrderForEdit}
         orderSource="admin-dine-in"
         occupiedSeats={selectedOrderSeats}
+        handlePrintKOT={handlePrintKOT}
       />
 
       {isDetailsModalOpen && selectedOrderForView && (
@@ -1147,9 +1148,6 @@ const DineInSection = () => {
                 <button
                   onClick={() => {
                     handlePrintKOT(selectedOrderForView);
-                    if (selectedOrderForView.orderStatus !== 'delivered') {
-                      handleUpdateOrderStatus(selectedOrderForView._id, 'billed', false);
-                    }
                     setIsDetailsModalOpen(false);
                   }}
                   disabled={selectedOrderForView.kitchenStatus !== 'ready'}
