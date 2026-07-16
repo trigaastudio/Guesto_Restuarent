@@ -83,6 +83,7 @@ const OrderSection = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [searchTerm, setSearchTerm] = useState(localStorage.getItem('orderSearchTerm') || '');
   const [posSearchTerm, setPosSearchTerm] = useState('');
+  const [posCategoryFilter, setPosCategoryFilter] = useState('all');
   const [orderStatusFilter, setOrderStatusFilter] = useState(localStorage.getItem('orderStatusFilter') || 'all');
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
@@ -2404,22 +2405,60 @@ const OrderSection = () => {
                   <p className="text-[9px] font-black text-primary uppercase tracking-[0.25em] mb-0.5">Step 1</p>
                   <h3 className="text-lg font-black text-text-primary">Menu</h3>
                 </div>
-                <div className="relative w-56">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={14} />
-                  <input
-                    type="text"
-                    placeholder="Search menu..."
-                    value={posSearchTerm}
-                    onChange={(e) => setPosSearchTerm(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 bg-background-muted/60 rounded-xl text-xs outline-none focus:ring-1 focus:ring-primary/50 border border-transparent focus:border-primary/30 transition-all"
-                  />
+                <div className="flex items-center gap-2">
+                  {/* Category Filter Dropdown */}
+                  <div className="relative">
+                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" size={12} />
+                    <select
+                      value={posCategoryFilter}
+                      onChange={(e) => setPosCategoryFilter(e.target.value)}
+                      className="pl-8 pr-7 py-2 bg-background-muted/60 rounded-xl text-xs outline-none focus:ring-1 focus:ring-primary/50 border border-transparent focus:border-primary/30 transition-all appearance-none cursor-pointer font-bold text-text-primary"
+                    >
+                      <option value="all">All Categories</option>
+                      {[...new Map(
+                        menuItems
+                          .filter(item => item.category)
+                          .map(item => [item.category._id || item.category, item.category])
+                      ).values()].map(cat => (
+                        <option key={cat._id || cat} value={cat._id || cat}>
+                          {cat.name || cat}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronRight className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none rotate-90" size={10} />
+                  </div>
+                  {/* Search Field */}
+                  <div className="relative w-48">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={14} />
+                    <input
+                      type="text"
+                      placeholder="Search menu..."
+                      value={posSearchTerm}
+                      onChange={(e) => setPosSearchTerm(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2 bg-background-muted/60 rounded-xl text-xs outline-none focus:ring-1 focus:ring-primary/50 border border-transparent focus:border-primary/30 transition-all"
+                    />
+                  </div>
+                  {/* Clear Button — visible only when a filter is active */}
+                  {(posSearchTerm || posCategoryFilter !== 'all') && (
+                    <button
+                      onClick={() => { setPosSearchTerm(''); setPosCategoryFilter('all'); }}
+                      title="Clear filters"
+                      className="flex items-center gap-1 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 active:scale-95 transition-all"
+                    >
+                      <X size={11} strokeWidth={3} />
+                      Clear
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 xl:grid-cols-3 gap-3 no-scrollbar content-start">
                 {menuItems
                   .filter(item => {
                     const searchLower = (posSearchTerm || '').toLowerCase();
-                    return (item.name || '').toLowerCase().includes(searchLower);
+                    const matchesSearch = (item.name || '').toLowerCase().includes(searchLower);
+                    const matchesCategory = posCategoryFilter === 'all' ||
+                      (item.category && (item.category._id || item.category) === posCategoryFilter);
+                    return matchesSearch && matchesCategory;
                   })
                   .map(item => {
                     let isItemOutOfStock = false;
