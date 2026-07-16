@@ -143,45 +143,8 @@ const OrderSection = () => {
     fetchMenu();
     fetchDeliveryStaff();
 
-    // Socket Setup for Real-time updates
-    socketRef.current = io(SOCKET_URL, { withCredentials: true });
-    socketRef.current.on('ordersUpdated', () => {
-
-    });
-    socketRef.current.on('orderUpdated', (updatedOrder) => {
-      setOrders(prev => prev.map(o => o._id === updatedOrder._id ? updatedOrder : o));
-    });
-    socketRef.current.on('newOrder', (data) => {
-      if (data && data.order) {
-        setOrders(prev => [data.order, ...prev]);
-      }
-    });
-
-    socketRef.current.on('stockUpdate', (data) => {
-      setMenuItems(prev => prev.map(item => item._id === data.menuItemId ? {
-        ...item,
-        totalStock: data.totalStock,
-        isBlocked: data.isBlocked
-      } : item));
-    });
-
-    socketRef.current.on('categoryStockUpdate', ({ categoryId, totalStock }) => {
-      setMenuItems(prev => prev.map(menu => {
-        if (menu.category && menu.category._id.toString() === categoryId.toString() && menu.category.isSharedStock) {
-          return {
-            ...menu,
-            category: {
-              ...menu.category,
-              totalStock: totalStock
-            }
-          };
-        }
-        return menu;
-      }));
-    });
-
     return () => {
-      if (socketRef.current) socketRef.current.disconnect();
+      // Cleanup if needed
     };
   }, []);
 

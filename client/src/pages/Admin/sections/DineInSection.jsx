@@ -90,27 +90,8 @@ const DineInSection = () => {
   useEffect(() => {
     fetchTables();
 
-    socketRef.current = io(SOCKET_URL, { withCredentials: true });
-
-    socketRef.current.on('ordersUpdated', () => {
-      fetchTables(true);
-    });
-
-    socketRef.current.on('tablesUpdated', () => {
-      fetchTables(true);
-    });
-
-    const handleDbChange = (event) => {
-      const data = event.detail;
-      if (['Table', 'tables', 'Order', 'orders'].includes(data.collection)) {
-        fetchTables(true);
-      }
-    };
-    window.addEventListener('db_change', handleDbChange);
-
     return () => {
-      if (socketRef.current) socketRef.current.disconnect();
-      window.removeEventListener('db_change', handleDbChange);
+      // Cleanup if needed
     };
   }, []);
 
