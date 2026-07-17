@@ -72,8 +72,14 @@ class AuthService {
       throw new Error('User with this email already exists');
     }
 
-    
+    // Validate phone if provided
     if (phone) {
+      const phoneRegex = /^[6-9][0-9]{9}$/;
+      const isAllSameDigit = /^(\d)\1{9}$/.test(phone);
+      if (!phoneRegex.test(phone) || isAllSameDigit) {
+        throw new Error('Please enter a valid 10-digit Indian mobile number (starting with 6, 7, 8, or 9).');
+      }
+
       const existingPhone = await userRepository.findByPhone(phone);
       if (existingPhone) {
         throw new Error('User with this phone number already exists');
@@ -280,6 +286,15 @@ class AuthService {
     
     if (!password || !passwordRegex.test(password)) {
       throw new Error('Password must be 8-64 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character.');
+    }
+
+    // Validate phone number format (Indian mobile)
+    if (phone) {
+      const phoneRegex = /^[6-9][0-9]{9}$/;
+      const isAllSameDigit = /^(\d)\1{9}$/.test(phone);
+      if (!phoneRegex.test(phone) || isAllSameDigit) {
+        throw new Error('Please enter a valid 10-digit Indian mobile number (starting with 6, 7, 8, or 9).');
+      }
     }
 
     const existingUserByEmail = await userRepository.findByEmail(email);
