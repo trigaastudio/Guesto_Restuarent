@@ -64,7 +64,10 @@ const PageLoader = () => (
 function App() {
   React.useEffect(() => {
     const refreshTimer = setInterval(() => {
-      window.location.reload();
+      // Disable auto-refresh for admin panel
+      if (!window.location.pathname.startsWith('/admin')) {
+        window.location.reload();
+      }
     }, 10 * 60 * 1000); // 10 minutes
 
     return () => clearInterval(refreshTimer);

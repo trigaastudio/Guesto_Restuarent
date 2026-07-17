@@ -12,6 +12,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
   const [customer, setCustomer] = useState({ name: '', phone: '' });
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [posViewMode, setPosViewMode] = useState('category');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [existingItems, setExistingItems] = useState([]);
@@ -438,7 +439,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose}></div>
-      <div className="bg-background-card w-full max-w-6xl h-[92vh] sm:h-[85vh] rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl relative z-10 flex flex-col lg:flex-row overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="bg-background-card w-[98vw] max-w-[1600px] h-[92vh] sm:h-[85vh] rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl relative z-10 flex flex-col lg:flex-row overflow-hidden animate-in zoom-in-95 duration-200">
 
         {/* Mobile Tab Switcher */}
         <div className="lg:hidden flex items-center border-b border-border-light bg-background-card shrink-0">
@@ -477,9 +478,15 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
         } lg:flex`}>
           <div className="p-4 sm:p-6 border-b border-border-light bg-background-card">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-              <div>
-                <h3 className="text-lg sm:text-xl font-black text-text-primary tracking-tight">Table {table?.tableNumber} Menu</h3>
-                <p className="text-xs font-bold text-text-muted mt-0.5 uppercase tracking-widest">Select items to order</p>
+              <div className="flex flex-col gap-2">
+                <div>
+                  <h3 className="text-lg sm:text-xl font-black text-text-primary tracking-tight">Table {table?.tableNumber} Menu</h3>
+                  <p className="text-xs font-bold text-text-muted mt-0.5 uppercase tracking-widest">Select items to order</p>
+                </div>
+                <div className="flex items-center bg-background-muted/50 p-1 rounded-xl w-fit">
+                  <button onClick={() => setPosViewMode('category')} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${posViewMode === 'category' ? 'bg-background-card shadow-sm text-primary' : 'text-text-muted hover:text-text-primary'}`}>Categories</button>
+                  <button onClick={() => setPosViewMode('menu')} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${posViewMode === 'menu' ? 'bg-background-card shadow-sm text-primary' : 'text-text-muted hover:text-text-primary'}`}>Menu</button>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <div className="relative">
@@ -515,8 +522,41 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 no-scrollbar">
-            {filteredMenu.map(item => {
+          <div className={`flex-1 overflow-y-auto p-3 sm:p-6 grid gap-3 sm:gap-4 no-scrollbar ${posViewMode === 'category' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'grid-cols-2 lg:grid-cols-3'}`}>
+            {posViewMode === 'category' ? (
+              <>
+                <div 
+                   onClick={() => { setCategoryFilter('all'); setPosViewMode('menu'); }}
+                   className="bg-background-muted/30 p-4 rounded-2xl border border-border-light hover:border-primary/50 cursor-pointer flex flex-col items-center justify-center h-32 transition-all group"
+                >
+                   <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-2">
+                     <Filter size={20} className="text-primary" />
+                   </div>
+                   <h4 className="font-black text-text-primary group-hover:text-primary text-center">All Items</h4>
+                </div>
+                {[...new Map(
+                  menuItems
+                    .filter(item => item.category)
+                    .map(item => [item.category._id || item.category, item.category])
+                ).values()].map(cat => (
+                   <div 
+                     key={cat._id || cat}
+                     onClick={() => { setCategoryFilter(cat._id || cat); setPosViewMode('menu'); }}
+                     className="bg-background-muted/30 p-4 rounded-2xl border border-border-light hover:border-primary/50 cursor-pointer flex flex-col items-center justify-center h-32 transition-all group overflow-hidden relative"
+                   >
+                      {cat.image && (
+                         <div className="absolute inset-0 w-full h-full opacity-10 group-hover:opacity-20 transition-opacity">
+                           <img src={cat.image} className="w-full h-full object-cover" />
+                         </div>
+                      )}
+                      <h4 className="font-black text-text-primary group-hover:text-primary z-10 text-center relative text-sm capitalize">
+                        {cat.name || cat}
+                      </h4>
+                   </div>
+                ))}
+              </>
+            ) : (
+              filteredMenu.map(item => {
               const rawStock = getDynamicRawStock(item);
               const isFullyOutOfStock = item.totalStock !== undefined && rawStock <= 0;
               return (
@@ -589,7 +629,8 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                   </div>
                 </div>
               );
-            })}
+            })
+            )}
           </div>
         </div>
 

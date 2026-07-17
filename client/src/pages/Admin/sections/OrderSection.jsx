@@ -84,6 +84,7 @@ const OrderSection = () => {
   const [searchTerm, setSearchTerm] = useState(localStorage.getItem('orderSearchTerm') || '');
   const [posSearchTerm, setPosSearchTerm] = useState('');
   const [posCategoryFilter, setPosCategoryFilter] = useState('all');
+  const [posViewMode, setPosViewMode] = useState('category');
   const [orderStatusFilter, setOrderStatusFilter] = useState(localStorage.getItem('orderStatusFilter') || 'all');
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
@@ -2356,7 +2357,7 @@ const OrderSection = () => {
       { }
       {isModalOpen && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-hidden print:hidden">
-          <div className="bg-background-card w-full max-w-6xl h-[88vh] rounded-[2.5rem] border border-border/40 shadow-[0_40px_80px_rgba(0,0,0,0.4)] flex overflow-hidden animate-in zoom-in-95 duration-300">
+          <div className="bg-background-card w-[98vw] max-w-[1600px] h-[88vh] rounded-[2.5rem] border border-border/40 shadow-[0_40px_80px_rgba(0,0,0,0.4)] flex overflow-hidden animate-in zoom-in-95 duration-300">
 
             { }
             <div className="flex-1 flex flex-col border-r border-border-light/60 min-w-0">
@@ -2364,7 +2365,13 @@ const OrderSection = () => {
               <div className="p-5 border-b border-border-light/60 flex items-center justify-between shrink-0 bg-gradient-to-r from-background-card to-background-muted/10">
                 <div>
                   <p className="text-[9px] font-black text-primary uppercase tracking-[0.25em] mb-0.5">Step 1</p>
-                  <h3 className="text-lg font-black text-text-primary">Menu</h3>
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-lg font-black text-text-primary">Menu</h3>
+                    <div className="flex items-center bg-background-muted/50 p-1 rounded-xl">
+                      <button onClick={() => setPosViewMode('category')} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${posViewMode === 'category' ? 'bg-background-card shadow-sm text-primary' : 'text-text-muted hover:text-text-primary'}`}>Categories</button>
+                      <button onClick={() => setPosViewMode('menu')} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${posViewMode === 'menu' ? 'bg-background-card shadow-sm text-primary' : 'text-text-muted hover:text-text-primary'}`}>Menu</button>
+                    </div>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {/* Category Filter Dropdown */}
@@ -2412,8 +2419,41 @@ const OrderSection = () => {
                   )}
                 </div>
               </div>
-              <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 xl:grid-cols-3 gap-3 no-scrollbar content-start">
-                {menuItems
+              <div className={`flex-1 overflow-y-auto p-4 grid gap-3 no-scrollbar content-start ${posViewMode === 'category' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'grid-cols-2 xl:grid-cols-3'}`}>
+                {posViewMode === 'category' ? (
+                  <>
+                    <div 
+                       onClick={() => { setPosCategoryFilter('all'); setPosViewMode('menu'); }}
+                       className="bg-background-muted/30 p-4 rounded-2xl border border-border-light hover:border-primary/50 cursor-pointer flex flex-col items-center justify-center h-32 transition-all group"
+                    >
+                       <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-2">
+                         <Filter size={20} className="text-primary" />
+                       </div>
+                       <h4 className="font-black text-text-primary group-hover:text-primary text-center">All Items</h4>
+                    </div>
+                    {[...new Map(
+                      menuItems
+                        .filter(item => item.category)
+                        .map(item => [item.category._id || item.category, item.category])
+                    ).values()].map(cat => (
+                       <div 
+                         key={cat._id || cat}
+                         onClick={() => { setPosCategoryFilter(cat._id || cat); setPosViewMode('menu'); }}
+                         className="bg-background-muted/30 p-4 rounded-2xl border border-border-light hover:border-primary/50 cursor-pointer flex flex-col items-center justify-center h-32 transition-all group overflow-hidden relative"
+                       >
+                          {cat.image && (
+                             <div className="absolute inset-0 w-full h-full opacity-10 group-hover:opacity-20 transition-opacity">
+                               <img src={cat.image} className="w-full h-full object-cover" />
+                             </div>
+                          )}
+                          <h4 className="font-black text-text-primary group-hover:text-primary z-10 text-center relative text-sm capitalize">
+                            {cat.name || cat}
+                          </h4>
+                       </div>
+                    ))}
+                  </>
+                ) : (
+                  menuItems
                   .filter(item => {
                     const searchLower = (posSearchTerm || '').toLowerCase();
                     const matchesSearch = (item.name || '').toLowerCase().includes(searchLower);
@@ -2574,7 +2614,8 @@ const OrderSection = () => {
                         </div>
                       </div>
                     );
-                  })}
+                  })
+                )}
               </div>
             </div>
 
