@@ -7,30 +7,36 @@ class UserService {
   }
 
   async createUser(userData) {
-    
-    if (!userData.phone && !userData.email) {
-      throw new Error('Either Phone or Email is required to create a user');
+    // Only name + phone required; email and password are optional
+    if (!userData.phone) {
+      throw new Error('Phone number is required to create a user');
     }
 
-    
+    // Duplicate phone check
     if (userData.phone) {
       const existingPhone = await User.findOne({ phone: userData.phone });
       if (existingPhone) throw new Error(`User with phone ${userData.phone} already exists`);
     }
 
-    
-    if (userData.email) {
+    // Duplicate email check (only if email provided)
+    if (userData.email && userData.email.trim() !== '') {
       const existingEmail = await User.findOne({ email: userData.email });
       if (existingEmail) throw new Error(`User with email ${userData.email} already exists`);
+    } else {
+      delete userData.email; // Don't store empty string — would fail unique sparse index
     }
 
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&^#()_+\-=\[\]{};':"\\|,.<>\/?]).{8,64}$/;
-
-    if (!userData.password || !passwordRegex.test(userData.password)) {
-      throw new Error('Password must be 8-64 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character.');
+    // Password is fully optional for admin-created users
+    // If provided, must be at least 6 chars
+    if (userData.password && userData.password.trim() !== '') {
+      if (userData.password.length < 6) {
+        throw new Error('Password must be at least 6 characters long.');
+      }
+    } else {
+      delete userData.password; // No password — user can log in via OTP/Google later
     }
 
-    return await User.create(userData);
+    return await User.create({ ...userData, createdByAdmin: true });
   }
 
   async updateUser(id, updateData) {
@@ -45,10 +51,9 @@ class UserService {
     }
 
     if (updateData.password && updateData.password.trim() !== '') {
-      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&^#()_+\-=\[\]{};':"\\|,.<>\/?]).{8,64}$/;
-      
-      if (!passwordRegex.test(updateData.password)) {
-        throw new Error('Password must be 8-64 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character.');
+      // Relaxed 6-char minimum for admin updates
+      if (updateData.password.length < 6) {
+        throw new Error('Password must be at least 6 characters long.');
       }
 
       const salt = await bcrypt.genSalt(10);

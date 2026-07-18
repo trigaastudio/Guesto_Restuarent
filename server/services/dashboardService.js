@@ -7,10 +7,7 @@ import mongoose from 'mongoose';
 class DashboardService {
   async getDashboardStats() {
     const today = new Date();
-    if (today.getHours() < 5) {
-      today.setDate(today.getDate() - 1);
-    }
-    today.setHours(5, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
 
     const [
       totalRevenueData,
@@ -189,7 +186,7 @@ class DashboardService {
   async getRevenueTrend() {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-    sevenDaysAgo.setHours(5, 0, 0, 0);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
 
     const trend = await Order.aggregate([
       {
@@ -203,7 +200,7 @@ class DashboardService {
           _id: { 
             $dateToString: { 
               format: "%Y-%m-%d", 
-              date: { $dateSubtract: { startDate: "$createdAt", unit: "hour", amount: 5 } },
+              date: "$createdAt",
               timezone: "+05:30"
             } 
           },
@@ -235,7 +232,7 @@ class DashboardService {
   async getMonthlyRevenueTrend() {
     const firstDayOfMonth = new Date();
     firstDayOfMonth.setDate(1);
-    firstDayOfMonth.setHours(5, 0, 0, 0);
+    firstDayOfMonth.setHours(0, 0, 0, 0);
 
     const trend = await Order.aggregate([
       {
@@ -249,7 +246,7 @@ class DashboardService {
           _id: { 
             $dateToString: { 
               format: "%Y-%m-%d", 
-              date: { $dateSubtract: { startDate: "$createdAt", unit: "hour", amount: 5 } },
+              date: "$createdAt",
               timezone: "+05:30"
             } 
           },

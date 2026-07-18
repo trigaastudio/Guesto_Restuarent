@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Search, User, Mail, Phone, Power, Loader2, ArrowUpDown, XCircle, Ban, CheckCircle, CheckCircle2, MapPin, ExternalLink, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, User, Mail, Phone, Power, Loader2, ArrowUpDown, XCircle, Ban, CheckCircle, CheckCircle2, MapPin, ExternalLink, ChevronLeft, ChevronRight, RotateCcw, Eye, EyeOff, ShieldCheck, UserPlus } from 'lucide-react';
 import api from '../../../api/axiosInstance';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 import TableSkeleton from '../../../components/Skeleton/TableSkeleton';
@@ -16,6 +16,7 @@ const UserManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [errors, setErrors] = useState({});
+  const [showPassword, setShowPassword] = useState(false);
 
   const [currentUser, setCurrentUser] = useState({
     name: '',
@@ -54,6 +55,7 @@ const UserManagement = () => {
   };
 
   const handleOpenModal = (user = null) => {
+    setShowPassword(false);
     if (user) {
       setCurrentUser({
         ...user,
@@ -82,21 +84,18 @@ const UserManagement = () => {
       });
       setIsEditing(false);
     }
+    setErrors({});
     setIsModalOpen(true);
   };
 
   const handleSave = async () => {
     const newErrors = {};
     if (!currentUser.name || !currentUser.name.trim()) newErrors.name = true;
-    if (!currentUser.email && !currentUser.phone) {
-      newErrors.email = true;
-      newErrors.phone = true;
-    }
-    if (!isEditing && !currentUser.password) newErrors.password = true;
+    if (!currentUser.phone || !currentUser.phone.trim()) newErrors.phone = true;
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      showToast('warning', 'Name and (Email or Phone) are required');
+      showToast('warning', 'Name and Phone number are required');
       return;
     }
     setErrors({});
@@ -111,12 +110,30 @@ const UserManagement = () => {
       setIsModalOpen(false);
       showToast('success', `User ${isEditing ? 'updated' : 'created'} successfully!`);
     } catch (error) {
-      console.error('Error saving user:', error);
-      showAlert({
-        icon: 'error',
-        title: 'Save Failed',
-        text: error.response?.data?.message || 'Failed to save user details'
-      });
+      const serverMsg = error.response?.data?.message || '';
+
+      // Check if it's a duplicate error — surface the server message clearly
+      const isDuplicate = serverMsg.toLowerCase().includes('already exists') ||
+        serverMsg.toLowerCase().includes('already taken');
+
+      if (isDuplicate) {
+        showAlert({
+          icon: 'warning',
+          title: 'Customer Already Exists',
+          text: `${serverMsg}. Please search for this customer in the list instead of adding a new one.`,
+          confirmButtonText: 'OK, Search Instead'
+        });
+        setIsModalOpen(false);
+        // Pre-fill search with email or phone to help admin find existing user
+        const hint = currentUser.email || currentUser.phone || '';
+        if (hint) setSearchTerm(hint);
+      } else {
+        showAlert({
+          icon: 'error',
+          title: 'Save Failed',
+          text: serverMsg || 'Failed to save user details'
+        });
+      }
     }
   };
 
@@ -134,9 +151,8 @@ const UserManagement = () => {
   };
 
   const handleToggleStatus = async (id) => {
-    
-    setUserList(prevUsers => 
-      prevUsers.map(u => 
+    setUserList(prevUsers =>
+      prevUsers.map(u =>
         u._id === id ? { ...u, isActive: !u.isActive } : u
       )
     );
@@ -145,9 +161,8 @@ const UserManagement = () => {
       const response = await api.patch(`/api/users/${id}/toggle-status`);
       showToast('success', response.data.message);
     } catch (error) {
-      
-      setUserList(prevUsers => 
-        prevUsers.map(u => 
+      setUserList(prevUsers =>
+        prevUsers.map(u =>
           u._id === id ? { ...u, isActive: !u.isActive } : u
         )
       );
@@ -257,6 +272,7 @@ const UserManagement = () => {
                   </div>
                 </th>
                 <th className="px-3 py-4">Phone</th>
+                <th className="px-3 py-4 text-center">Source</th>
                 <th className="px-3 py-4 text-center">Status</th>
                 <th className="px-3 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('createdAt')}>
                   <div className="flex items-center space-x-1 justify-center">
@@ -270,13 +286,13 @@ const UserManagement = () => {
             <tbody className="divide-y divide-border-light">
               {isLoading ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-10">
-                    <TableSkeleton columns={6} rows={5} />
+                  <td colSpan="7" className="px-6 py-10">
+                    <TableSkeleton columns={7} rows={5} />
                   </td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-text-muted italic">No users found</td>
+                  <td colSpan="7" className="px-6 py-12 text-center text-text-muted italic">No users found</td>
                 </tr>
               ) : (
                 paginatedUsers.map((user) => (
@@ -300,6 +316,19 @@ const UserManagement = () => {
                       </div>
                     </td>
                     <td className="px-3 py-4 text-center">
+                      {user.createdByAdmin ? (
+                        <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                          <ShieldCheck size={9} />
+                          <span>Admin Added</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider bg-green-500/10 text-green-600 border border-green-500/20">
+                          <UserPlus size={9} />
+                          <span>Self Registered</span>
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-4 text-center">
                       <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${user.isActive ? 'bg-status-on/10 text-status-available border-status-on/20' : 'bg-status-off/10 text-status-unavailable border-status-off/20'
                         }`}>
                         {user.isActive ? 'Active' : 'Blocked'}
@@ -311,14 +340,21 @@ const UserManagement = () => {
                     <td className="px-3 py-4 text-center">
                       <div className="flex items-center justify-center space-x-1">
                         <button
+                          onClick={() => handleOpenModal(user)}
+                          className="p-2 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all"
+                          title="Edit User"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
                           onClick={() => handleToggleStatus(user._id)}
                           className={`p-2 rounded-lg transition-all ${user.isActive ? 'hover:bg-status-off/10 text-text-secondary hover:text-status-unavailable' : 'hover:bg-status-on/10 text-text-secondary hover:text-status-available'}`}
                           title={user.isActive ? "Block User" : "Unblock User"}
                         >
-                          {user.isActive ? <Ban size={18} /> : <CheckCircle size={18} />}
+                          {user.isActive ? <Ban size={16} /> : <CheckCircle size={16} />}
                         </button>
                         <button onClick={() => handleDelete(user._id)} className="p-2 hover:bg-status-off/10 text-text-secondary hover:text-status-unavailable rounded-lg transition-all" title="Delete User">
-                          <Trash2 size={18} />
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </td>
@@ -336,7 +372,7 @@ const UserManagement = () => {
         />
       </div>
 
-      {}
+      {/* Add / Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-hidden">
           <div className="bg-background-card w-full max-w-lg rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
@@ -348,6 +384,7 @@ const UserManagement = () => {
             </div>
 
             <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto no-scrollbar">
+              {/* Full Name */}
               <div className="space-y-1.5">
                 <label className={`text-[10px] font-bold uppercase tracking-widest ${errors.name ? 'text-primary' : 'text-text-muted'}`}>Full Name</label>
                 <div className="relative">
@@ -360,8 +397,8 @@ const UserManagement = () => {
                       if (errors.name) setErrors({ ...errors, name: false });
                     }}
                     className={`w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all text-sm font-bold ${
-                      errors.name 
-                        ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                      errors.name
+                        ? 'border-primary ring-1 ring-primary/30 bg-primary/5'
                         : 'border-border-main focus:border-primary'
                     }`}
                     placeholder="Enter full name"
@@ -370,6 +407,7 @@ const UserManagement = () => {
                 {errors.name && <p className="text-[10px] font-bold text-primary">Name is required</p>}
               </div>
 
+              {/* Email + Phone */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className={`text-[10px] font-bold uppercase tracking-widest ${errors.email ? 'text-primary' : 'text-text-muted'}`}>Email Address</label>
@@ -383,8 +421,8 @@ const UserManagement = () => {
                         if (errors.email) setErrors({ ...errors, email: false, phone: false });
                       }}
                       className={`w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all text-sm font-bold ${
-                        errors.email 
-                          ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                        errors.email
+                          ? 'border-primary ring-1 ring-primary/30 bg-primary/5'
                           : 'border-border-main focus:border-primary'
                       }`}
                       placeholder="email@example.com"
@@ -392,7 +430,7 @@ const UserManagement = () => {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className={`text-[10px] font-bold uppercase tracking-widest ${errors.phone ? 'text-primary' : 'text-text-muted'}`}>Phone Number</label>
+                  <label className={`text-[10px] font-bold uppercase tracking-widest ${errors.phone ? 'text-primary' : 'text-text-muted'}`}>Phone Number <span className="normal-case font-medium text-primary opacity-70">*</span></label>
                   <div className="relative">
                     <Phone className={`absolute left-3 top-1/2 -translate-y-1/2 ${errors.phone ? 'text-primary' : 'text-text-muted'}`} size={14} />
                     <input
@@ -403,8 +441,8 @@ const UserManagement = () => {
                         if (errors.phone) setErrors({ ...errors, phone: false, email: false });
                       }}
                       className={`w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all text-sm font-bold ${
-                        errors.phone 
-                          ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                        errors.phone
+                          ? 'border-primary ring-1 ring-primary/30 bg-primary/5'
                           : 'border-border-main focus:border-primary'
                       }`}
                       placeholder="10-digit number"
@@ -412,28 +450,44 @@ const UserManagement = () => {
                     />
                   </div>
                 </div>
-                {(errors.email || errors.phone) && <p className="text-[10px] font-bold text-primary col-span-2">Email or Phone is required</p>}
+                {errors.phone && <p className="text-[10px] font-bold text-primary col-span-2">Phone number is required</p>}
               </div>
 
+              {/* Password with Eye Toggle */}
               <div className="space-y-1.5">
-                <label className={`text-[10px] font-bold uppercase tracking-widest ${errors.password ? 'text-primary' : 'text-text-muted'}`}>Password</label>
-                <input
-                  type="password"
-                  value={currentUser.password}
-                  onChange={(e) => {
-                    setCurrentUser({ ...currentUser, password: e.target.value });
-                    if (errors.password) setErrors({ ...errors, password: false });
-                  }}
-                  className={`w-full px-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all text-sm font-bold ${
-                    errors.password 
-                      ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
-                      : 'border-border-main focus:border-primary'
-                  }`}
-                  placeholder={isEditing ? "Leave blank to keep same" : "Min 6 chars"}
-                />
-                {errors.password && <p className="text-[10px] font-bold text-primary">Password is required</p>}
+                <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                  Password {isEditing && <span className="normal-case font-medium opacity-60">(leave blank to keep current)</span>}
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={currentUser.password}
+                    onChange={(e) => {
+                      setCurrentUser({ ...currentUser, password: e.target.value });
+                      if (errors.password) setErrors({ ...errors, password: false });
+                    }}
+                    className={`w-full pl-4 pr-10 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all text-sm font-bold ${
+                      errors.password
+                        ? 'border-primary ring-1 ring-primary/30 bg-primary/5'
+                        : 'border-border-main focus:border-primary'
+                    }`}
+                    placeholder={isEditing ? 'Leave blank to keep same' : 'Optional — min 6 characters if set'}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(prev => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                {!isEditing && (
+                  <p className="text-[9px] text-text-muted">Minimum 6 characters if set</p>
+                )}
               </div>
 
+              {/* Active toggle */}
               <div className="flex items-center space-x-3 pt-2">
                 <button
                   onClick={() => setCurrentUser({ ...currentUser, isActive: !currentUser.isActive })}
@@ -448,6 +502,7 @@ const UserManagement = () => {
                 </span>
               </div>
 
+              {/* Delivery Addresses */}
               <div className="pt-4 border-t border-border-light space-y-4">
                 <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Delivery Profile</h4>
 

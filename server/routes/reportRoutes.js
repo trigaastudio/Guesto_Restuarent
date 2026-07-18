@@ -15,7 +15,11 @@ router.get('/sales', protect, admin, async (req, res) => {
 
     if (startDate || endDate) {
       query.createdAt = {};
-      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        query.createdAt.$gte = start;
+      }
       if (endDate) {
         const end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
@@ -115,7 +119,11 @@ router.get('/items', protect, admin, async (req, res) => {
 
     if (startDate || endDate) {
       matchQuery.createdAt = {};
-      if (startDate) matchQuery.createdAt.$gte = new Date(startDate);
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        matchQuery.createdAt.$gte = start;
+      }
       if (endDate) {
         const end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
