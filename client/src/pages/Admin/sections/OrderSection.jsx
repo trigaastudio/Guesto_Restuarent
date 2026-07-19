@@ -39,9 +39,8 @@ const OrderSection = () => {
     const address = order.customerDetails?.address || order.address?.address || 'N/A';
     const location = order.customerDetails?.location || order.address?.location;
 
-
     let locationUrl = '';
-    const locToUse = location || address;
+    const locToUse = location || (address !== 'N/A' ? address : '');
 
     if (typeof location === 'object' && location?.lat) {
       locationUrl = `\n📍 *Location:* https://www.google.com/maps?q=${location.lat},${location.lng}`;
@@ -93,7 +92,7 @@ const OrderSection = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 30;
   const [selectedOrderIds, setSelectedOrderIds] = useState([]);
   const [settings, setSettings] = useState(null);
 
@@ -440,6 +439,73 @@ const OrderSection = () => {
     }
     setErrors({});
 
+    // ── Pre-flight stock check before creating order ──
+    const stockWarnings = [];
+    for (const cartItem of cart) {
+      const fullMenuItem = menuItems.find(m => m._id === cartItem.menuItem);
+      if (!fullMenuItem) continue;
+
+      // Check main item stock
+      if (!fullMenuItem.isCombo) {
+        const variant = (fullMenuItem.variants || []).find(v => v.size === cartItem.size);
+        const mult = variant?.stockValue || 1;
+        const availableStock = getEffectiveStock(fullMenuItem);
+        const effectiveStock = Math.floor(availableStock / mult);
+        if (effectiveStock < cartItem.quantity) {
+          stockWarnings.push(`"${cartItem.name}" (${cartItem.size || 'Standard'}): only ${effectiveStock} available, ${cartItem.quantity} in cart`);
+        }
+
+        // Check includedItems (variant add-ons) stock
+        if (variant?.includedItems && variant.includedItems.length > 0) {
+          for (const included of variant.includedItems) {
+            const addonDoc = menuItems.find(m => m._id === (included.menuItem?._id || included.menuItem));
+            if (addonDoc) {
+              const addonStock = getEffectiveStock(addonDoc);
+              const addonNeeded = cartItem.quantity * (included.quantity || 1);
+              if (addonStock < addonNeeded) {
+                const addonName = included.name || addonDoc.name || 'Add-on';
+                stockWarnings.push(`Add-on "${addonName}" for "${cartItem.name}": out of stock (needed ${addonNeeded}, available ${addonStock})`);
+              }
+            }
+          }
+        }
+      } else if (fullMenuItem.isCombo && fullMenuItem.comboItems?.length > 0) {
+        // Check combo sub-item stock
+        for (const ci of fullMenuItem.comboItems) {
+          const subDoc = menuItems.find(m => m._id === (ci.menuItem?._id || ci.menuItem));
+          if (subDoc && getEffectiveStock(subDoc) <= 0) {
+            stockWarnings.push(`Combo item "${subDoc.name}" in "${cartItem.name}" is out of stock`);
+          }
+        }
+      }
+    }
+
+    if (stockWarnings.length > 0) {
+      const warningHtml = stockWarnings
+        .map(w => `<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,100,100,0.15)"><span style="color:#ef4444;font-size:14px;margin-top:1px">⚠️</span><span style="font-size:11px;font-weight:600;text-align:left">${w}</span></div>`)
+        .join('');
+      const confirm = await Swal.fire({
+        icon: 'warning',
+        title: 'Stock Warning',
+        html: `<p style="font-size:12px;margin-bottom:10px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:1px">The following items may be out of stock:</p><div style="max-height:200px;overflow-y:auto">${warningHtml}</div><p style="font-size:11px;margin-top:10px;color:#888">Do you still want to proceed?</p>`,
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Place Order',
+        cancelButtonText: 'Cancel',
+        buttonsStyling: false,
+        scrollbarPadding: false,
+        heightAuto: false,
+        customClass: {
+          popup: 'rounded-[2rem] bg-background-card text-text-primary p-8 shadow-2xl border border-border-light',
+          title: 'text-text-primary font-black text-xl mb-1',
+          htmlContainer: 'text-text-muted text-xs',
+          actions: 'flex justify-center w-full gap-4 mt-6',
+          confirmButton: 'flex-1 bg-amber-500 text-white rounded-xl px-4 py-3.5 text-[11px] font-black tracking-widest uppercase shadow-xl hover:bg-amber-600 transition-all active:scale-95',
+          cancelButton: 'flex-1 bg-background-muted border border-border/60 text-text-primary rounded-xl px-4 py-3.5 text-[11px] font-black tracking-widest uppercase hover:bg-background transition-all',
+        }
+      });
+      if (!confirm.isConfirmed) return;
+    }
+
     setIsSubmitting(true);
     try {
 
@@ -477,9 +543,11 @@ const OrderSection = () => {
         const response = await api.patch(`/api/orders/${selectedOrder._id}/items`, {
           items: cart,
           cashReceived: parseFloat(cashReceived) || selectedOrder.cashReceived || 0,
-          deliveryAddress: deliveryAddress,
-          deliveryLocation: deliveryLocation,
-          customerDetails: customer
+          customerDetails: {
+            ...customer,
+            address: posOrderType === 'delivery' ? deliveryAddress : '',
+            location: posOrderType === 'delivery' ? deliveryLocation : ''
+          }
         });
         if (response.data.success) {
           showToast('success', 'Order updated successfully');
@@ -863,25 +931,30 @@ const OrderSection = () => {
       return;
     }
     const order = paymentModal.order;
-    const totalAmount = order.totalAmount || 0;
+    const totalAmount = order.totalAmount || order.subtotal || 0;
+    const paidSoFar = order.paidAmount || 0;
+    const balanceToCollect = Math.max(0, totalAmount - paidSoFar);
     const cashReceived = parseFloat(cashInput) || 0;
 
-    if (payMethod === 'cash' && cashReceived < totalAmount) {
-      showToast('warning', `Cash received (₹${cashReceived}) must be at least ₹${totalAmount}`);
+    if (payMethod === 'cash' && cashReceived < balanceToCollect) {
+      showToast('warning', `Cash received (₹${cashReceived}) must be at least ₹${balanceToCollect}`);
       return;
     }
 
     setIsPaymentSubmitting(true);
     try {
-      const change = payMethod === 'cash' ? Math.max(0, cashReceived - totalAmount) : 0;
+      const change = payMethod === 'cash' ? Math.max(0, cashReceived - balanceToCollect) : 0;
+      
+      let newPaymentMethod = payMethod;
+
       const updateData = {
         paymentStatus: 'paid',
-        paymentMethod: payMethod,
+        paymentMethod: newPaymentMethod,
         paidAmount: totalAmount
       };
       if (payMethod === 'cash') {
-        updateData.cashReceived = cashReceived;
-        updateData.balance = change;
+        updateData.cashReceived = (order.cashReceived || 0) + cashReceived;
+        updateData.balance = (order.balance || 0) + change;
       }
       const response = await api.patch(`/api/orders/${order._id}/status`, updateData);
       if (response.data.success) {
@@ -897,7 +970,7 @@ const OrderSection = () => {
     }
   };
 
-  const [editCustomer, setEditCustomer] = useState({ name: '', phone: '' });
+  const [editCustomer, setEditCustomer] = useState({ name: '', phone: '', address: '', location: '' });
   const [editCashReceived, setEditCashReceived] = useState('');
 
   useEffect(() => {
@@ -906,7 +979,9 @@ const OrderSection = () => {
         name: (selectedOrder.orderSource === 'online' || selectedOrder.orderSource === 'user')
           ? (selectedOrder.address?.recipientName || selectedOrder.customerDetails?.name || '')
           : (selectedOrder.customerDetails?.name || selectedOrder.address?.recipientName || ''),
-        phone: selectedOrder.customerDetails?.phone || selectedOrder.address?.mobile || ''
+        phone: selectedOrder.customerDetails?.phone || selectedOrder.address?.mobile || '',
+        address: selectedOrder.customerDetails?.address || selectedOrder.address?.address || '',
+        location: selectedOrder.customerDetails?.location || selectedOrder.address?.location || (typeof selectedOrder.address?.location === 'string' ? selectedOrder.address.location : '')
       });
       setEditCashReceived(selectedOrder.cashReceived || '');
     }
@@ -1047,6 +1122,26 @@ const OrderSection = () => {
       if (currentInCart + qty > effectiveVariantStock) {
         showToast('error', `Out of stock: Only ${effectiveVariantStock} portions of ${variant?.size || 'Standard'} are available`);
         return;
+      }
+
+      // Check includedItems (variant add-ons) stock
+      if (variant?.includedItems && variant.includedItems.length > 0) {
+        const addonWarnings = [];
+        for (const included of variant.includedItems) {
+          const addonMenuItem = menuItems.find(m => m._id === (included.menuItem?._id || included.menuItem));
+          if (addonMenuItem) {
+            const addonStock = getEffectiveStock(addonMenuItem);
+            const addonNeeded = qty * (included.quantity || 1);
+            if (addonStock < addonNeeded) {
+              const addonName = included.name || addonMenuItem.name || 'Add-on';
+              addonWarnings.push(`"${addonName}" (add-on) is out of stock`);
+            }
+          }
+        }
+        if (addonWarnings.length > 0) {
+          showToast('error', `Cannot add ${item.name}: ${addonWarnings[0]}`);
+          return;
+        }
       }
     }
 
@@ -1391,7 +1486,7 @@ const OrderSection = () => {
       const matchesPayment = payment === 'all' || o.paymentStatus === payment;
       const matchesPaymentMethod = method === 'all' || o.paymentMethod === method;
 
-      const isHistoryOrder = o.orderStatus === 'cancelled' || o.orderStatus === 'completed' || (o.orderStatus === 'billed' && o.paymentStatus === 'paid') || (o.orderStatus === 'delivered' && o.paymentStatus === 'paid');
+      const isHistoryOrder = o.orderStatus === 'cancelled' || o.orderStatus === 'completed' || (o.orderStatus === 'delivered' && o.paymentStatus === 'paid');
 
       let matchesType = false;
       const orderDate = new Date(o.createdAt);
@@ -2307,7 +2402,18 @@ const OrderSection = () => {
                 )}
               </div>
               <div className="flex items-center space-x-4">
-                {null}
+                {(selectedOrder.paymentStatus === 'unpaid' || ((selectedOrder.totalAmount || selectedOrder.subtotal) > (selectedOrder.paidAmount || 0))) && (
+                  <button
+                    onClick={() => {
+                      handlePayNow(selectedOrder);
+                      setIsDetailsModalOpen(false);
+                    }}
+                    className="flex items-center justify-center space-x-2 bg-emerald-500 text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-emerald-500/20 min-w-[160px]"
+                  >
+                    <CreditCard size={18} />
+                    <span>{selectedOrder.paidAmount > 0 ? 'Pay Balance' : 'Pay Now'}</span>
+                  </button>
+                )}
 
                 {selectedOrder.orderStatus === 'placed' && activeTab !== 'dine-in' && selectedOrder.orderType !== 'dine-in' && selectedOrder.orderType !== 'dining' && (
                   <button
@@ -3020,7 +3126,9 @@ const OrderSection = () => {
       {/* ── Payment Method Modal ── */}
       {paymentModal.open && paymentModal.order && (() => {
         const order = paymentModal.order;
-        const total = order.totalAmount || 0;
+        const orderTotal = order.totalAmount || order.subtotal || 0;
+        const paidSoFar = order.paidAmount || 0;
+        const total = Math.max(0, orderTotal - paidSoFar);
         const cash = parseFloat(cashInput) || 0;
         const change = Math.max(0, cash - total);
         const cashValid = payMethod === 'cash' ? cash >= total : true;

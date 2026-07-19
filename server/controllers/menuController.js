@@ -1,7 +1,7 @@
 import menuRepository from '../repositories/menuRepository.js';
 import menuService from "../services/menuService.js";
 import mongoose from "mongoose";
-import { logAdminAction } from '../services/auditService.js';
+
 import NodeCache from 'node-cache';
 import Order from '../models/orderSchema.js';
 
@@ -12,7 +12,7 @@ export const createMenu = async (req, res) => {
   try {
     const menu = await menuService.createMenu(req.body);
     
-    await logAdminAction(req, 'CREATE_MENU', 'Menu', menu._id, { name: menu.name, price: menu.price });
+
     cache.flushAll();
 
     res.status(201).json(menu);
@@ -156,7 +156,7 @@ export const updateMenu = async (req, res) => {
   try {
     const menu = await menuService.updateMenu(req.params.id, req.body);
     
-    await logAdminAction(req, 'UPDATE_MENU', 'Menu', menu._id, { updatedFields: Object.keys(req.body) });
+
     cache.flushAll();
 
     res.status(200).json(menu);
@@ -169,7 +169,7 @@ export const deleteMenu = async (req, res) => {
   try {
     await menuService.deleteMenu(req.params.id);
 
-    await logAdminAction(req, 'DELETE_MENU', 'Menu', req.params.id, {});
+
     cache.flushAll();
 
     res.status(200).json({ message: "Menu item deleted successfully" });

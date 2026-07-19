@@ -19,7 +19,7 @@ const OfferSection = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 30;
   const [editingOffer, setEditingOffer] = useState(null);
   const [categories, setCategories] = useState([]);
   const [menus, setMenus] = useState([]);

@@ -1,7 +1,7 @@
 import User from '../models/userSchema.js';
 import userService from '../services/userService.js';
 import authService from '../services/authService.js';
-import { logAdminAction } from '../services/auditService.js';
+
 
 class UserController {
   
@@ -375,7 +375,7 @@ class UserController {
         });
       }
 
-      await logAdminAction(req, 'UPDATE_USER', 'User', user._id, { updatedFields: Object.keys(req.body) });
+
 
       res.status(200).json({
         success: true,
@@ -400,7 +400,7 @@ class UserController {
         });
       }
 
-      await logAdminAction(req, 'DELETE_USER', 'User', user._id, { email: user.email });
+
 
       res.status(200).json({
         success: true,
@@ -426,7 +426,7 @@ class UserController {
         console.error('Socket notification failed:', err);
       }
 
-      await logAdminAction(req, 'TOGGLE_USER_STATUS', 'User', user._id, { newStatus: user.isActive ? 'Active' : 'Blocked' });
+
 
       res.status(200).json({
         success: true,

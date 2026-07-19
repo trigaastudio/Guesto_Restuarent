@@ -1,28 +1,74 @@
-const salesSchema = new mongoose.Schema({
-  date: {
-    type: String, 
+import mongoose from 'mongoose';
+
+const saleSchema = new mongoose.Schema({
+  orderId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Order',
     required: true,
     unique: true
   },
-
-  totalRevenue: {
-    type: Number,
-    default: 0
+  orderNumber: {
+    type: String,
+    required: true
   },
-
-  totalOrders: {
-    type: Number,
-    default: 0
+  orderType: {
+    type: String,
+    required: true
   },
-
-  cash: {
-    type: Number,
-    default: 0
+  orderSource: {
+    type: String,
+    required: true
   },
-
-  online: {
+  orderStatus: {
+    type: String,
+    required: true
+  },
+  totalAmount: {
     type: Number,
-    default: 0
+    required: true
+  },
+  items: [{
+    menuItem: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Menu',
+      required: true
+    },
+    name: {
+      type: String
+    },
+    size: {
+      type: String,
+      default: 'regular'
+    },
+    quantity: {
+      type: Number,
+      required: true
+    },
+    totalPrice: {
+      type: Number,
+      required: true
+    },
+    costPrice: {
+      type: Number,
+      required: true,
+      default: 0
+    }
+  }],
+  paymentMethod: {
+    type: String,
+    default: 'cash'
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
   }
-
 }, { timestamps: true });
+
+// Add index for fast querying by date and orderType
+saleSchema.index({ createdAt: -1 });
+saleSchema.index({ orderType: 1 });
+saleSchema.index({ orderSource: 1 });
+
+const Sale = mongoose.model('Sale', saleSchema);
+
+export default Sale;

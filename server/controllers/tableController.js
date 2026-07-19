@@ -1,7 +1,7 @@
 import Table from '../models/tableSchema.js';
 import Order from '../models/orderSchema.js';
 import { emitTablesUpdated, getIO } from '../socket.js';
-import { logAdminAction } from '../services/auditService.js';
+
 
 
 export const createTable = async (req, res) => {
@@ -9,7 +9,7 @@ export const createTable = async (req, res) => {
     const table = new Table(req.body);
     await table.save();
     
-    await logAdminAction(req, 'CREATE_TABLE', 'Table', table._id, { tableNumber: table.tableNumber, capacity: table.capacity });
+
 
     res.status(201).json(table);
     emitTablesUpdated();
@@ -84,7 +84,7 @@ export const updateTable = async (req, res) => {
     const table = await Table.findByIdAndUpdate(req.params.id, req.body, { returnDocument: 'after' });
     if (!table) return res.status(404).json({ message: 'Table not found' });
     
-    await logAdminAction(req, 'UPDATE_TABLE', 'Table', table._id, { updatedFields: Object.keys(req.body) });
+
 
     res.status(200).json(table);
     emitTablesUpdated();
@@ -99,7 +99,7 @@ export const deleteTable = async (req, res) => {
     const table = await Table.findByIdAndDelete(req.params.id);
     if (!table) return res.status(404).json({ message: 'Table not found' });
 
-    await logAdminAction(req, 'DELETE_TABLE', 'Table', table._id, { tableNumber: table.tableNumber });
+
 
     res.status(200).json({ message: 'Table deleted successfully' });
     emitTablesUpdated();
@@ -160,7 +160,7 @@ export const mergeTables = async (req, res) => {
       occupiedSeats: newDestSeats 
     });
 
-    await logAdminAction(req, 'MERGE_TABLES', 'Table', destinationTableId, { sourceTableId, mergedOrdersCount: activeOrders.length });
+
 
     res.status(200).json({ message: `Successfully merged ${activeOrders.length} orders into the new table.` });
     emitTablesUpdated();
@@ -189,7 +189,7 @@ export const coshareMergeTables = async (req, res) => {
       { $set: { mergedGroup: tableNumbers } }
     );
 
-    await logAdminAction(req, 'COSHARE_TABLES', 'Table', null, { tableNumbers });
+
 
     res.status(200).json({ message: `Tables ${tableNumbers.join(", ")} merged successfully.`, mergedGroup: tableNumbers });
     emitTablesUpdated();
@@ -221,7 +221,7 @@ export const coshareUnmergeTables = async (req, res) => {
       { $set: { mergedGroup: [] } }
     );
 
-    await logAdminAction(req, 'UNMERGE_TABLES', 'Table', table._id, { unmergedGroup: group });
+
 
     res.status(200).json({ message: "Tables unmerged successfully." });
     emitTablesUpdated();

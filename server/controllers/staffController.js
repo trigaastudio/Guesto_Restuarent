@@ -1,5 +1,5 @@
 import staffService from '../services/staffService.js';
-import { logAdminAction } from '../services/auditService.js';
+
 
 class StaffController {
   async login(req, res) {
@@ -55,7 +55,7 @@ class StaffController {
     try {
       const staff = await staffService.createStaff(req.body);
       
-      await logAdminAction(req, 'CREATE_STAFF', 'Staff', staff._id, { employeeId: staff.employeeId, name: staff.name });
+
 
       res.status(201).json({
         success: true,
@@ -90,7 +90,7 @@ class StaffController {
         }
       }
 
-      await logAdminAction(req, 'UPDATE_STAFF', 'Staff', staff._id, { updatedFields: Object.keys(req.body) });
+
 
       res.status(200).json({
         success: true,
@@ -115,7 +115,7 @@ class StaffController {
         });
       }
 
-      await logAdminAction(req, 'DELETE_STAFF', 'Staff', staff._id, { employeeId: staff.employeeId });
+
 
       res.status(200).json({
         success: true,

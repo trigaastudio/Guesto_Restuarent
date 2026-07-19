@@ -69,7 +69,7 @@ const StaffManagement = () => {
   const [roleFilter, setRoleFilter] = useState('all');
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 30;
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
 

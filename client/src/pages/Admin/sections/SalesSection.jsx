@@ -14,13 +14,13 @@ import {
   Layers,
   RotateCcw,
   Printer,
-  ChevronLeft,
   ChevronRight,
-  ArrowRight
+  ArrowRight,
+  Trash2
 } from 'lucide-react';
 import Pagination from '../../../components/Pagination/Pagination';
 import api from '../../../api/axiosInstance';
-import { showToast } from '../../../utils/sweetAlert';
+import { showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
@@ -48,7 +48,7 @@ const SalesSection = () => {
 
 
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 30;
 
   useEffect(() => {
     fetchInitialData();
@@ -104,6 +104,21 @@ const SalesSection = () => {
       orderSource: 'all',
       menuItem: 'all'
     });
+  };
+
+  const handleClearSales = async () => {
+    const result = await showDeleteConfirmation('Clear All Sales Records?', 'This will permanently delete ALL financial and sales data from the database. This action cannot be undone.');
+    if (result.isConfirmed) {
+      try {
+        const response = await api.delete('/api/reports/clear');
+        if (response.data.success) {
+          showToast('success', response.data.message);
+          fetchReportData();
+        }
+      } catch (error) {
+        showToast('error', 'Failed to clear sales records');
+      }
+    }
   };
 
   const exportToExcel = async () => {
@@ -275,6 +290,13 @@ const SalesSection = () => {
             <Printer size={16} />
             <span>PDF</span>
           </button>
+          <button
+            onClick={handleClearSales}
+            className="flex items-center space-x-2 px-4 py-2.5 bg-red-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-red-600 transition-all shadow-sm"
+          >
+            <Trash2 size={16} />
+            <span className="hidden sm:inline">Clear Sales</span>
+          </button>
         </div>
       </div>
 
@@ -376,7 +398,7 @@ const SalesSection = () => {
               <div className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Total Orders</div>
             </div>
             <div className="flex justify-center items-center flex-1 py-4">
-              <span className="text-5xl font-black text-text-primary tracking-tighter">{salesData.orders.length}</span>
+              <span className="text-5xl font-black text-text-primary tracking-tighter">{salesData.stats?.totalOrders ?? salesData.orders.length}</span>
             </div>
             <div className="absolute top-0 right-0 w-24 h-24 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-125 opacity-5 bg-purple-500" />
           </div>

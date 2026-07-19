@@ -563,10 +563,12 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                 <div
                   key={item._id}
                   onClick={() => {
-                    const targetVariant = (item.variants && item.variants.length > 0)
-                      ? item.variants[0]
-                      : { size: 'Standard', price: item.price || 0 };
-                    addToCart(item, targetVariant);
+                    if (item.isCombo || (item.variants && item.variants.length > 0)) {
+                      setSelectedItemForModal(item);
+                    } else {
+                      const targetVariant = { size: 'Standard', price: item.price || 0 };
+                      addToCart(item, targetVariant);
+                    }
                   }}
                   className={`bg-background-muted/30 p-3 rounded-2xl border border-border-light hover:border-primary/30 transition-all group relative cursor-pointer active:scale-[0.98] ${isFullyOutOfStock ? 'opacity-40 grayscale pointer-events-none' : ''}`}
                 >
@@ -617,15 +619,6 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                         ))}
                       </div>
                     )}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedItemForModal(item);
-                      }}
-                      className="w-full py-2.5 md:py-3 bg-primary text-white text-[11px] md:text-xs font-black rounded-xl uppercase tracking-widest hover:bg-primary-light transition-all shadow-lg shadow-primary/20 mt-2"
-                    >
-                      {item.isCombo || (item.variants && item.variants.length > 0) ? 'Select Options' : 'Add to Cart'}
-                    </button>
                   </div>
                 </div>
               );

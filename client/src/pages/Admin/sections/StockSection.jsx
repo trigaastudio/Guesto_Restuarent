@@ -13,7 +13,7 @@ const StockSection = ({ refreshKey }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 30;
 
   useEffect(() => {
     fetchData();

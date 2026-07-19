@@ -133,6 +133,12 @@ orderSchema.index({ customer: 1 });
 orderSchema.index({ table: 1 });
 orderSchema.index({ createdAt: -1 });
 orderSchema.index({ orderStatus: 1 });
+// Additional indexes for admin getOrders query filters
+orderSchema.index({ paymentStatus: 1 });
+orderSchema.index({ orderType: 1, createdAt: -1 });
+orderSchema.index({ orderStatus: 1, paymentStatus: 1 });
+orderSchema.index({ orderStatus: 1, createdAt: -1 });
+
 
 // PERF-1 OPTIMIZATION: Setup state for salesCount synchronization
 orderSchema.pre('save', async function () {

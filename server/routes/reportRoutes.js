@@ -1,5 +1,5 @@
 import express from 'express';
-import Order from '../models/orderSchema.js';
+import Sale from '../models/saleSchema.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -11,7 +11,7 @@ router.get('/sales', protect, admin, async (req, res) => {
   try {
     const { startDate, endDate, orderType, orderSource, menuItem } = req.query;
     
-    let query = { orderStatus: { $ne: 'cancelled' } };
+    let query = {};
 
     if (startDate || endDate) {
       query.createdAt = {};
@@ -31,7 +31,7 @@ router.get('/sales', protect, admin, async (req, res) => {
     if (orderSource && orderSource !== 'all') query.orderSource = orderSource;
     if (menuItem && menuItem !== 'all') query['items.menuItem'] = menuItem;
 
-    const orders = await Order.find(query)
+    const orders = await Sale.find(query)
       .populate('items.menuItem', 'name category')
       .sort({ createdAt: -1 });
 
@@ -46,6 +46,7 @@ router.get('/sales', protect, admin, async (req, res) => {
     }, { totalRevenue: 0, totalCost: 0, totalQty: 0 });
 
     stats.totalProfit = stats.totalRevenue - stats.totalCost;
+    stats.totalOrders = await Sale.countDocuments();
 
     res.json({ success: true, data: { orders, stats } });
   } catch (error) {
@@ -67,7 +68,7 @@ router.get('/periodic', protect, admin, async (req, res) => {
     const firstDayOfYear = new Date(today.getFullYear(), 0, 1);
 
     const aggregateByDate = async (startDate) => {
-      let matchQuery = { orderStatus: { $ne: 'cancelled' }, createdAt: { $gte: startDate } };
+      let matchQuery = { createdAt: { $gte: startDate } };
       
       if (orderType && orderType !== 'all') matchQuery.orderType = orderType;
       if (orderSource && orderSource !== 'all') matchQuery.orderSource = orderSource;
@@ -76,7 +77,7 @@ router.get('/periodic', protect, admin, async (req, res) => {
         matchQuery['items.menuItem'] = new mongoose.Types.ObjectId(menuItem);
       }
 
-      return Order.aggregate([
+      return Sale.aggregate([
         { $match: matchQuery },
         { $group: { 
           _id: null, 
@@ -115,7 +116,7 @@ router.get('/periodic', protect, admin, async (req, res) => {
 router.get('/items', protect, admin, async (req, res) => {
   try {
     const { startDate, endDate, orderType, orderSource, menuItem } = req.query;
-    let matchQuery = { orderStatus: { $ne: 'cancelled' } };
+    let matchQuery = {};
 
     if (startDate || endDate) {
       matchQuery.createdAt = {};
@@ -171,12 +172,21 @@ router.get('/items', protect, admin, async (req, res) => {
       }}
     );
 
-    const itemStats = await Order.aggregate(pipeline.concat([
+    const itemStats = await Sale.aggregate(pipeline.concat([
       { $addFields: { profit: { $subtract: ['$revenue', '$cost'] } } },
       { $sort: { qty: -1 } }
     ]));
 
     res.json({ success: true, data: itemStats });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+router.delete('/clear', protect, admin, async (req, res) => {
+  try {
+    await Sale.deleteMany({});
+    res.json({ success: true, message: 'All sales records cleared successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }

@@ -8,9 +8,40 @@ import Category from '../models/categorySchema.js';
 import Settings from '../models/settingsSchema.js';
 import Table from '../models/tableSchema.js';
 import { getIO, emitStockUpdate, emitCategoryStockUpdate, emitTablesUpdated } from '../socket.js';
-import { logAdminAction } from '../services/auditService.js';
+
 import { menuCache } from './menuController.js';
 import { categoryCache } from './categoryController.js';
+import Sale from '../models/saleSchema.js';
+
+const syncSale = async (order) => {
+  if (order.orderStatus === 'completed' || (order.orderStatus === 'delivered' && order.paymentStatus === 'paid') || (order.orderType === 'dine-in' && order.orderStatus === 'billed' && order.paymentStatus === 'paid')) {
+    await Sale.findOneAndUpdate(
+      { orderId: order._id },
+      {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        orderType: order.orderType,
+        orderSource: order.orderSource,
+        orderStatus: order.orderStatus,
+        totalAmount: order.totalAmount,
+        items: order.items.map(item => ({
+          menuItem: item.menuItem._id || item.menuItem,
+          name: item.name,
+          size: item.size,
+          quantity: item.quantity,
+          totalPrice: item.totalPrice,
+          costPrice: item.costPrice || 0
+        })),
+        paymentMethod: order.paymentMethod || 'cash',
+        createdAt: order.createdAt
+      },
+      { upsert: true, new: true }
+    );
+  } else if (order.orderStatus === 'cancelled') {
+    await Sale.findOneAndDelete({ orderId: order._id });
+  }
+};
+
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; 
@@ -91,20 +122,48 @@ const getNextOrderNumber = async () => {
 };
 
 const checkStockAvailability = async (items) => {
-  // First, aggregate total quantity needed per category
+  // --- OPTIMIZED: Batch-fetch all menu IDs in a single query (eliminates N+1) ---
+  const primaryIds = items.map(i => i.menuItem).filter(Boolean);
+
+  // Fetch all primary menu docs at once, populated with category and comboItems
+  const primaryDocs = await Menu.find({ _id: { $in: primaryIds } })
+    .populate('category')
+    .populate({ path: 'comboItems.menuItem', populate: { path: 'category' } })
+    .lean();
+  const primaryMap = Object.fromEntries(primaryDocs.map(m => [m._id.toString(), m]));
+
+  // Collect all secondary IDs needed (included items, bogo items)
+  const secondaryIds = [];
+  for (const item of items) {
+    const menuDoc = primaryMap[item.menuItem?.toString()];
+    if (!menuDoc) continue;
+    const variant = menuDoc.variants?.find(v => v.size === item.size);
+    if (variant?.includedItems) secondaryIds.push(...variant.includedItems.map(ii => ii.menuItem).filter(Boolean));
+    if (variant?.isBOGO && variant?.bogoItem) secondaryIds.push(variant.bogoItem);
+  }
+
+  // Fetch secondary docs in one query if needed
+  const secondaryMap = {};
+  if (secondaryIds.length > 0) {
+    const secondaryDocs = await Menu.find({ _id: { $in: secondaryIds } })
+      .populate('category')
+      .lean();
+    secondaryDocs.forEach(m => { secondaryMap[m._id.toString()] = m; });
+  }
+
   const categoryNeedsMap = {}; // categoryId -> totalAmountNeeded
 
   for (const item of items) {
-    const menuDoc = await Menu.findById(item.menuItem).populate('category comboItems.menuItem');
+    const menuDoc = primaryMap[item.menuItem?.toString()];
     if (!menuDoc) continue;
 
-    const variant = menuDoc.variants.find(v => v.size === item.size);
+    const variant = menuDoc.variants?.find(v => v.size === item.size);
     const multiplier = variant && variant.stockValue ? variant.stockValue : 1;
     const amountNeeded = item.quantity * multiplier;
 
     if (menuDoc.isCombo && menuDoc.comboItems && menuDoc.comboItems.length > 0) {
       for (const ci of menuDoc.comboItems) {
-        const ciDoc = await Menu.findById(ci.menuItem?._id || ci.menuItem).populate('category');
+        const ciDoc = ci.menuItem; // already populated
         if (!ciDoc) continue;
         const ciAmountNeeded = item.quantity * (ci.quantity || 1);
         if (ciDoc.category && ciDoc.category.stockactive) {
@@ -126,7 +185,7 @@ const checkStockAvailability = async (items) => {
 
     if (variant && variant.includedItems && variant.includedItems.length > 0) {
       for (const included of variant.includedItems) {
-        const includedDoc = await Menu.findById(included.menuItem);
+        const includedDoc = secondaryMap[included.menuItem?.toString()];
         if (!includedDoc) continue;
         const totalNeeded = item.quantity * included.quantity;
         if (includedDoc.totalStock < totalNeeded) {
@@ -136,7 +195,7 @@ const checkStockAvailability = async (items) => {
     }
 
     if (variant && variant.isBOGO && variant.bogoItem) {
-      const bogoDoc = await Menu.findById(variant.bogoItem).populate('category');
+      const bogoDoc = secondaryMap[variant.bogoItem?.toString()];
       if (bogoDoc) {
         const bogoVariant = bogoDoc.variants?.find(v => v.size === variant.bogoVariant);
         const bogoMultiplier = bogoVariant && bogoVariant.stockValue ? bogoVariant.stockValue : 1;
@@ -152,12 +211,15 @@ const checkStockAvailability = async (items) => {
     }
   }
 
-  // Now check each category's total need against its current stock
-  for (const [catId, totalNeeded] of Object.entries(categoryNeedsMap)) {
-    const cat = await Category.findById(catId);
-    if (!cat) continue;
-    if (cat.totalStock < totalNeeded) {
-      return { available: false, itemName: `items from ${cat.name} category` };
+  // Batch-fetch only the categories we actually need to check
+  const catIds = Object.keys(categoryNeedsMap);
+  if (catIds.length > 0) {
+    const cats = await Category.find({ _id: { $in: catIds } }).lean();
+    for (const cat of cats) {
+      const totalNeeded = categoryNeedsMap[cat._id.toString()];
+      if (cat.totalStock < totalNeeded) {
+        return { available: false, itemName: `items from ${cat.name} category` };
+      }
     }
   }
 
@@ -165,205 +227,185 @@ const checkStockAvailability = async (items) => {
 };
 
 const handleStock = async (items, type = 'reduce') => {
+  const factor = type === 'reduce' ? -1 : 1;
+
+  // --- OPTIMIZED: Batch-fetch all needed menu docs in a single query (eliminates N+1) ---
+  const primaryIds = items.map(i => i.menuItem).filter(Boolean);
+  const primaryDocs = await Menu.find({ _id: { $in: primaryIds } })
+    .populate('category')
+    .populate({ path: 'comboItems.menuItem', populate: { path: 'category' } })
+    .lean();
+  const primaryMap = Object.fromEntries(primaryDocs.map(m => [m._id.toString(), m]));
+
+  // Collect secondary IDs (included items, bogo items) for a single second query
+  const secondaryIds = [];
+  for (const item of items) {
+    const menuDoc = primaryMap[item.menuItem?.toString()];
+    if (!menuDoc) continue;
+    const variant = menuDoc.variants?.find(v => v.size === item.size);
+    if (variant?.includedItems) secondaryIds.push(...variant.includedItems.map(ii => ii.menuItem).filter(Boolean));
+    if (variant?.isBOGO && variant?.bogoItem) secondaryIds.push(variant.bogoItem);
+  }
+  const secondaryMap = {};
+  if (secondaryIds.length > 0) {
+    const secondaryDocs = await Menu.find({ _id: { $in: secondaryIds } }).populate('category').lean();
+    secondaryDocs.forEach(m => { secondaryMap[m._id.toString()] = m; });
+  }
+
+  // Build all DB update operations and run them in parallel with Promise.all
+  const updateOps = [];
+
   for (const item of items) {
     try {
-      const menuDoc = await Menu.findById(item.menuItem).populate('category comboItems.menuItem');
+      const menuDoc = primaryMap[item.menuItem?.toString()];
       if (!menuDoc) continue;
 
-      const variant = menuDoc.variants.find(v => v.size === item.size);
+      const variant = menuDoc.variants?.find(v => v.size === item.size);
       const multiplier = variant && variant.stockValue ? variant.stockValue : 1;
       const amount = item.quantity * multiplier;
-      const factor = type === 'reduce' ? -1 : 1;
 
-      // --- COMBO: reduce component item stocks, skip combo menu's own stock ---
+      // --- COMBO: reduce each component item's stock in parallel ---
       if (menuDoc.isCombo && menuDoc.comboItems && menuDoc.comboItems.length > 0) {
         for (const ci of menuDoc.comboItems) {
-          const ciDoc = await Menu.findById(ci.menuItem?._id || ci.menuItem).populate('category');
+          const ciDoc = ci.menuItem; // already populated
           if (!ciDoc) continue;
           const ciAmount = item.quantity * (ci.quantity || 1);
 
           if (ciDoc.category && ciDoc.category.stockactive) {
-            const updatedCat = await Category.findByIdAndUpdate(
-              ciDoc.category._id,
-              { $inc: { totalStock: factor * ciAmount } },
-              { returnDocument: 'after' }
+            updateOps.push(
+              Category.findByIdAndUpdate(ciDoc.category._id, { $inc: { totalStock: factor * ciAmount } }, { returnDocument: 'after' })
+                .then(updatedCat => {
+                  if (!updatedCat) return;
+                  if (updatedCat.totalStock < 0) {
+                    updatedCat.totalStock = 0;
+                    return Category.findByIdAndUpdate(ciDoc.category._id, { totalStock: 0 })
+                      .then(() => emitCategoryStockUpdate(updatedCat._id, 0));
+                  }
+                  emitCategoryStockUpdate(updatedCat._id, updatedCat.totalStock);
+                })
             );
-            if (updatedCat && updatedCat.totalStock < 0) {
-              await Category.findByIdAndUpdate(ciDoc.category._id, { totalStock: 0 });
-              updatedCat.totalStock = 0;
-            }
-            if (updatedCat) emitCategoryStockUpdate(updatedCat._id, updatedCat.totalStock);
           } else {
-            const updatedMenu = await Menu.findByIdAndUpdate(
-              ciDoc._id,
-              { $inc: { totalStock: factor * ciAmount } },
-              { returnDocument: 'after' }
+            updateOps.push(
+              Menu.findByIdAndUpdate(ciDoc._id, { $inc: { totalStock: factor * ciAmount } }, { returnDocument: 'after' })
+                .then(updatedMenu => {
+                  if (!updatedMenu) return;
+                  if (updatedMenu.totalStock < 0) {
+                    updatedMenu.totalStock = 0;
+                    Menu.findByIdAndUpdate(ciDoc._id, { totalStock: 0 }).catch(() => {});
+                  }
+                  emitStockUpdate(updatedMenu._id, updatedMenu.totalStock);
+                  if (type === 'reduce') {
+                    if (updatedMenu.totalStock <= 0) getIO().emit('stockAlert', { type: 'outOfStock', itemId: updatedMenu._id, name: updatedMenu.name, message: `CRITICAL: ${updatedMenu.name} is now OUT OF STOCK!` });
+                    else if (updatedMenu.totalStock <= 5) getIO().emit('stockAlert', { type: 'lowStock', itemId: updatedMenu._id, name: updatedMenu.name, message: `ALERT: ${updatedMenu.name} is running low (${updatedMenu.totalStock} left)` });
+                  }
+                })
             );
-            if (updatedMenu && updatedMenu.totalStock < 0) {
-              await Menu.findByIdAndUpdate(ciDoc._id, { totalStock: 0 });
-              updatedMenu.totalStock = 0;
-            }
-            if (updatedMenu) emitStockUpdate(updatedMenu._id, updatedMenu.totalStock);
-
-            if (type === 'reduce' && updatedMenu) {
-              if (updatedMenu.totalStock <= 0) {
-                getIO().emit('stockAlert', { type: 'outOfStock', itemId: updatedMenu._id, name: updatedMenu.name, message: `CRITICAL: ${updatedMenu.name} is now OUT OF STOCK!` });
-              } else if (updatedMenu.totalStock <= 5) {
-                getIO().emit('stockAlert', { type: 'lowStock', itemId: updatedMenu._id, name: updatedMenu.name, message: `ALERT: ${updatedMenu.name} is running low (${updatedMenu.totalStock} left)` });
-              }
-            }
           }
         }
-        continue; // skip the rest for combo items
+        continue; // skip per-item stock for combo containers
       }
 
       // --- CATEGORY STOCK ---
       if (menuDoc.category && menuDoc.category.stockactive) {
-        const updatedCategory = await Category.findByIdAndUpdate(
-          menuDoc.category._id,
-          { $inc: { totalStock: factor * amount } },
-          { returnDocument: 'after' }
+        updateOps.push(
+          Category.findByIdAndUpdate(menuDoc.category._id, { $inc: { totalStock: factor * amount } }, { returnDocument: 'after' })
+            .then(updatedCategory => {
+              if (!updatedCategory) return;
+              if (updatedCategory.totalStock < 0) {
+                updatedCategory.totalStock = 0;
+                Category.findByIdAndUpdate(menuDoc.category._id, { totalStock: 0 }).catch(() => {});
+              }
+              emitCategoryStockUpdate(updatedCategory._id, updatedCategory.totalStock);
+              if (type === 'reduce') {
+                if (updatedCategory.totalStock <= 0) getIO().emit('stockAlert', { type: 'outOfStock', itemId: updatedCategory._id, name: updatedCategory.name, message: `CRITICAL: ${updatedCategory.name} Category is now OUT OF STOCK!` });
+                else if (updatedCategory.totalStock <= 5) getIO().emit('stockAlert', { type: 'lowStock', itemId: updatedCategory._id, name: updatedCategory.name, message: `ALERT: ${updatedCategory.name} Category is running low (${updatedCategory.totalStock} left)` });
+              }
+            })
         );
-
-        if (updatedCategory && updatedCategory.totalStock < 0) {
-          await Category.findByIdAndUpdate(menuDoc.category._id, { totalStock: 0 });
-          updatedCategory.totalStock = 0;
-        }
-
-        if (updatedCategory) {
-          emitCategoryStockUpdate(updatedCategory._id, updatedCategory.totalStock);
-        }
-
-        if (type === 'reduce' && updatedCategory) {
-          if (updatedCategory.totalStock <= 0) {
-            getIO().emit('stockAlert', {
-              type: 'outOfStock',
-              itemId: updatedCategory._id, 
-              name: updatedCategory.name,
-              message: `CRITICAL: ${updatedCategory.name} Category is now OUT OF STOCK!`
-            });
-          } else if (updatedCategory.totalStock <= 5) {
-            getIO().emit('stockAlert', {
-              type: 'lowStock',
-              itemId: updatedCategory._id,
-              name: updatedCategory.name,
-              message: `ALERT: ${updatedCategory.name} Category is running low (${updatedCategory.totalStock} left)`
-            });
-          }
-        }
       } else {
         // --- INDIVIDUAL MENU STOCK ---
-        const updatedMenu = await Menu.findByIdAndUpdate(
-          item.menuItem,
-          { $inc: { totalStock: factor * amount } },
-          { returnDocument: 'after' }
+        updateOps.push(
+          Menu.findByIdAndUpdate(item.menuItem, { $inc: { totalStock: factor * amount } }, { returnDocument: 'after' })
+            .then(updatedMenu => {
+              if (!updatedMenu) return;
+              if (updatedMenu.totalStock < 0) {
+                updatedMenu.totalStock = 0;
+                Menu.findByIdAndUpdate(item.menuItem, { totalStock: 0 }).catch(() => {});
+              }
+              emitStockUpdate(updatedMenu._id, updatedMenu.totalStock);
+              if (type === 'reduce') {
+                if (updatedMenu.totalStock <= 0) getIO().emit('stockAlert', { type: 'outOfStock', itemId: updatedMenu._id, name: updatedMenu.name, message: `CRITICAL: ${updatedMenu.name} is now OUT OF STOCK!` });
+                else if (updatedMenu.totalStock <= 5) getIO().emit('stockAlert', { type: 'lowStock', itemId: updatedMenu._id, name: updatedMenu.name, message: `ALERT: ${updatedMenu.name} is running low (${updatedMenu.totalStock} left)` });
+              }
+            })
         );
-
-        if (updatedMenu && updatedMenu.totalStock < 0) {
-          await Menu.findByIdAndUpdate(item.menuItem, { totalStock: 0 });
-          updatedMenu.totalStock = 0;
-        }
-
-        if (updatedMenu) {
-          emitStockUpdate(updatedMenu._id, updatedMenu.totalStock);
-        }
-
-        if (type === 'reduce' && updatedMenu) {
-          if (updatedMenu.totalStock <= 0) {
-            getIO().emit('stockAlert', {
-              type: 'outOfStock',
-              itemId: updatedMenu._id,
-              name: updatedMenu.name,
-              message: `CRITICAL: ${updatedMenu.name} is now OUT OF STOCK!`
-            });
-          } else if (updatedMenu.totalStock <= 5) {
-            getIO().emit('stockAlert', {
-              type: 'lowStock',
-              itemId: updatedMenu._id,
-              name: updatedMenu.name,
-              message: `ALERT: ${updatedMenu.name} is running low (${updatedMenu.totalStock} left)`
-            });
-          }
-        }
       }
 
       // --- INCLUDED ITEMS (variant add-ons) ---
       if (variant && variant.includedItems && variant.includedItems.length > 0) {
         for (const included of variant.includedItems) {
           const includedReduction = item.quantity * included.quantity;
-          const updatedIncluded = await Menu.findByIdAndUpdate(
-            included.menuItem,
-            { $inc: { totalStock: factor * includedReduction } },
-            { returnDocument: 'after' }
+          updateOps.push(
+            Menu.findByIdAndUpdate(included.menuItem, { $inc: { totalStock: factor * includedReduction } }, { returnDocument: 'after' })
+              .then(updatedIncluded => {
+                if (!updatedIncluded) return;
+                if (updatedIncluded.totalStock < 0) {
+                  updatedIncluded.totalStock = 0;
+                  Menu.findByIdAndUpdate(included.menuItem, { totalStock: 0 }).catch(() => {});
+                }
+                emitStockUpdate(updatedIncluded._id, updatedIncluded.totalStock);
+                if (type === 'reduce') {
+                  if (updatedIncluded.totalStock <= 0) getIO().emit('stockAlert', { type: 'outOfStock', itemId: updatedIncluded._id, name: updatedIncluded.name, message: `CRITICAL: ${updatedIncluded.name} (ingredient) is now OUT OF STOCK!` });
+                  else if (updatedIncluded.totalStock <= 5) getIO().emit('stockAlert', { type: 'lowStock', itemId: updatedIncluded._id, name: updatedIncluded.name, message: `ALERT: ${updatedIncluded.name} (ingredient) is running low (${updatedIncluded.totalStock} left)` });
+                }
+              })
           );
-
-          if (updatedIncluded && updatedIncluded.totalStock < 0) {
-            await Menu.findByIdAndUpdate(included.menuItem, { totalStock: 0 });
-            updatedIncluded.totalStock = 0;
-          }
-
-          if (updatedIncluded) {
-            emitStockUpdate(updatedIncluded._id, updatedIncluded.totalStock);
-          }
-
-          if (type === 'reduce' && updatedIncluded) {
-            if (updatedIncluded.totalStock <= 0) {
-              getIO().emit('stockAlert', {
-                type: 'outOfStock',
-                itemId: updatedIncluded._id,
-                name: updatedIncluded.name,
-                message: `CRITICAL: ${updatedIncluded.name} (ingredient) is now OUT OF STOCK!`
-              });
-            } else if (updatedIncluded.totalStock <= 5) {
-              getIO().emit('stockAlert', {
-                type: 'lowStock',
-                itemId: updatedIncluded._id,
-                name: updatedIncluded.name,
-                message: `ALERT: ${updatedIncluded.name} (ingredient) is running low (${updatedIncluded.totalStock} left)`
-              });
-            }
-          }
         }
       }
 
       // --- BOGO ITEM ---
       if (variant && variant.isBOGO && variant.bogoItem) {
-        const bogoDoc = await Menu.findById(variant.bogoItem).populate('category');
+        const bogoDoc = secondaryMap[variant.bogoItem?.toString()];
         if (bogoDoc) {
           const bogoVariant = bogoDoc.variants?.find(v => v.size === variant.bogoVariant);
           const bogoMultiplier = bogoVariant && bogoVariant.stockValue ? bogoVariant.stockValue : 1;
           const bogoReduction = item.quantity * bogoMultiplier;
-          
+
           if (bogoDoc.category && bogoDoc.category.stockactive) {
-            const updatedBogoCat = await Category.findByIdAndUpdate(
-              bogoDoc.category._id,
-              { $inc: { totalStock: factor * bogoReduction } },
-              { returnDocument: 'after' }
+            updateOps.push(
+              Category.findByIdAndUpdate(bogoDoc.category._id, { $inc: { totalStock: factor * bogoReduction } }, { returnDocument: 'after' })
+                .then(updatedBogoCat => {
+                  if (!updatedBogoCat) return;
+                  if (updatedBogoCat.totalStock < 0) {
+                    updatedBogoCat.totalStock = 0;
+                    Category.findByIdAndUpdate(bogoDoc.category._id, { totalStock: 0 }).catch(() => {});
+                  }
+                  emitCategoryStockUpdate(updatedBogoCat._id, updatedBogoCat.totalStock);
+                })
             );
-            if (updatedBogoCat && updatedBogoCat.totalStock < 0) {
-              await Category.findByIdAndUpdate(bogoDoc.category._id, { totalStock: 0 });
-              updatedBogoCat.totalStock = 0;
-            }
-            if (updatedBogoCat) emitCategoryStockUpdate(updatedBogoCat._id, updatedBogoCat.totalStock);
           } else {
-            const updatedBogoMenu = await Menu.findByIdAndUpdate(
-              variant.bogoItem,
-              { $inc: { totalStock: factor * bogoReduction } },
-              { returnDocument: 'after' }
+            updateOps.push(
+              Menu.findByIdAndUpdate(variant.bogoItem, { $inc: { totalStock: factor * bogoReduction } }, { returnDocument: 'after' })
+                .then(updatedBogoMenu => {
+                  if (!updatedBogoMenu) return;
+                  if (updatedBogoMenu.totalStock < 0) {
+                    updatedBogoMenu.totalStock = 0;
+                    Menu.findByIdAndUpdate(variant.bogoItem, { totalStock: 0 }).catch(() => {});
+                  }
+                  emitStockUpdate(updatedBogoMenu._id, updatedBogoMenu.totalStock);
+                })
             );
-            if (updatedBogoMenu && updatedBogoMenu.totalStock < 0) {
-              await Menu.findByIdAndUpdate(variant.bogoItem, { totalStock: 0 });
-              updatedBogoMenu.totalStock = 0;
-            }
-            if (updatedBogoMenu) emitStockUpdate(updatedBogoMenu._id, updatedBogoMenu.totalStock);
           }
         }
       }
-
     } catch (error) {
       console.error(`Error handling stock for item ${item.menuItem}:`, error);
     }
   }
+
+  // Run ALL DB updates in parallel — this is the key performance gain
+  await Promise.all(updateOps);
+
   // Flush caches so next API calls return fresh data
   try { menuCache.flushAll(); } catch(e) {}
   try { categoryCache.flushAll(); } catch(e) {}
@@ -703,6 +745,7 @@ class OrderController {
       }
 
       await newOrder.save();
+      await syncSale(newOrder);
 
       
       await handleStock(items, 'reduce');
@@ -795,6 +838,7 @@ class OrderController {
 
       order.orderStatus = 'cancelled';
       await order.save();
+      await syncSale(order);
 
       getIO().to('staff_room').emit('ordersUpdated');
       getIO().emit('orderUpdated', order);
@@ -911,6 +955,7 @@ class OrderController {
       }
 
       await newOrder.save();
+      await syncSale(newOrder);
       await handleStock(items, 'reduce');
 
       res.status(201).json({ success: true, data: newOrder });
@@ -955,9 +1000,8 @@ class OrderController {
         todayStart.setHours(5, 0, 0, 0);
 
         query.$or = [
-          { createdAt: { $gte: todayStart } },
-          { orderStatus: { $nin: ['cancelled', 'completed', 'delivered', 'billed'] } },
-          { orderStatus: { $in: ['delivered', 'billed'] }, paymentStatus: { $ne: 'paid' } }
+          { orderStatus: { $nin: ['cancelled', 'completed', 'delivered'] } },
+          { orderStatus: 'delivered', paymentStatus: { $ne: 'paid' } }
         ];
       }
 
@@ -972,7 +1016,7 @@ class OrderController {
         ]
       };
 
-      const limit = parseInt(req.query.limit) || (history === 'true' ? 500 : 200);
+      const limit = parseInt(req.query.limit) || (history === 'true' ? 100 : 50);
       const skip = (parseInt(req.query.page || 1) - 1) * limit;
 
       const finalQuery = { $and: [query, baseFilter] };
@@ -1034,13 +1078,7 @@ class OrderController {
       }
 
       const order = await originalOrder.save();
-
-      
-      await logAdminAction(req, 'UPDATE_ORDER_STATUS', 'Order', order._id, {
-        previousStatus: originalOrder.orderStatus,
-        newStatus: updateData.orderStatus,
-        orderNumber: order.orderNumber
-      });
+      await syncSale(order);
 
       await order.populate([
         { path: 'items.menuItem', select: 'name image' },
@@ -1118,6 +1156,7 @@ class OrderController {
 
       item.kitchenStatus = kitchenStatus;
       await order.save();
+      await syncSale(order);
       await order.populate('items.menuItem', 'name image');
 
       getIO().to('staff_room').emit('ordersUpdated');
@@ -1153,6 +1192,7 @@ class OrderController {
       if (isChanged) {
         order.markModified('items');
         await order.save();
+        await syncSale(order);
       }
 
       await order.populate('items.menuItem', 'name image');
@@ -1199,6 +1239,7 @@ class OrderController {
       }));
       order.items.push(...enrichedItems);
       await order.save();
+      await syncSale(order);
       await handleStock(items, 'reduce');
 
       await order.populate('items.menuItem', 'name image');
@@ -1230,6 +1271,7 @@ class OrderController {
         await handleStock([item], 'restore');
         order.items.pull(itemId);
         await order.save();
+        await syncSale(order);
         await order.populate('items.menuItem', 'name image');
       }
 
@@ -1273,6 +1315,7 @@ class OrderController {
       item.totalPrice = (item.unitPrice || item.price || 0) * quantity;
 
       await order.save();
+      await syncSale(order);
       await order.populate('items.menuItem', 'name image');
 
       getIO().to('staff_room').emit('ordersUpdated');
@@ -1349,6 +1392,7 @@ class OrderController {
       }
 
       await order.save();
+      await syncSale(order);
       await handleStock(order.items, 'reduce');
 
       await order.populate('items.menuItem', 'name image');
@@ -1370,9 +1414,9 @@ class OrderController {
       } else {
         query = {
           $or: [
-            { orderType: 'dine-in', orderStatus: 'billed', paymentStatus: 'paid' },
-            { orderType: { $ne: 'dine-in' }, orderStatus: 'delivered', paymentStatus: 'paid' },
-            { orderStatus: 'cancelled' }
+            { orderStatus: 'delivered', paymentStatus: 'paid' },
+            { orderStatus: 'cancelled' },
+            { orderStatus: 'completed' }
           ]
         };
 

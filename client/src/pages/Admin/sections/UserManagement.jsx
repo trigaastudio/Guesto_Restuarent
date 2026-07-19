@@ -14,7 +14,7 @@ const UserManagement = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 30;
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
 
@@ -179,8 +179,8 @@ const UserManagement = () => {
   };
 
   const filteredUsers = userList.filter(u => {
-    const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (u.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (u.phone && u.phone.includes(searchTerm));
     const matchesStatus = statusFilter === 'all' ||
       (statusFilter === 'active' && u.isActive) ||
@@ -437,7 +437,8 @@ const UserManagement = () => {
                       type="text"
                       value={currentUser.phone}
                       onChange={(e) => {
-                        setCurrentUser({ ...currentUser, phone: e.target.value });
+                        let val = e.target.value.replace(/[^\d+]/g, ''); // keep only numbers and +
+                        setCurrentUser({ ...currentUser, phone: val.slice(0, 15) });
                         if (errors.phone) setErrors({ ...errors, phone: false, email: false });
                       }}
                       className={`w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border outline-none transition-all text-sm font-bold ${
@@ -445,8 +446,8 @@ const UserManagement = () => {
                           ? 'border-primary ring-1 ring-primary/30 bg-primary/5'
                           : 'border-border-main focus:border-primary'
                       }`}
-                      placeholder="10-digit number"
-                      maxLength={10}
+                      placeholder="Phone number (e.g. +91...)"
+                      maxLength={15}
                     />
                   </div>
                 </div>
