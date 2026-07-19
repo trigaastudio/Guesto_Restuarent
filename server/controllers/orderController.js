@@ -11,36 +11,6 @@ import { getIO, emitStockUpdate, emitCategoryStockUpdate, emitTablesUpdated } fr
 
 import { menuCache } from './menuController.js';
 import { categoryCache } from './categoryController.js';
-import Sale from '../models/saleSchema.js';
-
-const syncSale = async (order) => {
-  if (order.orderStatus === 'completed' || (order.orderStatus === 'delivered' && order.paymentStatus === 'paid') || (order.orderType === 'dine-in' && order.orderStatus === 'billed' && order.paymentStatus === 'paid')) {
-    await Sale.findOneAndUpdate(
-      { orderId: order._id },
-      {
-        orderId: order._id,
-        orderNumber: order.orderNumber,
-        orderType: order.orderType,
-        orderSource: order.orderSource,
-        orderStatus: order.orderStatus,
-        totalAmount: order.totalAmount,
-        items: order.items.map(item => ({
-          menuItem: item.menuItem._id || item.menuItem,
-          name: item.name,
-          size: item.size,
-          quantity: item.quantity,
-          totalPrice: item.totalPrice,
-          costPrice: item.costPrice || 0
-        })),
-        paymentMethod: order.paymentMethod || 'cash',
-        createdAt: order.createdAt
-      },
-      { upsert: true, new: true }
-    );
-  } else if (order.orderStatus === 'cancelled') {
-    await Sale.findOneAndDelete({ orderId: order._id });
-  }
-};
 
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -746,7 +716,7 @@ class OrderController {
       }
 
       await newOrder.save();
-      await syncSale(newOrder);
+
 
       
       await handleStock(items, 'reduce');
@@ -839,7 +809,7 @@ class OrderController {
 
       order.orderStatus = 'cancelled';
       await order.save();
-      await syncSale(order);
+
 
       getIO().to('staff_room').emit('ordersUpdated');
       getIO().emit('orderUpdated', order);
@@ -957,7 +927,7 @@ class OrderController {
       }
 
       await newOrder.save();
-      await syncSale(newOrder);
+
       await handleStock(items, 'reduce');
 
       res.status(201).json({ success: true, data: newOrder });
@@ -1080,7 +1050,7 @@ class OrderController {
       }
 
       const order = await originalOrder.save();
-      await syncSale(order);
+
 
       await order.populate([
         { path: 'items.menuItem', select: 'name image' },
@@ -1158,7 +1128,7 @@ class OrderController {
 
       item.kitchenStatus = kitchenStatus;
       await order.save();
-      await syncSale(order);
+
       await order.populate('items.menuItem', 'name image');
 
       getIO().to('staff_room').emit('ordersUpdated');
@@ -1194,7 +1164,7 @@ class OrderController {
       if (isChanged) {
         order.markModified('items');
         await order.save();
-        await syncSale(order);
+
       }
 
       await order.populate('items.menuItem', 'name image');
@@ -1241,7 +1211,7 @@ class OrderController {
       }));
       order.items.push(...enrichedItems);
       await order.save();
-      await syncSale(order);
+
       await handleStock(items, 'reduce');
 
       await order.populate('items.menuItem', 'name image');
@@ -1273,7 +1243,7 @@ class OrderController {
         await handleStock([item], 'restore');
         order.items.pull(itemId);
         await order.save();
-        await syncSale(order);
+
         await order.populate('items.menuItem', 'name image');
       }
 
@@ -1317,7 +1287,7 @@ class OrderController {
       item.totalPrice = (item.unitPrice || item.price || 0) * quantity;
 
       await order.save();
-      await syncSale(order);
+
       await order.populate('items.menuItem', 'name image');
 
       getIO().to('staff_room').emit('ordersUpdated');
@@ -1394,7 +1364,7 @@ class OrderController {
       }
 
       await order.save();
-      await syncSale(order);
+
       await handleStock(order.items, 'reduce');
 
       await order.populate('items.menuItem', 'name image');

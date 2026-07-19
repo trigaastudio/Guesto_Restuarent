@@ -28,7 +28,7 @@ import autoTable from 'jspdf-autotable';
 
 const SalesSection = () => {
   const [loading, setLoading] = useState(false);
-  const [salesData, setSalesData] = useState({ orders: [], stats: { totalRevenue: 0, totalQty: 0 } });
+  const [salesData, setSalesData] = useState({ stats: { totalRevenue: 0, totalQty: 0, totalOrders: 0 } });
   const [periodicData, setPeriodicData] = useState({ daily: {}, weekly: {}, monthly: {}, yearly: {} });
   const [itemStats, setItemStats] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
@@ -42,7 +42,7 @@ const SalesSection = () => {
     menuItem: 'all'
   });
 
-  const [activeTab, setActiveTab] = useState('summary');
+  const [itemSearchTerm, setItemSearchTerm] = useState('');
   const [itemSearchTerm, setItemSearchTerm] = useState('');
   const [itemSortConfig, setItemSortConfig] = useState({ key: 'qty', direction: 'desc' });
 
@@ -130,19 +130,11 @@ const SalesSection = () => {
       return val;
     };
 
-    const dataToExport = activeTab === 'summary' ? itemStats.map(i => ({
+    const dataToExport = itemStats.map(i => ({
       'Item Name': sanitizeValue(i.name),
       'Size': sanitizeValue(i.size),
       'Qty Sold': i.qty,
       'Revenue': Math.round(i.revenue)
-    })) : salesData.orders.map(o => ({
-      'Order #': sanitizeValue(o.orderNumber),
-      'Date': new Date(o.createdAt).toLocaleDateString(),
-      'Type': sanitizeValue(o.orderType.toUpperCase()),
-      'Source': sanitizeValue(o.orderSource.toUpperCase()),
-      'Status': sanitizeValue(o.orderStatus.toUpperCase()),
-      'Items': sanitizeValue(o.items.map(i => `${i.name || i.menuItem?.name || 'Item'} (${i.quantity})`).join(', ')),
-      'Revenue': o.totalAmount
     }));
 
     if (dataToExport.length === 0) {
@@ -151,7 +143,7 @@ const SalesSection = () => {
     }
 
     const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet(activeTab === 'summary' ? 'Item Sales' : 'Orders');
+    const sheet = workbook.addWorksheet('Item Sales');
 
     const headers = Object.keys(dataToExport[0]);
     sheet.columns = headers.map(header => ({ header, key: header, width: 20 }));
@@ -169,26 +161,14 @@ const SalesSection = () => {
     const doc = new jsPDF();
     doc.text(`Sales Report (${filters.startDate} to ${filters.endDate})`, 14, 15);
 
-    const tableColumn = activeTab === 'summary'
-      ? ["Item Name", "Size", "Qty Sold", "Revenue"]
-      : ["Order #", "Date", "Type", "Items", "Amount"];
+    const tableColumn = ["Item Name", "Size", "Qty Sold", "Revenue"];
 
-    const tableRows = activeTab === 'summary'
-      ? itemStats.map(i => [
-        i.name,
-        i.size,
-        i.qty,
-        `Rs. ${Math.round(i.revenue)}`
-      ])
-      : salesData.orders.map(o => {
-        return [
-          o.orderNumber,
-          new Date(o.createdAt).toLocaleDateString(),
-          o.orderType.toUpperCase(),
-          o.items.map(i => `${i.name || i.menuItem?.name || 'Item'} (${i.quantity})`).join(', '),
-          `Rs. ${o.totalAmount}`
-        ];
-      });
+    const tableRows = itemStats.map(i => [
+      i.name,
+      i.size,
+      i.qty,
+      `Rs. ${Math.round(i.revenue)}`
+    ]);
 
     autoTable(doc, {
       head: [tableColumn],
@@ -200,33 +180,6 @@ const SalesSection = () => {
     });
     doc.save(`Sales_Report_${filters.startDate}_to_${filters.endDate}.pdf`);
   };
-
-  const getFriendlyStatus = (order) => {
-    if (!order) return { label: 'Unknown', color: 'bg-background-muted/10 text-text-muted border-border-light' };
-
-
-    if (order.orderStatus === 'cancelled') return { label: 'Cancelled', color: 'bg-status-off/10 text-status-unavailable border-status-off/20' };
-    if (order.orderStatus === 'delivered' || order.orderStatus === 'completed') return { label: 'Delivered', color: 'bg-primary/10 text-primary border-primary/20' };
-
-
-    if (order.orderStatus === 'placed') return { label: 'New Order', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' };
-    if (order.orderStatus === 'out-for-delivery') return { label: 'Out for Delivery', color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' };
-
-    if (order.orderStatus === 'processing') {
-      const items = order.items || [];
-      const allReady = items.length > 0 && items.every(i => i.kitchenStatus === 'ready');
-      const anyPreparing = items.some(i => i.kitchenStatus === 'preparing');
-
-      if (allReady) return { label: 'Ready', color: 'bg-status-on/10 text-status-available border-status-on/20' };
-      if (anyPreparing) return { label: 'Preparing', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' };
-
-      return { label: 'Order Accepted', color: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20' };
-    }
-
-    return { label: order.orderStatus, color: 'bg-background-muted/10 text-text-muted border-border-light' };
-  };
-
-
 
   const handleSort = (key) => {
     let direction = 'desc';
@@ -260,13 +213,11 @@ const SalesSection = () => {
     return data.slice(startIndex, startIndex + itemsPerPage);
   };
 
-  const totalPages = activeTab === 'summary'
-    ? Math.ceil(sortedItems.length / itemsPerPage)
-    : Math.ceil(salesData.orders.length / itemsPerPage);
+  const totalPages = Math.ceil(itemStats.length / itemsPerPage);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab, itemSearchTerm, filters]);
+  }, [itemSearchTerm, filters]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
@@ -398,7 +349,7 @@ const SalesSection = () => {
               <div className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Total Orders</div>
             </div>
             <div className="flex justify-center items-center flex-1 py-4">
-              <span className="text-5xl font-black text-text-primary tracking-tighter">{salesData.stats?.totalOrders ?? salesData.orders.length}</span>
+              <span className="text-5xl font-black text-text-primary tracking-tighter">{salesData.stats?.totalOrders ?? 0}</span>
             </div>
             <div className="absolute top-0 right-0 w-24 h-24 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-125 opacity-5 bg-purple-500" />
           </div>
@@ -425,28 +376,17 @@ const SalesSection = () => {
       <div className="bg-background-card rounded-[2.5rem] border border-border/40 shadow-sm overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border-light bg-background-muted/20 px-6 gap-4">
           <div className="flex items-center">
-            {[
-              { id: 'summary', label: 'Item Performance', icon: BarChart3 },
-              { id: 'detailed', label: 'Order History', icon: Layers }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center space-x-2 px-6 py-5 text-[10px] font-black uppercase tracking-widest transition-all relative ${activeTab === tab.id ? 'text-primary' : 'text-text-muted hover:text-text-primary'
-                  }`}
-              >
-                <tab.icon size={14} />
-                <span>{tab.label}</span>
-                {activeTab === tab.id && (
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full" />
-                )}
-              </button>
-            ))}
+            <div
+              className="flex items-center space-x-2 px-6 py-5 text-[10px] font-black uppercase tracking-widest text-primary relative"
+            >
+              <BarChart3 size={14} />
+              <span>Item Performance</span>
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full" />
+            </div>
           </div>
 
-          {activeTab === 'summary' && (
-            <div className="relative pb-4 sm:pb-0 sm:pr-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={14} />
+          <div className="relative pb-4 sm:pb-0 sm:pr-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={14} />
               <input
                 type="text"
                 placeholder="Search dishes..."
@@ -455,8 +395,7 @@ const SalesSection = () => {
                 className="pl-9 pr-4 py-2 bg-background-card border border-border-light rounded-xl text-[10px] font-bold focus:border-primary outline-none min-w-[200px]"
               />
             </div>
-          )}
-        </div>
+          </div>
 
         <div className="p-0">
           {loading ? (
@@ -464,7 +403,7 @@ const SalesSection = () => {
               <Loader2 className="animate-spin text-primary" size={40} />
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted">Generating Report...</p>
             </div>
-          ) : activeTab === 'summary' ? (
+          ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
@@ -501,57 +440,6 @@ const SalesSection = () => {
                       <td colSpan="4" className="px-6 py-10 text-center text-text-muted italic">No items found matching your search.</td>
                     </tr>
                   )}
-                </tbody>
-              </table>
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
-              />
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="bg-background-muted/30 border-b border-border-light">
-                    <th className="px-6 py-4 font-black text-text-muted uppercase tracking-widest">Order #</th>
-                    <th className="px-6 py-4 font-black text-text-muted uppercase tracking-widest">Date</th>
-                    <th className="px-6 py-4 font-black text-text-muted uppercase tracking-widest">Type</th>
-                    <th className="px-6 py-4 font-black text-text-muted uppercase tracking-widest">Items</th>
-                    <th className="px-6 py-4 font-black text-text-muted uppercase tracking-widest text-right">Amount</th>
-                    <th className="px-6 py-4 font-black text-text-muted uppercase tracking-widest text-center">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-light">
-                  {getPaginatedData(salesData.orders).map((order, idx) => (
-                    <tr key={idx} className="hover:bg-background-muted/20 transition-colors">
-                      <td className="px-6 py-4 font-bold text-text-primary">{order.orderNumber}</td>
-                      <td className="px-6 py-4 text-text-secondary">{new Date(order.createdAt).toLocaleDateString()}</td>
-                      <td className="px-6 py-4">
-                        <span className="text-[10px] font-bold uppercase text-text-muted px-2 py-0.5 bg-background-muted rounded-md">{order.orderType}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col space-y-0.5">
-                          {order.items.map((item, iIdx) => (
-                            <span key={iIdx} className="text-[10px] text-text-primary font-medium line-clamp-1">
-                              {item.name || item.menuItem?.name || 'Item'} ({item.quantity})
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-right font-bold text-text-primary">₹{Math.round(order.totalAmount).toLocaleString()}</td>
-                      <td className="px-6 py-4 text-center">
-                        {(() => {
-                          const status = getFriendlyStatus(order);
-                          return (
-                            <span className={`px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${status.color}`}>
-                              {status.label}
-                            </span>
-                          );
-                        })()}
-                      </td>
-                    </tr>
-                  ))}
                 </tbody>
               </table>
               <Pagination
