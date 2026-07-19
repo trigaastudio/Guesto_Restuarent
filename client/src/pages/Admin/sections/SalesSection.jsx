@@ -43,7 +43,6 @@ const SalesSection = () => {
   });
 
   const [itemSearchTerm, setItemSearchTerm] = useState('');
-  const [itemSearchTerm, setItemSearchTerm] = useState('');
   const [itemSortConfig, setItemSortConfig] = useState({ key: 'qty', direction: 'desc' });
 
 
