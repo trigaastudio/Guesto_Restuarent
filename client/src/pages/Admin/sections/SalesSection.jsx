@@ -35,8 +35,8 @@ const SalesSection = () => {
 
 
   const [filters, setFilters] = useState({
-    startDate: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
+    startDate: new Date(new Date().setDate(new Date().getDate() - 30)).toLocaleDateString('en-CA'),
+    endDate: new Date().toLocaleDateString('en-CA'),
     orderType: 'all',
     orderSource: 'all',
     menuItem: 'all'
@@ -98,8 +98,8 @@ const SalesSection = () => {
 
   const resetFilters = () => {
     setFilters({
-      startDate: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
-      endDate: new Date().toISOString().split('T')[0],
+      startDate: new Date(new Date().setDate(new Date().getDate() - 30)).toLocaleDateString('en-CA'),
+      endDate: new Date().toLocaleDateString('en-CA'),
       orderType: 'all',
       orderSource: 'all',
       menuItem: 'all'

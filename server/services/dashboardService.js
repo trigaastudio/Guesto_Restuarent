@@ -216,7 +216,7 @@ class DashboardService {
       const date = new Date(sevenDaysAgo);
       date.setDate(date.getDate() + i);
       
-      const dateStr = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+      const dateStr = date.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
       const dayData = trend.find(t => t._id === dateStr);
 
       fullTrend.push({
@@ -263,7 +263,7 @@ class DashboardService {
 
     for (let i = 1; i <= daysInMonth; i++) {
       const date = new Date(today.getFullYear(), today.getMonth(), i);
-      const dateStr = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+      const dateStr = date.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
       const dayData = trend.find(t => t._id === dateStr);
 
       fullTrend.push({
