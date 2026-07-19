@@ -40,7 +40,7 @@ class AuthController {
           avatar: user.avatar,
           role: user.role,
           createdAt: user.createdAt,
-          token
+          token: jwtToken
         }
       });
     } catch (error) {

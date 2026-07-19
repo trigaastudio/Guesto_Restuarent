@@ -312,7 +312,7 @@ const HomePage = () => {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    localStorage.removeItem('admin_token');
+    sessionStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
     localStorage.removeItem('admin_notifications');
     localStorage.removeItem('dineInTableId');

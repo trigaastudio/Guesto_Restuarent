@@ -14,7 +14,7 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [localUser, setLocalUser] = useState(user);
 
-  const [isAdminSession, setIsAdminSession] = useState(() => !!localStorage.getItem('admin_token'));
+  const [isAdminSession, setIsAdminSession] = useState(() => !!sessionStorage.getItem('admin_token'));
 
 
 
@@ -49,7 +49,7 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
         'null'
       );
       setLocalUser(activeUser);
-      setIsAdminSession(!!localStorage.getItem('admin_token'));
+      setIsAdminSession(!!sessionStorage.getItem('admin_token'));
     };
 
     window.addEventListener('scroll', handleScroll);

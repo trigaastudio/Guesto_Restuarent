@@ -43,7 +43,7 @@ const AdminLogin = () => {
 
   
   useEffect(() => {
-    const adminToken = localStorage.getItem('admin_token');
+    const adminToken = sessionStorage.getItem('admin_token');
     const adminUser = JSON.parse(localStorage.getItem('admin_user') || '{}');
 
     if (adminToken && (adminUser.role === 'admin' || adminUser.role === 'staff')) {
@@ -62,10 +62,10 @@ const AdminLogin = () => {
       if (response.data.success) {
         const userData = response.data.data;
         localStorage.setItem('admin_user', JSON.stringify(userData));
-        if (userData.token) localStorage.setItem('admin_token', userData.token);
+        if (userData.token) sessionStorage.setItem('admin_token', userData.token);
 
-        
-        localStorage.removeItem('staff_token');
+        // Clear any stale staff session
+        sessionStorage.removeItem('staff_token');
         localStorage.removeItem('staff_user');
 
         navigate('/admin/dashboard', { replace: true });

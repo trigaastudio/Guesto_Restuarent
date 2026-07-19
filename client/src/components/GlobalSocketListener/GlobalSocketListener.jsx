@@ -52,14 +52,14 @@ const GlobalSocketListener = () => {
     const isStaff = window.location.pathname.startsWith('/kitchen') || 
                     window.location.pathname.startsWith('/waiter') || 
                     window.location.pathname.startsWith('/staff') ||
-                    localStorage.getItem('staff_token') !== null;
+                    sessionStorage.getItem('staff_token') !== null;
 
     
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    localStorage.removeItem('admin_token');
+    sessionStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
-    localStorage.removeItem('staff_token');
+    sessionStorage.removeItem('staff_token');
     localStorage.removeItem('staff_user');
 
     

@@ -17,9 +17,9 @@ api.interceptors.request.use((config) => {
 
   let token = null;
   if (window.location.pathname.startsWith('/admin')) {
-    token = localStorage.getItem('admin_token');
+    token = sessionStorage.getItem('admin_token');
   } else if (isStaffPath) {
-    token = localStorage.getItem('staff_token');
+    token = sessionStorage.getItem('staff_token');
   } else {
     token = localStorage.getItem('token');
   }
@@ -46,11 +46,11 @@ api.interceptors.response.use(
       }
 
       if (path.startsWith('/admin')) {
-        localStorage.removeItem('admin_token');
+        sessionStorage.removeItem('admin_token');
         localStorage.removeItem('admin_user');
         window.location.replace('/admin/login');
       } else if (path.startsWith('/kitchen') || path.startsWith('/waiter') || path.startsWith('/staff')) {
-        localStorage.removeItem('staff_token');
+        sessionStorage.removeItem('staff_token');
         localStorage.removeItem('staff_user');
         window.location.replace('/staff/login');
       } else {

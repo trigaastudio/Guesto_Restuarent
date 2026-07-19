@@ -299,6 +299,10 @@ const OrderSection = () => {
           <div class="payment-info">
             ${order.paymentMethod === 'cash' ? `
               <div style="display: flex; justify-content: space-between;">
+                <span>PAYMENT METHOD :</span>
+                <span style="text-transform: uppercase;">CASH</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-top: 3px;">
                 <span>CASH RECEIVED :</span>
                 <span>${(order.cashReceived || order.totalAmount || order.subtotal || 0).toFixed(0)}</span>
               </div>
@@ -545,8 +549,8 @@ const OrderSection = () => {
           cashReceived: parseFloat(cashReceived) || selectedOrder.cashReceived || 0,
           customerDetails: {
             ...customer,
-            address: posOrderType === 'delivery' ? deliveryAddress : '',
-            location: posOrderType === 'delivery' ? deliveryLocation : ''
+            address: deliveryAddress || '',
+            location: deliveryLocation || ''
           }
         });
         if (response.data.success) {
@@ -586,8 +590,8 @@ const OrderSection = () => {
       const orderData = {
         customerDetails: {
           ...customer,
-          address: posOrderType === 'delivery' ? deliveryAddress : '',
-          location: posOrderType === 'delivery' ? deliveryLocation : ''
+          address: deliveryAddress || '',
+          location: deliveryLocation || ''
         },
         items: cart,
         orderType: posOrderType,
@@ -1978,7 +1982,7 @@ const OrderSection = () => {
                         })()}
                       </td>
                       <td className="px-2 py-2.5 text-center">
-                        {activeTab !== 'history' && order.paymentStatus === 'unpaid' ? (
+                        {activeTab !== 'history' && (order.paymentStatus === 'unpaid' || (order.paidAmount > 0 && (order.totalAmount || order.subtotal) > order.paidAmount)) ? (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1986,7 +1990,7 @@ const OrderSection = () => {
                             }}
                             className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-[9px] font-black uppercase tracking-wider rounded-full shadow-md shadow-emerald-500/20 transition-all border border-emerald-600/20 cursor-pointer"
                           >
-                            Pay Now
+                            {order.paidAmount > 0 ? 'Pay Balance' : 'Pay Now'}
                           </button>
                         ) : (
                           <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${(order.paymentStatus === 'paid' || order.paymentStatus === 'completed') ? 'bg-status-on/10 text-status-available border-status-on/20' :

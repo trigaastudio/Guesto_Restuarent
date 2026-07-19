@@ -208,7 +208,7 @@ const LandingPage = () => {
 
   // Action for public users: Redirect to login. If admin is previewing, redirect to home.
   const handlePublicAction = () => {
-    const adminToken = localStorage.getItem('admin_token');
+    const adminToken = sessionStorage.getItem('admin_token');
     if (adminToken) {
       navigate('/home');
     } else {
@@ -245,7 +245,7 @@ const LandingPage = () => {
 
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    localStorage.removeItem('admin_token');
+    sessionStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
     localStorage.removeItem('admin_notifications');
     localStorage.removeItem('dineInTableId');

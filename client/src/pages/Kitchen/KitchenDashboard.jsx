@@ -128,7 +128,7 @@ const KitchenDashboard = () => {
     document.title = `Kitchen | ${tabName}`;
 
 
-    const token = localStorage.getItem('staff_token') || localStorage.getItem('admin_token') || '';
+    const token = sessionStorage.getItem('staff_token') || sessionStorage.getItem('admin_token') || '';
     socketRef.current = io(SOCKET_URL, {
       withCredentials: true
     });

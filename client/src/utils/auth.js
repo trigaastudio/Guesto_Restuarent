@@ -23,7 +23,7 @@ export const logoutToLanding = async (navigate) => {
 export const logoutAdmin = async (navigate) => {
   try { await api.post('/api/auth/logout'); } catch (err) { }
   localStorage.removeItem('admin_user');
-  localStorage.removeItem('admin_token');
+  sessionStorage.removeItem('admin_token');
   localStorage.removeItem('admin_notifications');
   localStorage.removeItem('orderActiveTab');
   localStorage.removeItem('orderStatusFilter');
@@ -35,6 +35,6 @@ export const logoutAdmin = async (navigate) => {
 export const logoutStaff = async (navigate) => {
   try { await api.post('/api/auth/logout'); } catch (err) { }
   localStorage.removeItem('staff_user');
-  localStorage.removeItem('staff_token');
+  sessionStorage.removeItem('staff_token');
   window.location.href = '/staff/login';
 };

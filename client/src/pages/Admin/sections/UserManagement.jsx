@@ -300,10 +300,10 @@ const UserManagement = () => {
                     <td className="px-3 py-4">
                       <div className="flex items-center space-x-3">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${user.isActive ? 'bg-primary/10 text-primary' : 'bg-status-off/10 text-status-unavailable'}`}>
-                          {user.name.charAt(0)}
+                          {(user.name || 'U').charAt(0).toUpperCase()}
                         </div>
                         <div className="flex flex-col">
-                          <span className={`font-bold ${user.isActive ? 'text-text-primary' : 'text-text-muted line-through'}`}>{user.name}</span>
+                          <span className={`font-bold ${user.isActive ? 'text-text-primary' : 'text-text-muted line-through'}`}>{user.name || 'Unknown User'}</span>
                           <span className="text-[10px] text-text-muted uppercase">ID: {user._id.slice(-6)}</span>
                         </div>
                       </div>

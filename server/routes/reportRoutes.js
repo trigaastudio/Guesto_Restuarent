@@ -46,7 +46,7 @@ router.get('/sales', protect, admin, async (req, res) => {
     }, { totalRevenue: 0, totalCost: 0, totalQty: 0 });
 
     stats.totalProfit = stats.totalRevenue - stats.totalCost;
-    stats.totalOrders = await Sale.countDocuments();
+    stats.totalOrders = await Sale.countDocuments(query);
 
     res.json({ success: true, data: { orders, stats } });
   } catch (error) {

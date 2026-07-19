@@ -20,8 +20,8 @@ const ErrorPage = () => {
     let label = "Return Home";
 
     
-    const adminToken = localStorage.getItem('admin_token');
-    const staffToken = localStorage.getItem('staff_token');
+    const adminToken = sessionStorage.getItem('admin_token');
+    const staffToken = sessionStorage.getItem('staff_token');
     const staffUser = JSON.parse(localStorage.getItem('staff_user') || 'null');
     
     if (adminToken) {

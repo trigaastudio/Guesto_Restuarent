@@ -1,10 +1,10 @@
 import express from 'express';
 import { upload } from '../config/cloudinaryConfig.js';
-import { protect } from '../middleware/authMiddleware.js';
+import { protect, adminOrStaff } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.post('/image', protect, (req, res, next) => {
+router.post('/image', protect, adminOrStaff, (req, res, next) => {
   upload.single('image')(req, res, (err) => {
     if (err) {
       return res.status(400).json({ 
