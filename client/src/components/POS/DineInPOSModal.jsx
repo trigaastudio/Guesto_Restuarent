@@ -106,12 +106,12 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
     Math.max(0, getEffectiveStock(item) - getConsumedStock(item));
 
 
-  const canAddVariant = (item, variant) => {
+  const canAddVariant = (item, variant, qty = 1) => {
     const stockValue = variant?.stockValue || 1;
-    return getDynamicRawStock(item) >= stockValue;
+    return getDynamicRawStock(item) >= (stockValue * qty);
   };
 
-  const addToCart = (item, variant) => {
+  const addToCart = (item, variant, qty = 1) => {
     if (item.isCombo && item.comboItems?.length > 0) {
       const outOfStockItems = [];
       for (const ci of item.comboItems) {
@@ -127,13 +127,12 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
         showToast('error', `Cannot add ${item.name}: ${outOfStockItems.join(', ')} is out of stock`);
         return;
       }
-    } else if (item.totalStock !== undefined && !canAddVariant(item, variant)) {
+    } else if (item.totalStock !== undefined && !canAddVariant(item, variant, qty)) {
       showToast('error', `Not enough stock for: ${item.name} (${variant?.size || 'Standard'})`);
       return;
     }
 
     const sizeName = variant.size || 'Standard';
-    const qty = 1;
 
     const bogoInfo = (variant?.isBOGO && variant?.bogoItem) ? {
       name: variant.bogoItem.name || menuItems.find(m => m._id.toString() === (variant.bogoItem._id?.toString() || variant.bogoItem.toString()))?.name || 'Free Item',

@@ -19,11 +19,11 @@ const ErrorPage = () => {
     let path = "/";
     let label = "Return Home";
 
-    
+
     const adminToken = sessionStorage.getItem('admin_token');
     const staffToken = sessionStorage.getItem('staff_token');
     const staffUser = JSON.parse(localStorage.getItem('staff_user') || 'null');
-    
+
     if (adminToken) {
       path = "/admin/dashboard";
       label = "Return to Dashboard";
@@ -53,7 +53,7 @@ const ErrorPage = () => {
             <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping opacity-50"></div>
             <AlertTriangle size={48} className="text-primary relative z-10" />
           </div>
-          
+
           <div className="space-y-3">
             <h1 className="text-3xl font-black text-text-primary tracking-tighter">
               {title}
@@ -73,7 +73,7 @@ const ErrorPage = () => {
             </button>
             <button
               onClick={() => {
-                
+
                 window.location.href = actionPath;
               }}
               className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary-light shadow-lg shadow-primary/20 transition-all active:scale-95"
