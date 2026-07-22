@@ -181,9 +181,9 @@ const PaymentPage = () => {
           key: import.meta.env.VITE_RAZORPAY_KEY_ID,
           amount: razorpayOrder.amount,
           currency: razorpayOrder.currency,
-          name: settings?.restaurantDetails?.name || 'Guest-O Restaurant',
+          name: 'Guesto',
           description: 'Payment for your delicious meal',
-          image: `${window.location.origin}${settings?.branding?.logoGold || '/logo-golden.png'}`,
+          image: `${window.location.origin}/logo-golden.png`,
           order_id: razorpayOrder.id,
           handler: async function (paymentResponse) {
 
@@ -202,6 +202,7 @@ const PaymentPage = () => {
               localStorage.removeItem('dineInTableId');
               localStorage.removeItem('dineInTableNumber');
               setIsOrderSuccess(true);
+              setLoading(false);
               showSuccessPopup(createdOrder);
             } catch (err) {
               console.error('Order Placement or Payment Verification Failed:', err);
@@ -248,6 +249,7 @@ const PaymentPage = () => {
         localStorage.removeItem('dineInTableId');
         localStorage.removeItem('dineInTableNumber');
         setIsOrderSuccess(true);
+        setLoading(false);
         showSuccessPopup(createdOrder);
       }
     } catch (error) {

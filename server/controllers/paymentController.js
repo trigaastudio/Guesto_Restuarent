@@ -20,7 +20,7 @@ const createRazorpayOrder = async (req, res) => {
 
     
     
-    const cart = await Cart.findOne({ customer: req.user._id }).populate({
+    const cart = await Cart.findOne({ user: req.user._id }).populate({
       path: 'items.menuItem',
       select: 'price variants'
     });
@@ -35,8 +35,8 @@ const createRazorpayOrder = async (req, res) => {
       const menuItem = item.menuItem;
       if (!menuItem) continue;
       let price = menuItem.price || 0;
-      if (item.selectedSize && menuItem.variants?.length > 0) {
-        const variant = menuItem.variants.find(v => v.size === item.selectedSize);
+      if (item.size && menuItem.variants?.length > 0) {
+        const variant = menuItem.variants.find(v => v.size === item.size);
         if (variant?.price) price = variant.price;
       }
       serverTotal += price * item.quantity;
