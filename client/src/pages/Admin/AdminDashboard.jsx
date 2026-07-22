@@ -1,5 +1,5 @@
 import React, { Fragment, useState, useEffect, useRef } from 'react';
-import { io } from 'socket.io-client';
+import socket from '../../services/socket';
 import { showToast } from '../../utils/sweetAlert';
 import api from '../../api/axiosInstance';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -74,26 +74,28 @@ const AdminDashboard = () => {
   const notificationSound = useRef(new Audio('/sounds/notification.mp3'));
 
   useEffect(() => {
-    const socketUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'https://guest-o-backend.onrender.com';
-    const socket = io(socketUrl, { withCredentials: true });
+    const handleNewOrder = (data) => {
+      const order = data.order;
+      if (!order) return;
 
-    socket.on('newOrder', (data) => {
-      
-      const isDelivery = data.order?.orderType === 'delivery' || data.order?.orderType === 'online';
-      const isFromUser = data.order?.orderSource === 'user' || data.order?.orderSource === 'online';
+      const orderTypeLabel = order.orderType
+        ? order.orderType.charAt(0).toUpperCase() + order.orderType.slice(1)
+        : 'New';
 
-      if (!isDelivery || !isFromUser) {
-        return;
-      }
+      const sourceLabel = order.orderSource === 'waiter'
+        ? ' (Waiter)'
+        : order.orderSource === 'user' || order.orderSource === 'online'
+          ? ' (Customer)'
+          : '';
 
       const newNotif = {
         id: Date.now() + Math.random(),
         type: 'order',
-        title: 'New Order',
+        title: `${orderTypeLabel} Order${sourceLabel}`,
         message: data.message,
         time: new Date(),
         read: false,
-        orderData: data.order
+        orderData: order
       };
 
       setNotifications(() => {
@@ -105,18 +107,12 @@ const AdminDashboard = () => {
 
       showToast('success', data.message);
       notificationSound.current.play().catch(e => console.log('Audio play blocked'));
-    });
-
-    
-    socket.off('stockAlert');
-
-    const handleDbChange = () => {
     };
-    window.addEventListener('db_change', handleDbChange);
+
+    socket.on('newOrder', handleNewOrder);
 
     return () => {
-      socket.disconnect();
-      window.removeEventListener('db_change', handleDbChange);
+      socket.off('newOrder', handleNewOrder);
     };
   }, []);
 

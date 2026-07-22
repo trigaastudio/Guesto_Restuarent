@@ -734,7 +734,7 @@ class OrderController {
       });
 
       
-      if (newOrder.paymentMethod === 'cod' || newOrder.paymentStatus === 'paid') {
+      if (newOrder.paymentMethod === 'cod') {
         getIO().to('staff_room').emit('newOrder', {
           order: newOrder,
           message: `🔔 New ${newOrder.orderType.toUpperCase()} Order Received! (#${newOrder.orderNumber})`

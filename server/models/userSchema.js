@@ -57,7 +57,7 @@ const userSchema = new mongoose.Schema({
     unique: true,
     sparse: true,
     trim: true,
-    match: [/^[0-9]{10}$/, "Phone number must be exactly 10 digits"]
+    match: [/^\+?[0-9]{7,15}$/, "Phone number must be 7-15 digits, optionally starting with +"]
   },
 
   addresses: [{
