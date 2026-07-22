@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, User as UserIcon, Users, MapPin, Home, Briefcase } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
+import { showAlert } from '../../utils/sweetAlert';
 
 const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
   const { settings } = useCart();
@@ -159,9 +160,32 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
     }
   };
 
+  const showLocationHelpModal = (title, message) => {
+    showAlert({
+      icon: 'warning',
+      title: title || 'Location Access Disabled',
+      html: `
+        <div class="text-left space-y-3 text-xs leading-relaxed">
+          <p class="font-bold text-text-primary">${message}</p>
+          <div class="p-3 bg-primary/5 rounded-xl border border-primary/10 space-y-1 text-[11px]">
+            <p class="font-black uppercase tracking-wider text-primary mb-1">How to enable Location:</p>
+            <p>1. Tap the 🔒 <b>Lock / Settings</b> icon in your browser URL bar at top.</p>
+            <p>2. Select <b>Permissions</b> or <b>Site Settings</b>.</p>
+            <p>3. Set <b>Location</b> to <span class="text-green-600 font-bold">Allow</span>.</p>
+            <p>4. Refresh the page and click "Current Location" again!</p>
+          </div>
+        </div>
+      `,
+      confirmButtonText: 'Understood'
+    });
+  };
+
   const handleGetCurrentLocation = () => {
     if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser");
+      showLocationHelpModal(
+        'Not Supported',
+        'Geolocation is not supported by your current browser. Please try using Google Chrome or Safari.'
+      );
       return;
     }
 
@@ -177,10 +201,10 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
           }
 
           const mapsUrl = `https://www.google.com/maps?q=${latitude.toFixed(6)},${longitude.toFixed(6)}`;
-          setFormData({
-            ...formData,
+          setFormData(prev => ({
+            ...prev,
             location: `📍 Precise Location: ${mapsUrl}`
-          });
+          }));
           if (errors.location) setErrors(prev => ({ ...prev, location: null }));
           setIsGettingLocation(false);
         },
@@ -188,13 +212,13 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
           console.error("Error getting location", error);
           let errorMessage = "Unable to retrieve your location.";
           if (error.code === 1) {
-            errorMessage = "Location access was denied. Please enable location permissions in your browser settings and try again.";
+            errorMessage = "Location permission was denied in your browser settings.";
           } else if (error.code === 2) {
-            errorMessage = "Location information is unavailable. Please check if your device's location services are turned on.";
+            errorMessage = "Your device's GPS / Location service is turned off. Please turn on Location in your device settings.";
           } else if (error.code === 3) {
-            errorMessage = "Location request timed out. Please try again.";
+            errorMessage = "Location request timed out. Please check your signal and try again.";
           }
-          alert(errorMessage);
+          showLocationHelpModal('Enable Location', errorMessage);
           setIsGettingLocation(false);
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -204,10 +228,15 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
     if (navigator.permissions && navigator.permissions.query) {
       navigator.permissions.query({ name: 'geolocation' }).then(function(result) {
         if (result.state === 'denied') {
-          alert("Location access is currently denied. Please enable location permissions in your browser settings to use this feature.");
+          showLocationHelpModal(
+            'Location Access Denied',
+            'Location access is currently blocked for this website in your browser.'
+          );
         } else {
           getLocation();
         }
+      }).catch(() => {
+        getLocation();
       });
     } else {
       getLocation();
