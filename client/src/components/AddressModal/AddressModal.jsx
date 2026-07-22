@@ -165,30 +165,53 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
       return;
     }
 
-    setIsGettingLocation(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        
-        if (!validateDistance(latitude, longitude)) {
-          setIsGettingLocation(false);
-          return;
-        }
+    const getLocation = () => {
+      setIsGettingLocation(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          
+          if (!validateDistance(latitude, longitude)) {
+            setIsGettingLocation(false);
+            return;
+          }
 
-        const mapsUrl = `https://www.google.com/maps?q=${latitude.toFixed(6)},${longitude.toFixed(6)}`;
-        setFormData({
-          ...formData,
-          location: `📍 Precise Location: ${mapsUrl}`
-        });
-        if (errors.location) setErrors(prev => ({ ...prev, location: null }));
-        setIsGettingLocation(false);
-      },
-      (error) => {
-        console.error("Error getting location", error);
-        alert("Unable to retrieve your location. Please check your browser permissions.");
-        setIsGettingLocation(false);
-      }
-    );
+          const mapsUrl = `https://www.google.com/maps?q=${latitude.toFixed(6)},${longitude.toFixed(6)}`;
+          setFormData({
+            ...formData,
+            location: `📍 Precise Location: ${mapsUrl}`
+          });
+          if (errors.location) setErrors(prev => ({ ...prev, location: null }));
+          setIsGettingLocation(false);
+        },
+        (error) => {
+          console.error("Error getting location", error);
+          let errorMessage = "Unable to retrieve your location.";
+          if (error.code === 1) {
+            errorMessage = "Location access was denied. Please enable location permissions in your browser settings and try again.";
+          } else if (error.code === 2) {
+            errorMessage = "Location information is unavailable. Please check if your device's location services are turned on.";
+          } else if (error.code === 3) {
+            errorMessage = "Location request timed out. Please try again.";
+          }
+          alert(errorMessage);
+          setIsGettingLocation(false);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    };
+
+    if (navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: 'geolocation' }).then(function(result) {
+        if (result.state === 'denied') {
+          alert("Location access is currently denied. Please enable location permissions in your browser settings to use this feature.");
+        } else {
+          getLocation();
+        }
+      });
+    } else {
+      getLocation();
+    }
   };
 
   const validate = () => {
