@@ -15,7 +15,6 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
     type: 'home'
   });
   const [isMapOpen, setIsMapOpen] = useState(false);
-  const [mapCenter, setMapCenter] = useState(null); // Add state for dynamic map center
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [errors, setErrors] = useState({});
   const mapRef = useRef(null);
@@ -84,10 +83,8 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
     if (isMapOpen && !lMap.current) {
       setTimeout(() => {
         if (!window.L) return;
-        
-        // Use dynamically fetched user location if available, otherwise default to store location
-        const initialLat = mapCenter?.lat || 10.668194;
-        const initialLng = mapCenter?.lng || 76.025111;
+        const initialLat = 10.668194;
+        const initialLng = 76.025111;
 
         lMap.current = window.L.map(mapRef.current).setView([initialLat, initialLng], 15);
 
@@ -192,25 +189,35 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
       return;
     }
 
-    const getLocation = () => {
+    const getLocation = (highAccuracy = true) => {
       setIsGettingLocation(true);
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
           
+          const mapsUrl = `https://www.google.com/maps?q=${latitude.toFixed(6)},${longitude.toFixed(6)}`;
+          
+          setFormData(prev => ({
+            ...prev,
+            location: `📍 Precise Location: ${mapsUrl}`
+          }));
+
           if (!validateDistance(latitude, longitude)) {
             setIsGettingLocation(false);
             return;
           }
 
-          // Open the map centered on their live location so they can refine the pin
-          setMapCenter({ lat: latitude, lng: longitude });
-          setIsMapOpen(true);
-          
           if (errors.location) setErrors(prev => ({ ...prev, location: null }));
           setIsGettingLocation(false);
         },
         (error) => {
+          // If high accuracy times out, fallback to low accuracy immediately
+          if (error.code === 3 && highAccuracy) {
+            console.warn("High accuracy timeout, falling back to low accuracy...");
+            getLocation(false);
+            return;
+          }
+
           console.error("Error getting location", error);
           let errorMessage = "Unable to retrieve your location.";
           if (error.code === 1) {
@@ -223,7 +230,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
           showLocationHelpModal('Enable Location', errorMessage);
           setIsGettingLocation(false);
         },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+        { enableHighAccuracy: highAccuracy, timeout: highAccuracy ? 10000 : 15000, maximumAge: 60000 }
       );
     };
 
