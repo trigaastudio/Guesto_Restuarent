@@ -8,7 +8,7 @@ import {
   Zap, Banknote, Smartphone, IndianRupee, Store
 } from 'lucide-react';
 import axios from 'axios';
-import { io } from 'socket.io-client';
+import socket from '../../../services/socket';
 import { getEffectiveStock } from '../../../utils/stockHelpers';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 import Swal from 'sweetalert2';
@@ -19,7 +19,6 @@ import TableSection from './TableSection';
 import api from '../../../api/axiosInstance';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://guest-o-backend.onrender.com/api';
-const SOCKET_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'https://guest-o-backend.onrender.com';
 
 const OrderSection = () => {
   const handleCopyForWhatsApp = (order) => {
@@ -139,12 +138,33 @@ const OrderSection = () => {
   const [viewItemQuantity, setViewItemQuantity] = useState(1);
   const [viewItemSelectedSize, setViewItemSelectedSize] = useState(null);
   const socketRef = useRef();
+  const socketFetchTimerRef = useRef(null);
+
+  // Throttled fetch to avoid rapid re-renders from multiple socket events
+  const scheduleSilentFetch = () => {
+    if (socketFetchTimerRef.current) clearTimeout(socketFetchTimerRef.current);
+    socketFetchTimerRef.current = setTimeout(() => {
+      fetchOrders(true);
+    }, 500);
+  };
+
   useEffect(() => {
     fetchMenu();
     fetchDeliveryStaff();
 
+    // Auto-refresh orders list on new order arrivals or status changes
+    const handleNewOrder = () => scheduleSilentFetch();
+    const handleOrdersUpdated = () => scheduleSilentFetch();
+
+    socket.on('newOrder', handleNewOrder);
+    socket.on('ordersUpdated', handleOrdersUpdated);
+    socket.on('orderUpdated', handleOrdersUpdated);
+
     return () => {
-      // Cleanup if needed
+      socket.off('newOrder', handleNewOrder);
+      socket.off('ordersUpdated', handleOrdersUpdated);
+      socket.off('orderUpdated', handleOrdersUpdated);
+      if (socketFetchTimerRef.current) clearTimeout(socketFetchTimerRef.current);
     };
   }, []);
 

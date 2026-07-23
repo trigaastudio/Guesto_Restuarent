@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { io } from 'socket.io-client';
+import socket from '../../services/socket';
 import {
   LogOut, RefreshCw, Bell, Sun, Moon, Plus, Edit2, Trash2,
   UtensilsCrossed, X, ChevronRight, ChevronDown, Menu, Users, ShoppingCart, Hash, GitMerge, AlertCircle, CheckCircle2, Printer
@@ -13,8 +13,6 @@ import Swal from 'sweetalert2';
 import CardSkeleton from '../../components/Skeleton/CardSkeleton';
 import DineInPOSModal from '../../components/POS/DineInPOSModal';
 import { logoutStaff } from '../../utils/auth';
-
-const SOCKET_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'https://guest-o-backend.onrender.com';
 
 const WaiterDashboard = () => {
   const [tables, setTables] = useState([]);
@@ -56,8 +54,15 @@ const WaiterDashboard = () => {
     fetchTables();
     document.title = 'Waiter | Dashboard';
 
+    // Auto-refresh when kitchen marks items ready or order status changes
+    const handleKitchenUpdate = () => fetchTables(true);
+
+    socket.on('ordersUpdated', handleKitchenUpdate);
+    socket.on('orderUpdated', handleKitchenUpdate);
+
     return () => {
-      // Cleanup if needed
+      socket.off('ordersUpdated', handleKitchenUpdate);
+      socket.off('orderUpdated', handleKitchenUpdate);
     };
   }, []);
 

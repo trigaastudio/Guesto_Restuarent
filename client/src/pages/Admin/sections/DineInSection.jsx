@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { io } from 'socket.io-client';
+import socket from '../../../services/socket';
 import {
   RefreshCw, Plus, Edit2, Trash2, UtensilsCrossed, X, ChevronRight, Hash, GitMerge, CheckCircle2, ShoppingCart, Users, Receipt
 } from 'lucide-react';
@@ -10,8 +10,6 @@ import Pagination from '../../../components/Pagination/Pagination';
 import CardSkeleton from '../../../components/Skeleton/CardSkeleton';
 import DineInPOSModal from '../../../components/POS/DineInPOSModal';
 import { useCart } from '../../../context/CartContext';
-
-const SOCKET_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'https://guest-o-backend.onrender.com';
 
 const DineInSection = () => {
   const [tables, setTables] = useState([]);
@@ -29,7 +27,6 @@ const DineInSection = () => {
   const [selectedMergeTableNumbers, setSelectedMergeTableNumbers] = useState([]);
 
   const { settings } = useCart();
-  const socketRef = useRef();
   const fetchInProgressRef = useRef(false);
 
   const handleUnmerge = async (tableNumber) => {
@@ -90,8 +87,25 @@ const DineInSection = () => {
   useEffect(() => {
     fetchTables();
 
+    // Auto-refresh table grid on new dine-in orders or kitchen/order status changes
+    const handleNewOrder = (data) => {
+      const order = data?.order;
+      if (!order || (order.orderType !== 'dine-in' && order.orderSource !== 'waiter')) return;
+      fetchTables(true);
+    };
+
+    const handleOrdersUpdated = () => {
+      fetchTables(true);
+    };
+
+    socket.on('newOrder', handleNewOrder);
+    socket.on('ordersUpdated', handleOrdersUpdated);
+    socket.on('orderUpdated', handleOrdersUpdated);
+
     return () => {
-      // Cleanup if needed
+      socket.off('newOrder', handleNewOrder);
+      socket.off('ordersUpdated', handleOrdersUpdated);
+      socket.off('orderUpdated', handleOrdersUpdated);
     };
   }, []);
 
