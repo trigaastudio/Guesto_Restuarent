@@ -9,8 +9,15 @@ const GlobalSocketListener = () => {
   useEffect(() => {
     const userStr = localStorage.getItem('user');
     const staffStr = localStorage.getItem('staff_user');
-    const user = userStr ? JSON.parse(userStr) : (staffStr ? JSON.parse(staffStr) : null);
+    const adminStr = localStorage.getItem('admin_user');
+    const user = userStr ? JSON.parse(userStr) : (staffStr ? JSON.parse(staffStr) : (adminStr ? JSON.parse(adminStr) : null));
     const userId = user?._id || user?.id;
+
+    const token = localStorage.getItem('admin_token') || localStorage.getItem('staff_token') || localStorage.getItem('token');
+    
+    if (token) {
+      socket.auth = { token };
+    }
 
     if (userId) {
       if (!socket.connected) {
