@@ -15,6 +15,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
     type: 'home'
   });
   const [isMapOpen, setIsMapOpen] = useState(false);
+  const [mapCenter, setMapCenter] = useState(null); // Add state for dynamic map center
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [errors, setErrors] = useState({});
   const mapRef = useRef(null);
@@ -83,8 +84,10 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
     if (isMapOpen && !lMap.current) {
       setTimeout(() => {
         if (!window.L) return;
-        const initialLat = 10.668194;
-        const initialLng = 76.025111;
+        
+        // Use dynamically fetched user location if available, otherwise default to store location
+        const initialLat = mapCenter?.lat || 10.668194;
+        const initialLng = mapCenter?.lng || 76.025111;
 
         lMap.current = window.L.map(mapRef.current).setView([initialLat, initialLng], 15);
 
@@ -195,18 +198,15 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
         (position) => {
           const { latitude, longitude } = position.coords;
           
-          const mapsUrl = `https://www.google.com/maps?q=${latitude.toFixed(6)},${longitude.toFixed(6)}`;
-          
-          setFormData(prev => ({
-            ...prev,
-            location: `📍 Precise Location: ${mapsUrl}`
-          }));
-
           if (!validateDistance(latitude, longitude)) {
             setIsGettingLocation(false);
             return;
           }
 
+          // Open the map centered on their live location so they can refine the pin
+          setMapCenter({ lat: latitude, lng: longitude });
+          setIsMapOpen(true);
+          
           if (errors.location) setErrors(prev => ({ ...prev, location: null }));
           setIsGettingLocation(false);
         },
