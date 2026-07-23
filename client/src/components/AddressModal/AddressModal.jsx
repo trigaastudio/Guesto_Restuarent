@@ -223,7 +223,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
           showLocationHelpModal('Enable Location', errorMessage);
           setIsGettingLocation(false);
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
       );
     };
 
