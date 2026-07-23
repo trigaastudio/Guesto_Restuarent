@@ -78,6 +78,11 @@ const AdminDashboard = () => {
       const order = data.order;
       if (!order) return;
 
+      // Filter: Only show notification if order type is delivery and order source is user
+      if (order.orderType !== 'delivery' || order.orderSource !== 'user') {
+        return;
+      }
+
       const orderTypeLabel = order.orderType
         ? order.orderType.charAt(0).toUpperCase() + order.orderType.slice(1)
         : 'New';
@@ -89,7 +94,7 @@ const AdminDashboard = () => {
           : '';
 
       const newNotif = {
-        id: Date.now() + Math.random(),
+        id: data.order._id + '-' + Date.now(), // Use unique order ID combined with timestamp
         type: 'order',
         title: `${orderTypeLabel} Order${sourceLabel}`,
         message: data.message,
@@ -98,8 +103,14 @@ const AdminDashboard = () => {
         orderData: order
       };
 
-      setNotifications(() => {
+      setNotifications((prev) => {
         const currentLocal = JSON.parse(localStorage.getItem('admin_notifications') || '[]');
+        
+        // Prevent double notifications caused by React StrictMode running updater twice
+        if (currentLocal.some(n => n.id === newNotif.id)) {
+          return currentLocal;
+        }
+
         const updated = [newNotif, ...currentLocal].slice(0, 20);
         localStorage.setItem('admin_notifications', JSON.stringify(updated));
         return updated;
