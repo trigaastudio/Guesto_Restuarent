@@ -79,7 +79,15 @@ const AdminDashboard = () => {
       if (!order) return;
 
       // Filter: Only show notification if order type is delivery and order source is user
-      if (order.orderType !== 'delivery' || order.orderSource !== 'user') {
+      if (order.orderType !== 'delivery' || (order.orderSource !== 'user' && order.orderSource !== 'online')) {
+        return;
+      }
+
+      const notifId = order._id;
+      const currentLocal = JSON.parse(localStorage.getItem('admin_notifications') || '[]');
+      
+      // Prevent double notifications for the same order (solves multiple emits, StrictMode, or duplicated listeners)
+      if (currentLocal.some(n => n.id === notifId)) {
         return;
       }
 
@@ -94,7 +102,7 @@ const AdminDashboard = () => {
           : '';
 
       const newNotif = {
-        id: data.order._id + '-' + Date.now(), // Use unique order ID combined with timestamp
+        id: notifId,
         type: 'order',
         title: `${orderTypeLabel} Order${sourceLabel}`,
         message: data.message,
@@ -104,14 +112,11 @@ const AdminDashboard = () => {
       };
 
       setNotifications((prev) => {
-        const currentLocal = JSON.parse(localStorage.getItem('admin_notifications') || '[]');
+        // Fetch again to be safe in concurrent scenarios
+        const latestLocal = JSON.parse(localStorage.getItem('admin_notifications') || '[]');
+        if (latestLocal.some(n => n.id === newNotif.id)) return latestLocal;
         
-        // Prevent double notifications caused by React StrictMode running updater twice
-        if (currentLocal.some(n => n.id === newNotif.id)) {
-          return currentLocal;
-        }
-
-        const updated = [newNotif, ...currentLocal].slice(0, 20);
+        const updated = [newNotif, ...latestLocal].slice(0, 20);
         localStorage.setItem('admin_notifications', JSON.stringify(updated));
         return updated;
       });
