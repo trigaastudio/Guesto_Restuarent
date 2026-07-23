@@ -1,10 +1,11 @@
 import React, { useEffect } from 'react';
 import socket from '../../services/socket';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { showAlert } from '../../utils/sweetAlert';
 
 const GlobalSocketListener = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const userStr = localStorage.getItem('user');
@@ -13,10 +14,20 @@ const GlobalSocketListener = () => {
     const user = userStr ? JSON.parse(userStr) : (staffStr ? JSON.parse(staffStr) : (adminStr ? JSON.parse(adminStr) : null));
     const userId = user?._id || user?.id;
 
-    const token = localStorage.getItem('admin_token') || localStorage.getItem('staff_token') || localStorage.getItem('token');
+    // Admin and Staff tokens are stored in sessionStorage, user tokens in localStorage
+    const token = sessionStorage.getItem('admin_token') || sessionStorage.getItem('staff_token') || localStorage.getItem('token');
     
-    if (token) {
-      socket.auth = { token };
+    // Re-authenticate socket if the token has changed (e.g. user just logged in)
+    if (socket.auth?.token !== token) {
+      if (token) {
+        socket.auth = { token };
+      } else {
+        delete socket.auth;
+      }
+      // If already connected with old auth, reconnect to apply new auth
+      if (socket.connected) {
+        socket.disconnect();
+      }
     }
 
     if (userId) {
@@ -53,7 +64,7 @@ const GlobalSocketListener = () => {
       socket.off('accountStatusChanged');
       socket.off('db_change', handleDbChange);
     };
-  }, [navigate]);
+  }, [navigate, location.pathname]);
 
   const handleForceLogout = () => {
     const isStaff = window.location.pathname.startsWith('/kitchen') || 
