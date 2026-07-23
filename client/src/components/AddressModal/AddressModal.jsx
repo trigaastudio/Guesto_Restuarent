@@ -195,16 +195,18 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
         (position) => {
           const { latitude, longitude } = position.coords;
           
+          const mapsUrl = `https://www.google.com/maps?q=${latitude.toFixed(6)},${longitude.toFixed(6)}`;
+          
+          setFormData(prev => ({
+            ...prev,
+            location: `📍 Precise Location: ${mapsUrl}`
+          }));
+
           if (!validateDistance(latitude, longitude)) {
             setIsGettingLocation(false);
             return;
           }
 
-          const mapsUrl = `https://www.google.com/maps?q=${latitude.toFixed(6)},${longitude.toFixed(6)}`;
-          setFormData(prev => ({
-            ...prev,
-            location: `📍 Precise Location: ${mapsUrl}`
-          }));
           if (errors.location) setErrors(prev => ({ ...prev, location: null }));
           setIsGettingLocation(false);
         },
@@ -225,20 +227,24 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
       );
     };
 
-    if (navigator.permissions && navigator.permissions.query) {
-      navigator.permissions.query({ name: 'geolocation' }).then(function(result) {
-        if (result.state === 'denied') {
-          showLocationHelpModal(
-            'Location Access Denied',
-            'Location access is currently blocked for this website in your browser.'
-          );
-        } else {
+    try {
+      if (navigator.permissions && navigator.permissions.query) {
+        navigator.permissions.query({ name: 'geolocation' }).then(function(result) {
+          if (result.state === 'denied') {
+            showLocationHelpModal(
+              'Location Access Denied',
+              'Location access is currently blocked for this website in your browser.'
+            );
+          } else {
+            getLocation();
+          }
+        }).catch(() => {
           getLocation();
-        }
-      }).catch(() => {
+        });
+      } else {
         getLocation();
-      });
-    } else {
+      }
+    } catch (e) {
       getLocation();
     }
   };
@@ -254,7 +260,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
       newErrors.location = 'Location is required';
     } else {
       const locText = formData.location.toLowerCase();
-      if (!locText.includes('google.com/maps') && !locText.includes('maps.app.goo.gl') && !locText.includes('maps.google.com')) {
+      if (!locText.includes('google.com/maps') && !locText.includes('maps.app.goo.gl') && !locText.includes('maps.google.com') && !locText.includes('goo.gl/maps')) {
         newErrors.location = 'Please paste a valid Google Maps link or click Current Location';
       }
     }
