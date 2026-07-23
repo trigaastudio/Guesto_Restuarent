@@ -675,6 +675,15 @@ class OrderController {
         return res.status(400).json({ success: false, message: 'Price mismatch detected. Order rejected due to tampered total amount.' });
       }
 
+      const user = await User.findById(req.user._id);
+      if (user && !user.phone) {
+        const orderPhone = address.mobile || address.phone;
+        if (orderPhone) {
+          user.phone = orderPhone;
+          await user.save();
+        }
+      }
+
       const newOrder = new Order({
         customer: req.user._id,
         orderNumber,

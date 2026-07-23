@@ -35,8 +35,11 @@ class UserController {
         return res.status(404).json({ success: false, message: 'User not found' });
       }
 
-      
       const defaultStatus = user.addresses.length === 0 ? true : isDefault;
+
+      if (!user.phone && phone) {
+        user.phone = phone;
+      }
 
       user.addresses.push({ name, phone, address, landmark, location, type, isDefault: defaultStatus });
       await user.save();

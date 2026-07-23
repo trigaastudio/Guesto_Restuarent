@@ -335,7 +335,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
                 }}
                 className={`w-full px-5 py-3.5 bg-background-muted border ${errors.phone ? 'border-primary' : 'border-border/40'} rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary`}
                 placeholder="Enter mobile number"
-                maxLength={15}
+                maxLength={10}
               />
             </div>
           </div>
