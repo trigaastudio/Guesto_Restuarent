@@ -452,8 +452,8 @@ const StaffManagement = () => {
                       value={currentStaff.phoneNumber}
                       onChange={(e) => setCurrentStaff({ ...currentStaff, phoneNumber: e.target.value })}
                       className="w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold"
-                      placeholder="10-digit number"
-                      maxLength={10}
+                      placeholder="e.g. +919876543210 or 9876543210"
+                      maxLength={15}
                     />
                   </div>
                 </div>
