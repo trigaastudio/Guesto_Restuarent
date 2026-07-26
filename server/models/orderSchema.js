@@ -124,6 +124,7 @@ const orderSchema = new mongoose.Schema({
   razorpayOrderId: { type: String },
   razorpayPaymentId: { type: String },
   remarks: { type: String, trim: true },
+  adminNotes: { type: String, trim: true, default: '' },
   rejectionReason: { type: String, default: '' },
   isLocked: { type: Boolean, default: false },
 }, { timestamps: true, strict: true });

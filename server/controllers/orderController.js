@@ -1020,7 +1020,7 @@ class OrderController {
   async updateOrderStatus(req, res) {
     try {
       const { id } = req.params;
-      const ALLOWED_STATUS_UPDATES = ['orderStatus', 'kitchenStatus', 'paymentStatus', 'paymentMethod', 'assignedDeliveryBoy', 'cashReceived', 'totalAmount', 'paidAmount', 'rejectionReason', 'remarks'];
+      const ALLOWED_STATUS_UPDATES = ['orderStatus', 'kitchenStatus', 'paymentStatus', 'paymentMethod', 'assignedDeliveryBoy', 'cashReceived', 'totalAmount', 'paidAmount', 'rejectionReason', 'remarks', 'adminNotes', 'customerDetails', 'balance'];
       const updateData = {};
       for (const key of ALLOWED_STATUS_UPDATES) {
         if (req.body[key] !== undefined) updateData[key] = req.body[key];

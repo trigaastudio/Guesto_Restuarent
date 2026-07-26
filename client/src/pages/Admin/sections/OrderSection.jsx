@@ -996,6 +996,8 @@ const OrderSection = () => {
 
   const [editCustomer, setEditCustomer] = useState({ name: '', phone: '', address: '', location: '' });
   const [editCashReceived, setEditCashReceived] = useState('');
+  const [adminNotes, setAdminNotes] = useState('');
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
 
   useEffect(() => {
     if (selectedOrder) {
@@ -1008,6 +1010,7 @@ const OrderSection = () => {
         location: selectedOrder.customerDetails?.location || selectedOrder.address?.location || (typeof selectedOrder.address?.location === 'string' ? selectedOrder.address.location : '')
       });
       setEditCashReceived(selectedOrder.cashReceived || '');
+      setAdminNotes(selectedOrder.adminNotes || '');
     }
   }, [selectedOrder]);
 
@@ -1089,6 +1092,8 @@ const OrderSection = () => {
       setUpdateProfile(false);
       setSelectedTableId('');
       setGuestCount(1);
+      setPaymentMethod('Not Specified');
+      setCashReceived('');
     }
     setIsModalOpen(true);
   };
@@ -1117,6 +1122,25 @@ const OrderSection = () => {
       }
     } catch (error) {
       showToast('error', 'Failed to update details');
+    }
+  };
+
+  const handleSaveAdminNotes = async () => {
+    if (!selectedOrder) return;
+    setIsSavingNotes(true);
+    try {
+      const response = await api.patch(`/api/orders/${selectedOrder._id}/status`, {
+        adminNotes: adminNotes.trim()
+      });
+      if (response.data.success) {
+        showToast('success', 'Note saved');
+        setOrders(orders.map(o => o._id === selectedOrder._id ? response.data.data : o));
+        setSelectedOrder(response.data.data);
+      }
+    } catch (error) {
+      showToast('error', 'Failed to save note');
+    } finally {
+      setIsSavingNotes(false);
     }
   };
 
@@ -1596,6 +1620,7 @@ const OrderSection = () => {
                 setCart([]);
                 setPosSearchTerm('');
                 setCashReceived('');
+                setPaymentMethod('Not Specified');
                 setPosOrderType(activeTab === 'all' ? 'takeaway' : activeTab);
                 setDeliveryAddress('');
                 setDeliveryFee('');
@@ -2365,6 +2390,56 @@ const OrderSection = () => {
                   </div>
                 </div>
               )}
+
+              {/* Admin Notes — internal only, never shown to customer */}
+              <div className="p-4 bg-primary/5 rounded-3xl border border-primary/15 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+                      <span className="text-primary text-xs">🔒</span>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black text-primary uppercase tracking-widest">Admin Notes</p>
+                      <p className="text-[8px] text-text-muted font-bold">Internal only — not visible to customers</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleSaveAdminNotes}
+                    disabled={isSavingNotes || adminNotes === (selectedOrder.adminNotes || '')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                      adminNotes !== (selectedOrder.adminNotes || '') && !isSavingNotes
+                        ? 'bg-primary text-white shadow-md shadow-primary/20 hover:scale-105 active:scale-95'
+                        : 'bg-background-muted text-text-muted cursor-not-allowed opacity-50'
+                    }`}
+                  >
+                    {isSavingNotes ? (
+                      <>
+                        <Loader2 size={10} className="animate-spin" />
+                        <span>Saving…</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 size={10} />
+                        <span>Save Note</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <textarea
+                  value={adminNotes}
+                  onChange={(e) => setAdminNotes(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                      e.preventDefault();
+                      handleSaveAdminNotes();
+                    }
+                  }}
+                  placeholder="Add internal notes about this order (e.g. customer called, special arrangement, issue log)…"
+                  rows={3}
+                  className="w-full px-4 py-3 bg-background-card border border-border-light/60 rounded-2xl text-xs text-text-primary font-medium placeholder-text-muted/50 resize-none outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all leading-relaxed"
+                />
+                <p className="text-[8px] text-text-muted font-bold text-right opacity-60">Ctrl+Enter to save quickly</p>
+              </div>
             </div>
 
             <div className="p-8 bg-background-muted/30 border-t border-border-light flex items-center justify-between">
