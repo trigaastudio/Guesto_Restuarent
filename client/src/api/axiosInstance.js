@@ -59,8 +59,15 @@ api.interceptors.response.use(
         window.location.replace('/login');
       }
     } else if (error.response?.status >= 500) {
-      
       const path = window.location.pathname;
+      const config = error.config;
+      let retryCount = config._retryCount || 0;
+      
+      if (retryCount < 1) {
+        config._retryCount = retryCount + 1;
+        return new Promise(resolve => setTimeout(() => resolve(api(config)), 800));
+      }
+
       if (path !== '/error') {
         const message = error.response?.data?.message || 'Unable to connect to the server.';
         window.location.replace(`/error?type=server&message=${encodeURIComponent(message)}`);

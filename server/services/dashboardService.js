@@ -3,9 +3,15 @@ import User from '../models/userSchema.js';
 import Menu from '../models/menuSchema.js';
 import Table from '../models/tableSchema.js';
 import mongoose from 'mongoose';
+import NodeCache from 'node-cache';
+
+const dashCache = new NodeCache({ stdTTL: 60, useClones: false });
 
 class DashboardService {
   async getDashboardStats() {
+    const cached = dashCache.get('dashboard_stats');
+    if (cached) return cached;
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -22,9 +28,7 @@ class DashboardService {
       revenueTrend,
       topDishesRaw,
       monthlyTrend,
-      outOfStockCount,
-      lowStockCount,
-      stockAlerts
+      stockDataResult
     ] = await Promise.all([
       
       Order.aggregate([
@@ -102,33 +106,27 @@ class DashboardService {
       
       this.getMonthlyRevenueTrend(),
 
-      
+      // PERF-3 OPTIMIZATION: Combine 3 aggregations into 1 using $facet
       Menu.aggregate([
         { $lookup: { from: 'categories', localField: 'category', foreignField: '_id', as: 'cat' } },
         { $unwind: { path: '$cat', preserveNullAndEmptyArrays: true } },
         { $addFields: { effectiveStock: { $cond: [{ $or: [{ $eq: ['$cat.isSharedStock', true] }, { $eq: ['$cat.stockactive', true] }] }, { $max: [{ $ifNull: ['$cat.totalStock', 0] }, { $ifNull: ['$totalStock', 0] }] }, { $ifNull: ['$totalStock', 0] }] } } },
-        { $match: { effectiveStock: { $lte: 0 } } },
-        { $count: 'count' }
-      ]),
-
-      
-      Menu.aggregate([
-        { $lookup: { from: 'categories', localField: 'category', foreignField: '_id', as: 'cat' } },
-        { $unwind: { path: '$cat', preserveNullAndEmptyArrays: true } },
-        { $addFields: { effectiveStock: { $cond: [{ $or: [{ $eq: ['$cat.isSharedStock', true] }, { $eq: ['$cat.stockactive', true] }] }, { $max: [{ $ifNull: ['$cat.totalStock', 0] }, { $ifNull: ['$totalStock', 0] }] }, { $ifNull: ['$totalStock', 0] }] } } },
-        { $match: { effectiveStock: { $gt: 0, $lte: 10 } } },
-        { $count: 'count' }
-      ]),
-
-      
-      Menu.aggregate([
-        { $lookup: { from: 'categories', localField: 'category', foreignField: '_id', as: 'cat' } },
-        { $unwind: { path: '$cat', preserveNullAndEmptyArrays: true } },
-        { $addFields: { effectiveStock: { $cond: [{ $or: [{ $eq: ['$cat.isSharedStock', true] }, { $eq: ['$cat.stockactive', true] }] }, { $max: [{ $ifNull: ['$cat.totalStock', 0] }, { $ifNull: ['$totalStock', 0] }] }, { $ifNull: ['$totalStock', 0] }] } } },
-        { $match: { effectiveStock: { $lte: 10 } } },
-        { $sort: { effectiveStock: 1 } },
-        { $limit: 5 },
-        { $project: { name: 1, image: 1, effectiveStock: 1, 'category.name': '$cat.name' } }
+        { $facet: {
+            outOfStockCount: [
+              { $match: { effectiveStock: { $lte: 0 } } },
+              { $count: 'count' }
+            ],
+            lowStockCount: [
+              { $match: { effectiveStock: { $gt: 0, $lte: 10 } } },
+              { $count: 'count' }
+            ],
+            stockAlerts: [
+              { $match: { effectiveStock: { $lte: 10 } } },
+              { $sort: { effectiveStock: 1 } },
+              { $limit: 5 },
+              { $project: { name: 1, image: 1, effectiveStock: 1, 'category.name': '$cat.name' } }
+            ]
+        }}
       ])
     ]);
 
@@ -150,7 +148,7 @@ class DashboardService {
       return menu ? { ...menu, orders: d.orders } : null;
     }).filter(Boolean);
 
-    return {
+    const statsObj = {
       metrics: {
         totalRevenue,
         todayRevenue,
@@ -173,14 +171,17 @@ class DashboardService {
       monthlyTrend,
       topDishes,
       stockStats: {
-        outOfStock: outOfStockCount[0]?.count || 0,
-        lowStock: lowStockCount[0]?.count || 0,
-        alerts: stockAlerts.map(a => ({
+        outOfStock: stockDataResult[0]?.outOfStockCount[0]?.count || 0,
+        lowStock: stockDataResult[0]?.lowStockCount[0]?.count || 0,
+        alerts: (stockDataResult[0]?.stockAlerts || []).map(a => ({
           ...a,
           totalStock: a.effectiveStock 
         }))
       }
     };
+
+    dashCache.set('dashboard_stats', statsObj);
+    return statsObj;
   }
 
   async getRevenueTrend() {

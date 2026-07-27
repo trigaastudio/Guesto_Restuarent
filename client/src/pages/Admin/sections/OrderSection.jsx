@@ -45,9 +45,9 @@ const OrderSection = () => {
       locationUrl = `\n📍 *Location:* https://www.google.com/maps?q=${location.lat},${location.lng}`;
     } else if (typeof locToUse === 'string' && locToUse && locToUse !== 'N/A') {
       const urlMatch = locToUse.match(/https?:\/\/[^\s]+/);
-      locationUrl = urlMatch
-        ? `\n📍 *Location:* ${urlMatch[0]}`
-        : `\n📍 *Location:* https://www.google.com/maps?q=${encodeURIComponent(locToUse)}`;
+      if (urlMatch) {
+        locationUrl = `\n📍 *Location:* ${urlMatch[0]}`;
+      }
     }
 
 
@@ -1662,8 +1662,8 @@ const OrderSection = () => {
           ))}
         </div>
 
-        <div className="bg-background-card rounded-[2.5rem] border border-border/40 shadow-[0_10px_30px_rgba(0,0,0,0.02)] overflow-hidden">
-          <div className="p-4 border-b border-border-light bg-background-muted/30 space-y-4">
+        <div className="bg-background-card rounded-[2.5rem] border border-border/40 shadow-[0_10px_30px_rgba(0,0,0,0.02)]">
+          <div className="p-4 border-b border-border-light bg-background-muted/30 space-y-4 rounded-t-[2.5rem]">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="relative flex-1 max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={18} />

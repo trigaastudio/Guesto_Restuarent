@@ -134,11 +134,13 @@ orderSchema.index({ customer: 1 });
 orderSchema.index({ table: 1 });
 orderSchema.index({ createdAt: -1 });
 orderSchema.index({ orderStatus: 1 });
+orderSchema.index({ orderSource: 1 });
 // Additional indexes for admin getOrders query filters
 orderSchema.index({ paymentStatus: 1 });
 orderSchema.index({ orderType: 1, createdAt: -1 });
+orderSchema.index({ orderType: 1, orderStatus: 1 });
 orderSchema.index({ orderStatus: 1, paymentStatus: 1 });
-orderSchema.index({ orderStatus: 1, createdAt: -1 });
+orderSchema.index({ paymentStatus: 1, createdAt: -1 });
 
 
 // PERF-1 OPTIMIZATION: Setup state for salesCount synchronization
@@ -243,17 +245,15 @@ orderSchema.post('save', async function (doc) {
       // PERF-1 OPTIMIZATION: Sync Menu salesCount
       const Menu = mongoose.model('Menu');
       if (doc._wasNew && doc.orderStatus !== 'cancelled') {
-        for (const item of doc.items) {
-          if (item.menuItem) {
-            await Menu.findByIdAndUpdate(item.menuItem, { $inc: { salesCount: item.quantity } }).catch(e => console.error("Sales count sync error", e));
-          }
-        }
+        const updatePromises = doc.items
+          .filter(item => item.menuItem)
+          .map(item => Menu.findByIdAndUpdate(item.menuItem, { $inc: { salesCount: item.quantity } }).catch(e => console.error("Sales count sync error", e)));
+        await Promise.all(updatePromises);
       } else if (doc._wasCancelledNow) {
-        for (const item of doc.items) {
-          if (item.menuItem) {
-            await Menu.findByIdAndUpdate(item.menuItem, { $inc: { salesCount: -item.quantity } }).catch(e => console.error("Sales count sync error", e));
-          }
-        }
+        const updatePromises = doc.items
+          .filter(item => item.menuItem)
+          .map(item => Menu.findByIdAndUpdate(item.menuItem, { $inc: { salesCount: -item.quantity } }).catch(e => console.error("Sales count sync error", e)));
+        await Promise.all(updatePromises);
       }
     }
   } catch (err) {

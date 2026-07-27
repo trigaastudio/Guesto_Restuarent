@@ -479,21 +479,46 @@ class OrderController {
         return res.json({ valid: false, errors: ['Your cart is empty.'] });
       }
 
+      // OPTIMIZED: Batch-fetch all primary menu docs in one query (eliminates N+1)
+      const menuItemIds = items.map(item =>
+        item.menuItemId || (item.menuItem && item.menuItem._id) || item.menuItem || item._id
+      ).filter(Boolean);
+
+      const menuDocsBatch = await Menu.find({ _id: { $in: menuItemIds } }).populate('category').lean();
+      const menuMap = Object.fromEntries(menuDocsBatch.map(m => [m._id.toString(), m]));
+
+      // Collect all includedItem IDs across all variants in one pass
+      const includedIds = [];
+      for (const item of items) {
+        const mId = item.menuItemId || (item.menuItem && item.menuItem._id) || item.menuItem || item._id;
+        const menuDoc = menuMap[mId?.toString()];
+        if (!menuDoc) continue;
+        const variant = menuDoc.variants?.find(v => v.size === item.size);
+        if (variant?.includedItems) {
+          includedIds.push(...variant.includedItems.map(ii => ii.menuItem).filter(Boolean));
+        }
+      }
+
+      // Fetch all includedItem docs in one query
+      const includedDocsBatch = includedIds.length > 0
+        ? await Menu.find({ _id: { $in: includedIds } }).lean()
+        : [];
+      const includedMap = Object.fromEntries(includedDocsBatch.map(m => [m._id.toString(), m]));
+
       for (const item of items) {
         const menuItemId = item.menuItemId || (item.menuItem && item.menuItem._id) || item.menuItem || item._id;
-        const menuDoc = await Menu.findById(menuItemId).populate('category');
+        const menuDoc = menuMap[menuItemId?.toString()];
+
         if (!menuDoc) {
           errors.push(`"${item.name || 'An item'}" is no longer available.`);
           continue;
         }
 
-        
         if (menuDoc.isActive === false) {
           errors.push(`"${menuDoc.name}" is currently unavailable/inactive.`);
           continue;
         }
 
-        
         if (menuDoc.category && menuDoc.category.isActive === false) {
           errors.push(`"${menuDoc.category.name}" category is currently unavailable.`);
           continue;
@@ -503,7 +528,6 @@ class OrderController {
         const multiplier = variant && variant.stockValue ? variant.stockValue : 1;
         const amountNeeded = item.quantity * multiplier;
 
-        
         if (menuDoc.category && menuDoc.category.stockactive) {
           if (menuDoc.category.totalStock < amountNeeded) {
             errors.push(`"${menuDoc.name}" is out of stock.`);
@@ -512,10 +536,9 @@ class OrderController {
           errors.push(`"${menuDoc.name}" is out of stock.`);
         }
 
-        
         if (variant && variant.includedItems && variant.includedItems.length > 0) {
           for (const included of variant.includedItems) {
-            const includedDoc = await Menu.findById(included.menuItem);
+            const includedDoc = includedMap[included.menuItem?.toString()];
             if (!includedDoc) continue;
             const totalNeeded = item.quantity * included.quantity;
             if (includedDoc.totalStock < totalNeeded) {
@@ -624,27 +647,52 @@ class OrderController {
         }
       }
 
-      const processedItems = await Promise.all(items.map(async item => {
-        const menuDoc = await Menu.findById(item.menuItem);
+      // OPTIMIZED: Batch-fetch all menu docs in 2 queries max (eliminates N+1 in processedItems)
+      const primaryIds = items.map(i => i.menuItem).filter(Boolean);
+      const primaryDocs = await Menu.find({ _id: { $in: primaryIds } }).lean();
+      const primaryMap = Object.fromEntries(primaryDocs.map(m => [m._id.toString(), m]));
+
+      // Collect secondary IDs (combo sub-items + included items) in one pass
+      const secondaryIds = new Set();
+      for (const item of items) {
+        const menuDoc = primaryMap[item.menuItem?.toString()];
+        if (!menuDoc) continue;
+        const variant = menuDoc.variants?.find(v => v.size === item.size);
+        if (menuDoc.isCombo && menuDoc.comboItems) {
+          menuDoc.comboItems.forEach(ci => { if (ci.menuItem) secondaryIds.add(ci.menuItem.toString()); });
+        }
+        if (variant?.includedItems) {
+          variant.includedItems.forEach(ii => { if (ii.menuItem) secondaryIds.add(ii.menuItem.toString()); });
+        }
+      }
+      const secondaryMap = {};
+      if (secondaryIds.size > 0) {
+        const secondaryDocs = await Menu.find({ _id: { $in: [...secondaryIds] } }).lean();
+        secondaryDocs.forEach(m => { secondaryMap[m._id.toString()] = m; });
+      }
+
+      // Build processedItems synchronously — zero additional DB calls
+      const processedItems = items.map(item => {
+        const menuDoc = primaryMap[item.menuItem?.toString()];
         const variant = menuDoc?.variants?.find(v => v.size === item.size);
 
-        let comboItems = [];
-        if (menuDoc?.isCombo && menuDoc.comboItems) {
-          comboItems = await Promise.all(menuDoc.comboItems.map(async ci => {
-            const subDoc = await Menu.findById(ci.menuItem);
-            return { name: subDoc?.name || 'Combo Item', quantity: ci.quantity, price: ci.price };
-          }));
-        }
+        const comboItems = (menuDoc?.isCombo && menuDoc.comboItems)
+          ? menuDoc.comboItems.map(ci => {
+              const subDoc = secondaryMap[ci.menuItem?.toString()];
+              return { name: subDoc?.name || 'Combo Item', quantity: ci.quantity, price: ci.price };
+            })
+          : [];
 
-        let includedItems = [];
-        if (variant?.includedItems) {
-          includedItems = await Promise.all(variant.includedItems.map(async ii => {
-            const incDoc = await Menu.findById(ii.menuItem);
-            return { name: incDoc?.name || 'Add-on Item', quantity: ii.quantity };
-          }));
-        }
+        const includedItems = variant?.includedItems
+          ? variant.includedItems.map(ii => {
+              const incDoc = secondaryMap[ii.menuItem?.toString()];
+              return { name: incDoc?.name || 'Add-on Item', quantity: ii.quantity };
+            })
+          : [];
 
-        const actualPrice = variant ? variant.price : (menuDoc?.hasOffer && menuDoc?.offerPrice != null ? menuDoc.offerPrice : menuDoc?.price || 0);
+        const actualPrice = variant
+          ? variant.price
+          : (menuDoc?.hasOffer && menuDoc?.offerPrice != null ? menuDoc.offerPrice : menuDoc?.price || 0);
         const calculatedTotalPrice = actualPrice * item.quantity;
 
         return {
@@ -662,7 +710,7 @@ class OrderController {
           comboItems,
           includedItems
         };
-      }));
+      });
 
       const calculatedSubtotal = processedItems.reduce((sum, item) => sum + item.totalPrice, 0);
       const actualDeliveryFee = deliveryFee || req.body.deliveryFee || 0;
@@ -851,28 +899,52 @@ class OrderController {
 
       const orderNumber = await getNextOrderNumber();
 
-      const processedItems = await Promise.all(items.map(async item => {
-        const menuDoc = await Menu.findById(item.menuItem);
+      // OPTIMIZED: Batch-fetch all menu docs in 2 queries max (eliminates N+1 in processedItems)
+      const coPrimaryIds = items.map(i => i.menuItem).filter(Boolean);
+      const coPrimaryDocs = await Menu.find({ _id: { $in: coPrimaryIds } }).lean();
+      const coPrimaryMap = Object.fromEntries(coPrimaryDocs.map(m => [m._id.toString(), m]));
+
+      // Collect secondary IDs (combo sub-items + included items) in one pass
+      const coSecondaryIds = new Set();
+      for (const item of items) {
+        const menuDoc = coPrimaryMap[item.menuItem?.toString()];
+        if (!menuDoc) continue;
+        const variant = menuDoc.variants?.find(v => v.size === item.size);
+        if (menuDoc.isCombo && menuDoc.comboItems) {
+          menuDoc.comboItems.forEach(ci => { if (ci.menuItem) coSecondaryIds.add(ci.menuItem.toString()); });
+        }
+        if (variant?.includedItems) {
+          variant.includedItems.forEach(ii => { if (ii.menuItem) coSecondaryIds.add(ii.menuItem.toString()); });
+        }
+      }
+      const coSecondaryMap = {};
+      if (coSecondaryIds.size > 0) {
+        const coSecondaryDocs = await Menu.find({ _id: { $in: [...coSecondaryIds] } }).lean();
+        coSecondaryDocs.forEach(m => { coSecondaryMap[m._id.toString()] = m; });
+      }
+
+      // Build processedItems synchronously — zero additional DB calls
+      const processedItems = items.map(item => {
+        const menuDoc = coPrimaryMap[item.menuItem?.toString()];
         const variant = menuDoc?.variants?.find(v => v.size === item.size);
 
-        let comboItems = [];
-        if (menuDoc?.isCombo && menuDoc.comboItems) {
-          comboItems = await Promise.all(menuDoc.comboItems.map(async ci => {
-            const subDoc = await Menu.findById(ci.menuItem);
-            return { name: subDoc?.name || 'Combo Item', quantity: ci.quantity, price: ci.price };
-          }));
-        }
+        const comboItems = (menuDoc?.isCombo && menuDoc.comboItems)
+          ? menuDoc.comboItems.map(ci => {
+              const subDoc = coSecondaryMap[ci.menuItem?.toString()];
+              return { name: subDoc?.name || 'Combo Item', quantity: ci.quantity, price: ci.price };
+            })
+          : [];
 
-        let includedItems = [];
-        if (variant?.includedItems) {
-          includedItems = await Promise.all(variant.includedItems.map(async ii => {
-            const incDoc = await Menu.findById(ii.menuItem);
-            return { name: incDoc?.name || 'Add-on Item', quantity: ii.quantity };
-          }));
-        }
+        const includedItems = variant?.includedItems
+          ? variant.includedItems.map(ii => {
+              const incDoc = coSecondaryMap[ii.menuItem?.toString()];
+              return { name: incDoc?.name || 'Add-on Item', quantity: ii.quantity };
+            })
+          : [];
 
-        
-        const actualPrice = variant ? variant.price : (menuDoc?.hasOffer && menuDoc?.offerPrice != null ? menuDoc.offerPrice : menuDoc?.price || 0);
+        const actualPrice = variant
+          ? variant.price
+          : (menuDoc?.hasOffer && menuDoc?.offerPrice != null ? menuDoc.offerPrice : menuDoc?.price || 0);
         const calculatedTotalPrice = actualPrice * (item.quantity || 1);
 
         return {
@@ -888,7 +960,7 @@ class OrderController {
           comboItems,
           includedItems
         };
-      }));
+      });
 
       const calculatedSubtotal = processedItems.reduce((sum, item) => sum + item.totalPrice, 0);
       const actualDeliveryFee = deliveryFee || 0;
