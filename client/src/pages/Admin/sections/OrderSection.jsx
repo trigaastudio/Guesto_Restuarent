@@ -79,6 +79,8 @@ const OrderSection = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [obInput, setObInput] = useState('');
+  const [isSavingOb, setIsSavingOb] = useState(false);
   const [searchTerm, setSearchTerm] = useState(localStorage.getItem('orderSearchTerm') || '');
   const [posSearchTerm, setPosSearchTerm] = useState('');
   const [posCategoryFilter, setPosCategoryFilter] = useState('all');
@@ -298,6 +300,12 @@ const OrderSection = () => {
               <div style="display: flex; justify-content: space-between; color: green; font-weight: bold;">
                 <span>Discount:</span>
                 <span>-${order.discount.toFixed(0)}</span>
+              </div>
+            ` : ''}
+            ${order.outstandingBill ? `
+              <div style="display: flex; justify-content: space-between;">
+                <span>Outstanding Bill:</span>
+                <span>${order.outstandingBill.toFixed(0)}</span>
               </div>
             ` : ''}
           </div>
@@ -662,6 +670,24 @@ const OrderSection = () => {
       }
     } catch (error) {
       showToast('error', error.response?.data?.message || 'Failed to update order status');
+    }
+  };
+
+  const handleSaveOb = async () => {
+    if (!selectedOrder) return;
+    setIsSavingOb(true);
+    try {
+      const parsedOb = parseFloat(obInput) || 0;
+      const response = await api.patch(`/api/orders/${selectedOrder._id}/status`, { outstandingBill: parsedOb });
+      if (response.data.success) {
+        showToast('success', 'Outstanding bill updated');
+        setSelectedOrder(response.data.data);
+        setOrders(orders.map(o => o._id === selectedOrder._id ? response.data.data : o));
+      }
+    } catch (error) {
+      showToast('error', error.response?.data?.message || 'Failed to update outstanding bill');
+    } finally {
+      setIsSavingOb(false);
     }
   };
 
@@ -1100,6 +1126,7 @@ const OrderSection = () => {
 
   const handleOpenDetails = (order) => {
     setSelectedOrder(order);
+    setObInput(order.outstandingBill || '');
     setIsDetailsModalOpen(true);
   };
 
@@ -2464,11 +2491,35 @@ const OrderSection = () => {
                         Discount: -₹{Math.round(selectedOrder.discount)}
                       </span>
                     )}
+                    {selectedOrder.outstandingBill ? (
+                      <span className="text-[10px] text-amber-600 font-bold uppercase tracking-widest">
+                        Outstanding Bill: ₹{Math.round(selectedOrder.outstandingBill)}
+                      </span>
+                    ) : null}
                   </div>
+                  
+                  {/* Manual OB Input for Admin */}
+                  <div className="flex items-center space-x-2 mb-2">
+                    <input 
+                      type="number" 
+                      placeholder="Add OB Amount" 
+                      className="px-3 py-1.5 text-xs font-bold border border-border-light rounded-xl bg-background-card outline-none w-32 focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all text-text-primary placeholder-text-muted/60"
+                      value={obInput}
+                      onChange={(e) => setObInput(e.target.value)}
+                    />
+                    <button 
+                      onClick={handleSaveOb}
+                      disabled={isSavingOb}
+                      className="px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary hover:text-white border border-primary/20 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-sm disabled:opacity-50 active:scale-95"
+                    >
+                      {isSavingOb ? 'Saving...' : 'Save OB'}
+                    </button>
+                  </div>
+
                   <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Total Bill Amount</p>
                   <div className="flex items-baseline space-x-2">
                     <span className="text-4xl font-black text-text-primary">
-                      ₹{Math.round((selectedOrder.subtotal || 0) + (selectedOrder.deliveryFee || 0) + (selectedOrder.platformFee || 0) + (selectedOrder.tax || 0))}
+                      ₹{Math.round((selectedOrder.subtotal || 0) + (selectedOrder.deliveryFee || 0) + (selectedOrder.platformFee || 0) + (selectedOrder.tax || 0) + (selectedOrder.outstandingBill || 0))}
                     </span>
                     {selectedOrder.paidAmount > 0 && (selectedOrder.totalAmount || selectedOrder.subtotal) > selectedOrder.paidAmount && (
                       <span className="px-2 py-0.5 bg-status-off/10 text-status-unavailable text-[10px] font-black rounded-lg uppercase tracking-tighter">

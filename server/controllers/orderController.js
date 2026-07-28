@@ -1092,7 +1092,7 @@ class OrderController {
   async updateOrderStatus(req, res) {
     try {
       const { id } = req.params;
-      const ALLOWED_STATUS_UPDATES = ['orderStatus', 'kitchenStatus', 'paymentStatus', 'paymentMethod', 'assignedDeliveryBoy', 'cashReceived', 'totalAmount', 'paidAmount', 'rejectionReason', 'remarks', 'adminNotes', 'customerDetails', 'balance'];
+      const ALLOWED_STATUS_UPDATES = ['orderStatus', 'kitchenStatus', 'paymentStatus', 'paymentMethod', 'assignedDeliveryBoy', 'cashReceived', 'totalAmount', 'paidAmount', 'rejectionReason', 'remarks', 'adminNotes', 'customerDetails', 'balance', 'outstandingBill'];
       const updateData = {};
       for (const key of ALLOWED_STATUS_UPDATES) {
         if (req.body[key] !== undefined) updateData[key] = req.body[key];
@@ -1431,10 +1431,13 @@ class OrderController {
       if (req.body.balance !== undefined) {
         order.balance = req.body.balance;
       }
+      if (req.body.outstandingBill !== undefined) {
+        order.outstandingBill = req.body.outstandingBill;
+      }
 
       const subtotal = order.items.reduce((acc, item) => acc + (item.totalPrice || ((item.unitPrice || item.price || 0) * item.quantity)), 0);
       order.subtotal = subtotal;
-      order.totalAmount = subtotal + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0);
+      order.totalAmount = subtotal + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0) + (order.outstandingBill || 0);
 
       if (!["cash", "upi/card", "online", "cod", "Not Specified"].includes(order.paymentMethod)) {
         order.paymentMethod = 'Not Specified';

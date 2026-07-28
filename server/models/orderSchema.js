@@ -99,6 +99,7 @@ const orderSchema = new mongoose.Schema({
   cashReceived: { type: Number, default: 0 },
   balance: { type: Number, default: 0 },
   paidAmount: { type: Number, default: 0 },
+  outstandingBill: { type: Number, default: 0 },
 
   
   orderStatus: {
@@ -154,11 +155,11 @@ orderSchema.pre('save', async function () {
 
 orderSchema.pre('validate', async function () {
   
-  if (this.isModified('items') || this.isModified('tax') || this.isModified('discount') || this.isModified('deliveryFee') || this.isModified('platformFee')) {
+  if (this.isModified('items') || this.isModified('tax') || this.isModified('discount') || this.isModified('deliveryFee') || this.isModified('platformFee') || this.isModified('outstandingBill')) {
     this.subtotal = this.items.reduce((acc, item) =>
       acc + (item.totalPrice || (item.price * item.quantity) || 0), 0
     );
-    this.totalAmount = Math.max(0, this.subtotal + (this.tax || 0) + (this.deliveryFee || 0) + (this.platformFee || 0));
+    this.totalAmount = Math.max(0, this.subtotal + (this.tax || 0) + (this.deliveryFee || 0) + (this.platformFee || 0) + (this.outstandingBill || 0));
   }
 
   

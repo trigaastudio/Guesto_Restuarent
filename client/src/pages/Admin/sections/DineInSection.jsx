@@ -518,6 +518,12 @@ const DineInSection = () => {
             </tbody>
           </table>
           <div class="divider"></div>
+          ${order.outstandingBill ? `
+            <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px;">
+              <span>Outstanding Bill:</span>
+              <span>${order.outstandingBill.toFixed(0)}</span>
+            </div>
+          ` : ''}
           <div class="total-section">
             <span>TOTAL :</span>
             <span>${(order.totalAmount || order.subtotal || 0).toFixed(0)}</span>
