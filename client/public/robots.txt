@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# Exclude admin and staff routes from search engines
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /staff
+Disallow: /staff/*
+
+Sitemap: https://www.guestorestaurant.in/sitemap.xml
