@@ -6,6 +6,8 @@ const Toast = Swal.mixin({
   showConfirmButton: false,
   timer: 1200, 
   timerProgressBar: true,
+  scrollbarPadding: false,
+  heightAuto: false,
   showClass: {
     popup: 'animate__animated animate__fadeInRight animate__faster'
   },

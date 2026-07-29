@@ -237,7 +237,7 @@ const OrderSection = () => {
             }
             .header { text-align: center; margin-bottom: 5px; }
             .restaurant-name { font-size: 18px; font-weight: bold; margin-bottom: 0px; }
-            .details { font-size: 11px; margin-bottom: 0px; line-height: 1.1; }
+            .details { font-size: 11px; margin-bottom: 0px; line-height: 1.1; font-weight: bold; }
             .divider { border-top: 1px dashed #000; margin: 4px 0; }
             .info-grid { display: grid; grid-template-cols: 1fr 1fr; margin-bottom: 5px; font-weight: bold; font-size: 12px; }
             table { width: 100%; border-collapse: collapse; }
@@ -2110,7 +2110,11 @@ const OrderSection = () => {
 
                                 {order.orderType === 'delivery' && (
                                   <button
-                                    onClick={() => handleCopyForWhatsApp(order)}
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCopyForWhatsApp(order);
+                                    }}
                                     className="p-2 hover:bg-primary/10 text-primary rounded-lg transition-all"
                                     title="Copy for WhatsApp"
                                   >
@@ -2469,21 +2473,21 @@ const OrderSection = () => {
               </div>
             </div>
 
-            <div className="p-8 bg-background-muted/30 border-t border-border-light flex items-center justify-between">
-              <div className="flex flex-col space-y-4">
+            <div className="p-6 bg-background-muted/30 border-t border-border-light flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 overflow-y-auto">
+              <div className="flex flex-col space-y-3 w-full sm:w-auto">
                 <div className="space-y-1">
-                  <div className="flex flex-col mb-1 space-y-0.5">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
                     <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">
                       Listing Price: ₹{Math.round((selectedOrder.subtotal || 0) + (selectedOrder.discount || 0))}
                     </span>
                     {selectedOrder.platformFee > 0 && (
                       <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">
-                        Platform Fee: +₹{Math.round(selectedOrder.platformFee)}
+                        Platform: +₹{Math.round(selectedOrder.platformFee)}
                       </span>
                     )}
                     {selectedOrder.deliveryFee > 0 && (
                       <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">
-                        Delivery Fee: +₹{Math.round(selectedOrder.deliveryFee)}
+                        Delivery: +₹{Math.round(selectedOrder.deliveryFee)}
                       </span>
                     )}
                     {selectedOrder.discount > 0 && (
@@ -2493,7 +2497,7 @@ const OrderSection = () => {
                     )}
                     {selectedOrder.outstandingBill ? (
                       <span className="text-[10px] text-amber-600 font-bold uppercase tracking-widest">
-                        Outstanding Bill: ₹{Math.round(selectedOrder.outstandingBill)}
+                        OB: ₹{Math.round(selectedOrder.outstandingBill)}
                       </span>
                     ) : null}
                   </div>
@@ -2503,22 +2507,22 @@ const OrderSection = () => {
                     <input 
                       type="number" 
                       placeholder="Add OB Amount" 
-                      className="px-3 py-1.5 text-xs font-bold border border-border-light rounded-xl bg-background-card outline-none w-32 focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all text-text-primary placeholder-text-muted/60"
+                      className="px-3 py-1.5 text-[10px] font-bold border border-border-light rounded-xl bg-background-card outline-none w-28 focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all text-text-primary placeholder-text-muted/60"
                       value={obInput}
                       onChange={(e) => setObInput(e.target.value)}
                     />
                     <button 
                       onClick={handleSaveOb}
                       disabled={isSavingOb}
-                      className="px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary hover:text-white border border-primary/20 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-sm disabled:opacity-50 active:scale-95"
+                      className="px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary hover:text-white border border-primary/20 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all shadow-sm disabled:opacity-50 active:scale-95 whitespace-nowrap"
                     >
                       {isSavingOb ? 'Saving...' : 'Save OB'}
                     </button>
                   </div>
 
-                  <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Total Bill Amount</p>
+                  <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest">Total Bill Amount</p>
                   <div className="flex items-baseline space-x-2">
-                    <span className="text-4xl font-black text-text-primary">
+                    <span className="text-3xl font-black text-text-primary">
                       ₹{Math.round((selectedOrder.subtotal || 0) + (selectedOrder.deliveryFee || 0) + (selectedOrder.platformFee || 0) + (selectedOrder.tax || 0) + (selectedOrder.outstandingBill || 0))}
                     </span>
                     {selectedOrder.paidAmount > 0 && (selectedOrder.totalAmount || selectedOrder.subtotal) > selectedOrder.paidAmount && (
@@ -2551,16 +2555,16 @@ const OrderSection = () => {
                   </div>
                 )}
               </div>
-              <div className="flex items-center space-x-4">
+              <div className="flex flex-wrap items-center justify-end gap-3 w-full sm:w-auto mt-4 sm:mt-0">
                 {(selectedOrder.paymentStatus === 'unpaid' || ((selectedOrder.totalAmount || selectedOrder.subtotal) > (selectedOrder.paidAmount || 0))) && (
                   <button
                     onClick={() => {
                       handlePayNow(selectedOrder);
                       setIsDetailsModalOpen(false);
                     }}
-                    className="flex items-center justify-center space-x-2 bg-emerald-500 text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-emerald-500/20 min-w-[160px]"
+                    className="flex flex-1 sm:flex-none items-center justify-center space-x-2 bg-emerald-500 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-emerald-500/20"
                   >
-                    <CreditCard size={18} />
+                    <CreditCard size={16} />
                     <span>{selectedOrder.paidAmount > 0 ? 'Pay Balance' : 'Pay Now'}</span>
                   </button>
                 )}
@@ -2571,9 +2575,9 @@ const OrderSection = () => {
                       handleUpdateOrderStatus(selectedOrder._id, 'processing');
                       setIsDetailsModalOpen(false);
                     }}
-                    className="flex items-center justify-center space-x-2 bg-primary text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-primary/20 min-w-[160px]"
+                    className="flex flex-1 sm:flex-none items-center justify-center space-x-2 bg-primary text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-primary/20"
                   >
-                    <CheckCircle2 size={18} />
+                    <CheckCircle2 size={16} />
                     <span>Confirm</span>
                   </button>
                 )}
@@ -2598,9 +2602,9 @@ const OrderSection = () => {
                         }
                       });
                     }}
-                    className="flex items-center justify-center space-x-2 bg-background-muted text-text-muted px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-status-off/10 hover:text-status-unavailable transition-all border border-border-light min-w-[140px]"
+                    className="flex flex-1 sm:flex-none items-center justify-center space-x-2 bg-background-muted text-text-muted px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-status-off/10 hover:text-status-unavailable transition-all border border-border-light"
                   >
-                    <XCircle size={18} />
+                    <XCircle size={16} />
                     <span>Cancel</span>
                   </button>
                 )}
