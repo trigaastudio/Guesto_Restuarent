@@ -21,51 +21,67 @@ import api from '../../../api/axiosInstance';
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://guest-o-backend.onrender.com/api';
 
 const OrderSection = () => {
-  const handleCopyForWhatsApp = (order) => {
+  const handleCopyForWhatsApp = async (order) => {
+    try {
+      const itemsText = (order.items || []).map(item => {
+        const name = item.name || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Menu Item');
+        const price = item.unitPrice || item.price || 0;
+        const sizeText = !item.size || item.size === 'null' || item.size === 'undefined' ? 'Piece' : item.size;
+        return `- ${name} (${sizeText}) x${item.quantity}`;
+      }).join('\n');
 
-    const itemsText = order.items.map(item => {
-      const name = item.name || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Menu Item');
-      const price = item.unitPrice || item.price || 0;
-      const sizeText = !item.size || item.size === 'null' || item.size === 'undefined' ? 'Piece' : item.size;
-      return `- ${name} (${sizeText}) x${item.quantity}`;
-    }).join('\n');
+      const name = (order.orderSource === 'online' || order.orderSource === 'user')
+        ? (order.address?.recipientName || order.customerDetails?.name || 'Walk-in')
+        : (order.customerDetails?.name || order.address?.recipientName || 'Walk-in');
+      const phone = order.customerDetails?.phone || order.address?.mobile || 'N/A';
+      const address = order.customerDetails?.address || order.address?.address || 'N/A';
+      const location = order.customerDetails?.location || order.address?.location;
 
+      let locationUrl = '';
+      const locToUse = location || (address !== 'N/A' ? address : '');
 
-    const name = (order.orderSource === 'online' || order.orderSource === 'user')
-      ? (order.address?.recipientName || order.customerDetails?.name || 'Walk-in')
-      : (order.customerDetails?.name || order.address?.recipientName || 'Walk-in');
-    const phone = order.customerDetails?.phone || order.address?.mobile || 'N/A';
-    const address = order.customerDetails?.address || order.address?.address || 'N/A';
-    const location = order.customerDetails?.location || order.address?.location;
-
-    let locationUrl = '';
-    const locToUse = location || (address !== 'N/A' ? address : '');
-
-    if (typeof location === 'object' && location?.lat) {
-      locationUrl = `\n📍 *Location:* https://www.google.com/maps?q=${location.lat},${location.lng}`;
-    } else if (typeof locToUse === 'string' && locToUse && locToUse !== 'N/A') {
-      const urlMatch = locToUse.match(/https?:\/\/[^\s]+/);
-      if (urlMatch) {
-        locationUrl = `\n📍 *Location:* ${urlMatch[0]}`;
+      if (typeof location === 'object' && location?.lat) {
+        locationUrl = `\n📍 *Location:* https://www.google.com/maps?q=${location.lat},${location.lng}`;
+      } else if (typeof locToUse === 'string' && locToUse && locToUse !== 'N/A') {
+        const urlMatch = locToUse.match(/https?:\/\/[^\s]+/);
+        if (urlMatch) {
+          locationUrl = `\n📍 *Location:* ${urlMatch[0]}`;
+        }
       }
+
+      const text = `*ORDER: ${order.orderNumber}*\n` +
+        `--------------------------\n` +
+        `👤 *Customer:* ${name}\n` +
+        `📞 *Phone:* ${phone}\n` +
+        `🏠 *Address:* ${address}\n` +
+        `--------------------------\n` +
+        `📦 *Items:*\n${itemsText}\n` +
+        `--------------------------\n` +
+        `💰 *Total:* ₹${Math.round(order.totalAmount || 0)}\n` +
+        `💳 *Payment:* ${order.paymentMethod?.toUpperCase()} (${order.paymentStatus?.toUpperCase()})\n` +
+        locationUrl;
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        showToast('success', 'Copied for WhatsApp!');
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          showToast('success', 'Copied for WhatsApp!');
+        } catch (err) {
+          showToast('error', 'Failed to copy text');
+        }
+        document.body.removeChild(textArea);
+      }
+    } catch (error) {
+      console.error('Error copying to WhatsApp:', error);
+      showToast('error', 'Failed to copy details');
     }
-
-
-
-    const text = `*ORDER: ${order.orderNumber}*\n` +
-      `--------------------------\n` +
-      `👤 *Customer:* ${name}\n` +
-      `📞 *Phone:* ${phone}\n` +
-      `🏠 *Address:* ${address}\n` +
-      `--------------------------\n` +
-      `📦 *Items:*\n${itemsText}\n` +
-      `--------------------------\n` +
-      `💰 *Total:* ₹${Math.round(order.totalAmount)}\n` +
-      `💳 *Payment:* ${order.paymentMethod?.toUpperCase()} (${order.paymentStatus?.toUpperCase()})\n` +
-      locationUrl;
-
-    navigator.clipboard.writeText(text);
-    showToast('success', 'Copied for WhatsApp!');
   };
 
   const [orders, setOrders] = useState([]);
@@ -3078,6 +3094,7 @@ const OrderSection = () => {
                           if (errors.customerName) setErrors({ ...errors, customerName: false });
                         }}
                         onFocus={() => customer.name.length > 1 && setShowSuggestions(true)}
+                        maxLength={35}
                         className="bg-transparent text-[11px] font-bold text-text-primary outline-none w-full placeholder:text-text-muted/40"
                       />
                     </div>

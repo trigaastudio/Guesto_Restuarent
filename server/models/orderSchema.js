@@ -75,7 +75,7 @@ const orderSchema = new mongoose.Schema({
   // Customer & Delivery Info
   assignedDeliveryBoy: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff' },
   customerDetails: {
-    name: { type: String, default: "Walk-in" },
+    name: { type: String, default: "Walk-in", maxlength: 35 },
     phone: String,
     address: String,
     location: mongoose.Schema.Types.Mixed,

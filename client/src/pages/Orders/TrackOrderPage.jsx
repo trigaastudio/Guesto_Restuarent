@@ -173,11 +173,15 @@ const TrackOrderPage = () => {
     { id: 'placed', label: 'Order placed', color: 'text-primary', bg: 'bg-primary/10', dot: 'bg-primary', description: 'Your order has been received' },
     { id: 'accepted', label: 'Order accepted', color: 'text-blue-500', bg: 'bg-blue-500/10', dot: 'bg-blue-500', description: 'Admin has approved your order' },
     { id: 'preparing', label: 'Order preparing', color: 'text-orange-500', bg: 'bg-orange-500/10', dot: 'bg-orange-500', description: 'Chef is preparing your meal' },
+    { id: 'ready', label: 'Order ready', color: 'text-emerald-500', bg: 'bg-emerald-500/10', dot: 'bg-emerald-500', description: order.orderType === 'delivery' ? 'Your order is packed and ready' : 'Your order is ready to be served' },
     { id: 'out-for-delivery', label: 'On the way', color: 'text-indigo-600', bg: 'bg-indigo-500/10', dot: 'bg-indigo-600', description: 'Our delivery partner is nearby' },
     { id: 'delivered', label: 'Delivered', color: 'text-green-600', bg: 'bg-green-500/10', dot: 'bg-green-600', description: 'Enjoy your meal!' }
   ];
 
-  
+  if (order.orderType !== 'delivery') {
+    steps = steps.filter(s => s.id !== 'out-for-delivery');
+  }
+
   let activeStepIndex = 0;
   if (order.orderStatus === 'cancelled') {
     const cancelStep = { id: 'cancelled', label: 'Order cancelled', color: 'text-red-600', bg: 'bg-red-500/10', dot: 'bg-red-600', description: order.rejectionReason ? `Reason: ${order.rejectionReason}` : 'This order has been cancelled' };
@@ -196,14 +200,16 @@ const TrackOrderPage = () => {
       steps = [steps[0], cancelStep];
       activeStepIndex = 1;
     }
-  } else if (order.orderStatus === 'delivered') {
-    activeStepIndex = 4;
+  } else if (order.orderStatus === 'delivered' || order.orderStatus === 'billed') {
+    activeStepIndex = steps.length - 1;
   } else if (order.orderStatus === 'out-for-delivery') {
-    activeStepIndex = 3;
-  } else if (order.kitchenStatus === 'preparing' || order.kitchenStatus === 'ready') {
-    activeStepIndex = 2;
+    activeStepIndex = steps.findIndex(s => s.id === 'out-for-delivery');
+  } else if (order.orderStatus === 'ready' || order.kitchenStatus === 'ready') {
+    activeStepIndex = steps.findIndex(s => s.id === 'ready');
+  } else if (order.kitchenStatus === 'preparing') {
+    activeStepIndex = steps.findIndex(s => s.id === 'preparing');
   } else if (order.orderStatus === 'processing') {
-    activeStepIndex = 1;
+    activeStepIndex = steps.findIndex(s => s.id === 'accepted');
   } else {
     activeStepIndex = 0;
   }

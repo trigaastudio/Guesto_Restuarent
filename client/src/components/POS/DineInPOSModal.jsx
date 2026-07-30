@@ -734,6 +734,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                   value={customer.name}
                   onChange={e => setCustomer({ ...customer, name: e.target.value })}
                   placeholder="e.g. John Doe"
+                  maxLength={35}
                   className="w-full pl-11 pr-4 py-3.5 bg-background border border-border-light rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 font-bold text-sm md:text-base text-text-primary transition-all"
                 />
               </div>
