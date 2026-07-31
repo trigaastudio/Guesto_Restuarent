@@ -383,12 +383,31 @@ const DigitalMenu = () => {
                   ref={scrollContainerRef}
                   className="flex overflow-x-auto no-scrollbar gap-8 px-6 pb-8 snap-x"
                 >
-                    {trendingItems.filter(item => !item.isBlocked).map((item, idx) => (
+                    {trendingItems.filter(item => !item.isBlocked).map((item, idx) => {
+                      let isCategoryClosed = false;
+                      const cat = categories.find(c => c._id === item.category);
+                      if (cat && cat.startTime && cat.endTime) {
+                        const now = new Date();
+                        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                        const [startHour, startMin] = cat.startTime.split(':').map(Number);
+                        const startMinutes = startHour * 60 + startMin;
+                        const [endHour, endMin] = cat.endTime.split(':').map(Number);
+                        const endMinutes = endHour * 60 + endMin;
+                        
+                        if (startMinutes <= endMinutes) {
+                          isCategoryClosed = !(currentMinutes >= startMinutes && currentMinutes <= endMinutes);
+                        } else {
+                          isCategoryClosed = !(currentMinutes >= startMinutes || currentMinutes <= endMinutes);
+                        }
+                      }
+                      const isItemUnavailable = isClosed || isCategoryClosed;
+                      
+                      return (
                       <div 
                         key={idx} 
-                        onClick={() => { if (!isClosed) { setSelectedMenu(item); setIsModalOpen(true); } }}
+                        onClick={() => { if (!isItemUnavailable) { setSelectedMenu(item); setIsModalOpen(true); } }}
                         className={`flex-shrink-0 w-[220px] md:w-[280px] bg-background-card rounded-[2.5rem] p-4 border border-border/5 shadow-xl transition-all duration-500 group snap-center relative overflow-hidden ${
-                          isClosed 
+                          isItemUnavailable 
                           ? 'grayscale opacity-60 pointer-events-none' 
                           : 'hover:shadow-[0_20px_50px_rgba(185,28,28,0.1)] cursor-pointer'
                         }`}
@@ -397,10 +416,10 @@ const DigitalMenu = () => {
                             <img 
                               src={item.image || '/placeholder-food.jpg'} 
                               alt={item.name} 
-                              className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 ${isClosed ? 'grayscale brightness-0' : ''}`} 
+                              className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 ${isItemUnavailable ? 'grayscale brightness-0' : ''}`} 
                             />
                             
-                            {isClosed && (
+                            {isItemUnavailable && (
                               <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px] z-20">
                                 <span className="bg-white text-black text-[9px] font-black px-3 py-1.5 rounded-lg uppercase tracking-widest shadow-xl border border-black/10">
                                   Closed
@@ -451,8 +470,9 @@ const DigitalMenu = () => {
                             </div>
                          </div>
                       </div>
-                   ))}
-                </div>
+                      );
+                    })}
+                 </div>
              </div>
           )}
 

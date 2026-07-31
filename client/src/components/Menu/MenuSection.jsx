@@ -140,7 +140,23 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
 
               const hasSavings = originalPrice > discountedPrice;
 
-              const isOutOfStock = getEffectiveStock(menu) < 1 || isClosed;
+              let isCategoryClosed = false;
+              if (menu.category && menu.category.startTime && menu.category.endTime) {
+                const now = new Date();
+                const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                const [startHour, startMin] = menu.category.startTime.split(':').map(Number);
+                const startMinutes = startHour * 60 + startMin;
+                const [endHour, endMin] = menu.category.endTime.split(':').map(Number);
+                const endMinutes = endHour * 60 + endMin;
+                
+                if (startMinutes <= endMinutes) {
+                  isCategoryClosed = !(currentMinutes >= startMinutes && currentMinutes <= endMinutes);
+                } else {
+                  isCategoryClosed = !(currentMinutes >= startMinutes || currentMinutes <= endMinutes);
+                }
+              }
+
+              const isOutOfStock = getEffectiveStock(menu) < 1 || isClosed || isCategoryClosed;
               const effectiveStock = menu.isCombo ? Infinity : getEffectiveStock(menu);
               const isLowStock = !isOutOfStock && !isClosed && effectiveStock > 0 && effectiveStock < 5;
 
@@ -165,13 +181,13 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
                       src={menu.image || '/placeholder-food.jpg'}
                       alt={menu.name}
                       loading="lazy"
-                      className={`w-full h-full object-cover group-hover:scale-110 group-active:scale-110 transition-transform duration-700 ease-out ${isClosed ? 'grayscale brightness-0' : ''}`}
+                      className={`w-full h-full object-cover group-hover:scale-110 group-active:scale-110 transition-transform duration-700 ease-out ${(isClosed || isCategoryClosed) ? 'grayscale brightness-0' : ''}`}
                     />
 
                     {isOutOfStock && (
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px] z-20">
                         <span className="bg-white text-black text-[8px] font-black px-2 py-1 rounded-lg uppercase tracking-widest shadow-xl border border-black/10">
-                          {isClosed ? 'Closed' : 'OOS'}
+                          {isClosed || isCategoryClosed ? 'Closed' : 'OOS'}
                         </span>
                       </div>
                     )}

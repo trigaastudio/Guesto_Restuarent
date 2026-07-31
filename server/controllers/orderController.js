@@ -127,6 +127,26 @@ const checkStockAvailability = async (items) => {
     const menuDoc = primaryMap[item.menuItem?.toString()];
     if (!menuDoc) continue;
 
+    if (menuDoc.category && menuDoc.category.startTime && menuDoc.category.endTime) {
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const [startHour, startMin] = menuDoc.category.startTime.split(':').map(Number);
+      const startMinutes = startHour * 60 + startMin;
+      const [endHour, endMin] = menuDoc.category.endTime.split(':').map(Number);
+      const endMinutes = endHour * 60 + endMin;
+      
+      let isCategoryClosed = false;
+      if (startMinutes <= endMinutes) {
+        isCategoryClosed = !(currentMinutes >= startMinutes && currentMinutes <= endMinutes);
+      } else {
+        isCategoryClosed = !(currentMinutes >= startMinutes || currentMinutes <= endMinutes);
+      }
+      
+      if (isCategoryClosed) {
+        return { available: false, itemName: `${menuDoc.name} (Not orderable at this time)` };
+      }
+    }
+
     const variant = menuDoc.variants?.find(v => v.size === item.size);
     const multiplier = variant && variant.stockValue ? variant.stockValue : 1;
     const amountNeeded = item.quantity * multiplier;
@@ -522,6 +542,27 @@ class OrderController {
         if (menuDoc.category && menuDoc.category.isActive === false) {
           errors.push(`"${menuDoc.category.name}" category is currently unavailable.`);
           continue;
+        }
+
+        if (menuDoc.category && menuDoc.category.startTime && menuDoc.category.endTime) {
+          const now = new Date();
+          const currentMinutes = now.getHours() * 60 + now.getMinutes();
+          const [startHour, startMin] = menuDoc.category.startTime.split(':').map(Number);
+          const startMinutes = startHour * 60 + startMin;
+          const [endHour, endMin] = menuDoc.category.endTime.split(':').map(Number);
+          const endMinutes = endHour * 60 + endMin;
+          
+          let isCategoryClosed = false;
+          if (startMinutes <= endMinutes) {
+            isCategoryClosed = !(currentMinutes >= startMinutes && currentMinutes <= endMinutes);
+          } else {
+            isCategoryClosed = !(currentMinutes >= startMinutes || currentMinutes <= endMinutes);
+          }
+          
+          if (isCategoryClosed) {
+            errors.push(`"${menuDoc.name}" is not available to order at this time.`);
+            continue;
+          }
         }
 
         const variant = menuDoc.variants?.find(v => v.size === item.size);

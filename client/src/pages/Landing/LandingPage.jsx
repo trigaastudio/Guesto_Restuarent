@@ -336,7 +336,24 @@ const LandingPage = () => {
                 className="flex overflow-x-auto no-scrollbar gap-4 sm:gap-6 pb-6 snap-x w-full"
               >
                 {trendingItems.filter(item => !item.isBlocked).map((item, idx) => {
-                  const isItemOutOfStock = getEffectiveStock(item) < 1 || isClosed;
+                  let isCategoryClosed = false;
+                  const cat = categories.find(c => c._id === item.category);
+                  if (cat && cat.startTime && cat.endTime) {
+                    const now = new Date();
+                    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                    const [startHour, startMin] = cat.startTime.split(':').map(Number);
+                    const startMinutes = startHour * 60 + startMin;
+                    const [endHour, endMin] = cat.endTime.split(':').map(Number);
+                    const endMinutes = endHour * 60 + endMin;
+                    
+                    if (startMinutes <= endMinutes) {
+                      isCategoryClosed = !(currentMinutes >= startMinutes && currentMinutes <= endMinutes);
+                    } else {
+                      isCategoryClosed = !(currentMinutes >= startMinutes || currentMinutes <= endMinutes);
+                    }
+                  }
+
+                  const isItemOutOfStock = getEffectiveStock(item) < 1 || isClosed || isCategoryClosed;
                   return (
                     <div
                       key={idx}
@@ -350,14 +367,14 @@ const LandingPage = () => {
                         <img
                           src={item.image || '/placeholder-food.jpg'}
                           alt={item.name}
-                          className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out ${isClosed ? 'grayscale brightness-50' : ''}`}
+                          className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out ${(isClosed || isCategoryClosed) ? 'grayscale brightness-50' : ''}`}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 
                         {isItemOutOfStock && (
                           <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px] z-20">
                             <span className="bg-white text-black text-[9px] font-black px-3 py-1.5 rounded-lg uppercase tracking-widest shadow-xl border border-black/10">
-                              {isClosed ? 'Closed' : 'Out of Stock'}
+                              {isClosed || isCategoryClosed ? 'Closed' : 'Out of Stock'}
                             </span>
                           </div>
                         )}

@@ -37,7 +37,9 @@ class CategoryRepository {
           itemCount: { $size: "$menus" },
           totalStock: "$totalStock",
           stockactive: 1,
-          hideFromCustomer: 1
+          hideFromCustomer: 1,
+          startTime: 1,
+          endTime: 1
         }
       },
       { $sort: { createdAt: -1 } }

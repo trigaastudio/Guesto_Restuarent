@@ -12,7 +12,7 @@ import Pagination from '../../../components/Pagination/Pagination';
 const CategorySection = ({ refreshKey }) => {
   const [categories, setCategories] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentCategory, setCurrentCategory] = useState({ name: '', isActive: true, image: '', discountPercentage: 0, isSharedStock: false, totalStock: 0, hideFromCustomer: false });
+  const [currentCategory, setCurrentCategory] = useState({ name: '', isActive: true, image: '', discountPercentage: 0, isSharedStock: false, totalStock: 0, hideFromCustomer: false, startTime: '', endTime: '' });
   const [isEditing, setIsEditing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -75,11 +75,13 @@ const CategorySection = ({ refreshKey }) => {
         discountPercentage: category.discountPercentage || 0,
         isSharedStock: category.isSharedStock || false,
         totalStock: category.totalStock || 0,
-        hideFromCustomer: category.hideFromCustomer || false
+        hideFromCustomer: category.hideFromCustomer || false,
+        startTime: category.startTime || '',
+        endTime: category.endTime || ''
       });
       setIsEditing(true);
     } else {
-      setCurrentCategory({ name: '', isActive: true, image: '', discountPercentage: 0, isSharedStock: false, totalStock: 0, hideFromCustomer: false });
+      setCurrentCategory({ name: '', isActive: true, image: '', discountPercentage: 0, isSharedStock: false, totalStock: 0, hideFromCustomer: false, startTime: '', endTime: '' });
       setIsEditing(false);
     }
     setIsModalOpen(true);
@@ -601,6 +603,28 @@ const CategorySection = ({ refreshKey }) => {
                   {currentCategory.hideFromCustomer ? 'Hidden' : 'Visible'}
                 </span>
               </div>
+
+              <div className="flex items-center space-x-4 pt-2">
+                <div className="flex-1 space-y-1.5">
+                  <label className="text-sm font-semibold text-text-secondary">Available From</label>
+                  <input
+                    type="time"
+                    value={currentCategory.startTime || ''}
+                    onChange={(e) => setCurrentCategory({ ...currentCategory, startTime: e.target.value })}
+                    className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all"
+                  />
+                </div>
+                <div className="flex-1 space-y-1.5">
+                  <label className="text-sm font-semibold text-text-secondary">Available Until</label>
+                  <input
+                    type="time"
+                    value={currentCategory.endTime || ''}
+                    onChange={(e) => setCurrentCategory({ ...currentCategory, endTime: e.target.value })}
+                    className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all"
+                  />
+                </div>
+              </div>
+              <div className="text-[10px] text-text-muted mt-0.5">Leave blank if available all day.</div>
 
               <div className="space-y-3 pt-2">
                 <label className="text-sm font-semibold text-text-secondary">Category Image</label>

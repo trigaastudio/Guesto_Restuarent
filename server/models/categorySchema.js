@@ -46,6 +46,16 @@ const categorySchema = new mongoose.Schema({
   hideFromCustomer: {
     type: Boolean,
     default: false
+  },
+
+  startTime: {
+    type: String,
+    default: ""
+  },
+
+  endTime: {
+    type: String,
+    default: ""
   }
 
 }, { timestamps: true });
