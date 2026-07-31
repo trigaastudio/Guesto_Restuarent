@@ -129,7 +129,9 @@ const checkStockAvailability = async (items) => {
 
     if (menuDoc.category && menuDoc.category.startTime && menuDoc.category.endTime) {
       const now = new Date();
-      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+      const istDate = new Date(utc + (330 * 60000));
+      const currentMinutes = istDate.getHours() * 60 + istDate.getMinutes();
       const [startHour, startMin] = menuDoc.category.startTime.split(':').map(Number);
       const startMinutes = startHour * 60 + startMin;
       const [endHour, endMin] = menuDoc.category.endTime.split(':').map(Number);
@@ -546,7 +548,9 @@ class OrderController {
 
         if (menuDoc.category && menuDoc.category.startTime && menuDoc.category.endTime) {
           const now = new Date();
-          const currentMinutes = now.getHours() * 60 + now.getMinutes();
+          const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+          const istDate = new Date(utc + (330 * 60000));
+          const currentMinutes = istDate.getHours() * 60 + istDate.getMinutes();
           const [startHour, startMin] = menuDoc.category.startTime.split(':').map(Number);
           const startMinutes = startHour * 60 + startMin;
           const [endHour, endMin] = menuDoc.category.endTime.split(':').map(Number);
