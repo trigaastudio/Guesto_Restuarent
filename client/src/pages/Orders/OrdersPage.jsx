@@ -178,9 +178,7 @@ const OrdersPage = () => {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: razorpayOrder.amount,
         currency: razorpayOrder.currency,
-        name: settings?.restaurantDetails?.name || 'Guest-O Restaurant',
         description: 'Payment for your delicious meal',
-        image: `${window.location.origin}${settings?.branding?.logoGold || '/logo-golden.png'}`,
         order_id: razorpayOrder.id,
         handler: async function (paymentResponse) {
           
