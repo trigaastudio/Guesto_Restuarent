@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Search, Filter, Plus, Edit2, Trash2, RotateCcw } from 'lucide-react';
+import { Package, Search, Filter, Plus, Edit2, Trash2, RotateCcw, ArrowUpDown, AlertTriangle, ChevronDown } from 'lucide-react';
 import api from '../../../api/axiosInstance';
 import { showToast } from '../../../utils/sweetAlert';
 import Swal from 'sweetalert2';
@@ -13,6 +13,7 @@ const StockSection = ({ refreshKey }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortFilter, setSortFilter] = useState('all');
   const itemsPerPage = 30;
 
   useEffect(() => {
@@ -27,7 +28,7 @@ const StockSection = ({ refreshKey }) => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, activeTab]);
+  }, [searchTerm, activeTab, sortFilter]);
 
   const fetchData = async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -146,7 +147,21 @@ const StockSection = ({ refreshKey }) => {
   };
 
   const renderCategoryTable = () => {
-    const filtered = categories.filter(c => c.name?.toLowerCase().includes(searchTerm.toLowerCase()));
+    let filtered = categories.filter(c => c.name?.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    // Apply sort/filter
+    if (sortFilter === 'out_of_stock') {
+      filtered = filtered.filter(c => !c.stockactive || (c.totalStock || 0) <= 0);
+    } else if (sortFilter === 'low_stock') {
+      filtered = filtered.filter(c => c.stockactive && (c.totalStock || 0) > 0 && (c.totalStock || 0) <= 10);
+    } else if (sortFilter === 'in_stock') {
+      filtered = filtered.filter(c => c.stockactive && (c.totalStock || 0) > 10);
+    } else if (sortFilter === 'stock_asc') {
+      filtered = [...filtered].sort((a, b) => (a.totalStock || 0) - (b.totalStock || 0));
+    } else if (sortFilter === 'stock_desc') {
+      filtered = [...filtered].sort((a, b) => (b.totalStock || 0) - (a.totalStock || 0));
+    }
+
     const totalPages = Math.ceil(filtered.length / itemsPerPage);
     const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
@@ -233,10 +248,40 @@ const StockSection = ({ refreshKey }) => {
   };
 
   const renderMenuTable = () => {
-    const filteredMenus = menus.filter(m => {
+    let filteredMenus = menus.filter(m => {
       const matchSearch = m.name?.toLowerCase().includes(searchTerm.toLowerCase()) || m.category?.name?.toLowerCase().includes(searchTerm.toLowerCase());
       return matchSearch;
     });
+
+    // Apply sort/filter
+    if (sortFilter === 'out_of_stock') {
+      filteredMenus = filteredMenus.filter(m => {
+        const stock = m.category?.stockactive ? (m.category?.totalStock || 0) : (m.totalStock || 0);
+        return stock <= 0;
+      });
+    } else if (sortFilter === 'low_stock') {
+      filteredMenus = filteredMenus.filter(m => {
+        const stock = m.category?.stockactive ? (m.category?.totalStock || 0) : (m.totalStock || 0);
+        return stock > 0 && stock <= 10;
+      });
+    } else if (sortFilter === 'in_stock') {
+      filteredMenus = filteredMenus.filter(m => {
+        const stock = m.category?.stockactive ? (m.category?.totalStock || 0) : (m.totalStock || 0);
+        return stock > 10;
+      });
+    } else if (sortFilter === 'stock_asc') {
+      filteredMenus = [...filteredMenus].sort((a, b) => {
+        const sA = a.category?.stockactive ? (a.category?.totalStock || 0) : (a.totalStock || 0);
+        const sB = b.category?.stockactive ? (b.category?.totalStock || 0) : (b.totalStock || 0);
+        return sA - sB;
+      });
+    } else if (sortFilter === 'stock_desc') {
+      filteredMenus = [...filteredMenus].sort((a, b) => {
+        const sA = a.category?.stockactive ? (a.category?.totalStock || 0) : (a.totalStock || 0);
+        const sB = b.category?.stockactive ? (b.category?.totalStock || 0) : (b.totalStock || 0);
+        return sB - sA;
+      });
+    }
 
     const totalPages = Math.ceil(filteredMenus.length / itemsPerPage);
     const paginated = filteredMenus.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -376,6 +421,38 @@ const StockSection = ({ refreshKey }) => {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-12 pr-4 py-3 bg-background-card rounded-2xl border border-border-light focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none text-sm font-medium shadow-sm"
             />
+          </div>
+
+          {/* Sort / Filter Dropdown */}
+          <div className="relative shrink-0">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+              <ArrowUpDown size={14} className={`transition-colors ${
+                sortFilter !== 'all' ? 'text-primary' : 'text-text-muted'
+              }`} />
+            </div>
+            <select
+              value={sortFilter}
+              onChange={(e) => setSortFilter(e.target.value)}
+              className={`pl-8 pr-8 py-3 rounded-2xl border text-xs font-black uppercase tracking-wider outline-none transition-all appearance-none cursor-pointer shadow-sm ${
+                sortFilter === 'out_of_stock'
+                  ? 'bg-red-500/10 border-red-400/40 text-red-600 dark:text-red-400 focus:border-red-400'
+                  : sortFilter === 'low_stock'
+                    ? 'bg-amber-500/10 border-amber-400/40 text-amber-600 dark:text-amber-400 focus:border-amber-400'
+                    : sortFilter === 'in_stock'
+                      ? 'bg-emerald-500/10 border-emerald-400/40 text-emerald-600 dark:text-emerald-400 focus:border-emerald-400'
+                      : 'bg-background-card border-border-light text-text-secondary focus:border-primary'
+              }`}
+            >
+              <option value="all">All Items</option>
+              <option value="out_of_stock">⛔ Out of Stock</option>
+              <option value="low_stock">⚠ Low Stock (≤10)</option>
+              <option value="in_stock">✅ In Stock (&gt;10)</option>
+              <option value="stock_asc">↑ Stock: Low → High</option>
+              <option value="stock_desc">↓ Stock: High → Low</option>
+            </select>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+              <ChevronDown size={12} className="text-text-muted" />
+            </div>
           </div>
 
         </div>

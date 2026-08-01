@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Minus, X, ShoppingCart, User, CheckCircle2, Zap, UtensilsCrossed, Filter, Printer, ChevronRight } from 'lucide-react';
+import { Search, Plus, Minus, X, ShoppingCart, User, CheckCircle2, Zap, UtensilsCrossed, Filter, Printer, ChevronRight, AlertTriangle } from 'lucide-react';
 import { io } from 'socket.io-client';
 import { getEffectiveStock } from '../../utils/stockHelpers';
 import api from '../../api/axiosInstance';
@@ -130,6 +130,26 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
     } else if (item.totalStock !== undefined && !canAddVariant(item, variant, qty)) {
       showToast('error', `Not enough stock for: ${item.name} (${variant?.size || 'Standard'})`);
       return;
+    }
+
+    // Check add-on (includedItems) stock for the selected variant
+    if (!item.isCombo && variant?.includedItems && variant.includedItems.length > 0) {
+      const addonWarnings = [];
+      for (const included of variant.includedItems) {
+        const addonMenuItem = menuItems.find(m => m._id === (included.menuItem?._id || included.menuItem));
+        if (addonMenuItem && addonMenuItem.totalStock !== undefined) {
+          const addonStock = getEffectiveStock(addonMenuItem);
+          const addonNeeded = qty * (included.quantity || 1);
+          if (addonStock < addonNeeded) {
+            const addonName = included.name || addonMenuItem.name || 'Add-on';
+            addonWarnings.push(`"${addonName}" (add-on) is out of stock`);
+          }
+        }
+      }
+      if (addonWarnings.length > 0) {
+        showToast('error', `Cannot add ${item.name}: ${addonWarnings[0]}`);
+        return;
+      }
     }
 
     const sizeName = variant.size || 'Standard';
@@ -558,6 +578,21 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
               filteredMenu.map(item => {
               const rawStock = getDynamicRawStock(item);
               const isFullyOutOfStock = item.totalStock !== undefined && rawStock <= 0;
+
+              // Compute out-of-stock add-ons across all variants
+              const outOfStockAddons = !item.isCombo
+                ? (item.variants || []).flatMap(v =>
+                    (v.includedItems || []).filter(inc => {
+                      const addonDoc = menuItems.find(m => m._id === (inc.menuItem?._id || inc.menuItem));
+                      return addonDoc && addonDoc.totalStock !== undefined && getEffectiveStock(addonDoc) <= 0;
+                    }).map(inc => {
+                      const addonDoc = menuItems.find(m => m._id === (inc.menuItem?._id || inc.menuItem));
+                      return inc.name || addonDoc?.name || 'Add-on';
+                    })
+                  ).filter((v, i, a) => a.indexOf(v) === i) // deduplicate
+                : [];
+              const hasAddonOutOfStock = outOfStockAddons.length > 0;
+
               return (
                 <div
                   key={item._id}
@@ -569,7 +604,13 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                       addToCart(item, targetVariant);
                     }
                   }}
-                  className={`bg-background-muted/30 p-3 rounded-2xl border border-border-light hover:border-primary/30 transition-all group relative cursor-pointer active:scale-[0.98] ${isFullyOutOfStock ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+                  className={`bg-background-muted/30 p-3 rounded-2xl border transition-all group relative cursor-pointer active:scale-[0.98] ${
+                    isFullyOutOfStock
+                      ? 'opacity-40 grayscale pointer-events-none border-border-light'
+                      : hasAddonOutOfStock
+                        ? 'border-amber-400/60 hover:border-amber-400 bg-amber-500/5'
+                        : 'border-border-light hover:border-primary/30'
+                  }`}
                 >
                   <div className="w-full aspect-square bg-background-card rounded-xl mb-3 overflow-hidden border border-border-light relative">
                     <img src={item.image || '/placeholder-dish.png'} alt={item.name} className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${isFullyOutOfStock ? 'grayscale' : ''}`} />
@@ -601,6 +642,12 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                         <span className="bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest shadow-lg">Out of Stock</span>
                       </div>
                     )}
+                    {!isFullyOutOfStock && hasAddonOutOfStock && (
+                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-amber-500 text-white text-[8px] font-black px-2 py-1 rounded-lg shadow-lg whitespace-nowrap">
+                        <AlertTriangle size={9} strokeWidth={3} />
+                        Add-on unavailable
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-col mb-2">
                     <div className="flex items-center justify-between mb-1.5">
@@ -614,6 +661,16 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                         {item.comboItems.map((ci, idx) => (
                           <span key={idx} className="text-[7px] font-black text-text-muted bg-background-muted px-1.5 py-0.5 rounded-md uppercase tracking-tighter border border-border-light">
                             {ci.menuItem?.name || ci.name || 'Item'}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {hasAddonOutOfStock && (
+                      <div className="flex flex-wrap gap-1 mt-0.5">
+                        {outOfStockAddons.map((addonName, idx) => (
+                          <span key={idx} className="inline-flex items-center gap-0.5 text-[7px] font-black text-amber-700 bg-amber-100 dark:bg-amber-500/15 dark:text-amber-400 px-1.5 py-0.5 rounded border border-amber-300/60 dark:border-amber-500/30">
+                            <AlertTriangle size={7} strokeWidth={3} />
+                            {addonName} out of stock
                           </span>
                         ))}
                       </div>

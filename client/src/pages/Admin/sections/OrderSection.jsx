@@ -58,7 +58,7 @@ const OrderSection = () => {
         `📦 *Items:*\n${itemsText}\n` +
         `--------------------------\n` +
         `💰 *Total:* ₹${Math.round(order.totalAmount || 0)}\n` +
-        `💳 *Payment:* ${order.paymentMethod?.toUpperCase()} (${order.paymentStatus?.toUpperCase()})\n` +
+        `💳 *Payment:* ${order.paymentMethod === 'split' ? 'MULTIPLE' : order.paymentMethod?.toUpperCase()} (${order.paymentStatus?.toUpperCase()})\n` +
         locationUrl;
 
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -362,7 +362,7 @@ const OrderSection = () => {
             ` : `
               <div style="display: flex; justify-content: space-between;">
                 <span>PAYMENT METHOD :</span>
-                <span style="text-transform: uppercase;">${order.paymentMethod || 'Not Specified'}</span>
+                <span style="text-transform: uppercase;">${order.paymentMethod === 'split' ? 'Multiple' : (order.paymentMethod || 'Not Specified')}</span>
               </div>
               <div style="display: flex; justify-content: space-between; margin-top: 3px;">
                 <span>STATUS :</span>
@@ -808,7 +808,7 @@ const OrderSection = () => {
 
     const customerAddress = order.customerDetails?.address || order.address?.address || 'N/A';
     const customerPhone = order.customerDetails?.phone || order.address?.mobile || 'N/A';
-    const paymentMethod = order.paymentMethod || 'Not Specified';
+    const paymentMethod = order.paymentMethod === 'split' ? 'Multiple' : (order.paymentMethod || 'Not Specified');
 
     const loc = order.customerDetails?.location || order.address?.location;
     let mapsUrl = '';
@@ -1000,27 +1000,28 @@ const OrderSection = () => {
     const totalAmount = order.totalAmount || order.subtotal || 0;
     const paidSoFar = order.paidAmount || 0;
     const balanceToCollect = Math.max(0, totalAmount - paidSoFar);
-    const cashReceived = parseFloat(cashInput) || 0;
+    let paymentAmount = parseFloat(cashInput);
+    if (isNaN(paymentAmount) || paymentAmount <= 0) {
+      paymentAmount = balanceToCollect;
+    }
 
-    if (payMethod === 'cash' && cashReceived < balanceToCollect) {
-      showToast('warning', `Cash received (₹${cashReceived}) must be at least ₹${balanceToCollect}`);
-      return;
+    if (paymentAmount > balanceToCollect) {
+      if (payMethod !== 'cash') {
+        showToast('warning', `Payment amount cannot exceed balance (₹${balanceToCollect}) for non-cash methods`);
+        return;
+      }
     }
 
     setIsPaymentSubmitting(true);
     try {
-      const change = payMethod === 'cash' ? Math.max(0, cashReceived - balanceToCollect) : 0;
+      const change = payMethod === 'cash' ? Math.max(0, paymentAmount - balanceToCollect) : 0;
       
-      let newPaymentMethod = payMethod;
-
       const updateData = {
-        paymentStatus: 'paid',
-        paymentMethod: newPaymentMethod,
-        paidAmount: totalAmount
+        paymentMethod: payMethod,
+        paymentAmount: payMethod === 'cash' ? Math.min(paymentAmount, balanceToCollect) : paymentAmount
       };
-      if (payMethod === 'cash') {
-        updateData.cashReceived = (order.cashReceived || 0) + cashReceived;
-        updateData.balance = (order.balance || 0) + change;
+      if (payMethod === 'cash' && paymentAmount > balanceToCollect) {
+        updateData.cashReceived = paymentAmount;
       }
       const response = await api.patch(`/api/orders/${order._id}/status`, updateData);
       if (response.data.success) {
@@ -2093,7 +2094,7 @@ const OrderSection = () => {
                       {activeTab === 'history' && (
                         <td className="px-2 py-2.5 text-center">
                           <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-background-muted text-text-secondary border border-border-light">
-                            {order.paymentMethod || 'N/A'}
+                            {order.paymentMethod === 'split' ? 'Multiple' : (order.paymentMethod || 'N/A')}
                           </span>
                         </td>
                       )}
@@ -2325,6 +2326,19 @@ const OrderSection = () => {
                     <p className={`text-[11px] font-black uppercase tracking-tight mb-1 ${selectedOrder.paymentStatus === 'paid' ? 'text-status-available' : 'text-amber-500'}`}>
                       PAYMENT - {selectedOrder.paymentStatus}
                     </p>
+                    <p className="text-[10px] font-bold text-text-muted uppercase mb-1">
+                      {selectedOrder.paymentMethod === 'split' ? 'MULTIPLE' : selectedOrder.paymentMethod}
+                    </p>
+                    {selectedOrder.paymentHistory && selectedOrder.paymentHistory.length > 0 && (
+                      <div className="mt-2 flex flex-col gap-1 items-end border-t border-border-light pt-2 w-full max-w-[150px]">
+                        {selectedOrder.paymentHistory.map((ph, idx) => (
+                          <div key={idx} className="flex justify-between w-full text-[9px] font-bold">
+                            <span className="text-text-muted uppercase">{ph.method === 'upi/card' ? 'UPI' : ph.method}:</span>
+                            <span className="text-text-primary">₹{Math.round(ph.amount)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {selectedOrder.orderType === 'dine-in' && selectedOrder.table && (
                       <span className="mt-2 bg-primary/10 text-primary px-2 py-0.5 rounded text-[10px] font-black uppercase border border-primary/20">
                         {selectedOrder.table.mergedGroup && selectedOrder.table.mergedGroup.length > 0
@@ -3020,16 +3034,27 @@ const OrderSection = () => {
                     <span className="text-base opacity-70">₹</span>{cart.reduce((acc, i) => acc + i.totalPrice, 0) + (posOrderType === 'delivery' ? (parseFloat(deliveryFee) || 0) : 0)}
                   </span>
                 </div>
-                {selectedOrder && selectedOrder.paidAmount > 0 && (
+                {selectedOrder && (
                   <div className="flex items-center justify-between p-2.5 bg-amber-500/10 rounded-xl border border-amber-500/20 mt-2">
                     <div>
-                      <p className="text-[8px] font-black text-amber-500 uppercase">Already Paid</p>
+                      <p className="text-[8px] font-black text-amber-500 uppercase">Paid So Far</p>
                       <p className="text-[11px] font-bold text-amber-500/70">₹{selectedOrder.paidAmount}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-[8px] font-black text-status-unavailable uppercase">Balance</p>
-                      <p className="text-base font-black text-status-unavailable">₹{Math.max(0, cart.reduce((acc, i) => acc + i.totalPrice, 0) - selectedOrder.paidAmount)}</p>
+                      <p className="text-[12px] font-black text-status-unavailable">₹{Math.max(0, (selectedOrder.totalAmount || selectedOrder.subtotal) - selectedOrder.paidAmount)}</p>
                     </div>
+                  </div>
+                )}
+                {selectedOrder && selectedOrder.paymentHistory?.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">Payment History</p>
+                    {selectedOrder.paymentHistory.map((ph, idx) => (
+                      <div key={idx} className="flex justify-between text-[9px] text-text-muted/80">
+                        <span className="uppercase">{new Date(ph.date).toLocaleDateString()} · {ph.method}</span>
+                        <span className="font-bold text-text-primary">₹{ph.amount}</span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -3302,8 +3327,8 @@ const OrderSection = () => {
         const total = Math.max(0, orderTotal - paidSoFar);
         const cash = parseFloat(cashInput) || 0;
         const change = Math.max(0, cash - total);
-        const cashValid = payMethod === 'cash' ? cash >= total : true;
-        const canConfirm = !!payMethod && (payMethod !== 'cash' || cash >= total);
+        const isPartial = cash > 0 && cash < total;
+        const canConfirm = !!payMethod;
 
         return (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
@@ -3333,10 +3358,14 @@ const OrderSection = () => {
                 </div>
 
                 {/* Total Amount Banner */}
+                <div className="mx-6 mb-2 flex justify-between text-[9px] font-bold uppercase tracking-widest">
+                  <span className="text-text-muted">Order Total: ₹{orderTotal}</span>
+                  {paidSoFar > 0 && <span className="text-status-available">Paid: ₹{paidSoFar}</span>}
+                </div>
                 <div className="mx-6 mb-6 p-4 bg-primary/10 border border-primary/20 rounded-2xl flex items-center justify-between">
                   <div className="flex items-center space-x-2 text-primary">
                     <IndianRupee size={16} strokeWidth={2.5} />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Total Payable</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Balance Due</span>
                   </div>
                   <span className="text-3xl font-black text-text-primary tracking-tighter">₹{total}</span>
                 </div>
@@ -3402,23 +3431,21 @@ const OrderSection = () => {
                     <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Cash Details</p>
 
                     {/* Cash Received Input */}
-                    <div className={`flex items-center space-x-3 p-4 rounded-2xl border-2 transition-all ${cashInput && !cashValid
-                      ? 'border-red-400 bg-red-500/10'
-                      : cashInput && cashValid
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border-light bg-background-muted/20 focus-within:border-primary'
+                    <div className={`flex items-center space-x-3 p-4 rounded-2xl border-2 transition-all ${isPartial
+                      ? 'border-amber-400 bg-amber-500/10'
+                      : 'border-primary bg-primary/5 focus-within:border-primary'
                       }`}>
                       <div className="w-9 h-9 bg-primary/10 text-primary rounded-xl flex items-center justify-center shrink-0">
                         <Banknote size={18} />
                       </div>
                       <div className="flex-1">
-                        <p className="text-[8px] font-black text-text-muted uppercase tracking-widest mb-0.5">Cash Received</p>
+                        <p className="text-[8px] font-black text-text-muted uppercase tracking-widest mb-0.5">Amount Received</p>
                         <div className="flex items-center space-x-1">
                           <span className="text-base font-black text-text-muted">₹</span>
                           <input
                             autoFocus
                             type="number"
-                            min={total}
+                            min="0"
                             placeholder={total.toString()}
                             value={cashInput}
                             onChange={e => setCashInput(e.target.value)}
@@ -3428,42 +3455,78 @@ const OrderSection = () => {
                       </div>
                     </div>
 
-                    {/* Change Display */}
-                    <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${cash > 0 && cashValid
-                      ? 'bg-primary/5 border-primary/20 opacity-100'
-                      : 'bg-background-muted/10 border-border-light opacity-40'
+                    {/* Balance/Change Display */}
+                    <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${cash >= total
+                      ? 'bg-emerald-500/10 border-emerald-500/20 opacity-100'
+                      : cash > 0 
+                        ? 'bg-amber-500/10 border-amber-500/20 opacity-100'
+                        : 'bg-background-muted/10 border-border-light opacity-40'
                       }`}>
                       <div className="space-y-0.5">
-                        <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Change to Return</p>
-                        <p className="text-[10px] text-text-muted">{cash > 0 ? `₹${cash} − ₹${total}` : '—'}</p>
+                        <p className={`text-[9px] font-black uppercase tracking-widest ${cash >= total ? 'text-emerald-500' : cash > 0 ? 'text-amber-500' : 'text-text-muted'}`}>
+                          {cash >= total ? 'Change to Return' : cash > 0 ? 'Remaining Balance' : 'Change to Return'}
+                        </p>
+                        <p className={`text-[10px] ${cash >= total ? 'text-emerald-500/70' : cash > 0 ? 'text-amber-500/70' : 'text-text-muted'}`}>
+                          {cash >= total ? `₹${cash} − ₹${total}` : cash > 0 ? `₹${total} − ₹${cash}` : '—'}
+                        </p>
                       </div>
                       <div className="text-right">
-                        <span className={`text-3xl font-black tracking-tighter ${cash > 0 && cashValid ? 'text-primary' : 'text-text-muted'
-                          }`}>
-                          ₹{cash > 0 && cashValid ? change.toFixed(0) : '0.00'}
+                        <span className={`text-3xl font-black tracking-tighter ${cash >= total ? 'text-emerald-500' : cash > 0 ? 'text-amber-500' : 'text-text-muted'}`}>
+                          ₹{cash >= total ? change.toFixed(0) : cash > 0 ? (total - cash).toFixed(0) : '0.00'}
                         </span>
                       </div>
                     </div>
-
-                    {cashInput && !cashValid && (
-                      <div className="flex items-center space-x-2 px-3 py-2 bg-red-500/8 border border-red-400/20 rounded-xl animate-in fade-in duration-200">
-                        <AlertCircle size={12} className="text-red-500 shrink-0" />
-                        <p className="text-[9px] font-bold text-red-500">Cash received must be at least ₹{total}</p>
-                      </div>
-                    )}
                   </div>
                 )}
 
                 {/* UPI Confirmed State */}
                 {payMethod === 'upi/card' && (
-                  <div className="mt-4 animate-in slide-in-from-top-2 fade-in duration-300">
-                    <div className="flex items-center space-x-3 p-4 bg-primary/10 border border-primary/20 rounded-2xl">
-                      <div className="w-9 h-9 bg-primary/15 text-primary rounded-xl flex items-center justify-center shrink-0">
+                  <div className="mt-4 animate-in slide-in-from-top-2 fade-in duration-300 space-y-3">
+                    <div className="h-px bg-border-light" />
+                    <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">UPI Details</p>
+
+                    <div className={`flex items-center space-x-3 p-4 rounded-2xl border-2 transition-all ${isPartial
+                      ? 'border-amber-400 bg-amber-500/10'
+                      : 'border-primary bg-primary/5 focus-within:border-primary'
+                      }`}>
+                      <div className="w-9 h-9 bg-primary/10 text-primary rounded-xl flex items-center justify-center shrink-0">
                         <Smartphone size={18} />
                       </div>
-                      <div>
-                        <p className="text-xs font-black text-text-primary">UPI / Card Payment</p>
-                        <p className="text-[10px] text-text-muted font-medium">Confirm once digital payment is received</p>
+                      <div className="flex-1">
+                        <p className="text-[8px] font-black text-text-muted uppercase tracking-widest mb-0.5">Amount Received</p>
+                        <div className="flex items-center space-x-1">
+                          <span className="text-base font-black text-text-muted">₹</span>
+                          <input
+                            autoFocus
+                            type="number"
+                            min="0"
+                            placeholder={total.toString()}
+                            value={cashInput}
+                            onChange={e => setCashInput(e.target.value)}
+                            className="flex-1 bg-transparent text-xl font-black text-text-primary outline-none placeholder:text-text-muted/30 w-full"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    {/* UPI Balance Display */}
+                    <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${cash >= total
+                      ? 'bg-emerald-500/10 border-emerald-500/20 opacity-100'
+                      : cash > 0
+                        ? 'bg-amber-500/10 border-amber-500/20 opacity-100'
+                        : 'bg-background-muted/10 border-border-light opacity-40'
+                      }`}>
+                      <div className="space-y-0.5">
+                        <p className={`text-[9px] font-black uppercase tracking-widest ${cash >= total ? 'text-emerald-500' : cash > 0 ? 'text-amber-500' : 'text-text-muted'}`}>
+                          {cash >= total ? 'Fully Paid' : cash > 0 ? 'Remaining Balance' : 'Remaining Balance'}
+                        </p>
+                        <p className={`text-[10px] ${cash >= total ? 'text-emerald-500/70' : cash > 0 ? 'text-amber-500/70' : 'text-text-muted'}`}>
+                          {cash >= total ? `₹${cash} Received` : cash > 0 ? `₹${total} − ₹${cash}` : '—'}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <span className={`text-3xl font-black tracking-tighter ${cash >= total ? 'text-emerald-500' : cash > 0 ? 'text-amber-500' : 'text-text-muted'}`}>
+                          ₹{cash >= total ? '0' : cash > 0 ? (total - cash).toFixed(0) : total.toFixed(0)}
+                        </span>
                       </div>
                     </div>
                   </div>

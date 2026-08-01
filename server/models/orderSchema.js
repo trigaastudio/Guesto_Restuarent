@@ -100,8 +100,12 @@ const orderSchema = new mongoose.Schema({
   balance: { type: Number, default: 0 },
   paidAmount: { type: Number, default: 0 },
   outstandingBill: { type: Number, default: 0 },
-
-  
+  paymentHistory: [{
+    method: { type: String, enum: ["cash", "upi/card", "online", "cod", "wallet", "Not Specified", "split"] },
+    amount: { type: Number, required: true },
+    date: { type: Date, default: Date.now },
+    recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Staff" }
+  }],
   orderStatus: {
     type: String,
     enum: ["placed", "processing", "ready", "billed", "out-for-delivery", "delivered", "cancelled"],
@@ -114,12 +118,12 @@ const orderSchema = new mongoose.Schema({
   },
   paymentStatus: {
     type: String,
-    enum: ["paid", "unpaid", "refunded"],
+    enum: ["paid", "unpaid", "refunded", "partially_paid"],
     default: "unpaid"
   },
   paymentMethod: {
     type: String,
-    enum: ["cash", "upi/card", "online", "cod", "wallet", "Not Specified"],
+    enum: ["cash", "upi/card", "online", "cod", "wallet", "Not Specified", "split"],
     default: "Not Specified"
   },
   razorpayOrderId: { type: String },
@@ -165,6 +169,12 @@ orderSchema.pre('validate', async function () {
   
   if (this.paymentMethod === 'cash' || this.paymentMethod === 'cod') {
     this.balance = (this.cashReceived || 0) - this.totalAmount;
+  }
+  
+  if (this.paidAmount > 0 && this.paidAmount < this.totalAmount) {
+    this.balance = this.totalAmount - this.paidAmount;
+  } else if (this.paidAmount >= this.totalAmount && this.totalAmount > 0) {
+    this.balance = 0;
   }
 
   

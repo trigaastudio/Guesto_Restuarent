@@ -1153,7 +1153,28 @@ class OrderController {
 
       // Removed automatic paymentStatus = 'paid' when orderStatus === 'delivered'
 
-      if (updateData.cashReceived !== undefined || updateData.totalAmount !== undefined) {
+      // Partial payment / Payment history logic
+      if (req.body.paymentAmount !== undefined) {
+        const amount = Number(req.body.paymentAmount);
+        const method = req.body.paymentMethod || originalOrder.paymentMethod || 'cash';
+        const recordedBy = req.user._id;
+
+        if (amount > 0) {
+          if (!originalOrder.paymentHistory) originalOrder.paymentHistory = [];
+          originalOrder.paymentHistory.push({ method, amount, recordedBy });
+          
+          originalOrder.paidAmount = (originalOrder.paidAmount || 0) + amount;
+          updateData.paymentMethod = originalOrder.paymentHistory.length > 1 && originalOrder.paymentHistory.some(p => p.method !== method) ? 'split' : method;
+        }
+
+        const total = updateData.totalAmount ?? originalOrder.totalAmount;
+        if (originalOrder.paidAmount >= total && total > 0) {
+          updateData.paymentStatus = 'paid';
+        } else if (originalOrder.paidAmount > 0) {
+          updateData.paymentStatus = 'partially_paid';
+        }
+      } else if (updateData.cashReceived !== undefined || updateData.totalAmount !== undefined) {
+        // Fallback for older frontend code
         const cash = updateData.cashReceived ?? originalOrder.cashReceived;
         const total = updateData.totalAmount ?? originalOrder.totalAmount;
         if (originalOrder.paymentMethod === 'cash' && cash >= total && total > 0) {
@@ -1168,11 +1189,12 @@ class OrderController {
 
       Object.assign(originalOrder, updateData);
 
-      if (!["cash", "upi/card", "online", "cod", "wallet", "Not Specified"].includes(originalOrder.paymentMethod)) {
+      if (!["cash", "upi/card", "online", "cod", "wallet", "Not Specified", "split"].includes(originalOrder.paymentMethod)) {
         originalOrder.paymentMethod = 'Not Specified';
       }
-      if (!["paid", "unpaid", "refunded"].includes(originalOrder.paymentStatus)) {
-        originalOrder.paymentStatus = 'unpaid';
+      if (!["paid", "unpaid", "refunded", "partially_paid"].includes(originalOrder.paymentStatus)) {
+        if (updateData.paymentStatus) originalOrder.paymentStatus = updateData.paymentStatus;
+        else originalOrder.paymentStatus = 'unpaid';
       }
 
       const order = await originalOrder.save();
@@ -1484,11 +1506,11 @@ class OrderController {
       order.subtotal = subtotal;
       order.totalAmount = subtotal + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0) + (order.outstandingBill || 0);
 
-      if (!["cash", "upi/card", "online", "cod", "Not Specified"].includes(order.paymentMethod)) {
+      if (!["cash", "upi/card", "online", "cod", "Not Specified", "split"].includes(order.paymentMethod)) {
         order.paymentMethod = 'Not Specified';
       }
 
-      if (!["paid", "unpaid", "refunded"].includes(order.paymentStatus)) {
+      if (!["paid", "unpaid", "refunded", "partially_paid"].includes(order.paymentStatus)) {
         order.paymentStatus = 'unpaid';
       }
 

@@ -324,21 +324,24 @@ const WaiterDashboard = () => {
             <input type="hidden" id="pay-val" value="${defaultMethod}" />
             <div id="cash-calculator" style="margin-top: 15px; display: ${defaultMethod === 'cash' ? 'block' : 'none'}; padding: 16px; background: rgba(0,0,0,0.02); border: 1px solid var(--color-border-light); border-radius: 18px;">
               <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-                <label style="font-size:10px; font-weight:800; color:var(--color-text-secondary); text-transform:uppercase; tracking-widest;">Cash Received</label>
+                <label style="font-size:10px; font-weight:800; color:var(--color-text-secondary); text-transform:uppercase; tracking-widest;">Amount Received</label>
                 <div style="position:relative; width:120px;">
                   <span style="position:absolute; left:10px; top:50%; transform:translateY(-50%); font-size:12px; font-weight:bold; color:var(--color-text-muted);">₹</span>
                   <input type="number" id="swal-cash-received" value="" oninput="
-                    const total = ${orderToUpdate.totalAmount || orderToUpdate.subtotal};
+                    const total = ${(orderToUpdate.totalAmount || orderToUpdate.subtotal || 0) - (orderToUpdate.paidAmount || 0)};
                     const received = parseFloat(this.value) || 0;
                     const changeWrap = document.getElementById('swal-change-wrap');
                     const changeEl = document.getElementById('swal-change-val');
+                    const changeLabel = document.getElementById('swal-change-label');
                     if (received > 0) {
                       changeWrap.style.display = 'flex';
                       if (received >= total) {
+                        changeLabel.textContent = 'Change to Return';
                         changeEl.textContent = '₹' + (received - total).toFixed(0);
                         changeEl.style.color = '#10b981';
                       } else {
-                        changeEl.textContent = 'Insufficient Cash';
+                        changeLabel.textContent = 'Partial Payment';
+                        changeEl.textContent = '₹' + received.toFixed(0);
                         changeEl.style.color = '#f59e0b';
                       }
                     } else {
@@ -348,10 +351,16 @@ const WaiterDashboard = () => {
                 </div>
               </div>
               <div id="swal-change-wrap" style="display:none; justify-content:space-between; align-items:center; margin-top:12px; padding-top:10px; border-top:1px dashed var(--color-border-light); font-size:12px; font-weight:800;">
-                <span style="color:var(--color-text-secondary); text-transform:uppercase; font-size:10px; tracking:widest;">Balance to Return</span>
+                <span id="swal-change-label" style="color:var(--color-text-secondary); text-transform:uppercase; font-size:10px; tracking:widest;">Balance to Return</span>
                 <span id="swal-change-val" style="font-size:13px; color:#10b981;">₹0.00</span>
               </div>
             </div>
+            ${orderToUpdate.paidAmount > 0 ? `
+            <div style="margin-top: 15px; padding: 12px; border-radius: 12px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 11px; font-weight: 800; color: #d97706; text-transform: uppercase;">Paid So Far: ₹${orderToUpdate.paidAmount}</span>
+              <span style="font-size: 11px; font-weight: 800; color: #ef4444; text-transform: uppercase;">Balance: ₹${((orderToUpdate.totalAmount || orderToUpdate.subtotal || 0) - orderToUpdate.paidAmount).toFixed(0)}</span>
+            </div>
+            ` : ''}
           `,
           background: 'var(--color-background-card)',
           showCancelButton: true,
@@ -375,25 +384,36 @@ const WaiterDashboard = () => {
           preConfirm: () => {
             const val = document.getElementById('pay-val')?.value;
             if (!val) { Swal.showValidationMessage('Please select a payment method'); return false; }
-            if (val === 'cash') {
-              const cashRec = parseFloat(document.getElementById('swal-cash-received')?.value) || 0;
-              const total = orderToUpdate.totalAmount || orderToUpdate.subtotal;
-              if (cashRec < total) {
-                Swal.showValidationMessage('Cash received is less than total order amount (₹' + total.toFixed(0) + ')');
+            
+            const amountRec = parseFloat(document.getElementById('swal-cash-received')?.value);
+            const total = (orderToUpdate.totalAmount || orderToUpdate.subtotal || 0) - (orderToUpdate.paidAmount || 0);
+            const paymentAmount = isNaN(amountRec) || amountRec <= 0 ? total : amountRec;
+
+            if (paymentAmount > total && val !== 'cash') {
+                Swal.showValidationMessage('Payment amount cannot exceed balance for non-cash methods');
                 return false;
-              }
-              return { paymentMethod: 'cash', cashReceived: cashRec, balance: cashRec - total };
             }
-            return { paymentMethod: val, cashReceived: orderToUpdate.totalAmount || orderToUpdate.subtotal, balance: 0 };
+
+            if (val === 'cash') {
+              return { 
+                paymentMethod: 'cash', 
+                paymentAmount: Math.min(paymentAmount, total), 
+                cashReceived: paymentAmount, 
+                balance: Math.max(0, paymentAmount - total) 
+              };
+            }
+            return { paymentMethod: val, paymentAmount: paymentAmount };
           }
         });
 
         if (!result.isConfirmed) return;
 
-        updateData.paymentStatus = 'paid';
+        updateData.paymentAmount = result.value.paymentAmount;
         updateData.paymentMethod = result.value.paymentMethod;
-        updateData.cashReceived = result.value.cashReceived;
-        updateData.balance = result.value.balance;
+        if (result.value.paymentMethod === 'cash' && result.value.cashReceived > ((orderToUpdate.totalAmount || orderToUpdate.subtotal || 0) - (orderToUpdate.paidAmount || 0))) {
+           updateData.cashReceived = result.value.cashReceived;
+           updateData.balance = result.value.balance;
+        }
       }
       await api.patch(`/api/orders/${orderId}/status`, updateData);
       showToast('success', `Order marked as ${newStatus}`);
@@ -566,7 +586,7 @@ const WaiterDashboard = () => {
             ` : `
               <div style="display: flex; justify-content: space-between;">
                 <span>PAYMENT METHOD :</span>
-                <span style="text-transform: uppercase;">${order.paymentMethod || 'Not Specified'}</span>
+                <span style="text-transform: uppercase;">${order.paymentMethod === 'split' ? 'Multiple' : (order.paymentMethod || 'Not Specified')}</span>
               </div>
               <div style="display: flex; justify-content: space-between; margin-top: 3px;">
                 <span>STATUS :</span>
