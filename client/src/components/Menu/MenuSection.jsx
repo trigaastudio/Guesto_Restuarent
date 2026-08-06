@@ -2,7 +2,7 @@ import React from 'react';
 import { LayoutGrid, UtensilsCrossed, Plus, Loader2 } from 'lucide-react';
 import CardSkeleton from '../Skeleton/CardSkeleton';
 import { useCart } from '../../context/CartContext';
-import { getEffectiveStock } from '../../utils/stockHelpers';
+import { getEffectiveStock, checkCategoryTiming } from '../../utils/stockHelpers';
 
 const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navigate, sortBy, setSortBy, dietaryFilter, setDietaryFilter, setSearchQuery, observerTarget, hasMore, loadingMore, onAddClick, selectedCategory, offerFilter, handlePromoFilterToggle, searchQuery, onClearAll, viewOnly, hideNameSort }) => {
   const { offers, checkStoreStatus } = useCart();
@@ -140,21 +140,7 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
 
               const hasSavings = originalPrice > discountedPrice;
 
-              let isCategoryClosed = false;
-              if (menu.category && menu.category.startTime && menu.category.endTime) {
-                const now = new Date();
-                const currentMinutes = now.getHours() * 60 + now.getMinutes();
-                const [startHour, startMin] = menu.category.startTime.split(':').map(Number);
-                const startMinutes = startHour * 60 + startMin;
-                const [endHour, endMin] = menu.category.endTime.split(':').map(Number);
-                const endMinutes = endHour * 60 + endMin;
-                
-                if (startMinutes <= endMinutes) {
-                  isCategoryClosed = !(currentMinutes >= startMinutes && currentMinutes <= endMinutes);
-                } else {
-                  isCategoryClosed = !(currentMinutes >= startMinutes || currentMinutes <= endMinutes);
-                }
-              }
+              const isCategoryClosed = checkCategoryTiming(menu.category);
 
               const isOutOfStock = getEffectiveStock(menu) < 1 || isClosed || isCategoryClosed;
               const effectiveStock = menu.isCombo ? Infinity : getEffectiveStock(menu);

@@ -15,7 +15,7 @@ import StoreStatusBanner from '../../components/StoreStatus/StoreStatusBanner';
 import PageSkeleton from '../../components/Skeleton/PageSkeleton';
 import OffersCarousel from '../../components/Offers/OffersCarousel';
 import socket from '../../services/socket';
-import { getEffectiveStock } from '../../utils/stockHelpers';
+import { getEffectiveStock, checkCategoryTiming } from '../../utils/stockHelpers';
 import { Sparkles, X, Flame, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 
 const heroImages = ['/heroSection/hero1.png', '/heroSection/hero2.png', '/heroSection/hero3.png', '/heroSection/hero4.png', '/heroSection/hero5.png'];
@@ -423,7 +423,8 @@ const HomePage = () => {
               className="flex overflow-x-auto no-scrollbar gap-4 sm:gap-6 pb-6 snap-x w-full"
             >
               {trendingItems.filter(item => !item.isBlocked).map((item, idx) => {
-                const isItemOutOfStock = getEffectiveStock(item) < 1 || isClosed;
+                const isCategoryClosed = checkCategoryTiming(item.category);
+                const isItemOutOfStock = getEffectiveStock(item) < 1 || isClosed || isCategoryClosed;
                 return (
                   <div
                     key={idx}
@@ -444,7 +445,7 @@ const HomePage = () => {
                       {isItemOutOfStock && (
                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px] z-20">
                           <span className="bg-white text-black text-[9px] font-black px-3 py-1.5 rounded-lg uppercase tracking-widest shadow-xl border border-black/10">
-                            {isClosed ? 'Closed' : 'Out of Stock'}
+                            {isClosed || isCategoryClosed ? 'Closed' : 'Out of Stock'}
                           </span>
                         </div>
                       )}

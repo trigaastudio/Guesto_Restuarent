@@ -15,7 +15,7 @@ import OffersCarousel from '../../components/Offers/OffersCarousel';
 import StoreStatusBanner from '../../components/StoreStatus/StoreStatusBanner';
 import { Sparkles, X, Flame, ChevronLeft, ChevronRight } from 'lucide-react';
 import { logoutAdmin, logoutStaff, logoutToLanding } from '../../utils/auth';
-import { getEffectiveStock } from '../../utils/stockHelpers';
+import { getEffectiveStock, checkCategoryTiming } from '../../utils/stockHelpers';
 
 const heroImages = ['/heroSection/hero1.png', '/heroSection/hero2.png', '/heroSection/hero3.png', '/heroSection/hero4.png', '/heroSection/hero5.png'];
 
@@ -336,22 +336,7 @@ const LandingPage = () => {
                 className="flex overflow-x-auto no-scrollbar gap-4 sm:gap-6 pb-6 snap-x w-full"
               >
                 {trendingItems.filter(item => !item.isBlocked).map((item, idx) => {
-                  let isCategoryClosed = false;
-                  const cat = categories.find(c => c._id === item.category);
-                  if (cat && cat.startTime && cat.endTime) {
-                    const now = new Date();
-                    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-                    const [startHour, startMin] = cat.startTime.split(':').map(Number);
-                    const startMinutes = startHour * 60 + startMin;
-                    const [endHour, endMin] = cat.endTime.split(':').map(Number);
-                    const endMinutes = endHour * 60 + endMin;
-                    
-                    if (startMinutes <= endMinutes) {
-                      isCategoryClosed = !(currentMinutes >= startMinutes && currentMinutes <= endMinutes);
-                    } else {
-                      isCategoryClosed = !(currentMinutes >= startMinutes || currentMinutes <= endMinutes);
-                    }
-                  }
+                  const isCategoryClosed = checkCategoryTiming(item.category);
 
                   const isItemOutOfStock = getEffectiveStock(item) < 1 || isClosed || isCategoryClosed;
                   return (

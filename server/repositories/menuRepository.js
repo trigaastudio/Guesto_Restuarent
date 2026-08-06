@@ -16,7 +16,11 @@ class MenuRepository {
       .populate('category')
       .populate({
         path: 'variants.includedItems.menuItem',
-        select: 'name'
+        select: 'name totalStock isBlocked category',
+        populate: {
+          path: 'category',
+          select: 'name totalStock stockactive isSharedStock'
+        }
       })
       .populate({
         path: 'variants.bogoItem',
@@ -41,7 +45,11 @@ class MenuRepository {
       .populate("category")
       .populate({
         path: 'variants.includedItems.menuItem',
-        select: 'name'
+        select: 'name totalStock isBlocked category',
+        populate: {
+          path: 'category',
+          select: 'name totalStock stockactive isSharedStock'
+        }
       })
       .populate({
         path: 'variants.bogoItem',
@@ -64,7 +72,11 @@ class MenuRepository {
       .populate('category')
       .populate({
         path: 'variants.includedItems.menuItem',
-        select: 'name'
+        select: 'name totalStock isBlocked category',
+        populate: {
+          path: 'category',
+          select: 'name totalStock stockactive isSharedStock'
+        }
       })
       .populate({
         path: 'variants.bogoItem',
@@ -86,7 +98,11 @@ class MenuRepository {
       .populate('category')
       .populate({
         path: 'variants.includedItems.menuItem',
-        select: 'name'
+        select: 'name totalStock isBlocked category',
+        populate: {
+          path: 'category',
+          select: 'name totalStock stockactive isSharedStock'
+        }
       })
       .populate({
         path: 'variants.bogoItem',

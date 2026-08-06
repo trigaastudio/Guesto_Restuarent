@@ -19,7 +19,7 @@ import { useTheme } from '../../context/ThemeContext';
 import Navbar from '../../components/Navbar/Navbar';
 import Footer from '../../components/Footer/Footer';
 import Loader from '../../components/Loader/Loader';
-import { getEffectiveStock } from '../../utils/stockHelpers';
+import { getEffectiveStock, checkCategoryTiming } from '../../utils/stockHelpers';
 import Swal from 'sweetalert2';
 import socket from '../../services/socket';
 
@@ -148,6 +148,15 @@ const MenuDetailPage = () => {
         });
         return;
       }
+      if (checkCategoryTiming(menu.category)) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Closed',
+          text: `${menu.name} is not available to order at this time.`,
+          confirmButtonColor: '#B91C1C'
+        });
+        return;
+      }
     }
 
 
@@ -265,9 +274,9 @@ const MenuDetailPage = () => {
                 <span className="px-4 py-1.5 rounded-full bg-[#DA9133] text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-[#DA9133]/20">
                   🔥 Best Seller
                 </span>
-                {(getEffectiveStock(menu) <= 0 || menu.isBlocked) && (
+                {(getEffectiveStock(menu) <= 0 || menu.isBlocked || checkCategoryTiming(menu.category)) && (
                   <span className="px-4 py-1.5 rounded-full bg-red-600 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-600/20 animate-pulse">
-                    🚫 {menu.isBlocked ? 'Unavailable' : 'Out of Stock'}
+                    🚫 {menu.isBlocked ? 'Unavailable' : (checkCategoryTiming(menu.category) ? 'Closed' : 'Out of Stock')}
                   </span>
                 )}
               </div>
@@ -396,16 +405,16 @@ const MenuDetailPage = () => {
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <button
                 onClick={handleAddToCart}
-                disabled={getEffectiveStock(menu) <= 0 || menu.isBlocked}
-                className={`flex-1 flex items-center justify-center gap-3 px-10 py-5 rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] transition-all active:scale-95 shadow-2xl ${getEffectiveStock(menu) <= 0 || menu.isBlocked ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-[#B91C1C] text-white hover:bg-[#B10000] shadow-[#B91C1C]/30 hover:-translate-y-1'}`}
+                disabled={getEffectiveStock(menu) <= 0 || menu.isBlocked || checkCategoryTiming(menu.category)}
+                className={`flex-1 flex items-center justify-center gap-3 px-10 py-5 rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] transition-all active:scale-95 shadow-2xl ${getEffectiveStock(menu) <= 0 || menu.isBlocked || checkCategoryTiming(menu.category) ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-[#B91C1C] text-white hover:bg-[#B10000] shadow-[#B91C1C]/30 hover:-translate-y-1'}`}
               >
                 <ShoppingCart size={20} />
-                {menu.isBlocked ? 'Unavailable' : (getEffectiveStock(menu) <= 0 ? 'Out of Stock' : 'Add to Cart')}
+                {menu.isBlocked ? 'Unavailable' : (checkCategoryTiming(menu.category) ? 'Closed' : (getEffectiveStock(menu) <= 0 ? 'Out of Stock' : 'Add to Cart'))}
               </button>
               <button
                 onClick={() => { handleAddToCart(); navigate('/cart'); }}
-                disabled={getEffectiveStock(menu) <= 0 || menu.isBlocked}
-                className={`flex-1 px-10 py-5 rounded-[2rem] border-2 font-black text-sm uppercase tracking-[0.2em] transition-all active:scale-95 hover:-translate-y-1 ${getEffectiveStock(menu) <= 0 || menu.isBlocked ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-[#DA9133] text-[#DA9133] hover:bg-[#DA9133] hover:text-white'}`}
+                disabled={getEffectiveStock(menu) <= 0 || menu.isBlocked || checkCategoryTiming(menu.category)}
+                className={`flex-1 px-10 py-5 rounded-[2rem] border-2 font-black text-sm uppercase tracking-[0.2em] transition-all active:scale-95 hover:-translate-y-1 ${getEffectiveStock(menu) <= 0 || menu.isBlocked || checkCategoryTiming(menu.category) ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-[#DA9133] text-[#DA9133] hover:bg-[#DA9133] hover:text-white'}`}
               >
                 Buy Now
               </button>

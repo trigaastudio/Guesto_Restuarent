@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useTheme } from '../../context/ThemeContext';
+import { getEffectiveStock, checkCategoryTiming } from '../../utils/stockHelpers';
 import { useNavigate } from 'react-router-dom';
 import '../Home/HomePage.css';
 import api from '../../api/axiosInstance';
@@ -384,23 +385,8 @@ const DigitalMenu = () => {
                   className="flex overflow-x-auto no-scrollbar gap-8 px-6 pb-8 snap-x"
                 >
                     {trendingItems.filter(item => !item.isBlocked).map((item, idx) => {
-                      let isCategoryClosed = false;
-                      const cat = categories.find(c => c._id === item.category);
-                      if (cat && cat.startTime && cat.endTime) {
-                        const now = new Date();
-                        const currentMinutes = now.getHours() * 60 + now.getMinutes();
-                        const [startHour, startMin] = cat.startTime.split(':').map(Number);
-                        const startMinutes = startHour * 60 + startMin;
-                        const [endHour, endMin] = cat.endTime.split(':').map(Number);
-                        const endMinutes = endHour * 60 + endMin;
-                        
-                        if (startMinutes <= endMinutes) {
-                          isCategoryClosed = !(currentMinutes >= startMinutes && currentMinutes <= endMinutes);
-                        } else {
-                          isCategoryClosed = !(currentMinutes >= startMinutes || currentMinutes <= endMinutes);
-                        }
-                      }
-                      const isItemUnavailable = isClosed || isCategoryClosed;
+                      const isCategoryClosed = checkCategoryTiming(item.category);
+                      const isItemUnavailable = getEffectiveStock(item) < 1 || isClosed || isCategoryClosed;
                       
                       return (
                       <div 
