@@ -1114,8 +1114,8 @@ class OrderController {
         ]
       };
 
-      const limit = parseInt(req.query.limit) || (history === 'true' ? 100 : 50);
-      const skip = (parseInt(req.query.page || 1) - 1) * limit;
+      const limit = req.query.limit ? parseInt(req.query.limit) : (history === 'true' ? 0 : 50);
+      const skip = (parseInt(req.query.page || 1) - 1) * (limit || 1);
 
       const finalQuery = { $and: [query, baseFilter] };
 
