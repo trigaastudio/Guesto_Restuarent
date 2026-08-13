@@ -402,6 +402,7 @@ const UserManagement = () => {
                         : 'border-border-main focus:border-primary'
                     }`}
                     placeholder="Enter full name"
+                    maxLength={40}
                   />
                 </div>
                 {errors.name && <p className="text-[10px] font-bold text-primary">Name is required</p>}

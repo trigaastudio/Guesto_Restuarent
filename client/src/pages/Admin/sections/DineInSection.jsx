@@ -1163,8 +1163,8 @@ const DineInSection = () => {
                   }}
                   className="px-4 py-3 bg-background border border-border-light text-text-primary hover:text-primary hover:border-primary/50 hover:bg-primary/5 rounded-2xl font-black uppercase tracking-wider text-xs transition-all shadow-sm active:scale-95 flex items-center gap-2"
                 >
-                  <Plus size={16} strokeWidth={2.5} />
-                  <span>Add Item</span>
+                  <Edit2 size={16} strokeWidth={2.5} />
+                  <span>Edit Order</span>
                 </button>
                 <button
                   onClick={() => {

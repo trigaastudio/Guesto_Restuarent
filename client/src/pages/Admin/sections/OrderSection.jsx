@@ -3119,7 +3119,7 @@ const OrderSection = () => {
                           if (errors.customerName) setErrors({ ...errors, customerName: false });
                         }}
                         onFocus={() => customer.name.length > 1 && setShowSuggestions(true)}
-                        maxLength={35}
+                        maxLength={40}
                         className="bg-transparent text-[11px] font-bold text-text-primary outline-none w-full placeholder:text-text-muted/40"
                       />
                     </div>
