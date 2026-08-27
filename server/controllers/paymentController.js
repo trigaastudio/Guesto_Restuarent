@@ -6,7 +6,7 @@ import { getIO } from '../socket.js';
 
 const createRazorpayOrder = async (req, res) => {
   try {
-    const { currency = 'INR', receipt } = req.body;
+    const { currency = 'INR', receipt, deliveryFee, platformFee } = req.body;
 
     const key_id = process.env.RAZORPAY_KEY_ID;
     const key_secret = process.env.RAZORPAY_KEY_SECRET;
@@ -42,7 +42,10 @@ const createRazorpayOrder = async (req, res) => {
       serverTotal += price * item.quantity;
     }
 
-    serverTotal = Math.round(serverTotal);
+    // Add delivery fee and platform fee to the total
+    const safeDeliveryFee = Math.max(0, Number(deliveryFee) || 0);
+    const safePlatformFee = Math.max(0, Number(platformFee) || 0);
+    serverTotal = Math.round(serverTotal + safeDeliveryFee + safePlatformFee);
 
     if (serverTotal <= 0) {
       return res.status(400).json({ success: false, message: 'Invalid cart total' });

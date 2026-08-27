@@ -174,7 +174,9 @@ const PaymentPage = () => {
         const { data: { data: razorpayOrder } } = await api.post('/api/payments/create-order', {
           amount: total,
           currency: 'INR',
-          receipt: `receipt_temp_${Date.now()}`
+          receipt: `receipt_temp_${Date.now()}`,
+          deliveryFee,
+          platformFee
         });
 
         const options = {

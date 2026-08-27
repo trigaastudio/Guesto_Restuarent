@@ -125,14 +125,7 @@ const CartPage = () => {
   const { cartItems, updateQuantity, removeFromCart, offers, settings, loading: cartLoading, subtotal, checkStoreStatus, fetchCart } = useCart();
 
 
-  const [deliveryAddress, setDeliveryAddress] = useState(() => {
-    try {
-      const savedObj = localStorage.getItem('selectedDeliveryAddressObj');
-      return savedObj ? JSON.parse(savedObj) : null;
-    } catch (e) {
-      return null;
-    }
-  });
+  const [deliveryAddress, setDeliveryAddress] = useState(null);
   const [savedAddresses, setSavedAddresses] = useState([]);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [isAddressListOpen, setIsAddressListOpen] = useState(false);
@@ -287,6 +280,7 @@ const CartPage = () => {
         const addresses = response.data.data;
         setSavedAddresses(addresses);
         if (addresses.length > 0) {
+          // Prefer the previously selected address if it still exists in the user's saved list
           const savedId = localStorage.getItem('selectedDeliveryAddressId');
           const savedAddr = savedId ? addresses.find(a => a._id === savedId) : null;
           const defaultAddr = savedAddr || addresses.find(a => a.isDefault) || addresses[0];
@@ -294,12 +288,20 @@ const CartPage = () => {
           localStorage.setItem('selectedDeliveryAddressId', defaultAddr._id);
           localStorage.setItem('selectedDeliveryAddressObj', JSON.stringify(defaultAddr));
         } else {
+          // User has NO saved addresses — clear any stale localStorage address
+          // to prevent a ghost address bypassing the checkout address guard
           setDeliveryAddress(null);
           localStorage.removeItem('selectedDeliveryAddressId');
           localStorage.removeItem('selectedDeliveryAddressObj');
         }
       }
-    } catch (error) { console.error('Error fetching addresses:', error); }
+    } catch (error) {
+      console.error('Error fetching addresses:', error);
+      // On error, don't trust any cached address — reset to be safe
+      setDeliveryAddress(null);
+      localStorage.removeItem('selectedDeliveryAddressId');
+      localStorage.removeItem('selectedDeliveryAddressObj');
+    }
   };
 
   const handleSaveAddress = async (formData) => {

@@ -633,6 +633,13 @@ class OrderController {
         }
       }
 
+      // Guard: delivery orders must have a valid address
+      if (isUser && finalOrderType === 'delivery') {
+        if (!address || !address.address || String(address.address).trim() === '') {
+          return res.status(400).json({ success: false, message: 'A delivery address is required to place an order. Please add an address and try again.' });
+        }
+      }
+
       
       if (totalAmount < 140) {
         return res.status(400).json({ success: false, message: 'Minimum order amount is ₹140 to proceed to payment.' });
