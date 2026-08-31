@@ -8,47 +8,67 @@ router.get('/sales', protect, admin, async (req, res) => {
   try {
     const { startDate, endDate, orderType, orderSource, menuItem } = req.query;
     
-    let query = { orderStatus: { $ne: 'cancelled' } };
+    let matchQuery = { orderStatus: { $ne: 'cancelled' } };
 
     if (startDate || endDate) {
-      query.createdAt = {};
+      matchQuery.createdAt = {};
       if (startDate) {
         const start = new Date(startDate);
         start.setHours(0, 0, 0, 0);
-        query.createdAt.$gte = start;
+        matchQuery.createdAt.$gte = start;
       }
       if (endDate) {
         const end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
-        query.createdAt.$lte = end;
+        matchQuery.createdAt.$lte = end;
       }
     }
 
-    if (orderType && orderType !== 'all') query.orderType = orderType;
-    if (orderSource && orderSource !== 'all') query.orderSource = orderSource;
-    if (menuItem && menuItem !== 'all') query['items.menuItem'] = menuItem;
+    if (orderType && orderType !== 'all') matchQuery.orderType = orderType;
+    if (orderSource && orderSource !== 'all') matchQuery.orderSource = orderSource;
+    if (menuItem && menuItem !== 'all') {
+      const mongoose = await import('mongoose');
+      matchQuery['items.menuItem'] = new mongoose.Types.ObjectId(menuItem);
+    }
 
-    const orders = await Order.find(query)
-      .populate('items.menuItem', 'name category')
-      .sort({ createdAt: -1 });
+    // Use aggregation instead of fetching all documents for performance
+    const [aggregateResult, totalOrders] = await Promise.all([
+      Order.aggregate([
+        { $match: matchQuery },
+        { $group: {
+          _id: null,
+          totalRevenue: { $sum: '$totalAmount' },
+          totalCost: { $sum: { $reduce: {
+            input: '$items',
+            initialValue: 0,
+            in: { $add: ['$$value', { $multiply: ['$$this.quantity', { $ifNull: ['$$this.costPrice', 0] }] }] }
+          }}},
+          totalQty: { $sum: { $reduce: {
+            input: '$items',
+            initialValue: 0,
+            in: { $add: ['$$value', '$$this.quantity'] }
+          }}}
+        }}
+      ]),
+      Order.countDocuments(matchQuery)
+    ]);
 
-    const stats = orders.reduce((acc, order) => {
-      acc.totalRevenue += order.totalAmount;
-      order.items.forEach(item => {
-        acc.totalCost += (item.quantity * (item.costPrice || 0));
-        acc.totalQty += item.quantity;
-      });
-      return acc;
-    }, { totalRevenue: 0, totalCost: 0, totalQty: 0 });
+    const agg = aggregateResult[0] || { totalRevenue: 0, totalCost: 0, totalQty: 0 };
+    const stats = {
+      totalRevenue: agg.totalRevenue,
+      totalCost: agg.totalCost,
+      totalQty: agg.totalQty,
+      totalProfit: agg.totalRevenue - agg.totalCost,
+      totalOrders
+    };
 
-    stats.totalProfit = stats.totalRevenue - stats.totalCost;
-    stats.totalOrders = await Order.countDocuments(query);
-
-    res.json({ success: true, data: { orders, stats } });
+    res.json({ success: true, data: { stats } });
   } catch (error) {
+    console.error('Sales report error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
+
 
 
 router.get('/periodic', protect, admin, async (req, res) => {

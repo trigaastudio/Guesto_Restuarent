@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Plus, Search, Filter, Eye, Trash2, Clock, Edit2,
   CheckCircle2, XCircle, AlertCircle, Loader2, ArrowUpDown,
@@ -85,6 +85,9 @@ const OrderSection = () => {
   };
 
   const [orders, setOrders] = useState([]);
+  // Separate state for active order counts — always holds today's active orders
+  // so tab count badges stay accurate even when viewing History tab
+  const [activeOrders, setActiveOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
 
@@ -106,6 +109,7 @@ const OrderSection = () => {
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
   const [activeTab, setActiveTab] = useState(localStorage.getItem('orderActiveTab') === 'all' ? 'takeaway' : (localStorage.getItem('orderActiveTab') || 'takeaway'));
   const [historyOrderTypeFilter, setHistoryOrderTypeFilter] = useState('all');
+  const [activeDateFilter, setActiveDateFilter] = useState(localStorage.getItem('orderActiveDateFilter') || 'today');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -157,9 +161,24 @@ const OrderSection = () => {
   const [viewItemSelectedSize, setViewItemSelectedSize] = useState(null);
   const socketRef = useRef();
   const socketFetchTimerRef = useRef(null);
+  // Keep a ref to the current activeTab so the socket callback always reads the latest value
+  const activeTabRef = useRef(activeTab);
+  useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
 
-  // Throttled fetch to avoid rapid re-renders from multiple socket events
+  // Lightweight fetch of active orders just for count badges
+  const fetchActiveOrderCounts = async () => {
+    try {
+      const res = await api.get('/api/orders', { params: { dateFilter: activeDateFilter } });
+      const data = res.data?.data;
+      if (Array.isArray(data)) setActiveOrders(data);
+    } catch (_) { /* silent — counts are best-effort */ }
+  };
+
+  // Throttled fetch — skip history re-fetch on socket events (static archived data)
   const scheduleSilentFetch = () => {
+    // Always refresh active order counts for badges
+    fetchActiveOrderCounts();
+    if (activeTabRef.current === 'history') return;
     if (socketFetchTimerRef.current) clearTimeout(socketFetchTimerRef.current);
     socketFetchTimerRef.current = setTimeout(() => {
       fetchOrders(true);
@@ -403,9 +422,15 @@ const OrderSection = () => {
         params.history = true;
         if (start) params.startDate = start;
         if (end) params.endDate = end;
+      } else {
+        params.dateFilter = activeDateFilter;
       }
       const response = await api.get(`/api/orders`, { params });
-      setOrders(response.data.data);
+      const data = response.data?.data;
+      const safeData = Array.isArray(data) ? data : [];
+      setOrders(safeData);
+      // When NOT on history, active orders = displayed orders (keep counts in sync)
+      if (currentTab !== 'history') setActiveOrders(safeData);
     } catch (error) {
       console.error('Error fetching orders:', error);
       if (!silent) showToast('error', 'Failed to fetch orders');
@@ -420,10 +445,13 @@ const OrderSection = () => {
     if (isFirstMount.current) {
       isFirstMount.current = false;
       fetchOrders(false, activeTab, startDate, endDate);
+      // Always load active order counts for tab badges on mount
+      if (activeTab === 'history') fetchActiveOrderCounts();
     } else {
       fetchOrders(true, activeTab, startDate, endDate);
+      if (activeTab === 'history') fetchActiveOrderCounts();
     }
-  }, [activeTab, startDate, endDate]);
+  }, [activeTab, startDate, endDate, activeDateFilter]);
 
   const handleClearHistory = async (ids = null) => {
     const isManualSelection = Array.isArray(ids);
@@ -446,6 +474,7 @@ const OrderSection = () => {
         if (response.data.success) {
           showToast('success', response.data.message);
           setSelectedOrderIds([]);
+          fetchOrders(false, 'history', startDate, endDate); // Refresh list after clearing
         }
       } catch (error) {
         showToast('error', 'Failed to clear history');
@@ -1561,7 +1590,8 @@ const OrderSection = () => {
       method = paymentMethodFilter,
       histType = historyOrderTypeFilter,
       sDate = startDate,
-      eDate = endDate
+      eDate = endDate,
+      actDate = activeDateFilter
     } = filters;
 
     return data.filter(o => {
@@ -1603,6 +1633,7 @@ const OrderSection = () => {
       } else {
 
         if (orderDate < todayStart && isHistoryOrder) return false;
+        if (actDate === 'today' && orderDate < todayStart) return false;
 
         if (tabId === 'all') {
           matchesType = true;
@@ -1624,7 +1655,12 @@ const OrderSection = () => {
     });
   };
 
-  const filteredOrders = getSortedData(applyFilters(orders, activeTab));
+  // Memoize filtered+sorted+paginated orders to avoid expensive recomputation on every render
+  const filteredOrders = useMemo(
+    () => getSortedData(applyFilters(orders, activeTab)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [orders, activeTab, searchTerm, orderStatusFilter, paymentFilter, paymentMethodFilter, historyOrderTypeFilter, startDate, endDate, sortConfig, activeDateFilter]
+  );
 
   const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
   const paginatedOrders = filteredOrders.slice(
@@ -1634,7 +1670,7 @@ const OrderSection = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, orderStatusFilter, paymentFilter, paymentMethodFilter, historyOrderTypeFilter, startDate, endDate]);
+  }, [searchTerm, orderStatusFilter, paymentFilter, paymentMethodFilter, historyOrderTypeFilter, startDate, endDate, activeDateFilter]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -1699,7 +1735,7 @@ const OrderSection = () => {
               {tab.id !== 'history' && (
                 <span className={`ml-1.5 px-2 py-0.5 rounded-full text-[9px] font-black ${activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'
                   }`}>
-                  {applyFilters(orders, tab.id).length}
+                  {applyFilters(activeOrders, tab.id).length}
                 </span>
               )}
             </button>
@@ -1768,6 +1804,17 @@ const OrderSection = () => {
                   <>
                     <Filter size={14} className="text-text-muted" />
                     <select
+                      value={activeDateFilter}
+                      onChange={(e) => {
+                        setActiveDateFilter(e.target.value);
+                        localStorage.setItem('orderActiveDateFilter', e.target.value);
+                      }}
+                      className="bg-background-card text-text-primary border border-border-main rounded-lg px-3 py-1.5 text-xs outline-none font-semibold text-primary"
+                    >
+                      <option value="today">Today Orders</option>
+                      <option value="all">All Orders</option>
+                    </select>
+                    <select
                       value={orderStatusFilter}
                       onChange={(e) => {
                         setOrderStatusFilter(e.target.value);
@@ -1818,11 +1865,13 @@ const OrderSection = () => {
                     setPaymentFilter('all');
                     setPaymentMethodFilter('all');
                     setHistoryOrderTypeFilter('all');
+                    setActiveDateFilter('today');
+                    localStorage.removeItem('orderActiveDateFilter');
                     setStartDate('');
                     setEndDate('');
                   }}
-                  disabled={!searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all' && paymentMethodFilter === 'all' && historyOrderTypeFilter === 'all' && !startDate && !endDate}
-                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${!searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all' && paymentMethodFilter === 'all' && historyOrderTypeFilter === 'all' && !startDate && !endDate
+                  disabled={!searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all' && paymentMethodFilter === 'all' && historyOrderTypeFilter === 'all' && activeDateFilter === 'today' && !startDate && !endDate}
+                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${!searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all' && paymentMethodFilter === 'all' && historyOrderTypeFilter === 'all' && activeDateFilter === 'today' && !startDate && !endDate
                     ? 'bg-background-muted/50 text-text-muted/30 border-border-light cursor-not-allowed'
                     : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white'
                     }`}

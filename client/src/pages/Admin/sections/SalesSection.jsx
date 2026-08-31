@@ -81,10 +81,17 @@ const SalesSection = () => {
         api.get('/api/reports/items', { params: filters }),
         api.get('/api/reports/periodic', { params: { orderType: filters.orderType, orderSource: filters.orderSource, menuItem: filters.menuItem } })
       ]);
-      setSalesData(salesRes.data.data);
-      setItemStats(itemsRes.data.data);
-      setPeriodicData(periodicRes.data.data);
+      setSalesData(salesRes.data?.data || { stats: { totalRevenue: 0, totalQty: 0, totalOrders: 0 } });
+      setItemStats(Array.isArray(itemsRes.data?.data) ? itemsRes.data.data : []);
+      const pd = periodicRes.data?.data;
+      setPeriodicData({
+        daily:   pd?.daily   || { revenue: 0, cost: 0 },
+        weekly:  pd?.weekly  || { revenue: 0, cost: 0 },
+        monthly: pd?.monthly || { revenue: 0, cost: 0 },
+        yearly:  pd?.yearly  || { revenue: 0, cost: 0 },
+      });
     } catch (error) {
+      console.error('Sales report fetch error:', error);
       showToast('error', 'Failed to fetch report data');
     } finally {
       setLoading(false);
@@ -319,7 +326,21 @@ const SalesSection = () => {
         </div>
       </div>
 
-      { }
+      { /* Summary stats for the filtered range */ }
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {[
+          { label: 'Total Revenue', value: `₹${Math.round(salesData.stats?.totalRevenue || 0).toLocaleString()}`, color: 'text-green-500', bg: 'bg-green-500/10', border: 'border-green-500/20' },
+          { label: 'Items Sold', value: (salesData.stats?.totalQty || 0).toLocaleString(), color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
+          { label: 'Net Profit', value: `₹${Math.round(salesData.stats?.totalProfit || 0).toLocaleString()}`, color: 'text-purple-500', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
+        ].map((stat, idx) => (
+          <div key={idx} className={`${stat.bg} border ${stat.border} rounded-2xl px-6 py-4 flex items-center justify-between`}>
+            <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">{stat.label}</span>
+            <span className={`text-xl font-black ${stat.color}`}>{stat.value}</span>
+          </div>
+        ))}
+      </div>
+
+      { /* Periodic revenue cards */ }
       <div className="space-y-4">
         <h3 className="text-xl font-black text-text-primary tracking-tight">Revenue</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -1079,64 +1079,73 @@ class OrderController {
   async getOrders(req, res) {
     try {
       const { type, startDate, endDate, history } = req.query;
-      const query = type ? { orderType: type } : {};
+      const page = parseInt(req.query.page || 1);
+      const limit = req.query.limit ? parseInt(req.query.limit) : (history === 'true' ? 50 : 50);
+      const skip = (page - 1) * limit;
+
+      let finalQuery;
 
       if (history === 'true') {
+        // --- HISTORY MODE: show completed/cancelled/delivered orders ---
+        // Do NOT use baseFilter here — it incorrectly excludes refunded online orders,
+        // cancelled user-delivery orders, etc.
+        const histQuery = {
+          orderStatus: { $in: ['cancelled', 'completed', 'delivered'] }
+        };
+
         if (startDate && endDate) {
           const end = new Date(endDate);
           end.setHours(23, 59, 59, 999);
-          query.createdAt = { $gte: new Date(startDate), $lte: end };
+          histQuery.createdAt = { $gte: new Date(startDate), $lte: end };
         } else if (startDate) {
-          query.createdAt = { $gte: new Date(startDate) };
+          histQuery.createdAt = { $gte: new Date(startDate) };
         } else if (endDate) {
           const end = new Date(endDate);
           end.setHours(23, 59, 59, 999);
-          query.createdAt = { $lte: end };
+          histQuery.createdAt = { $lte: end };
         } else {
-          
+          // Default: last 30 days
           const thirtyDaysAgo = new Date();
           thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-          query.createdAt = { $gte: thirtyDaysAgo };
+          histQuery.createdAt = { $gte: thirtyDaysAgo };
         }
-      } else {
-        
-        const todayStart = new Date();
-        if (todayStart.getHours() < 5) todayStart.setDate(todayStart.getDate() - 1);
-        todayStart.setHours(5, 0, 0, 0);
 
-        query.$or = [
-          { orderStatus: { $nin: ['cancelled', 'completed', 'delivered'] } },
-          { orderStatus: 'delivered', paymentStatus: { $ne: 'paid' } }
-        ];
+        if (type) histQuery.orderType = type;
+        finalQuery = histQuery;
+      } else {
+        const activeQuery = {
+          $or: [
+            { orderStatus: { $nin: ['cancelled', 'completed', 'delivered'] } },
+            { orderStatus: 'delivered', paymentStatus: { $ne: 'paid' } }
+          ]
+        };
+
+        if (req.query.dateFilter !== 'all') {
+          const todayStart = new Date();
+          if (todayStart.getHours() < 5) todayStart.setDate(todayStart.getDate() - 1);
+          todayStart.setHours(5, 0, 0, 0);
+          activeQuery.createdAt = { $gte: todayStart };
+        }
+
+        if (type) activeQuery.orderType = type;
+        finalQuery = activeQuery;
       }
 
-      
-      const baseFilter = {
-        $or: [
-          { paymentStatus: 'paid' },
-          { paymentMethod: { $in: ['cod', 'cash'] } },
-          { orderType: 'dine-in' },
-          { orderType: 'takeaway' },
-          { orderSource: 'admin' }
-        ]
-      };
+      const [orders, totalCount] = await Promise.all([
+        Order.find(finalQuery)
+          .populate('items.menuItem', 'name image')
+          .populate('table', 'tableNumber mergedGroup')
+          .populate('assignedDeliveryBoy', 'name phoneNumber')
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .lean(),
+        history === 'true' ? Order.countDocuments(finalQuery) : Promise.resolve(null)
+      ]);
 
-      const limit = req.query.limit ? parseInt(req.query.limit) : (history === 'true' ? 0 : 50);
-      const skip = (parseInt(req.query.page || 1) - 1) * (limit || 1);
-
-      const finalQuery = { $and: [query, baseFilter] };
-
-      const orders = await Order.find(finalQuery)
-        .populate('items.menuItem', 'name image')
-        .populate('table', 'tableNumber mergedGroup')
-        .populate('assignedDeliveryBoy', 'name phoneNumber')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit) 
-        .lean(); 
-
-      res.json({ success: true, data: orders });
+      res.json({ success: true, data: orders, totalCount, page, limit });
     } catch (error) {
+      console.error('getOrders error:', error);
       res.status(500).json({ success: false, message: error.message });
     }
   }
