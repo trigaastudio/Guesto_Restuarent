@@ -146,6 +146,9 @@ orderSchema.index({ orderType: 1, createdAt: -1 });
 orderSchema.index({ orderType: 1, orderStatus: 1 });
 orderSchema.index({ orderStatus: 1, paymentStatus: 1 });
 orderSchema.index({ paymentStatus: 1, createdAt: -1 });
+// Compound index for history tab queries (status + sort by date)
+orderSchema.index({ orderStatus: 1, createdAt: -1 });
+orderSchema.index({ orderStatus: 1, orderType: 1, createdAt: -1 });
 
 
 // PERF-1 OPTIMIZATION: Setup state for salesCount synchronization

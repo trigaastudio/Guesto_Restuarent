@@ -692,9 +692,9 @@ class OrderController {
         const coords = extractCoordinates(targetUrl);
         if (coords) {
           const { lat: userLat, lng: userLng } = coords;
-          const distance = await calculateRoadDistance(userLat, userLng, restLat, restLng);
+          const distance = await calculateRoadDistance(restLat, restLng, userLat, userLng);
           if (distance > freeDistanceLimit) {
-            deliveryFee = Math.ceil(distance - freeDistanceLimit) * chargePerExtraKm;
+            deliveryFee = Math.ceil((distance - freeDistanceLimit) * chargePerExtraKm);
           }
         }
       }
@@ -1090,7 +1090,10 @@ class OrderController {
         // Do NOT use baseFilter here — it incorrectly excludes refunded online orders,
         // cancelled user-delivery orders, etc.
         const histQuery = {
-          orderStatus: { $in: ['cancelled', 'completed', 'delivered'] }
+          $or: [
+            { orderStatus: 'cancelled' },
+            { orderStatus: { $in: ['completed', 'delivered'] }, paymentStatus: 'paid' }
+          ]
         };
 
         if (startDate && endDate) {
@@ -1103,20 +1106,59 @@ class OrderController {
           const end = new Date(endDate);
           end.setHours(23, 59, 59, 999);
           histQuery.createdAt = { $lte: end };
-        } else {
-          // Default: last 30 days
-          const thirtyDaysAgo = new Date();
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-          histQuery.createdAt = { $gte: thirtyDaysAgo };
+        }
+        // No default date restriction — return ALL history orders when no date range is set
+
+        // Order type filter (with aliases)
+        if (type && type !== 'all') {
+          if (type === 'takeaway') {
+            histQuery.orderType = { $in: ['takeaway', 'take-away', 'counter'] };
+          } else if (type === 'dine-in') {
+            histQuery.orderType = { $in: ['dine-in', 'dining'] };
+          } else if (type === 'delivery') {
+            histQuery.orderType = { $in: ['delivery', 'online'] };
+          } else {
+            histQuery.orderType = type;
+          }
         }
 
-        if (type) histQuery.orderType = type;
+        // Status filter
+        const statusFilter = req.query.status;
+        if (statusFilter && statusFilter !== 'all') {
+          histQuery.orderStatus = statusFilter;
+        }
+
+        // Payment status filter
+        const paymentStatusFilter = req.query.paymentStatus;
+        if (paymentStatusFilter && paymentStatusFilter !== 'all') {
+          histQuery.paymentStatus = paymentStatusFilter;
+        }
+
+        // Payment method filter
+        const paymentMethodFilter = req.query.paymentMethod;
+        if (paymentMethodFilter && paymentMethodFilter !== 'all') {
+          histQuery.paymentMethod = paymentMethodFilter;
+        }
+
+        // Search filter
+        const search = req.query.search;
+        if (search && search.trim()) {
+          const s = search.trim();
+          histQuery.$or = [
+            { orderNumber: { $regex: s, $options: 'i' } },
+            { 'customerDetails.name': { $regex: s, $options: 'i' } },
+            { 'customerDetails.phone': { $regex: s, $options: 'i' } },
+            { 'address.recipientName': { $regex: s, $options: 'i' } },
+            { 'address.mobile': { $regex: s, $options: 'i' } },
+          ];
+        }
+
         finalQuery = histQuery;
       } else {
         const activeQuery = {
           $or: [
             { orderStatus: { $nin: ['cancelled', 'completed', 'delivered'] } },
-            { orderStatus: 'delivered', paymentStatus: { $ne: 'paid' } }
+            { orderStatus: { $in: ['completed', 'delivered'] }, paymentStatus: { $ne: 'paid' } }
           ]
         };
 
@@ -1553,14 +1595,21 @@ class OrderController {
       } else {
         query = {
           $or: [
-            { orderStatus: 'delivered', paymentStatus: 'paid' },
             { orderStatus: 'cancelled' },
-            { orderStatus: 'completed' }
+            { orderStatus: { $in: ['completed', 'delivered'] }, paymentStatus: 'paid' }
           ]
         };
 
         if (orderType && orderType !== 'all') {
-          query.orderType = orderType;
+          if (orderType === 'takeaway') {
+            query.orderType = { $in: ['takeaway', 'take-away', 'counter'] };
+          } else if (orderType === 'dine-in') {
+            query.orderType = { $in: ['dine-in', 'dining'] };
+          } else if (orderType === 'delivery') {
+            query.orderType = { $in: ['delivery', 'online'] };
+          } else {
+            query.orderType = orderType;
+          }
         }
 
         if (startDate || endDate) {

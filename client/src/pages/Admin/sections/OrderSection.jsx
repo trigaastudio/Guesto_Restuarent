@@ -89,6 +89,10 @@ const OrderSection = () => {
   // so tab count badges stay accurate even when viewing History tab
   const [activeOrders, setActiveOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  // Server-side pagination state for history tab
+  const [historyTotalCount, setHistoryTotalCount] = useState(0);
+  const [historyPage, setHistoryPage] = useState(1);
+  const historyItemsPerPage = 50;
 
 
   const [paymentModal, setPaymentModal] = useState({ open: false, order: null });
@@ -414,14 +418,22 @@ const OrderSection = () => {
     }
   }, [currentPage]);
 
-  const fetchOrders = async (silent = false, currentTab = activeTab, start = startDate, end = endDate) => {
+  const fetchOrders = async (silent = false, currentTab = activeTab, start = startDate, end = endDate, page = historyPage) => {
     if (!silent) setIsLoading(true);
     try {
       const params = {};
       if (currentTab === 'history') {
         params.history = true;
+        params.limit = historyItemsPerPage;
+        params.page = page;
         if (start) params.startDate = start;
         if (end) params.endDate = end;
+        // Pass filter params to backend for server-side filtering
+        if (historyOrderTypeFilter !== 'all') params.type = historyOrderTypeFilter;
+        if (orderStatusFilter !== 'all') params.status = orderStatusFilter;
+        if (paymentFilter !== 'all') params.paymentStatus = paymentFilter;
+        if (paymentMethodFilter !== 'all') params.paymentMethod = paymentMethodFilter;
+        if (searchTerm.trim()) params.search = searchTerm.trim();
       } else {
         params.dateFilter = activeDateFilter;
       }
@@ -429,6 +441,9 @@ const OrderSection = () => {
       const data = response.data?.data;
       const safeData = Array.isArray(data) ? data : [];
       setOrders(safeData);
+      if (currentTab === 'history') {
+        setHistoryTotalCount(response.data?.totalCount || 0);
+      }
       // When NOT on history, active orders = displayed orders (keep counts in sync)
       if (currentTab !== 'history') setActiveOrders(safeData);
     } catch (error) {
@@ -444,21 +459,40 @@ const OrderSection = () => {
   useEffect(() => {
     if (isFirstMount.current) {
       isFirstMount.current = false;
-      fetchOrders(false, activeTab, startDate, endDate);
+      fetchOrders(false, activeTab, startDate, endDate, historyPage);
       // Always load active order counts for tab badges on mount
       if (activeTab === 'history') fetchActiveOrderCounts();
     } else {
-      fetchOrders(true, activeTab, startDate, endDate);
+      fetchOrders(true, activeTab, startDate, endDate, historyPage);
       if (activeTab === 'history') fetchActiveOrderCounts();
     }
-  }, [activeTab, startDate, endDate, activeDateFilter]);
+  }, [activeTab, startDate, endDate, activeDateFilter, historyPage, historyOrderTypeFilter, orderStatusFilter, paymentFilter, paymentMethodFilter, searchTerm]);
+
+  // Reset history page to 1 when any history filter changes
+  useEffect(() => {
+    if (activeTab === 'history') {
+      setHistoryPage(1);
+    }
+  }, [historyOrderTypeFilter, orderStatusFilter, paymentFilter, paymentMethodFilter, startDate, endDate, searchTerm]);
 
   const handleClearHistory = async (ids = null) => {
     const isManualSelection = Array.isArray(ids);
-    const title = isManualSelection ? `Clear ${ids.length} Selected Orders?` : 'Clear History?';
-    const text = isManualSelection
-      ? `This will permanently delete the ${ids.length} marked orders from the database.`
-      : `This will permanently delete all history orders matching current filters from the database.`;
+    const hasPeriod = !isManualSelection && (startDate || endDate);
+
+    let title, text;
+    if (isManualSelection) {
+      title = `Delete ${ids.length} Selected Orders?`;
+      text = `This will permanently delete the ${ids.length} selected orders from the database.`;
+    } else if (hasPeriod) {
+      const periodLabel = startDate && endDate
+        ? `${startDate} to ${endDate}`
+        : startDate ? `from ${startDate} onwards` : `up to ${endDate}`;
+      title = `Delete All Orders in Period?`;
+      text = `This will permanently delete all history orders from ${periodLabel} that match the current filters.`;
+    } else {
+      title = 'Clear All History?';
+      text = `This will permanently delete ALL history orders matching the current filters from the database.`;
+    }
 
     const result = await showDeleteConfirmation(title, text);
     if (result.isConfirmed) {
@@ -474,7 +508,8 @@ const OrderSection = () => {
         if (response.data.success) {
           showToast('success', response.data.message);
           setSelectedOrderIds([]);
-          fetchOrders(false, 'history', startDate, endDate); // Refresh list after clearing
+          fetchOrders(false, 'history', startDate, endDate, 1);
+          setHistoryPage(1);
         }
       } catch (error) {
         showToast('error', 'Failed to clear history');
@@ -1608,7 +1643,7 @@ const OrderSection = () => {
       const matchesPayment = payment === 'all' || o.paymentStatus === payment;
       const matchesPaymentMethod = method === 'all' || o.paymentMethod === method;
 
-      const isHistoryOrder = o.orderStatus === 'cancelled' || o.orderStatus === 'completed' || (o.orderStatus === 'delivered' && o.paymentStatus === 'paid');
+      const isHistoryOrder = o.orderStatus === 'cancelled' || ((o.orderStatus === 'completed' || o.orderStatus === 'delivered') && o.paymentStatus === 'paid');
 
       let matchesType = false;
       const orderDate = new Date(o.createdAt);
@@ -1618,7 +1653,14 @@ const OrderSection = () => {
 
       if (tabId === 'history') {
         if (!isHistoryOrder) return false;
-        const matchesHistType = histType === 'all' || o.orderType === histType;
+        let matchesHistType = histType === 'all';
+        if (histType === 'takeaway') {
+          matchesHistType = o.orderType === 'takeaway' || o.orderType === 'take-away' || o.orderType === 'counter';
+        } else if (histType === 'dine-in') {
+          matchesHistType = o.orderType === 'dine-in' || o.orderType === 'dining';
+        } else if (histType === 'delivery') {
+          matchesHistType = o.orderType === 'delivery' || o.orderType === 'online';
+        }
 
         let matchesDate = true;
         if (sDate || eDate) {
@@ -1655,18 +1697,26 @@ const OrderSection = () => {
     });
   };
 
-  // Memoize filtered+sorted+paginated orders to avoid expensive recomputation on every render
+  // For history tab: orders are already filtered+paginated on the server, just sort client-side
+  // For active tabs: apply client-side filtering+pagination as before
   const filteredOrders = useMemo(
-    () => getSortedData(applyFilters(orders, activeTab)),
+    () => activeTab === 'history'
+      ? getSortedData(orders)  // server already filtered; just sort for column clicks
+      : getSortedData(applyFilters(orders, activeTab)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [orders, activeTab, searchTerm, orderStatusFilter, paymentFilter, paymentMethodFilter, historyOrderTypeFilter, startDate, endDate, sortConfig, activeDateFilter]
   );
 
-  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
-  const paginatedOrders = filteredOrders.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const totalPages = activeTab === 'history'
+    ? Math.ceil(historyTotalCount / historyItemsPerPage)
+    : Math.ceil(filteredOrders.length / itemsPerPage);
+
+  const paginatedOrders = activeTab === 'history'
+    ? filteredOrders  // server already returned only this page's records
+    : filteredOrders.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+      );
 
   useEffect(() => {
     setCurrentPage(1);
@@ -1865,13 +1915,13 @@ const OrderSection = () => {
                     setPaymentFilter('all');
                     setPaymentMethodFilter('all');
                     setHistoryOrderTypeFilter('all');
-                    setActiveDateFilter('today');
+                    setActiveDateFilter('all');
                     localStorage.removeItem('orderActiveDateFilter');
                     setStartDate('');
                     setEndDate('');
                   }}
-                  disabled={!searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all' && paymentMethodFilter === 'all' && historyOrderTypeFilter === 'all' && activeDateFilter === 'today' && !startDate && !endDate}
-                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${!searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all' && paymentMethodFilter === 'all' && historyOrderTypeFilter === 'all' && activeDateFilter === 'today' && !startDate && !endDate
+                  disabled={!searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all' && paymentMethodFilter === 'all' && historyOrderTypeFilter === 'all' && activeDateFilter === 'all' && !startDate && !endDate}
+                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${!searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all' && paymentMethodFilter === 'all' && historyOrderTypeFilter === 'all' && activeDateFilter === 'all' && !startDate && !endDate
                     ? 'bg-background-muted/50 text-text-muted/30 border-border-light cursor-not-allowed'
                     : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white'
                     }`}
@@ -1882,8 +1932,9 @@ const OrderSection = () => {
                 </button>
 
                 {activeTab === 'history' && (
-                  <div className="flex items-center ml-auto">
+                  <div className="flex items-center ml-auto gap-2">
                     {selectedOrderIds.length > 0 ? (
+                      // Manual selection: delete only the checked rows
                       <button
                         onClick={() => handleClearHistory(selectedOrderIds)}
                         className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-status-unavailable text-white shadow-lg shadow-status-unavailable/20 hover:bg-status-unavailable/90 active:scale-95 transition-all group"
@@ -1891,7 +1942,21 @@ const OrderSection = () => {
                         <Trash2 size={14} className="group-hover:rotate-12 transition-transform" />
                         <span className="text-[10px] font-black uppercase tracking-widest">Delete Selected ({selectedOrderIds.length})</span>
                       </button>
+                    ) : (startDate || endDate) ? (
+                      // Date period is active: show a prominent "Delete This Period" button
+                      <button
+                        onClick={() => handleClearHistory()}
+                        className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-status-unavailable text-white shadow-lg shadow-status-unavailable/20 hover:bg-status-unavailable/90 active:scale-95 transition-all group"
+                        title={`Delete all orders from ${startDate || '…'} to ${endDate || '…'}`}
+                      >
+                        <CheckCircle2 size={14} className="group-hover:scale-110 transition-transform" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">
+                          Delete Period
+                          {startDate && endDate ? ` (${startDate} → ${endDate})` : startDate ? ` (from ${startDate})` : ` (to ${endDate})`}
+                        </span>
+                      </button>
                     ) : (
+                      // No selection, no period: delete all history records
                       <button
                         onClick={() => handleClearHistory()}
                         className="flex items-center space-x-2 px-4 py-2 rounded-xl border-2 border-status-unavailable/20 text-status-unavailable hover:bg-status-unavailable hover:text-white shadow-sm hover:shadow-status-unavailable/30 active:scale-95 transition-all group"
@@ -1915,10 +1980,10 @@ const OrderSection = () => {
                     <th className="px-3 py-4 w-10">
                       <input
                         type="checkbox"
-                        checked={selectedOrderIds.length === filteredOrders.length && filteredOrders.length > 0}
+                        checked={selectedOrderIds.length === paginatedOrders.length && paginatedOrders.length > 0}
                         onChange={(e) => {
                           if (e.target.checked) {
-                            setSelectedOrderIds(filteredOrders.map(o => o._id));
+                            setSelectedOrderIds(paginatedOrders.map(o => o._id));
                           } else {
                             setSelectedOrderIds([]);
                           }
@@ -2200,9 +2265,9 @@ const OrderSection = () => {
           </div>
 
           <Pagination
-            currentPage={currentPage}
+            currentPage={activeTab === 'history' ? historyPage : currentPage}
             totalPages={totalPages}
-            onPageChange={setCurrentPage}
+            onPageChange={activeTab === 'history' ? setHistoryPage : setCurrentPage}
           />
         </div>
       </div>

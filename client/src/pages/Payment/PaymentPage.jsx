@@ -636,9 +636,8 @@ const PaymentPage = () => {
                         <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-500 ${paymentMethod === 'cod' ? 'bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 text-white shadow-lg shadow-amber-500/20 scale-105' : 'bg-background-card text-text-muted/40 group-hover/pay:text-amber-500'}`}>
                           <Banknote size={20} strokeWidth={2.5} />
                         </div>
-                        <div>
-                          <h4 className="text-sm font-black text-text-primary tracking-tight">COD</h4>
-                          <p className="text-[9px] font-bold text-text-muted tracking-widest uppercase opacity-50">cash on delivery</p>
+                        <div className="flex items-center">
+                          <h4 className="text-sm font-black text-text-primary tracking-tight uppercase">CASH ON DELIVERY</h4>
                         </div>
                       </div>
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${paymentMethod === 'cod' ? 'border-primary bg-primary/10' : 'border-border/40 group-hover/pay:border-primary/40'}`}>
