@@ -1078,7 +1078,7 @@ class OrderController {
 
   async getOrders(req, res) {
     try {
-      const { type, startDate, endDate, history } = req.query;
+      const { type, startDate, endDate, history, temporary } = req.query;
       const page = parseInt(req.query.page || 1);
       const limit = req.query.limit ? parseInt(req.query.limit) : (history === 'true' ? 50 : 50);
       const skip = (page - 1) * limit;
@@ -1089,12 +1089,17 @@ class OrderController {
         // --- HISTORY MODE: show completed/cancelled/delivered orders ---
         // Do NOT use baseFilter here — it incorrectly excludes refunded online orders,
         // cancelled user-delivery orders, etc.
-        const histQuery = {
-          $or: [
-            { orderStatus: 'cancelled' },
-            { orderStatus: { $in: ['completed', 'delivered'] }, paymentStatus: 'paid' }
-          ]
-        };
+        let histQuery = {};
+        if (temporary === 'true') {
+          histQuery = { orderStatus: 'delivered', paymentStatus: 'unpaid' };
+        } else {
+          histQuery = {
+            $or: [
+              { orderStatus: 'cancelled' },
+              { orderStatus: { $in: ['completed', 'delivered'] }, paymentStatus: 'paid' }
+            ]
+          };
+        }
 
         if (startDate && endDate) {
           const end = new Date(endDate);
@@ -1587,18 +1592,22 @@ class OrderController {
 
   async clearHistory(req, res) {
     try {
-      const { orderType, startDate, endDate, ids } = req.query;
+      const { orderType, startDate, endDate, ids, temporary } = req.query;
       let query = {};
 
       if (ids) {
         query = { _id: { $in: ids.split(',') } };
       } else {
-        query = {
-          $or: [
-            { orderStatus: 'cancelled' },
-            { orderStatus: { $in: ['completed', 'delivered'] }, paymentStatus: 'paid' }
-          ]
-        };
+        if (temporary === 'true') {
+          query = { orderStatus: 'delivered', paymentStatus: 'unpaid' };
+        } else {
+          query = {
+            $or: [
+              { orderStatus: 'cancelled' },
+              { orderStatus: { $in: ['completed', 'delivered'] }, paymentStatus: 'paid' }
+            ]
+          };
+        }
 
         if (orderType && orderType !== 'all') {
           if (orderType === 'takeaway') {

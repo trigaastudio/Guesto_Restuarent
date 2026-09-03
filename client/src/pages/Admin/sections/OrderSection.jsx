@@ -113,6 +113,7 @@ const OrderSection = () => {
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
   const [activeTab, setActiveTab] = useState(localStorage.getItem('orderActiveTab') === 'all' ? 'takeaway' : (localStorage.getItem('orderActiveTab') || 'takeaway'));
   const [historyOrderTypeFilter, setHistoryOrderTypeFilter] = useState('all');
+  const [historyTemporaryFilter, setHistoryTemporaryFilter] = useState(false);
   const [activeDateFilter, setActiveDateFilter] = useState(localStorage.getItem('orderActiveDateFilter') || 'today');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -428,6 +429,7 @@ const OrderSection = () => {
         params.page = page;
         if (start) params.startDate = start;
         if (end) params.endDate = end;
+        if (historyTemporaryFilter) params.temporary = true;
         // Pass filter params to backend for server-side filtering
         if (historyOrderTypeFilter !== 'all') params.type = historyOrderTypeFilter;
         if (orderStatusFilter !== 'all') params.status = orderStatusFilter;
@@ -466,14 +468,14 @@ const OrderSection = () => {
       fetchOrders(true, activeTab, startDate, endDate, historyPage);
       if (activeTab === 'history') fetchActiveOrderCounts();
     }
-  }, [activeTab, startDate, endDate, activeDateFilter, historyPage, historyOrderTypeFilter, orderStatusFilter, paymentFilter, paymentMethodFilter, searchTerm]);
+  }, [activeTab, startDate, endDate, activeDateFilter, historyPage, historyOrderTypeFilter, historyTemporaryFilter, orderStatusFilter, paymentFilter, paymentMethodFilter, searchTerm]);
 
   // Reset history page to 1 when any history filter changes
   useEffect(() => {
     if (activeTab === 'history') {
       setHistoryPage(1);
     }
-  }, [historyOrderTypeFilter, orderStatusFilter, paymentFilter, paymentMethodFilter, startDate, endDate, searchTerm]);
+  }, [historyOrderTypeFilter, historyTemporaryFilter, orderStatusFilter, paymentFilter, paymentMethodFilter, startDate, endDate, searchTerm]);
 
   const handleClearHistory = async (ids = null) => {
     const isManualSelection = Array.isArray(ids);
@@ -500,6 +502,7 @@ const OrderSection = () => {
         const response = await api.delete(`/api/orders/clear-history`, {
           params: {
             orderType: historyOrderTypeFilter,
+            temporary: historyTemporaryFilter,
             startDate,
             endDate,
             ids: isManualSelection ? ids.join(',') : undefined
@@ -1821,6 +1824,12 @@ const OrderSection = () => {
                       <option value="dine-in">Dine In</option>
                       <option value="delivery">Delivery</option>
                     </select>
+                    <button
+                      onClick={() => setHistoryTemporaryFilter(!historyTemporaryFilter)}
+                      className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all ${historyTemporaryFilter ? 'bg-amber-500 text-white border-amber-500' : 'bg-background-card text-text-primary border-border-main hover:bg-background-muted'}`}
+                    >
+                      Temporary
+                    </button>
                     <select
                       value={paymentMethodFilter}
                       onChange={(e) => setPaymentMethodFilter(e.target.value)}
@@ -1915,13 +1924,14 @@ const OrderSection = () => {
                     setPaymentFilter('all');
                     setPaymentMethodFilter('all');
                     setHistoryOrderTypeFilter('all');
+                    setHistoryTemporaryFilter(false);
                     setActiveDateFilter('all');
                     localStorage.removeItem('orderActiveDateFilter');
                     setStartDate('');
                     setEndDate('');
                   }}
-                  disabled={!searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all' && paymentMethodFilter === 'all' && historyOrderTypeFilter === 'all' && activeDateFilter === 'all' && !startDate && !endDate}
-                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${!searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all' && paymentMethodFilter === 'all' && historyOrderTypeFilter === 'all' && activeDateFilter === 'all' && !startDate && !endDate
+                  disabled={!searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all' && paymentMethodFilter === 'all' && historyOrderTypeFilter === 'all' && !historyTemporaryFilter && activeDateFilter === 'all' && !startDate && !endDate}
+                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${!searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all' && paymentMethodFilter === 'all' && historyOrderTypeFilter === 'all' && !historyTemporaryFilter && activeDateFilter === 'all' && !startDate && !endDate
                     ? 'bg-background-muted/50 text-text-muted/30 border-border-light cursor-not-allowed'
                     : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white'
                     }`}
