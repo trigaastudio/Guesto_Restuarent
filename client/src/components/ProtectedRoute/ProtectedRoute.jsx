@@ -16,20 +16,22 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   let user;
 
   if (path.startsWith('/admin')) {
-    // Check admin_user first, then fall back to staff_user (for order-manager etc.)
+    // Check admin_user and admin_token first, then fall back to staff_user & staff_token (for order-manager etc.)
     const adminUser = safeParse('admin_user', null);
+    const adminToken = sessionStorage.getItem('admin_token');
     const staffUser = safeParse('staff_user', null);
+    const staffToken = sessionStorage.getItem('staff_token');
 
-    if (adminUser) {
+    if (adminUser && adminToken) {
       hasAuth = true;
       user = adminUser;
-    } else if (staffUser && ['order-manager', 'cashier', 'delivery', 'staff'].includes(staffUser.role)) {
+    } else if (staffUser && staffToken && ['order-manager', 'cashier', 'delivery', 'staff'].includes(staffUser.role)) {
       hasAuth = true;
       user = staffUser;
     }
   } else if (path.startsWith('/kitchen') || path.startsWith('/waiter')) {
-    
-    hasAuth = !!localStorage.getItem('staff_user');
+    const staffToken = sessionStorage.getItem('staff_token');
+    hasAuth = !!localStorage.getItem('staff_user') && !!staffToken;
     user = safeParse('staff_user', {});
   } else {
     

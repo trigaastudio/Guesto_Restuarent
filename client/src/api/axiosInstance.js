@@ -16,12 +16,13 @@ api.interceptors.request.use((config) => {
                       window.location.pathname.startsWith('/waiter');
 
   let token = null;
-  if (window.location.pathname.startsWith('/admin')) {
-    token = sessionStorage.getItem('admin_token');
+  const path = window.location.pathname;
+  if (path.startsWith('/admin')) {
+    token = sessionStorage.getItem('admin_token') || sessionStorage.getItem('staff_token');
   } else if (isStaffPath) {
     token = sessionStorage.getItem('staff_token');
   } else {
-    token = localStorage.getItem('token');
+    token = localStorage.getItem('token') || sessionStorage.getItem('admin_token') || sessionStorage.getItem('staff_token');
   }
 
   if (token) {
@@ -36,22 +37,25 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       const path = window.location.pathname;
-      const isLoginRequest = error.config?.url?.includes('/api/auth/login');
-      const isLogoutRequest = error.config?.url?.includes('/api/auth/logout');
+      const isLoginRequest = error.config?.url?.includes('/api/auth/login') || error.config?.url?.includes('/api/staff/login');
+      const isLogoutRequest = error.config?.url?.includes('/api/auth/logout') || error.config?.url?.includes('/api/staff/logout');
       const publicPaths = ['/', '/login', '/register', '/admin/login', '/staff/login', '/about', '/digital-menu'];
 
-      
       if (isLoginRequest || isLogoutRequest || publicPaths.includes(path)) {
         return Promise.reject(error);
       }
 
+      const isStaffUser = !!localStorage.getItem('staff_user') || !!sessionStorage.getItem('staff_token');
+
+      // Clear both sessions to prevent infinite redirect loops
+      sessionStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_user');
+      sessionStorage.removeItem('staff_token');
+      localStorage.removeItem('staff_user');
+
       if (path.startsWith('/admin')) {
-        sessionStorage.removeItem('admin_token');
-        localStorage.removeItem('admin_user');
-        window.location.replace('/admin/login');
+        window.location.replace(isStaffUser ? '/staff/login' : '/admin/login');
       } else if (path.startsWith('/kitchen') || path.startsWith('/waiter') || path.startsWith('/staff')) {
-        sessionStorage.removeItem('staff_token');
-        localStorage.removeItem('staff_user');
         window.location.replace('/staff/login');
       } else {
         localStorage.removeItem('token');

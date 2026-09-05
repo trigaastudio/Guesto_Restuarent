@@ -1,6 +1,6 @@
 import express from 'express';
 import orderController from '../controllers/orderController.js';
-import { protect, admin, adminOrStaff } from '../middleware/authMiddleware.js';
+import { protect, admin, adminOrStaff, adminOrOrderManager } from '../middleware/authMiddleware.js';
 import rateLimit from 'express-rate-limit';
 
 const router = express.Router();
@@ -36,6 +36,6 @@ router.patch('/:orderId/items/:itemId/status', protect, adminOrStaff, orderContr
 router.patch('/:orderId/items/:itemId/quantity', protect, adminOrStaff, orderController.updateItemQuantity);
 
 
-router.delete('/clear-history', protect, admin, orderController.clearHistory);
+router.delete('/clear-history', protect, adminOrOrderManager, orderController.clearHistory);
 
 export default router;

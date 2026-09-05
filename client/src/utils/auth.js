@@ -22,14 +22,17 @@ export const logoutToLanding = async (navigate) => {
 
 export const logoutAdmin = async (navigate) => {
   try { await api.post('/api/auth/logout'); } catch (err) { }
+  const isStaffUser = !!localStorage.getItem('staff_user') || !!sessionStorage.getItem('staff_token');
   localStorage.removeItem('admin_user');
   sessionStorage.removeItem('admin_token');
+  localStorage.removeItem('staff_user');
+  sessionStorage.removeItem('staff_token');
   localStorage.removeItem('admin_notifications');
   localStorage.removeItem('orderActiveTab');
   localStorage.removeItem('orderStatusFilter');
   localStorage.removeItem('orderSearchTerm');
   localStorage.removeItem('menuSearchTerm');
-  window.location.href = '/admin/login';
+  window.location.href = isStaffUser ? '/staff/login' : '/admin/login';
 };
 
 export const logoutStaff = async (navigate) => {

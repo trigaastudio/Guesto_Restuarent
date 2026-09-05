@@ -1,7 +1,7 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import staffController from '../controllers/staffController.js';
-import { protect, admin } from '../middleware/authMiddleware.js';
+import { protect, admin, adminOrOrderManager } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -17,7 +17,7 @@ const staffAuthLimiter = rateLimit({
 router.post('/login', staffAuthLimiter, staffController.login);
 
 
-router.get('/', protect, admin, staffController.getAllStaff);
+router.get('/', protect, adminOrOrderManager, staffController.getAllStaff);
 router.post('/', protect, admin, staffController.createStaff);
 router.put('/:id', protect, admin, staffController.updateStaff);
 router.delete('/:id', protect, admin, staffController.deleteStaff);
