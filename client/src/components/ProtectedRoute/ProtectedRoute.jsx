@@ -1,5 +1,15 @@
 import { Navigate } from 'react-router-dom';
 
+const safeParse = (key, defaultVal) => {
+  try {
+    const item = localStorage.getItem(key);
+    return item && item !== 'undefined' ? JSON.parse(item) : defaultVal;
+  } catch (e) {
+    console.error(`Error parsing ${key} from localStorage`, e);
+    return defaultVal;
+  }
+};
+
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const path = window.location.pathname;
   let hasAuth = false;
@@ -7,8 +17,8 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
   if (path.startsWith('/admin')) {
     // Check admin_user first, then fall back to staff_user (for order-manager etc.)
-    const adminUser = JSON.parse(localStorage.getItem('admin_user') || 'null');
-    const staffUser = JSON.parse(localStorage.getItem('staff_user') || 'null');
+    const adminUser = safeParse('admin_user', null);
+    const staffUser = safeParse('staff_user', null);
 
     if (adminUser) {
       hasAuth = true;
@@ -20,7 +30,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   } else if (path.startsWith('/kitchen') || path.startsWith('/waiter')) {
     
     hasAuth = !!localStorage.getItem('staff_user');
-    user = JSON.parse(localStorage.getItem('staff_user') || '{}');
+    user = safeParse('staff_user', {});
   } else {
     
     const customerAuth = !!localStorage.getItem('user');
@@ -29,11 +39,11 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     if (customerAuth) {
       
       hasAuth = customerAuth;
-      user = JSON.parse(localStorage.getItem('user') || '{}');
+      user = safeParse('user', {});
     } else if (adminAuth) {
       
       hasAuth = adminAuth;
-      user = JSON.parse(localStorage.getItem('admin_user') || '{}');
+      user = safeParse('admin_user', {});
     } else {
       
       return <Navigate to="/login" replace />;

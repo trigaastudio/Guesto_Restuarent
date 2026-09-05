@@ -36,7 +36,15 @@ const StaffLogin = () => {
   
   useEffect(() => {
     const token = sessionStorage.getItem('staff_token');
-    const user = JSON.parse(localStorage.getItem('staff_user') || '{}');
+    let user = {};
+    try {
+      const stored = localStorage.getItem('staff_user');
+      if (stored && stored !== 'undefined') {
+        user = JSON.parse(stored);
+      }
+    } catch (e) {
+      console.error('Error parsing staff_user', e);
+    }
     if (token && user.role === 'kitchen') navigate('/kitchen/dashboard', { replace: true });
     if (token && user.role === 'waiter') navigate('/waiter/dashboard', { replace: true });
     if (token && ['cashier', 'delivery', 'staff', 'order-manager'].includes(user.role)) navigate('/admin/dashboard', { replace: true });
