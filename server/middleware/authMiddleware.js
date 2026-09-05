@@ -54,7 +54,16 @@ export const admin = (req, res, next) => {
 };
 
 export const adminOrStaff = (req, res, next) => {
-  if (req.user && ['admin', 'kitchen', 'waiter', 'cashier', 'staff'].includes(req.user.role)) {
+  if (req.user && ['admin', 'kitchen', 'waiter', 'cashier', 'staff', 'order-manager'].includes(req.user.role)) {
+    next();
+  } else {
+    return res.status(403).json({ success: false, message: 'Not authorized for this action' });
+  }
+};
+
+// Middleware: Only full admin or order-manager (not kitchen/waiter/cashier)
+export const adminOrOrderManager = (req, res, next) => {
+  if (req.user && ['admin', 'order-manager'].includes(req.user.role)) {
     next();
   } else {
     return res.status(403).json({ success: false, message: 'Not authorized for this action' });

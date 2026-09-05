@@ -321,7 +321,7 @@ class AuthService {
     }
 
     if (requiredRole) {
-      const isAdminType = user.role === 'admin' || user.role === 'staff';
+      const isAdminType = user.role === 'admin' || user.role === 'staff' || user.role === 'order-manager';
       const isUserType = user.role === 'user';
 
       if (requiredRole === 'admin' && !isAdminType) {

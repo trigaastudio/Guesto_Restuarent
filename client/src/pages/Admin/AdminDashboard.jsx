@@ -53,22 +53,34 @@ import StockSection from './sections/StockSection';
 import DineInSection from './sections/DineInSection';
 import CardSkeleton from '../../components/Skeleton/CardSkeleton';
 
+// Tabs accessible by the order-manager role
+const ORDER_MANAGER_TABS = ['Orders', 'Dine-In'];
+
 const AdminDashboard = () => {
   const { theme, toggleTheme } = useTheme();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'Overview';
+  const navigate = useNavigate();
+
+  // Resolve logged-in user — admin_user (full admin) or staff_user (order-manager / staff)
+  const admin = JSON.parse(localStorage.getItem('admin_user') || localStorage.getItem('staff_user') || '{}');
+  const isOrderManager = admin?.role === 'order-manager';
+
+  // Default landing tab depends on role
+  const defaultTab = isOrderManager ? 'Orders' : 'Overview';
+  const rawTab = searchParams.get('tab') || defaultTab;
+  // If order-manager somehow lands on a forbidden tab, silently redirect to Orders
+  const activeTab = isOrderManager && !ORDER_MANAGER_TABS.includes(rawTab) ? 'Orders' : rawTab;
+
   const [refreshKey, setRefreshKey] = useState(0);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isDarkMode = theme === 'dark';
-  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [settings, setSettings] = useState(null);
   const [isStatsLoading, setIsStatsLoading] = useState(true);
   const [chartTimeframe, setChartTimeframe] = useState('week'); 
   const [notifications, setNotifications] = useState(JSON.parse(localStorage.getItem('admin_notifications') || '[]'));
   const [showNotifications, setShowNotifications] = useState(false);
-  const admin = JSON.parse(localStorage.getItem('admin_user') || '{}');
 
   
   const notificationSound = useRef(new Audio('/sounds/notification.mp3'));
@@ -349,7 +361,16 @@ const AdminDashboard = () => {
                   { name: 'Settings', icon: Settings },
                 ]
               }
-            ].map((section) => (
+            ]
+            // Filter out sections/items that order-manager cannot access
+            .map((section) => ({
+              ...section,
+              items: isOrderManager
+                ? section.items.filter(item => ORDER_MANAGER_TABS.includes(item.name))
+                : section.items
+            }))
+            .filter((section) => section.items.length > 0)
+            .map((section) => (
               <div key={section.group} className="space-y-2">
                 {!isSidebarCollapsed && (
                   <h3 className="px-4 text-[9px] font-black text-text-muted uppercase tracking-[0.25em] mb-3 opacity-60">
@@ -550,7 +571,9 @@ const AdminDashboard = () => {
             <div className="flex items-center space-x-3 border-l pl-4 sm:pl-6 border-border-light">
               <div className="hidden sm:block text-right">
                 <p className="text-sm font-bold text-text-primary">{admin.name || 'Admin'}</p>
-                <p className="text-[10px] text-text-secondary uppercase tracking-wider">{admin.email || 'Superuser'}</p>
+                <p className="text-[10px] text-text-secondary uppercase tracking-wider">
+                  {isOrderManager ? 'Order Manager' : (admin.email || 'Superuser')}
+                </p>
               </div>
               <div className="w-10 h-10 rounded-full bg-primary/20 border-2 border-primary/10 flex items-center justify-center text-primary font-bold shrink-0">
                 {admin.name?.charAt(0) || 'AD'}
@@ -912,17 +935,16 @@ const AdminDashboard = () => {
 
           {activeTab === 'Orders' && <OrderSection key={`order-${refreshKey}`} />}
           {activeTab === 'Dine-In' && <DineInSection key={`dinein-${refreshKey}`} />}
-          {activeTab === 'Categories' && <CategorySection refreshKey={refreshKey} />}
-          {activeTab === 'Stock' && <StockSection refreshKey={refreshKey} />}
-          {activeTab === 'Menu' && <MenuSection key={`menu-${refreshKey}`} />}
-          {activeTab === 'Tables' && <TableSection refreshKey={refreshKey} />}
-
-          {activeTab === 'Staff' && <StaffManagement key={`staff-${refreshKey}`} />}
-          {activeTab === 'Users' && <UserManagement key={`users-${refreshKey}`} />}
-
-          {activeTab === 'Settings' && <SettingsSection key={`settings-${refreshKey}`} />}
-          {activeTab === 'Offers' && <OfferSection key={`offers-${refreshKey}`} />}
-          {activeTab === 'Sales' && <SalesSection key={`sales-${refreshKey}`} />}
+          {/* Below sections are restricted to full admins only */}
+          {!isOrderManager && activeTab === 'Categories' && <CategorySection refreshKey={refreshKey} />}
+          {!isOrderManager && activeTab === 'Stock' && <StockSection refreshKey={refreshKey} />}
+          {!isOrderManager && activeTab === 'Menu' && <MenuSection key={`menu-${refreshKey}`} />}
+          {!isOrderManager && activeTab === 'Tables' && <TableSection refreshKey={refreshKey} />}
+          {!isOrderManager && activeTab === 'Staff' && <StaffManagement key={`staff-${refreshKey}`} />}
+          {!isOrderManager && activeTab === 'Users' && <UserManagement key={`users-${refreshKey}`} />}
+          {!isOrderManager && activeTab === 'Settings' && <SettingsSection key={`settings-${refreshKey}`} />}
+          {!isOrderManager && activeTab === 'Offers' && <OfferSection key={`offers-${refreshKey}`} />}
+          {!isOrderManager && activeTab === 'Sales' && <SalesSection key={`sales-${refreshKey}`} />}
         </div>
       </main>
     </div>

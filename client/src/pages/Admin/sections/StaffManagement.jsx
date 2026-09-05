@@ -22,12 +22,14 @@ const StaffRow = React.memo(({ staff, handleToggleStatus, handleOpenModal, handl
         </div>
       </td>
       <td className="px-3 py-4">
-        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${staff.role === 'kitchen' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
+            staff.role === 'kitchen' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
             staff.role === 'waiter' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-              staff.role === 'delivery' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
-                'bg-purple-500/10 text-purple-500 border-purple-500/20'
+            staff.role === 'delivery' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
+            staff.role === 'order-manager' ? 'bg-primary/10 text-primary border-primary/20' :
+              'bg-purple-500/10 text-purple-500 border-purple-500/20'
           }`}>
-          {staff.role}
+          {staff.role === 'order-manager' ? 'Order Manager' : staff.role}
         </span>
       </td>
       <td className="px-3 py-4 font-mono font-bold text-text-primary">{staff.employeeId}</td>
@@ -274,6 +276,7 @@ const StaffManagement = () => {
               className="bg-background-card text-text-primary border border-border-main rounded-lg px-3 py-1.5 text-xs outline-none"
             >
               <option value="all">All Roles</option>
+              <option value="order-manager">Order Manager</option>
               <option value="kitchen">Kitchen</option>
               <option value="waiter">Waiter</option>
               <option value="cashier">Cashier</option>
@@ -387,6 +390,7 @@ const StaffManagement = () => {
                       onChange={(e) => setCurrentStaff({ ...currentStaff, role: e.target.value })}
                       className="w-full pl-10 pr-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary outline-none transition-all text-sm font-bold appearance-none cursor-pointer"
                     >
+                      <option value="order-manager">Order Manager</option>
                       <option value="waiter">Waiter</option>
                       <option value="kitchen">Kitchen</option>
                       <option value="cashier">Cashier</option>
