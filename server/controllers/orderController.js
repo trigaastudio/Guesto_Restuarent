@@ -1152,13 +1152,20 @@ class OrderController {
         const search = req.query.search;
         if (search && search.trim()) {
           const s = search.trim();
-          histQuery.$or = [
-            { orderNumber: { $regex: s, $options: 'i' } },
-            { 'customerDetails.name': { $regex: s, $options: 'i' } },
-            { 'customerDetails.phone': { $regex: s, $options: 'i' } },
-            { 'address.recipientName': { $regex: s, $options: 'i' } },
-            { 'address.mobile': { $regex: s, $options: 'i' } },
-          ];
+          histQuery = {
+            $and: [
+              histQuery,
+              {
+                $or: [
+                  { orderNumber: { $regex: s, $options: 'i' } },
+                  { 'customerDetails.name': { $regex: s, $options: 'i' } },
+                  { 'customerDetails.phone': { $regex: s, $options: 'i' } },
+                  { 'address.recipientName': { $regex: s, $options: 'i' } },
+                  { 'address.mobile': { $regex: s, $options: 'i' } },
+                ]
+              }
+            ]
+          };
         }
 
         finalQuery = histQuery;

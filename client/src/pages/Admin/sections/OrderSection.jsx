@@ -105,6 +105,15 @@ const OrderSection = () => {
   const [obInput, setObInput] = useState('');
   const [isSavingOb, setIsSavingOb] = useState(false);
   const [searchTerm, setSearchTerm] = useState(localStorage.getItem('orderSearchTerm') || '');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(localStorage.getItem('orderSearchTerm') || '');
+  const fetchRequestIdRef = useRef(0);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
   const [posSearchTerm, setPosSearchTerm] = useState('');
   const [posCategoryFilter, setPosCategoryFilter] = useState('all');
   const [posViewMode, setPosViewMode] = useState('category');
@@ -419,7 +428,8 @@ const OrderSection = () => {
     }
   }, [currentPage]);
 
-  const fetchOrders = async (silent = false, currentTab = activeTab, start = startDate, end = endDate, page = historyPage) => {
+  const fetchOrders = async (silent = false, currentTab = activeTab, start = startDate, end = endDate, page = historyPage, searchVal = debouncedSearchTerm) => {
+    const reqId = ++fetchRequestIdRef.current;
     if (!silent) setIsLoading(true);
     try {
       const params = {};
@@ -430,29 +440,32 @@ const OrderSection = () => {
         if (start) params.startDate = start;
         if (end) params.endDate = end;
         if (historyTemporaryFilter) params.temporary = true;
-        // Pass filter params to backend for server-side filtering
         if (historyOrderTypeFilter !== 'all') params.type = historyOrderTypeFilter;
         if (orderStatusFilter !== 'all') params.status = orderStatusFilter;
         if (paymentFilter !== 'all') params.paymentStatus = paymentFilter;
         if (paymentMethodFilter !== 'all') params.paymentMethod = paymentMethodFilter;
-        if (searchTerm.trim()) params.search = searchTerm.trim();
+        if (searchVal.trim()) params.search = searchVal.trim();
       } else {
         params.dateFilter = activeDateFilter;
       }
       const response = await api.get(`/api/orders`, { params });
+      if (reqId !== fetchRequestIdRef.current) return;
+
       const data = response.data?.data;
       const safeData = Array.isArray(data) ? data : [];
       setOrders(safeData);
       if (currentTab === 'history') {
         setHistoryTotalCount(response.data?.totalCount || 0);
       }
-      // When NOT on history, active orders = displayed orders (keep counts in sync)
       if (currentTab !== 'history') setActiveOrders(safeData);
     } catch (error) {
+      if (reqId !== fetchRequestIdRef.current) return;
       console.error('Error fetching orders:', error);
       if (!silent) showToast('error', 'Failed to fetch orders');
     } finally {
-      setIsLoading(false);
+      if (reqId === fetchRequestIdRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -461,21 +474,34 @@ const OrderSection = () => {
   useEffect(() => {
     if (isFirstMount.current) {
       isFirstMount.current = false;
-      fetchOrders(false, activeTab, startDate, endDate, historyPage);
-      // Always load active order counts for tab badges on mount
+      fetchOrders(false, activeTab, startDate, endDate, historyPage, debouncedSearchTerm);
       if (activeTab === 'history') fetchActiveOrderCounts();
     } else {
-      fetchOrders(true, activeTab, startDate, endDate, historyPage);
+      fetchOrders(true, activeTab, startDate, endDate, historyPage, debouncedSearchTerm);
       if (activeTab === 'history') fetchActiveOrderCounts();
     }
-  }, [activeTab, startDate, endDate, activeDateFilter, historyPage, historyOrderTypeFilter, historyTemporaryFilter, orderStatusFilter, paymentFilter, paymentMethodFilter, searchTerm]);
+  }, [activeTab, startDate, endDate, activeDateFilter, historyPage, historyOrderTypeFilter, historyTemporaryFilter, orderStatusFilter, paymentFilter, paymentMethodFilter, debouncedSearchTerm]);
 
-  // Reset history page to 1 when any history filter changes
+  const prevFilterState = useRef({ historyOrderTypeFilter, historyTemporaryFilter, orderStatusFilter, paymentFilter, paymentMethodFilter, startDate, endDate, debouncedSearchTerm });
+
   useEffect(() => {
-    if (activeTab === 'history') {
+    const prev = prevFilterState.current;
+    const filterChanged = (
+      prev.historyOrderTypeFilter !== historyOrderTypeFilter ||
+      prev.historyTemporaryFilter !== historyTemporaryFilter ||
+      prev.orderStatusFilter !== orderStatusFilter ||
+      prev.paymentFilter !== paymentFilter ||
+      prev.paymentMethodFilter !== paymentMethodFilter ||
+      prev.startDate !== startDate ||
+      prev.endDate !== endDate ||
+      prev.debouncedSearchTerm !== debouncedSearchTerm
+    );
+    prevFilterState.current = { historyOrderTypeFilter, historyTemporaryFilter, orderStatusFilter, paymentFilter, paymentMethodFilter, startDate, endDate, debouncedSearchTerm };
+
+    if (filterChanged && activeTab === 'history' && historyPage !== 1) {
       setHistoryPage(1);
     }
-  }, [historyOrderTypeFilter, historyTemporaryFilter, orderStatusFilter, paymentFilter, paymentMethodFilter, startDate, endDate, searchTerm]);
+  }, [activeTab, historyPage, historyOrderTypeFilter, historyTemporaryFilter, orderStatusFilter, paymentFilter, paymentMethodFilter, startDate, endDate, debouncedSearchTerm]);
 
   const handleClearHistory = async (ids = null) => {
     const isManualSelection = Array.isArray(ids);
@@ -1708,7 +1734,7 @@ const OrderSection = () => {
       ? getSortedData(orders)  // server already filtered; just sort for column clicks
       : getSortedData(applyFilters(orders, activeTab)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [orders, activeTab, searchTerm, orderStatusFilter, paymentFilter, paymentMethodFilter, historyOrderTypeFilter, startDate, endDate, sortConfig, activeDateFilter]
+    [orders, activeTab, debouncedSearchTerm, orderStatusFilter, paymentFilter, paymentMethodFilter, historyOrderTypeFilter, startDate, endDate, sortConfig, activeDateFilter]
   );
 
   const totalPages = activeTab === 'history'
@@ -1724,7 +1750,7 @@ const OrderSection = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, orderStatusFilter, paymentFilter, paymentMethodFilter, historyOrderTypeFilter, startDate, endDate, activeDateFilter]);
+  }, [debouncedSearchTerm, orderStatusFilter, paymentFilter, paymentMethodFilter, historyOrderTypeFilter, startDate, endDate, activeDateFilter]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -2054,13 +2080,13 @@ const OrderSection = () => {
               <tbody className="divide-y divide-border-light">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={activeTab === 'history' ? 10 : (activeTab === 'dine-in' ? 8 : 7)} className="px-6 py-10">
-                      <TableSkeleton columns={activeTab === 'history' ? 10 : (activeTab === 'dine-in' ? 8 : 7)} rows={5} />
+                    <td colSpan={activeTab === 'history' ? 10 : 7} className="px-6 py-10">
+                      <TableSkeleton columns={activeTab === 'history' ? 10 : 7} rows={5} />
                     </td>
                   </tr>
                 ) : filteredOrders.length === 0 ? (
                   <tr>
-                    <td colSpan={activeTab === 'history' ? 10 : (activeTab === 'dine-in' ? 8 : 7)} className="px-6 py-12 text-center text-text-muted italic">No orders found</td>
+                    <td colSpan={activeTab === 'history' ? 10 : 7} className="px-6 py-12 text-center text-text-muted italic">No orders found</td>
                   </tr>
                 ) : (
                   paginatedOrders.map((order) => (
