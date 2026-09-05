@@ -77,7 +77,7 @@ function App() {
                   {}
                   <Route path="/admin/login" element={<AdminLogin />} />
                   <Route path="/admin/dashboard" element={
-                    <ProtectedRoute allowedRoles={['admin']}>
+                    <ProtectedRoute allowedRoles={['admin', 'order-manager', 'cashier', 'delivery', 'staff']}>
                       <AdminDashboard />
                     </ProtectedRoute>
                   } />

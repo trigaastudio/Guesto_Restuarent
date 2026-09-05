@@ -39,7 +39,7 @@ const StaffLogin = () => {
     const user = JSON.parse(localStorage.getItem('staff_user') || '{}');
     if (token && user.role === 'kitchen') navigate('/kitchen/dashboard', { replace: true });
     if (token && user.role === 'waiter') navigate('/waiter/dashboard', { replace: true });
-    if (token && ['cashier', 'delivery', 'staff', 'order-manager'].includes(user.role)) navigate('/admin', { replace: true });
+    if (token && ['cashier', 'delivery', 'staff', 'order-manager'].includes(user.role)) navigate('/admin/dashboard', { replace: true });
   }, [navigate]);
 
   const handleLogin = async (e) => {
@@ -77,7 +77,7 @@ const StaffLogin = () => {
           navigate('/waiter/dashboard', { replace: true });
         } else if (['cashier', 'delivery', 'staff', 'order-manager'].includes(staffData.role)) {
           // These roles use the admin dashboard (restricted by role)
-          navigate('/admin', { replace: true });
+          navigate('/admin/dashboard', { replace: true });
         } else {
           setErrorMsg('Unrecognized role. Please contact admin.');
         }
