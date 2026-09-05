@@ -39,6 +39,7 @@ const StaffLogin = () => {
     const user = JSON.parse(localStorage.getItem('staff_user') || '{}');
     if (token && user.role === 'kitchen') navigate('/kitchen/dashboard', { replace: true });
     if (token && user.role === 'waiter') navigate('/waiter/dashboard', { replace: true });
+    if (token && ['cashier', 'delivery', 'staff', 'order-manager'].includes(user.role)) navigate('/admin', { replace: true });
   }, [navigate]);
 
   const handleLogin = async (e) => {
@@ -58,7 +59,7 @@ const StaffLogin = () => {
 
         
         if (staffData.role === 'admin' || staffData.role === 'user') {
-          setErrorMsg('Access denied. This portal is for Waiter & Kitchen staff only.');
+          setErrorMsg('Access denied. Please use the Admin login portal.');
           return;
         }
 
@@ -74,6 +75,9 @@ const StaffLogin = () => {
           navigate('/kitchen/dashboard', { replace: true });
         } else if (staffData.role === 'waiter') {
           navigate('/waiter/dashboard', { replace: true });
+        } else if (['cashier', 'delivery', 'staff', 'order-manager'].includes(staffData.role)) {
+          // These roles use the admin dashboard (restricted by role)
+          navigate('/admin', { replace: true });
         } else {
           setErrorMsg('Unrecognized role. Please contact admin.');
         }
