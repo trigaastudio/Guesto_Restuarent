@@ -70,10 +70,13 @@ const extractCoordinates = (url) => {
 
 const calculateRoadDistance = async (lat1, lon1, lat2, lon2) => {
   try {
-    const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`);
+    // Request alternative routes so we can pick the shortest one
+    const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false&alternatives=true`);
     const data = await response.json();
     if (data.routes && data.routes.length > 0) {
-      return data.routes[0].distance / 1000; 
+      // Pick the shortest route among all alternatives
+      const shortestDistance = Math.min(...data.routes.map(r => r.distance));
+      return shortestDistance / 1000;
     }
     return calculateDistance(lat1, lon1, lat2, lon2);
   } catch (error) {

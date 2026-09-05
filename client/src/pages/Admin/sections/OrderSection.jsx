@@ -1512,11 +1512,12 @@ const OrderSection = () => {
 
 
       try {
-        const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${restLng},${restLat};${destLng},${destLat}?overview=false`;
+        const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${restLng},${restLat};${destLng},${destLat}?overview=false&alternatives=true`;
         const osrmRes = await axios.get(osrmUrl);
-        if (osrmRes.data?.routes?.[0]?.distance) {
-          const roadDistKm = osrmRes.data.routes[0].distance / 1000;
-          roundedDist = Math.ceil(roadDistKm * 10) / 10;
+        if (osrmRes.data?.routes?.length > 0) {
+          // Pick the shortest route among all alternatives
+          const shortestDistM = Math.min(...osrmRes.data.routes.map(r => r.distance));
+          roundedDist = Math.ceil((shortestDistM / 1000) * 10) / 10;
         }
       } catch (osrmErr) {
         console.error('OSRM failed, falling back to straight line:', osrmErr);

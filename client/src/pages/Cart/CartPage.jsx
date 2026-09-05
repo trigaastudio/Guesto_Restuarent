@@ -229,10 +229,12 @@ const CartPage = () => {
           let distance = calculateDistance(restLat, restLng, destLat, destLng);
 
           try {
-            const osrmRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${restLng},${restLat};${destLng},${destLat}?overview=false`);
+            const osrmRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${restLng},${restLat};${destLng},${destLat}?overview=false&alternatives=true`);
             const osrmData = await osrmRes.json();
-            if (osrmData.routes?.[0]?.distance) {
-              distance = osrmData.routes[0].distance / 1000;
+            if (osrmData.routes?.length > 0) {
+              // Pick the shortest route among all alternatives
+              const shortestDistM = Math.min(...osrmData.routes.map(r => r.distance));
+              distance = shortestDistM / 1000;
             }
           } catch (e) { console.error('OSRM failed', e); }
 
