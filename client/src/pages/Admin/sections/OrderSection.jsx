@@ -1909,6 +1909,7 @@ const OrderSection = () => {
                       className="bg-background-card text-text-primary border border-border-main rounded-lg px-3 py-1.5 text-xs outline-none"
                     >
                       <option value="all">All Orders</option>
+                      <option value="cancelled">Cancelled</option>
                       <option value="placed">Placed</option>
                       <option value="processing">Processing</option>
                       {(activeTab === 'delivery' || activeTab === 'all') && (
@@ -1917,7 +1918,6 @@ const OrderSection = () => {
                           <option value="delivered">Delivered</option>
                         </>
                       )}
-                      <option value="cancelled">Cancelled</option>
                     </select>
                     <select
                       value={paymentFilter}
@@ -2202,6 +2202,7 @@ const OrderSection = () => {
                                 onClick={(e) => e.stopPropagation()}
                                 className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border cursor-pointer outline-none transition-all text-center ${status.color}`}
                               >
+                                <option value="cancelled" className="bg-background-card text-text-primary">Cancelled</option>
                                 <option value="placed" className="bg-background-card text-text-primary">New Order</option>
                                 <option value="processing" className="bg-background-card text-text-primary">Processing</option>
                                 <option value="ready" className="bg-background-card text-text-primary">Ready</option>
@@ -2210,7 +2211,6 @@ const OrderSection = () => {
                                   <option value="out-for-delivery" className="bg-background-card text-text-primary">Out for Delivery</option>
                                 )}
                                 <option value="delivered" className="bg-background-card text-text-primary">Delivered / Completed</option>
-                                <option value="cancelled" className="bg-background-card text-text-primary">Cancelled</option>
                               </select>
                             );
                           }
