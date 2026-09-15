@@ -12,11 +12,30 @@ import OTP from '../models/otpSchema.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// ─── Shared Validators ─────────────────────────────────────────────────────────────
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&^#()_+\-=\[\]{};':"\\|,.<>\/?]).{8,64}$/;
+const validatePassword = (pwd) => {
+  if (!pwd || !PASSWORD_REGEX.test(pwd)) {
+    throw new Error('Password must be 8-64 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character.');
+  }
+};
+
 class AuthService {
   generateToken(id) {
     return jwt.sign({ id }, process.env.JWT_SECRET, {
       expiresIn: '1d',
     });
+  }
+
+  /** Generates a 6-digit OTP, stores its SHA-256 hash in the OTP collection, and returns the plaintext OTP. */
+  async _generateAndStoreOTP(email) {
+    const otp = crypto.randomInt(100000, 999999).toString();
+    await OTP.updateOne(
+      { email: email.toLowerCase() },
+      { $set: { otp: crypto.createHash('sha256').update(otp).digest('hex'), createdAt: Date.now(), attempts: 0 } },
+      { upsert: true }
+    );
+    return otp;
   }
 
   async _sendStylishEmail(email, title, headerText, subText, otp, settings) {
@@ -87,12 +106,7 @@ class AuthService {
     }
 
     
-    const otp = crypto.randomInt(100000, 999999).toString();
-    await OTP.updateOne(
-      { email: email.toLowerCase() },
-      { $set: { otp: crypto.createHash('sha256').update(otp).digest('hex'), createdAt: Date.now(), attempts: 0 } },
-      { upsert: true }
-    );
+    const otp = await this._generateAndStoreOTP(email);
 
     const settings = await Settings.getSettings();
     const restaurantName = settings.restaurantDetails.name || "GuestO";
@@ -152,12 +166,7 @@ class AuthService {
     }
 
     
-    const otp = crypto.randomInt(100000, 999999).toString();
-    await OTP.updateOne(
-      { email: email.toLowerCase() },
-      { $set: { otp: crypto.createHash('sha256').update(otp).digest('hex'), createdAt: Date.now(), attempts: 0 } },
-      { upsert: true }
-    );
+    const otp = await this._generateAndStoreOTP(email);
 
     const settings = await Settings.getSettings();
     const restaurantName = settings.restaurantDetails.name || "GuestO";
@@ -180,12 +189,7 @@ class AuthService {
     }
 
     
-    const otp = crypto.randomInt(100000, 999999).toString();
-    await OTP.updateOne(
-      { email: newEmail.toLowerCase() },
-      { $set: { otp: crypto.createHash('sha256').update(otp).digest('hex'), createdAt: Date.now(), attempts: 0 } },
-      { upsert: true }
-    );
+    const otp = await this._generateAndStoreOTP(newEmail);
 
     const settings = await Settings.getSettings();
     const restaurantName = settings.restaurantDetails.name || "GuestO";
@@ -203,12 +207,7 @@ class AuthService {
 
   async sendChangePasswordOTP(email) {
     
-    const otp = crypto.randomInt(100000, 999999).toString();
-    await OTP.updateOne(
-      { email: email.toLowerCase() },
-      { $set: { otp: crypto.createHash('sha256').update(otp).digest('hex'), createdAt: Date.now(), attempts: 0 } },
-      { upsert: true }
-    );
+    const otp = await this._generateAndStoreOTP(email);
 
     const settings = await Settings.getSettings();
     const restaurantName = settings.restaurantDetails.name || "GuestO";
@@ -282,11 +281,7 @@ class AuthService {
   async register(userData) {
     const { email, phone, password } = userData;
 
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&^#()_+\-=\[\]{};':\"\\|,.<>\/?]).{8,64}$/;
-    
-    if (!password || !passwordRegex.test(password)) {
-      throw new Error('Password must be 8-64 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character.');
-    }
+    validatePassword(password);
 
     // Validate phone number format (Indian mobile)
     if (phone) {
@@ -364,10 +359,7 @@ class AuthService {
       throw new Error('Invalid reset token');
     }
 
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&^#()_+\-=\[\]{};':\"\\|,.<>\/?]).{8,64}$/;
-    if (!newPassword || !passwordRegex.test(newPassword)) {
-      throw new Error('Password must be 8-64 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character.');
-    }
+    validatePassword(newPassword);
 
     const user = await userRepository.findByEmailWithPassword(email.toLowerCase().trim());
     if (!user) {
@@ -381,11 +373,7 @@ class AuthService {
 
   
   async resetPassword(email, newPassword) {
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&^#()_+\-=\[\]{};':\"\\|,.<>\/?]).{8,64}$/;
-
-    if (!newPassword || !passwordRegex.test(newPassword)) {
-      throw new Error('Password must be 8-64 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character.');
-    }
+    validatePassword(newPassword);
 
     const user = await userRepository.findByEmailWithPassword(email.toLowerCase().trim());
     if (!user) {

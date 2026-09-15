@@ -13,6 +13,111 @@ import { menuCache } from './menuController.js';
 import { categoryCache } from './categoryController.js';
 
 
+// ─── Shared Helpers ──────────────────────────────────────────────────────────
+
+/** Returns the current date/time adjusted to IST (UTC+5:30). */
+const getISTDate = () => {
+  const now = new Date();
+  return new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + (330 * 60000));
+};
+
+/**
+ * Returns true if a category's ordering window is currently closed.
+ * Returns false when the category has no time restriction.
+ */
+const isCategoryTimeClosed = (category) => {
+  if (!category?.startTime || !category?.endTime) return false;
+  const istDate = getISTDate();
+  const currentMinutes = istDate.getHours() * 60 + istDate.getMinutes();
+  const [startHour, startMin] = category.startTime.split(':').map(Number);
+  const [endHour, endMin] = category.endTime.split(':').map(Number);
+  const startMinutes = startHour * 60 + startMin;
+  const endMinutes = endHour * 60 + endMin;
+  return startMinutes <= endMinutes
+    ? !(currentMinutes >= startMinutes && currentMinutes <= endMinutes)
+    : !(currentMinutes >= startMinutes || currentMinutes <= endMinutes);
+};
+
+/**
+ * Batch-fetches primary and secondary menu documents for a list of order items.
+ * Returns { primaryMap, secondaryMap } both keyed by string _id.
+ * Eliminates N+1 queries in processedItems builds.
+ */
+const batchFetchMenuMaps = async (items) => {
+  const primaryIds = items.map(i => i.menuItem).filter(Boolean);
+  const primaryDocs = await Menu.find({ _id: { $in: primaryIds } }).lean();
+  const primaryMap = Object.fromEntries(primaryDocs.map(m => [m._id.toString(), m]));
+
+  const secondaryIds = new Set();
+  for (const item of items) {
+    const menuDoc = primaryMap[item.menuItem?.toString()];
+    if (!menuDoc) continue;
+    const variant = menuDoc.variants?.find(v => v.size === item.size);
+    if (menuDoc.isCombo && menuDoc.comboItems) {
+      menuDoc.comboItems.forEach(ci => { if (ci.menuItem) secondaryIds.add(ci.menuItem.toString()); });
+    }
+    if (variant?.includedItems) {
+      variant.includedItems.forEach(ii => { if (ii.menuItem) secondaryIds.add(ii.menuItem.toString()); });
+    }
+  }
+
+  const secondaryMap = {};
+  if (secondaryIds.size > 0) {
+    const secondaryDocs = await Menu.find({ _id: { $in: [...secondaryIds] } }).lean();
+    secondaryDocs.forEach(m => { secondaryMap[m._id.toString()] = m; });
+  }
+
+  return { primaryMap, secondaryMap };
+};
+
+/**
+ * Maps a single raw order item to a fully-resolved processed item using
+ * pre-fetched primaryMap / secondaryMap from batchFetchMenuMaps.
+ * Spreads the original item first so counter-order extra fields are preserved.
+ */
+const mapItemToProcessed = (item, primaryMap, secondaryMap) => {
+  const menuDoc = primaryMap[item.menuItem?.toString()];
+  const variant = menuDoc?.variants?.find(v => v.size === item.size);
+
+  const comboItems = (menuDoc?.isCombo && menuDoc.comboItems)
+    ? menuDoc.comboItems.map(ci => {
+        const subDoc = secondaryMap[ci.menuItem?.toString()];
+        return { name: subDoc?.name || 'Combo Item', quantity: ci.quantity, price: ci.price };
+      })
+    : [];
+
+  const includedItems = variant?.includedItems
+    ? variant.includedItems.map(ii => {
+        const incDoc = secondaryMap[ii.menuItem?.toString()];
+        return { name: incDoc?.name || 'Add-on Item', quantity: ii.quantity };
+      })
+    : [];
+
+  const actualPrice = variant
+    ? variant.price
+    : (menuDoc?.hasOffer && menuDoc?.offerPrice != null ? menuDoc.offerPrice : menuDoc?.price || 0);
+  const quantity = item.quantity || 1;
+
+  return {
+    ...item,
+    menuItem: item.menuItem,
+    name: menuDoc?.name || item.name || 'Unknown Item',
+    image: menuDoc?.image || item.image || '',
+    size: item.size,
+    quantity,
+    price: actualPrice,
+    unitPrice: actualPrice,
+    costPrice: variant?.costPrice || 0,
+    totalPrice: actualPrice * quantity,
+    kitchenStatus: 'placed',
+    bogoItem: item.bogoItem || null,
+    comboItems,
+    includedItems,
+  };
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; 
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -130,26 +235,8 @@ const checkStockAvailability = async (items) => {
     const menuDoc = primaryMap[item.menuItem?.toString()];
     if (!menuDoc) continue;
 
-    if (menuDoc.category && menuDoc.category.startTime && menuDoc.category.endTime) {
-      const now = new Date();
-      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-      const istDate = new Date(utc + (330 * 60000));
-      const currentMinutes = istDate.getHours() * 60 + istDate.getMinutes();
-      const [startHour, startMin] = menuDoc.category.startTime.split(':').map(Number);
-      const startMinutes = startHour * 60 + startMin;
-      const [endHour, endMin] = menuDoc.category.endTime.split(':').map(Number);
-      const endMinutes = endHour * 60 + endMin;
-      
-      let isCategoryClosed = false;
-      if (startMinutes <= endMinutes) {
-        isCategoryClosed = !(currentMinutes >= startMinutes && currentMinutes <= endMinutes);
-      } else {
-        isCategoryClosed = !(currentMinutes >= startMinutes || currentMinutes <= endMinutes);
-      }
-      
-      if (isCategoryClosed) {
-        return { available: false, itemName: `${menuDoc.name} (Not orderable at this time)` };
-      }
+    if (isCategoryTimeClosed(menuDoc.category)) {
+      return { available: false, itemName: `${menuDoc.name} (Not orderable at this time)` };
     }
 
     const variant = menuDoc.variants?.find(v => v.size === item.size);
@@ -419,9 +506,7 @@ const checkStoreStatusHelper = (settings) => {
   if (isStoreOpen === false) return { isOpen: false, reason: 'manual_close' };
 
   
-  const now = new Date();
-  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-  const istDate = new Date(utc + (330 * 60000));
+  const istDate = getISTDate();
 
   const day = istDate.toLocaleDateString('en-US', { weekday: 'long' });
 
@@ -549,27 +634,9 @@ class OrderController {
           continue;
         }
 
-        if (menuDoc.category && menuDoc.category.startTime && menuDoc.category.endTime) {
-          const now = new Date();
-          const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-          const istDate = new Date(utc + (330 * 60000));
-          const currentMinutes = istDate.getHours() * 60 + istDate.getMinutes();
-          const [startHour, startMin] = menuDoc.category.startTime.split(':').map(Number);
-          const startMinutes = startHour * 60 + startMin;
-          const [endHour, endMin] = menuDoc.category.endTime.split(':').map(Number);
-          const endMinutes = endHour * 60 + endMin;
-          
-          let isCategoryClosed = false;
-          if (startMinutes <= endMinutes) {
-            isCategoryClosed = !(currentMinutes >= startMinutes && currentMinutes <= endMinutes);
-          } else {
-            isCategoryClosed = !(currentMinutes >= startMinutes || currentMinutes <= endMinutes);
-          }
-          
-          if (isCategoryClosed) {
-            errors.push(`"${menuDoc.name}" is not available to order at this time.`);
-            continue;
-          }
+        if (isCategoryTimeClosed(menuDoc.category)) {
+          errors.push(`"${menuDoc.name}" is not available to order at this time.`);
+          continue;
         }
 
         const variant = menuDoc.variants?.find(v => v.size === item.size);
@@ -702,70 +769,9 @@ class OrderController {
         }
       }
 
-      // OPTIMIZED: Batch-fetch all menu docs in 2 queries max (eliminates N+1 in processedItems)
-      const primaryIds = items.map(i => i.menuItem).filter(Boolean);
-      const primaryDocs = await Menu.find({ _id: { $in: primaryIds } }).lean();
-      const primaryMap = Object.fromEntries(primaryDocs.map(m => [m._id.toString(), m]));
-
-      // Collect secondary IDs (combo sub-items + included items) in one pass
-      const secondaryIds = new Set();
-      for (const item of items) {
-        const menuDoc = primaryMap[item.menuItem?.toString()];
-        if (!menuDoc) continue;
-        const variant = menuDoc.variants?.find(v => v.size === item.size);
-        if (menuDoc.isCombo && menuDoc.comboItems) {
-          menuDoc.comboItems.forEach(ci => { if (ci.menuItem) secondaryIds.add(ci.menuItem.toString()); });
-        }
-        if (variant?.includedItems) {
-          variant.includedItems.forEach(ii => { if (ii.menuItem) secondaryIds.add(ii.menuItem.toString()); });
-        }
-      }
-      const secondaryMap = {};
-      if (secondaryIds.size > 0) {
-        const secondaryDocs = await Menu.find({ _id: { $in: [...secondaryIds] } }).lean();
-        secondaryDocs.forEach(m => { secondaryMap[m._id.toString()] = m; });
-      }
-
-      // Build processedItems synchronously — zero additional DB calls
-      const processedItems = items.map(item => {
-        const menuDoc = primaryMap[item.menuItem?.toString()];
-        const variant = menuDoc?.variants?.find(v => v.size === item.size);
-
-        const comboItems = (menuDoc?.isCombo && menuDoc.comboItems)
-          ? menuDoc.comboItems.map(ci => {
-              const subDoc = secondaryMap[ci.menuItem?.toString()];
-              return { name: subDoc?.name || 'Combo Item', quantity: ci.quantity, price: ci.price };
-            })
-          : [];
-
-        const includedItems = variant?.includedItems
-          ? variant.includedItems.map(ii => {
-              const incDoc = secondaryMap[ii.menuItem?.toString()];
-              return { name: incDoc?.name || 'Add-on Item', quantity: ii.quantity };
-            })
-          : [];
-
-        const actualPrice = variant
-          ? variant.price
-          : (menuDoc?.hasOffer && menuDoc?.offerPrice != null ? menuDoc.offerPrice : menuDoc?.price || 0);
-        const calculatedTotalPrice = actualPrice * item.quantity;
-
-        return {
-          menuItem: item.menuItem,
-          name: menuDoc?.name || item.name || 'Unknown Item',
-          image: menuDoc?.image || item.image || '',
-          size: item.size,
-          quantity: item.quantity,
-          price: actualPrice,
-          unitPrice: actualPrice,
-          costPrice: variant?.costPrice || 0,
-          totalPrice: calculatedTotalPrice,
-          kitchenStatus: 'placed',
-          bogoItem: item.bogoItem || null,
-          comboItems,
-          includedItems
-        };
-      });
+      // Batch-fetch in 2 queries max, then map synchronously — zero additional DB calls
+      const { primaryMap, secondaryMap } = await batchFetchMenuMaps(items);
+      const processedItems = items.map(item => mapItemToProcessed(item, primaryMap, secondaryMap));
 
       const calculatedSubtotal = processedItems.reduce((sum, item) => sum + item.totalPrice, 0);
       const actualDeliveryFee = deliveryFee || req.body.deliveryFee || 0;
@@ -954,68 +960,9 @@ class OrderController {
 
       const orderNumber = await getNextOrderNumber();
 
-      // OPTIMIZED: Batch-fetch all menu docs in 2 queries max (eliminates N+1 in processedItems)
-      const coPrimaryIds = items.map(i => i.menuItem).filter(Boolean);
-      const coPrimaryDocs = await Menu.find({ _id: { $in: coPrimaryIds } }).lean();
-      const coPrimaryMap = Object.fromEntries(coPrimaryDocs.map(m => [m._id.toString(), m]));
-
-      // Collect secondary IDs (combo sub-items + included items) in one pass
-      const coSecondaryIds = new Set();
-      for (const item of items) {
-        const menuDoc = coPrimaryMap[item.menuItem?.toString()];
-        if (!menuDoc) continue;
-        const variant = menuDoc.variants?.find(v => v.size === item.size);
-        if (menuDoc.isCombo && menuDoc.comboItems) {
-          menuDoc.comboItems.forEach(ci => { if (ci.menuItem) coSecondaryIds.add(ci.menuItem.toString()); });
-        }
-        if (variant?.includedItems) {
-          variant.includedItems.forEach(ii => { if (ii.menuItem) coSecondaryIds.add(ii.menuItem.toString()); });
-        }
-      }
-      const coSecondaryMap = {};
-      if (coSecondaryIds.size > 0) {
-        const coSecondaryDocs = await Menu.find({ _id: { $in: [...coSecondaryIds] } }).lean();
-        coSecondaryDocs.forEach(m => { coSecondaryMap[m._id.toString()] = m; });
-      }
-
-      // Build processedItems synchronously — zero additional DB calls
-      const processedItems = items.map(item => {
-        const menuDoc = coPrimaryMap[item.menuItem?.toString()];
-        const variant = menuDoc?.variants?.find(v => v.size === item.size);
-
-        const comboItems = (menuDoc?.isCombo && menuDoc.comboItems)
-          ? menuDoc.comboItems.map(ci => {
-              const subDoc = coSecondaryMap[ci.menuItem?.toString()];
-              return { name: subDoc?.name || 'Combo Item', quantity: ci.quantity, price: ci.price };
-            })
-          : [];
-
-        const includedItems = variant?.includedItems
-          ? variant.includedItems.map(ii => {
-              const incDoc = coSecondaryMap[ii.menuItem?.toString()];
-              return { name: incDoc?.name || 'Add-on Item', quantity: ii.quantity };
-            })
-          : [];
-
-        const actualPrice = variant
-          ? variant.price
-          : (menuDoc?.hasOffer && menuDoc?.offerPrice != null ? menuDoc.offerPrice : menuDoc?.price || 0);
-        const calculatedTotalPrice = actualPrice * (item.quantity || 1);
-
-        return {
-          ...item,
-          price: actualPrice,
-          unitPrice: actualPrice,
-          totalPrice: calculatedTotalPrice,
-          name: menuDoc?.name || item.name,
-          image: menuDoc?.image || item.image,
-          costPrice: variant?.costPrice || 0,
-          kitchenStatus: 'placed',
-          bogoItem: item.bogoItem || null,
-          comboItems,
-          includedItems
-        };
-      });
+      // Batch-fetch in 2 queries max, then map synchronously — zero additional DB calls
+      const { primaryMap: coPrimaryMap, secondaryMap: coSecondaryMap } = await batchFetchMenuMaps(items);
+      const processedItems = items.map(item => mapItemToProcessed(item, coPrimaryMap, coSecondaryMap));
 
       const calculatedSubtotal = processedItems.reduce((sum, item) => sum + item.totalPrice, 0);
       const actualDeliveryFee = deliveryFee || 0;
