@@ -178,6 +178,7 @@ const OrderSection = () => {
   // Keep a ref to the current activeTab so the socket callback always reads the latest value
   const activeTabRef = useRef(activeTab);
   useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+  const fetchOrdersRef = useRef();
 
   // Lightweight fetch of active orders just for count badges
   const fetchActiveOrderCounts = async () => {
@@ -195,7 +196,7 @@ const OrderSection = () => {
     if (activeTabRef.current === 'history') return;
     if (socketFetchTimerRef.current) clearTimeout(socketFetchTimerRef.current);
     socketFetchTimerRef.current = setTimeout(() => {
-      fetchOrders(true);
+      fetchOrdersRef.current(true);
     }, 500);
   };
 
@@ -468,6 +469,11 @@ const OrderSection = () => {
       }
     }
   };
+  // Keep fetchOrdersRef current on every render so socket callbacks always
+  // call the latest fetchOrders closure (avoids stale-closure in scheduleSilentFetch).
+  useEffect(() => {
+    fetchOrdersRef.current = fetchOrders;
+  });
 
   const isFirstMount = useRef(true);
 
