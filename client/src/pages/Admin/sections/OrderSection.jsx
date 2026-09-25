@@ -476,13 +476,25 @@ const OrderSection = () => {
   });
 
   const isFirstMount = useRef(true);
+  // Track previous activeTab so we can detect actual tab switches vs. filter changes.
+  const prevActiveTabRef = useRef(activeTab);
 
   useEffect(() => {
+    const tabChanged = prevActiveTabRef.current !== activeTab;
+    prevActiveTabRef.current = activeTab;
+
     if (isFirstMount.current) {
       isFirstMount.current = false;
+      // Initial load — always show the loading skeleton.
+      fetchOrders(false, activeTab, startDate, endDate, historyPage, debouncedSearchTerm);
+      if (activeTab === 'history') fetchActiveOrderCounts();
+    } else if (tabChanged) {
+      // Tab switch — show the skeleton so stale data from the previous tab is
+      // never rendered under the new tab's columns.
       fetchOrders(false, activeTab, startDate, endDate, historyPage, debouncedSearchTerm);
       if (activeTab === 'history') fetchActiveOrderCounts();
     } else {
+      // Same-tab filter / pagination / date change — keep it silent to avoid flicker.
       fetchOrders(true, activeTab, startDate, endDate, historyPage, debouncedSearchTerm);
       if (activeTab === 'history') fetchActiveOrderCounts();
     }
