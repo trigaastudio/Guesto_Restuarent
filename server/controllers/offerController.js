@@ -37,10 +37,10 @@ export const getOffers = async (req, res) => {
     }
     const offers = await Offer.find(filter)
       .sort({ priority: -1 })
-      .populate('applicableItems.menuItem')
-      .populate('applicableItems.menuItems')
-      .populate('getApplicableItems.menuItem')
-      .populate('getApplicableItems.menuItems')
+      .populate({ path: 'applicableItems.menuItem', populate: { path: 'category' } })
+      .populate({ path: 'applicableItems.menuItems', populate: { path: 'category' } })
+      .populate({ path: 'getApplicableItems.menuItem', populate: { path: 'category' } })
+      .populate({ path: 'getApplicableItems.menuItems', populate: { path: 'category' } })
       .populate('applicableCategories');
     
     res.status(200).json({ success: true, data: offers });
