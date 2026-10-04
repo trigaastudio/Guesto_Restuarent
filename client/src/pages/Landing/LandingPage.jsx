@@ -12,6 +12,7 @@ import MenuModal from '../../components/Menu/MenuModal';
 import { useCart } from '../../context/CartContext';
 import PageSkeleton from '../../components/Skeleton/PageSkeleton';
 import OffersCarousel from '../../components/Offers/OffersCarousel';
+import OfferModal from '../../components/Offers/OfferModal';
 import StoreStatusBanner from '../../components/StoreStatus/StoreStatusBanner';
 import { Sparkles, X, Flame, ChevronLeft, ChevronRight } from 'lucide-react';
 import { logoutAdmin, logoutStaff, logoutToLanding } from '../../utils/auth';
@@ -38,6 +39,7 @@ const LandingPage = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [selectedMenu, setSelectedMenu] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedOfferForModal, setSelectedOfferForModal] = useState(null);
 
   const observerTarget = useRef(null);
   const scrollContainerRef = useRef(null);
@@ -286,15 +288,7 @@ const LandingPage = () => {
         <div className="mb-12">
             <OffersCarousel
               onOfferClick={(offer) => {
-                setSelectedCategory('all');
-                setOfferFilter(offer.offerType);
-                setOfferName(offer.title);
-                setPage(1);
-                setHasMore(true);
-                const menuElement = document.getElementById('menu');
-                if (menuElement) {
-                  menuElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
+                setSelectedOfferForModal(offer);
               }}
             />
           </div>
@@ -463,6 +457,23 @@ const LandingPage = () => {
         onAction={handlePublicAction}
       />
       <StoreStatusBanner />
+      <OfferModal
+        isOpen={!!selectedOfferForModal}
+        onClose={() => setSelectedOfferForModal(null)}
+        offer={selectedOfferForModal}
+        menus={menus}
+        onBrowseMenu={(offer) => {
+          setSelectedCategory('all');
+          setOfferFilter(offer._id);
+          setOfferName(offer.title);
+          setPage(1);
+          setHasMore(true);
+          const menuElement = document.getElementById('menu');
+          if (menuElement) {
+            menuElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }}
+      />
     </div>
   );
 };

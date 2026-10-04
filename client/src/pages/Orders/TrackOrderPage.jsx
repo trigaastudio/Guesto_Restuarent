@@ -510,7 +510,7 @@ const TrackOrderPage = () => {
               <div className="space-y-4 relative z-10">
                 <div className="flex justify-between items-center text-xs font-semibold text-text-muted">
                   <span>Listing price</span>
-                  <span className="font-bold text-text-primary">₹{Math.round((order.subtotal || 0) + (order.discount || 0))}</span>
+                  <span className="font-bold text-text-primary">₹{Math.round(order.subtotal || 0)}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs font-semibold text-text-muted">
                   <span className="flex items-center gap-1.5">
@@ -524,15 +524,31 @@ const TrackOrderPage = () => {
                     <span className="font-bold text-text-primary">₹{Math.round(order.platformFee || 0)}</span>
                   </div>
                 )}
-                <div className="flex justify-between items-center text-xs font-semibold text-green-600">
-                  <span>Special discount</span>
-                  <span className="font-bold">-₹{Math.round(order.discount || 0)}</span>
-                </div>
+                {(() => {
+                  const totalOffersDiscount = (order.appliedOffers || []).reduce((sum, o) => sum + (o.discountAmount || 0), 0);
+                  const otherDiscount = (order.discount || 0) - totalOffersDiscount;
+                  return (
+                    <>
+                      {otherDiscount > 0 && (
+                        <div className="flex justify-between items-center text-xs font-semibold text-green-600">
+                          <span>Special discount</span>
+                          <span className="font-bold">-₹{Math.round(otherDiscount)}</span>
+                        </div>
+                      )}
+                      {order.appliedOffers?.length > 0 && order.appliedOffers.map((offer, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-xs font-semibold text-primary">
+                          <span className="flex items-center gap-1">🎁 {offer.title}</span>
+                          <span className="font-bold">-₹{Math.round(offer.discountAmount || 0)}</span>
+                        </div>
+                      ))}
+                    </>
+                  );
+                })()}
 
                 <div className="pt-4 border-t border-border/40 border-dashed">
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-sm font-bold text-text-primary">Total amount</span>
-                    <span className="text-2xl font-bold text-text-primary tracking-tighter">₹{Math.round((order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0))}</span>
+                    <span className="text-2xl font-bold text-text-primary tracking-tighter">₹{Math.round(order.totalAmount || ((order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0) - (order.discount || 0)))}</span>
                   </div>
                   <div className="flex items-center justify-between text-[10px] font-bold text-text-muted opacity-60">
                     <span>Paid by</span>

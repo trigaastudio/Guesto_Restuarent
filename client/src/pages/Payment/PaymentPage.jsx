@@ -44,6 +44,7 @@ const PaymentPage = () => {
   const discount = location.state?.discount || 0;
   const dineInTableId = location.state?.dineInTableId;
   const dineInTableNumber = location.state?.dineInTableNumber;
+  const appliedOffers = location.state?.appliedOffers || [];
   const total = subtotal + deliveryFee + platformFee;
 
   useEffect(() => {
@@ -161,6 +162,7 @@ const PaymentPage = () => {
         discount,
         deliveryFee,
         platformFee,
+        appliedOffers,
         remarks: additionalNote,
         ...(dineInTableId && {
           orderType: 'dine-in',
@@ -661,6 +663,26 @@ const PaymentPage = () => {
                       <span>Platform</span>
                       <span className="text-text-primary">₹{platformFee}</span>
                     </div>
+                    {(() => {
+                      const totalOffersDiscount = (appliedOffers || []).reduce((sum, o) => sum + (o.discountAmount || 0), 0);
+                      const otherDiscount = discount - totalOffersDiscount;
+                      return (
+                        <>
+                          {otherDiscount > 0 && (
+                            <div className="relative z-10 flex justify-between text-[10px] font-black text-green-600 uppercase tracking-widest">
+                              <span>Discount</span>
+                              <span className="font-bold">-₹{Math.round(otherDiscount)}</span>
+                            </div>
+                          )}
+                          {appliedOffers?.length > 0 && appliedOffers.map((offer, idx) => (
+                            <div key={idx} className="relative z-10 flex justify-between text-[10px] font-black text-primary uppercase tracking-widest mt-1">
+                              <span>🎁 {offer.title}</span>
+                              <span className="font-bold">-₹{Math.round(offer.discountAmount || 0)}</span>
+                            </div>
+                          ))}
+                        </>
+                      );
+                    })()}
                     <div className="relative z-10 h-px bg-gradient-to-r from-transparent via-border to-transparent my-3"></div>
                     <div className="relative z-10 flex justify-between items-end pt-1">
                       <div className="flex flex-col">

@@ -49,9 +49,47 @@ const offerSchema = new mongoose.Schema({
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Menu'
     },
+    isChoice: {
+      type: Boolean,
+      default: false
+    },
+    choiceGroupName: {
+      type: String,
+      default: ''
+    },
+    menuItems: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Menu'
+    }],
     selectedSize: {
       type: String,
       default: '' // Empty means all sizes or no specific size required
+    },
+    quantity: {
+      type: Number,
+      default: 1
+    }
+  }],
+  getApplicableItems: [{
+    menuItem: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Menu'
+    },
+    isChoice: {
+      type: Boolean,
+      default: false
+    },
+    choiceGroupName: {
+      type: String,
+      default: ''
+    },
+    menuItems: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Menu'
+    }],
+    selectedSize: {
+      type: String,
+      default: '' 
     },
     quantity: {
       type: Number,

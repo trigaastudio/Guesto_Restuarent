@@ -32,11 +32,12 @@ const MenuSection = () => {
     foodType: 'veg',
     totalStock: 0,
     isBlocked: false,
-    isCombo: false,
-    comboItems: [],
-    offerPercentage: 0,
-    discountPercentage: 0,
-    includedItems: [],
+    variants: [],
+    image: '',
+    foodType: 'veg',
+    totalStock: 0,
+    isBlocked: false,
+    price: '',
     hideFromCustomer: false
   });
 
@@ -103,14 +104,7 @@ const MenuSection = () => {
           size: v.size,
           price: v.price,
           costPrice: v.costPrice || 0,
-          stockValue: v.stockValue || 1,
-          isBOGO: v.isBOGO || false,
-          bogoItem: v.bogoItem?._id || v.bogoItem || '',
-          bogoVariant: v.bogoVariant || '',
-          includedItems: v.includedItems?.map(inc => ({
-            menuItem: inc.menuItem?._id || inc.menuItem,
-            quantity: inc.quantity
-          })) || []
+          stockValue: v.stockValue || 1
         })) || [],
         price: menu.price || 0,
         hideFromCustomer: menu.hideFromCustomer || false
@@ -128,37 +122,12 @@ const MenuSection = () => {
         foodType: 'veg',
         totalStock: 0,
         isBlocked: false,
-        isCombo: false,
-        comboItems: [],
-        offerPercentage: 0,
-        discountPercentage: 0,
         price: '',
         hideFromCustomer: false
       });
       setIsEditing(false);
     }
     setIsModalOpen(true);
-  };
-
-  const handleAddIncludedItem = (variantIndex) => {
-    const newVariants = [...currentMenu.variants];
-    if (!newVariants[variantIndex].includedItems) {
-      newVariants[variantIndex].includedItems = [];
-    }
-    newVariants[variantIndex].includedItems.push({ menuItem: '', quantity: 1 });
-    setCurrentMenu({ ...currentMenu, variants: newVariants });
-  };
-
-  const handleRemoveIncludedItem = (variantIndex, itemIndex) => {
-    const newVariants = [...currentMenu.variants];
-    newVariants[variantIndex].includedItems.splice(itemIndex, 1);
-    setCurrentMenu({ ...currentMenu, variants: newVariants });
-  };
-
-  const handleIncludedItemChange = (variantIndex, itemIndex, field, value) => {
-    const newVariants = [...currentMenu.variants];
-    newVariants[variantIndex].includedItems[itemIndex][field] = field === 'quantity' ? (value === '' ? '' : parseInt(value)) : value;
-    setCurrentMenu({ ...currentMenu, variants: newVariants });
   };
 
   const isComboCategory = categories.find(c => c._id === currentMenu.category)?.name?.toLowerCase() === 'combo';
@@ -194,7 +163,6 @@ const MenuSection = () => {
     }
     
     if (!isComboCategory && currentMenu.variants.length === 0) newErrors.variants = true;
-    if (isComboCategory && currentMenu.comboItems.length === 0) newErrors.variants = true; 
     if (!currentMenu.image) newErrors.image = true;
 
     if (Object.keys(newErrors).length > 0) {
@@ -213,22 +181,12 @@ const MenuSection = () => {
       ? currentMenu.comboItems.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0) * (1 - (currentMenu.offerPercentage || 0) / 100)
       : 0;
 
-    const cleanedVariants = currentMenu.variants.map(v => ({
-      ...v,
-      bogoItem: v.bogoItem === '' ? null : v.bogoItem,
-      includedItems: (v.includedItems || []).filter(inc => inc.menuItem !== '')
-    }));
-
-    const finalPrice = isComboCategory
-      ? comboTotalPrice
-      : (currentMenu.variants.length > 0 ? (currentMenu.variants[0]?.price || 0) : (currentMenu.price || 0));
-
     const payload = {
       ...currentMenu,
       isCombo: isComboCategory,
       price: finalPrice,
       totalStock: isComboCategory ? 0 : currentMenu.totalStock,
-      variants: isComboCategory ? [] : cleanedVariants,
+      variants: isComboCategory ? [] : currentMenu.variants,
       hideFromCustomer: currentMenu.hideFromCustomer
     };
 
@@ -303,7 +261,7 @@ const MenuSection = () => {
   const handleAddSize = () => {
     setCurrentMenu({
       ...currentMenu,
-      variants: [...currentMenu.variants, { size: '', price: 0, costPrice: 0, stockValue: 1, isBOGO: false, bogoItem: '', bogoVariant: '', includedItems: [] }]
+      variants: [...currentMenu.variants, { size: '', price: 0, costPrice: 0, stockValue: 1 }]
     });
   };
 
@@ -937,7 +895,7 @@ const MenuSection = () => {
                               if (e.target.checked) {
                                 setCurrentMenu({
                                   ...currentMenu,
-                                  variants: [...currentMenu.variants, { size, price: '', stockValue: 1, costPrice: 0, isBOGO: false, bogoItem: '', bogoVariant: '' }]
+                                  variants: [...currentMenu.variants, { size, price: '', stockValue: 1, costPrice: 0 }]
                                 });
                                 if (errors.variants) setErrors({ ...errors, variants: false });
                               } else {
@@ -967,16 +925,6 @@ const MenuSection = () => {
                             <div className="flex items-center justify-between border-b border-border-light pb-2">
                               <div className="flex items-center space-x-4">
                                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">{variant.size}</span>
-                                <div className="flex items-center space-x-2 px-3 py-1 bg-primary/5 rounded-full border border-primary/10">
-                                  <span className="text-[9px] font-black uppercase text-primary tracking-tighter">Buy 1 Get 1</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSizeChange(idx, 'isBOGO', !variant.isBOGO)}
-                                    className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors focus:outline-none ${variant.isBOGO ? 'bg-primary' : 'bg-text-muted'}`}
-                                  >
-                                    <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform ${variant.isBOGO ? 'translate-x-4' : 'translate-x-1'}`} />
-                                  </button>
-                                </div>
                               </div>
                             </div>
 
@@ -1006,124 +954,6 @@ const MenuSection = () => {
                                 />
                               </div>
                             </div>
-
-                            {variant.isBOGO && (
-                              <div className="p-3 bg-primary/5 rounded-xl border border-primary/10 animate-in slide-in-from-top-2 duration-300">
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="text-[10px] font-black uppercase tracking-widest text-primary">Select Free Item & Variant</span>
-                                  {variant.bogoItem && (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        handleSizeChange(idx, 'bogoItem', '');
-                                        handleSizeChange(idx, 'bogoVariant', '');
-                                      }}
-                                      className="text-[9px] font-bold text-status-unavailable hover:underline"
-                                    >
-                                      Clear Selection
-                                    </button>
-                                  )}
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                  <div className="flex-1 relative">
-                                    <select
-                                      value={variant.bogoItem ? `${variant.bogoItem}|${variant.bogoVariant}` : ''}
-                                      onChange={(e) => {
-                                        const val = e.target.value;
-                                        if (val) {
-                                          const [menuId, variantSize] = val.split('|');
-                                          handleSizeChange(idx, 'bogoItem', menuId);
-                                          handleSizeChange(idx, 'bogoVariant', variantSize);
-                                        } else {
-                                          handleSizeChange(idx, 'bogoItem', '');
-                                          handleSizeChange(idx, 'bogoVariant', '');
-                                        }
-                                      }}
-                                      className="w-full px-3 py-2 bg-background-card border border-border-main rounded-lg text-[11px] font-bold text-text-primary outline-none appearance-none cursor-pointer pr-8"
-                                    >
-                                      <option value="" className="bg-background-card text-text-primary">Select an item and variant...</option>
-                                      {menus.map(m => (
-                                        <Fragment key={m._id}>
-                                          {m.variants?.length > 0 ? (
-                                            m.variants.map((v, vIdx) => (
-                                              <option key={`${m._id}-${vIdx}`} value={`${m._id}|${v.size}`} className="bg-background-card text-text-primary">
-                                                {m.name} - {v.size}
-                                              </option>
-                                            ))
-                                          ) : (
-                                            <option value={`${m._id}|`} className="bg-background-card text-text-primary">
-                                              {m.name}
-                                            </option>
-                                          )}
-                                        </Fragment>
-                                      ))}
-                                    </select>
-                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted">
-                                      <ArrowUpDown size={12} />
-                                    </div>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      handleSizeChange(idx, 'bogoItem', '');
-                                      handleSizeChange(idx, 'bogoVariant', '');
-                                    }}
-                                    className="p-2 text-text-muted hover:text-status-unavailable hover:bg-status-off/10 rounded-lg transition-all border border-border-main bg-background-card"
-                                    title="Clear Selection"
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Included Items Section */}
-                            <div className="pt-2 border-t border-border-light/50">
-                              <div className="flex items-center justify-end mb-2">
-                                <button
-                                  type="button"
-                                  onClick={() => handleAddIncludedItem(idx)}
-                                  className="text-[9px] font-bold text-primary hover:bg-primary/5 px-2 py-1 rounded-lg border border-primary/20 transition-all flex items-center space-x-1"
-                                >
-                                  <Plus size={10} />
-                                  <span>Add Item</span>
-                                </button>
-                              </div>
-
-                              <div className="space-y-2">
-                                {variant.includedItems?.map((included, incIdx) => (
-                                  <div key={incIdx} className="flex items-center space-x-2 bg-background-card/50 p-2 rounded-xl border border-border-main/50 animate-in slide-in-from-left-2 duration-200">
-                                    <select
-                                      value={included.menuItem}
-                                      onChange={(e) => handleIncludedItemChange(idx, incIdx, 'menuItem', e.target.value)}
-                                      className="flex-1 bg-transparent border-0 text-[11px] font-bold text-text-primary outline-none focus:ring-0 cursor-pointer"
-                                    >
-                                      <option value="" className="bg-background-card text-text-primary">Select Item</option>
-                                      {menus.filter(m => m._id !== currentMenu._id).map(m => (
-                                        <option key={m._id} value={m._id} className="bg-background-card text-text-primary">{m.name}</option>
-                                      ))}
-                                    </select>
-                                    <div className="flex items-center space-x-2 border-l border-border-main pl-2">
-                                      <span className="text-[10px] font-black text-text-muted">QTY:</span>
-                                      <input
-                                        type="number"
-                                        min="1"
-                                        value={included.quantity}
-                                        onChange={(e) => handleIncludedItemChange(idx, incIdx, 'quantity', e.target.value)}
-                                        className="w-10 bg-transparent border-0 text-[11px] font-black text-primary text-center outline-none focus:ring-0 p-0"
-                                      />
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRemoveIncludedItem(idx, incIdx)}
-                                      className="p-1 text-text-muted hover:text-status-unavailable transition-colors"
-                                    >
-                                      <Trash2 size={12} />
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
                           </div>
                         ))}
                       </div>
@@ -1131,136 +961,11 @@ const MenuSection = () => {
                   )}
                 </div>
               ) : (
-                /* Combo Items Section */
                 <div className="space-y-4 animate-in slide-in-from-top-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-semibold text-text-secondary">Combo Items Selection</label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCurrentMenu({
-                          ...currentMenu,
-                          comboItems: [...currentMenu.comboItems, { menuItem: '', price: 0, quantity: 1 }]
-                        });
-                      }}
-                      className="text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 px-3 py-1.5 rounded-xl border border-primary/20 transition-all flex items-center space-x-1.5"
-                    >
-                      <Plus size={14} />
-                      <span>Add Item to Combo</span>
-                    </button>
+                    <label className="text-sm font-semibold text-text-secondary">Note</label>
                   </div>
-
-                  <div className="space-y-3">
-                    {currentMenu.comboItems.length > 0 && (
-                      <div className="flex items-center space-x-3 px-3 py-1">
-                        <span className="flex-1 text-[10px] font-black uppercase tracking-widest text-text-muted">Item</span>
-                        <span className="w-24 text-[10px] font-black uppercase tracking-widest text-text-muted text-center">Price</span>
-                        <span className="w-20 text-[10px] font-black uppercase tracking-widest text-text-muted text-center">Quantity</span>
-                        <div className="w-8"></div>
-                      </div>
-                    )}
-                    {currentMenu.comboItems.map((item, idx) => (
-                      <div key={idx} className="flex items-center space-x-3 bg-background-muted/30 p-3 rounded-xl border border-border-light">
-                        <select
-                          value={item.menuItem}
-                          onChange={(e) => {
-                            const selectedId = e.target.value;
-                            const selectedMenu = menus.find(m => m._id === selectedId);
-                            const newComboItems = [...currentMenu.comboItems];
-                            newComboItems[idx] = {
-                              ...newComboItems[idx],
-                              menuItem: selectedId,
-                              price: selectedMenu?.variants?.[0]?.price || 0, // Default to first variant price
-                              quantity: newComboItems[idx].quantity || 1
-                            };
-                            setCurrentMenu({ ...currentMenu, comboItems: newComboItems });
-                          }}
-                          className="flex-1 bg-background-card border border-border-main rounded-lg px-3 py-2 text-sm text-text-primary outline-none"
-                        >
-                          <option value="" className="bg-background-card text-text-primary">Select Item</option>
-                          {menus.filter(m => m._id !== currentMenu._id).map(m => (
-                            <option key={m._id} value={m._id} className="bg-background-card text-text-primary">{m.name}</option>
-                          ))}
-                        </select>
-                        <div className="w-24 relative">
-                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-text-muted">₹</span>
-                          <input
-                            type="number"
-                            value={item.price === '' ? '' : (item.price || 0)}
-                            onChange={(e) => {
-                              const newComboItems = [...currentMenu.comboItems];
-                              const val = e.target.value;
-                              newComboItems[idx].price = val === '' ? '' : parseFloat(val);
-                              setCurrentMenu({ ...currentMenu, comboItems: newComboItems });
-                            }}
-                            className="w-full pl-5 pr-2 py-2 bg-background-card border border-border-main rounded-lg text-sm text-text-primary outline-none"
-                            placeholder="Price"
-                          />
-                        </div>
-                        <div className="w-20 relative">
-                          <input
-                            type="number"
-                            min="1"
-                            value={item.quantity === '' ? '' : (item.quantity || 1)}
-                            onChange={(e) => {
-                              const newComboItems = [...currentMenu.comboItems];
-                              const val = e.target.value;
-                              newComboItems[idx].quantity = val === '' ? '' : parseInt(val);
-                              setCurrentMenu({ ...currentMenu, comboItems: newComboItems });
-                            }}
-                            className="w-full px-2 py-2 bg-background-card border border-border-main rounded-lg text-sm text-text-primary outline-none text-center"
-                            placeholder="Qty"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newComboItems = [...currentMenu.comboItems];
-                            newComboItems.splice(idx, 1);
-                            setCurrentMenu({ ...currentMenu, comboItems: newComboItems });
-                          }}
-                          className="p-2 text-text-muted hover:text-status-unavailable transition-colors"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-
-                  {currentMenu.comboItems.length > 0 && (
-                    <div className="bg-primary/5 p-4 rounded-xl border border-primary/10 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold text-text-secondary">Total Original Price</span>
-                        <span className="text-sm font-bold text-text-primary">₹{currentMenu.comboItems.reduce((sum, item) => sum + (item.price || 0), 0).toFixed(0)}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <label className="text-sm font-semibold text-text-secondary">Offer Percentage (%)</label>
-                        <div className="w-24 relative">
-                          <input
-                            type="number"
-                            value={currentMenu.offerPercentage === '' ? '' : currentMenu.offerPercentage}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setCurrentMenu({ ...currentMenu, offerPercentage: val === '' ? '' : parseFloat(val) });
-                            }}
-                            className="w-full px-3 py-1.5 bg-background-card border border-border-main rounded-lg text-sm text-text-primary outline-none text-right pr-6"
-                            max="100"
-                            min="0"
-                          />
-                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-text-muted">%</span>
-                        </div>
-                      </div>
-                      <div className="pt-2 border-t border-primary/20 flex items-center justify-between">
-                        <span className="text-base font-bold text-primary">Actual Combo Price</span>
-                        <span className="text-lg font-black text-primary">
-                          ₹{(
-                            currentMenu.comboItems.reduce((sum, item) => sum + (item.price || 0), 0) *
-                            (1 - (currentMenu.offerPercentage || 0) / 100)
-                          ).toFixed(0)}
-                        </span>
-                      </div>
-                    </div>
-                  )}
+                  <p className="text-sm text-text-muted">Combo offers should be handled in the Offers section.</p>
                 </div>
               )}
 

@@ -13,6 +13,7 @@ export const createOffer = async (req, res) => {
     
     if (typeof offerData.specificDays === 'string') offerData.specificDays = JSON.parse(offerData.specificDays);
     if (typeof offerData.applicableItems === 'string') offerData.applicableItems = JSON.parse(offerData.applicableItems);
+    if (typeof offerData.getApplicableItems === 'string') offerData.getApplicableItems = JSON.parse(offerData.getApplicableItems);
     if (typeof offerData.applicableCategories === 'string') offerData.applicableCategories = JSON.parse(offerData.applicableCategories);
     
     if (req.file) {
@@ -37,6 +38,9 @@ export const getOffers = async (req, res) => {
     const offers = await Offer.find(filter)
       .sort({ priority: -1 })
       .populate('applicableItems.menuItem')
+      .populate('applicableItems.menuItems')
+      .populate('getApplicableItems.menuItem')
+      .populate('getApplicableItems.menuItems')
       .populate('applicableCategories');
     
     res.status(200).json({ success: true, data: offers });
@@ -56,6 +60,7 @@ export const updateOffer = async (req, res) => {
     
     if (typeof offerData.specificDays === 'string') offerData.specificDays = JSON.parse(offerData.specificDays);
     if (typeof offerData.applicableItems === 'string') offerData.applicableItems = JSON.parse(offerData.applicableItems);
+    if (typeof offerData.getApplicableItems === 'string') offerData.getApplicableItems = JSON.parse(offerData.getApplicableItems);
     if (typeof offerData.applicableCategories === 'string') offerData.applicableCategories = JSON.parse(offerData.applicableCategories);
 
     if (req.file) {
@@ -90,6 +95,21 @@ export const deleteOffer = async (req, res) => {
     await Offer.findByIdAndDelete(req.params.id);
     emitOfferUpdate();
     res.status(200).json({ success: true, message: 'Offer deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const toggleOfferStatus = async (req, res) => {
+  try {
+    const offer = await Offer.findById(req.params.id);
+    if (!offer) return res.status(404).json({ success: false, message: 'Offer not found' });
+    
+    offer.isActive = !offer.isActive;
+    await offer.save();
+    
+    emitOfferUpdate();
+    res.status(200).json({ success: true, data: offer });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

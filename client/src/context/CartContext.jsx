@@ -134,7 +134,7 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  const addToCart = async (menuItem, quantity, selectedSize) => {
+  const addToCart = async (menuItem, quantity, selectedSize, silent = false) => {
     try {
       if (menuItem.isCombo) {
         
@@ -176,10 +176,14 @@ export const CartProvider = ({ children }) => {
       });
       if (response.data.success) {
         setCartItems(response.data.data.items);
-        showCartToast(menuItem);
+        if (!silent) {
+          showCartToast(menuItem);
+        }
       }
     } catch (error) {
-      showToast('error', error.response?.data?.message || 'Failed to add item');
+      if (!silent) {
+        showToast('error', error.response?.data?.message || 'Failed to add item');
+      }
     }
   };
 
@@ -370,7 +374,7 @@ export const CartProvider = ({ children }) => {
   }, [settings]);
 
   // --- ADVANCED OFFER CALCULATION ---
-  const subtotal = useMemo(() => {
+  const cartCalculation = useMemo(() => {
     let tempItems = cartItems.map(item => {
       // Find base price from variants or fallback fields
       const variantPrice = (item.variants || item.sizes || []).find(v => v.size === item.selectedSize)?.price;
@@ -384,6 +388,7 @@ export const CartProvider = ({ children }) => {
     });
 
     let totalSubtotal = 0;
+    let appliedOffers = [];
     const now = new Date();
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
     const istDate = new Date(utc + (330 * 60000));
@@ -407,75 +412,139 @@ export const CartProvider = ({ children }) => {
     
 
     
-    activeOffers.filter(o => o.offerType === 'combo').forEach(offer => {
-      const bundleItems = offer.applicableItems || [];
-      if (bundleItems.length === 0) return;
-
-      
-
-      
-      const requirements = {};
-      bundleItems.forEach(b => {
-        const id = (b.menuItem?._id || b.menuItem || '').toString().toLowerCase();
-        if (!id) return; // Skip invalid entries
-        const size = (b.selectedSize || '').toString().toLowerCase();
-        const key = `${id}-${size}`;
-        requirements[key] = (requirements[key] || 0) + (b.quantity || 1);
-      });
-
-      let possibleCombos = Infinity;
-      Object.keys(requirements).forEach(key => {
-        const [id, size] = key.split('-');
-        const needed = requirements[key];
-        const cartItem = tempItems.find(i => {
-          const itemId = (i.menuItemId || i.menuItem?._id || i._id || i.id || '').toString().toLowerCase();
-          const itemSize = (i.selectedSize || '').toString().toLowerCase();
-          return itemId === id && (size === '' || itemSize === size);
-        });
-
-        if (!cartItem) {
-          possibleCombos = 0;
+    activeOffers.forEach(offer => {
+      const getMatchingCartItems = (req) => {
+        if (req.isChoice) {
+          const allowedIds = (req.menuItems || []).map(m => (m._id || m).toString().toLowerCase());
+          return tempItems.filter(i => {
+             if (i.remainingQty <= 0) return false;
+             const itemId = (i.menuItemId || i.menuItem?._id || i._id || i.id || '').toString().toLowerCase();
+             return allowedIds.includes(itemId);
+          });
         } else {
-          possibleCombos = Math.min(possibleCombos, Math.floor(cartItem.remainingQty / needed));
+          const id = (req.menuItem?._id || req.menuItem || '').toString().toLowerCase();
+          const size = (req.selectedSize || '').toString().toLowerCase();
+          return tempItems.filter(i => {
+             if (i.remainingQty <= 0) return false;
+             const itemId = (i.menuItemId || i.menuItem?._id || i._id || i.id || '').toString().toLowerCase();
+             const itemSize = (i.selectedSize || '').toString().toLowerCase();
+             return itemId === id && (size === '' || itemSize === size);
+          });
         }
-      });
+      };
 
-      if (possibleCombos > 0 && possibleCombos !== Infinity) {
-        // Combo application log removed
-        let bundleBasePrice = 0;
-
-        // Calculate original price of ONE bundle
-        Object.keys(requirements).forEach(key => {
-          const [id, size] = key.split('-');
-          const needed = requirements[key];
-          const cartItem = tempItems.find(i => {
-            const itemId = (i.menuItemId || i.menuItem?._id || i._id || i.id || '').toString().toLowerCase();
-            const itemSize = (i.selectedSize || '').toString().toLowerCase();
-            return itemId === id && (size === '' || itemSize === size);
-          });
-          bundleBasePrice += (cartItem.originalPrice || 0) * needed;
+      const getPossibleBundles = (requirements) => {
+        if (!requirements || requirements.length === 0) return 0;
+        let possible = Infinity;
+        requirements.forEach(req => {
+          const matches = getMatchingCartItems(req);
+          const totalQty = matches.reduce((sum, item) => sum + item.remainingQty, 0);
+          possible = Math.min(possible, Math.floor(totalQty / (req.quantity || 1)));
         });
+        return possible === Infinity ? 0 : possible;
+      };
 
-        const discountPercent = Math.min(100, Math.max(0, parseFloat(offer.offerValue || 0)));
-        const discountedBundlePrice = Math.round(bundleBasePrice * (1 - discountPercent / 100));
-
-        totalSubtotal += possibleCombos * discountedBundlePrice;
-
-        // Consume quantities
-        Object.keys(requirements).forEach(key => {
-          const [id, size] = key.split('-');
-          const needed = requirements[key];
-          const cartItem = tempItems.find(i => {
-            const itemId = (i.menuItemId || i.menuItem?._id || i._id || i.id || '').toString().toLowerCase();
-            const itemSize = (i.selectedSize || '').toString().toLowerCase();
-            return itemId === id && (size === '' || itemSize === size);
-          });
-          cartItem.remainingQty -= (possibleCombos * needed);
+      const consumeItems = (requirements, bundlesToConsume, addToSubtotal = false) => {
+        let originalValueConsumed = 0;
+        requirements.forEach(req => {
+          const matches = getMatchingCartItems(req);
+          let needed = bundlesToConsume * (req.quantity || 1);
+          for (const item of matches) {
+            if (needed <= 0) break;
+            const toConsume = Math.min(item.remainingQty, needed);
+            item.remainingQty -= toConsume;
+            needed -= toConsume;
+            const value = toConsume * (item.originalPrice || 0);
+            originalValueConsumed += value;
+            if (addToSubtotal) {
+              totalSubtotal += value;
+            }
+          }
         });
+        return originalValueConsumed;
+      };
+
+      if (offer.offerType === 'combo') {
+        const bundleItems = offer.applicableItems || [];
+        const possibleCombos = getPossibleBundles(bundleItems);
+        if (possibleCombos > 0) {
+          const comboPrice = parseFloat(offer.offerValue) || 0;
+          totalSubtotal += possibleCombos * comboPrice;
+          const originalValue = consumeItems(bundleItems, possibleCombos, false);
+          
+          appliedOffers.push({
+            offerId: offer._id,
+            title: offer.title,
+            offerType: offer.offerType,
+            bundlesApplied: possibleCombos,
+            totalPrice: possibleCombos * comboPrice,
+            discountAmount: Math.max(0, originalValue - (possibleCombos * comboPrice))
+          });
+        }
+      } else if (offer.offerType === 'bogo') {
+        const buyItems = offer.applicableItems || [];
+        const possibleBuyBundles = getPossibleBundles(buyItems);
+        if (possibleBuyBundles > 0) {
+          consumeItems(buyItems, possibleBuyBundles, true);
+          const getItems = offer.getApplicableItems || [];
+          const freeValue = consumeItems(getItems, possibleBuyBundles, false);
+          
+          appliedOffers.push({
+            offerId: offer._id,
+            title: offer.title,
+            offerType: offer.offerType,
+            bundlesApplied: possibleBuyBundles,
+            discountAmount: freeValue
+          });
+        }
+      } else if (offer.offerType === 'discount') {
+        const discountPercent = Math.min(100, Math.max(0, parseFloat(offer.offerValue) || 0));
+        let discountSaved = 0;
+        
+        tempItems.forEach(cartItem => {
+           if (cartItem.remainingQty <= 0) return;
+           const id = (cartItem.menuItemId || cartItem.menuItem?._id || cartItem._id || cartItem.id || '').toString().toLowerCase();
+           const size = (cartItem.selectedSize || '').toString().toLowerCase();
+           const catId = (cartItem.category?._id || cartItem.category || '').toString().toLowerCase();
+           
+           const isApplicable = (offer.applicableItems || []).some(b => {
+             if (b.isChoice) {
+               const allowedIds = (b.menuItems || []).map(m => (m._id || m).toString().toLowerCase());
+               return allowedIds.includes(id);
+             } else {
+               const bId = (b.menuItem?._id || b.menuItem || '').toString().toLowerCase();
+               const bSize = (b.selectedSize || '').toString().toLowerCase();
+               return bId === id && (bSize === '' || bSize === size);
+             }
+           }) || (offer.applicableCategories || []).some(c => {
+             const cId = (c._id || c || '').toString().toLowerCase();
+             return cId === catId;
+           });
+           
+           if (isApplicable) {
+             const originalVal = cartItem.remainingQty * (cartItem.originalPrice || 0);
+             const discountedPrice = Math.round((cartItem.originalPrice || 0) * (1 - discountPercent / 100));
+             const newVal = cartItem.remainingQty * discountedPrice;
+             
+             totalSubtotal += newVal;
+             discountSaved += (originalVal - newVal);
+             cartItem.remainingQty = 0;
+           }
+        });
+        
+        if (discountSaved > 0) {
+          appliedOffers.push({
+            offerId: offer._id,
+            title: offer.title,
+            offerType: offer.offerType,
+            discountPercent,
+            discountAmount: discountSaved
+          });
+        }
       }
     });
 
-    // 2. PROCESS REMAINING ITEMS (BOGO & DISCOUNTS)
+    // 2. PROCESS REMAINING ITEMS
     tempItems.forEach(item => {
       if (item.remainingQty <= 0) return;
 
@@ -485,28 +554,6 @@ export const CartProvider = ({ children }) => {
         return;
       }
 
-      const itemId = (item.menuItemId || item.menuItem?._id || item._id || item.id || '').toString().toLowerCase();
-      const itemCatId = (item.category?._id || item.category || '').toString().toLowerCase();
-
-      // Check for BOGO first
-      const bogoOffer = activeOffers.find(o => {
-        const bogoSize = parseInt(o.offerValue) || 2;
-        return (
-          o.offerType === 'bogo' &&
-          (o.applicableItems?.some(bi => (bi.menuItem?._id || bi.menuItem || '').toString().toLowerCase() === itemId) ||
-            o.applicableCategories?.some(catId => (catId._id || catId || '').toString().toLowerCase() === itemCatId))
-        );
-      });
-
-      if (bogoOffer) {
-        const bundleSize = parseInt(bogoOffer.offerValue) || 2;
-        const paidCount = Math.floor(item.remainingQty / bundleSize) * (bundleSize - 1) + (item.remainingQty % bundleSize);
-        totalSubtotal += paidCount * (item.originalPrice || 0);
-        item.remainingQty = 0;
-        return;
-      }
-
-      
       const menuDiscount = item.menuItem?.discountPercentage || item.discountPercentage || 0;
       const categoryDiscount = item.menuItem?.category?.discountPercentage || item.category?.discountPercentage || 0;
       const maxDiscountPercent = Math.max(menuDiscount, categoryDiscount);
@@ -520,13 +567,18 @@ export const CartProvider = ({ children }) => {
       item.remainingQty = 0;
     });
 
-    return Math.round(totalSubtotal);
+    return {
+      subtotal: Math.round(totalSubtotal),
+      appliedOffers
+    };
   }, [cartItems, offers]);
+
+  const { subtotal, appliedOffers } = cartCalculation;
 
   return (
     <CartContext.Provider value={{
       cartItems, addToCart, updateQuantity, removeFromCart, clearCart,
-      subtotal, loading, settings, checkStoreStatus, offers, fetchCart
+      subtotal, appliedOffers, loading, settings, checkStoreStatus, offers, fetchCart
     }}>
       {children}
     </CartContext.Provider>

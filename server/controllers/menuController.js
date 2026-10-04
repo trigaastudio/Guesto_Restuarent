@@ -61,51 +61,57 @@ export const getMenus = async (req, res) => {
       const Offer = mongoose.model('Offer');
       const offer = await Offer.findById(req.query.offerId);
       if (offer) {
-        const itemIds = offer.applicableItems?.map(i => i.menuItem) || [];
+        const itemIds = [
+          ...(offer.applicableItems?.map(i => i.menuItem) || []),
+          ...(offer.getApplicableItems?.map(i => i.menuItem) || [])
+        ];
         const categoryIds = offer.applicableCategories || [];
         
-        if (itemIds.length > 0 || categoryIds.length > 0) {
-          filter.$or = [
-            { _id: { $in: itemIds } },
-            { category: { $in: categoryIds } }
-          ];
+        const orConditions = [];
+        if (itemIds.length > 0) orConditions.push({ _id: { $in: itemIds } });
+        if (categoryIds.length > 0) orConditions.push({ category: { $in: categoryIds } });
+        
+        if (orConditions.length > 0) {
+          filter.$or = filter.$or ? [...filter.$or, ...orConditions] : orConditions;
         } else {
-          
-          if (offer.offerType === 'bogo') {
-            filter['variants.isBOGO'] = true;
-          } else if (offer.offerType === 'combo') {
-            filter.isCombo = true;
-          } else if (offer.offerType === 'discount') {
-            const Category = mongoose.model('Category');
-            const discountedCategories = await Category.find({ discountPercentage: { $gt: 0 } }).select('_id');
-            const discountedCategoryIds = discountedCategories.map(c => c._id);
-            
-            filter.$or = [
-                { discountPercentage: { $gt: 0 } },
-                { category: { $in: discountedCategoryIds } }
-            ];
-          }
+          filter._id = null;
         }
       }
     }
 
-    if (req.query.bogo === 'true') {
-      filter['variants.isBOGO'] = true;
-    }
-
-    if (req.query.combo === 'true') {
-      filter.isCombo = true;
-    }
-    
-    if (req.query.discount === 'true') {
-      const Category = mongoose.model('Category');
-      const discountedCategories = await Category.find({ discountPercentage: { $gt: 0 } }).select('_id');
-      const discountedCategoryIds = discountedCategories.map(c => c._id);
+    if (req.query.bogo === 'true' || req.query.combo === 'true' || req.query.discount === 'true') {
+      const Offer = mongoose.model('Offer');
+      const queryType = req.query.bogo === 'true' ? 'bogo' : req.query.combo === 'true' ? 'combo' : 'discount';
       
-      filter.$or = [
-          { discountPercentage: { $gt: 0 } },
-          { category: { $in: discountedCategoryIds } }
-      ];
+      const activeOffers = await Offer.find({ isActive: true, offerType: queryType });
+      
+      let itemIds = [];
+      let categoryIds = [];
+      
+      activeOffers.forEach(offer => {
+        if (offer.applicableItems) itemIds.push(...offer.applicableItems.map(i => i.menuItem));
+        if (offer.getApplicableItems) itemIds.push(...offer.getApplicableItems.map(i => i.menuItem));
+        if (offer.applicableCategories) categoryIds.push(...offer.applicableCategories);
+      });
+      
+      const orConditions = [];
+      if (itemIds.length > 0) orConditions.push({ _id: { $in: itemIds } });
+      if (categoryIds.length > 0) orConditions.push({ category: { $in: categoryIds } });
+      
+      if (req.query.discount === 'true') {
+        const Category = mongoose.model('Category');
+        const discountedCategories = await Category.find({ discountPercentage: { $gt: 0 } }).select('_id');
+        if (discountedCategories.length > 0) {
+           orConditions.push({ category: { $in: discountedCategories.map(c => c._id) } });
+        }
+        orConditions.push({ discountPercentage: { $gt: 0 } });
+      }
+
+      if (orConditions.length > 0) {
+        filter.$or = filter.$or ? [...filter.$or, ...orConditions] : orConditions;
+      } else {
+        filter._id = null;
+      }
     }
     
     if (search) {

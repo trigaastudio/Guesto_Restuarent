@@ -37,12 +37,12 @@ const OfferSection = () => {
     isWeekendOnly: false,
     specificDays: [],
     applicableItems: [],
+    getApplicableItems: [],
     applicableCategories: [],
     minQuantity: 1,
     priority: 0,
     isActive: true
   });
-  const [selectionMode, setSelectionMode] = useState('category'); 
   const [itemCategoryFilter, setItemCategoryFilter] = useState('all');
 
   useEffect(() => {
@@ -99,11 +99,12 @@ const OfferSection = () => {
     const finalFormData = {
       ...formData,
       applicableItems: formData.applicableItems,
+      getApplicableItems: formData.getApplicableItems,
       applicableCategories: []
     };
 
     Object.keys(finalFormData).forEach(key => {
-      if (['specificDays', 'applicableCategories', 'applicableItems'].includes(key)) {
+      if (['specificDays', 'applicableCategories', 'applicableItems', 'getApplicableItems'].includes(key)) {
         data.append(key, JSON.stringify(finalFormData[key]));
       } else {
         data.append(key, finalFormData[key]);
@@ -140,6 +141,7 @@ const OfferSection = () => {
       isWeekendOnly: false,
       specificDays: [],
       applicableItems: [],
+      getApplicableItems: [],
       applicableCategories: [],
       minQuantity: 1,
       priority: 0,
@@ -148,14 +150,12 @@ const OfferSection = () => {
     setEditingOffer(null);
     setSelectedFile(null);
     setPreviewUrl('');
-    setSelectionMode('category');
     setItemCategoryFilter('all');
   };
 
   const handleEdit = (offer) => {
     setEditingOffer(offer);
     const hasItems = offer.applicableItems && offer.applicableItems.length > 0;
-    setSelectionMode(hasItems ? 'item' : 'category');
     setItemCategoryFilter('all');
     setFormData({
       title: offer.title,
@@ -165,11 +165,30 @@ const OfferSection = () => {
       bannerImage: offer.bannerImage,
       isWeekendOnly: offer.isWeekendOnly,
       specificDays: offer.specificDays || [],
-      applicableItems: offer.applicableItems?.map(i => ({
-        menuItem: i.menuItem?._id || i.menuItem,
-        selectedSize: i.selectedSize || '',
-        quantity: i.quantity || 1
-      })) || [],
+      applicableItems: offer.applicableItems?.map(i => {
+        const mItem = menus.find(m => m._id === (i.menuItem?._id || i.menuItem));
+        return {
+          categoryId: mItem ? (mItem.category?._id || mItem.category) : '',
+          menuItem: i.menuItem?._id || i.menuItem,
+          isChoice: i.isChoice || false,
+          choiceGroupName: i.choiceGroupName || '',
+          menuItems: i.menuItems?.map(m => m._id || m) || [],
+          selectedSize: i.selectedSize || '',
+          quantity: i.quantity || 1
+        };
+      }) || [],
+      getApplicableItems: offer.getApplicableItems?.map(i => {
+        const mItem = menus.find(m => m._id === (i.menuItem?._id || i.menuItem));
+        return {
+          categoryId: mItem ? (mItem.category?._id || mItem.category) : '',
+          menuItem: i.menuItem?._id || i.menuItem,
+          isChoice: i.isChoice || false,
+          choiceGroupName: i.choiceGroupName || '',
+          menuItems: i.menuItems?.map(m => m._id || m) || [],
+          selectedSize: i.selectedSize || '',
+          quantity: i.quantity || 1
+        };
+      }) || [],
       applicableCategories: offer.applicableCategories?.map(c => c._id || c) || [],
       minQuantity: offer.minQuantity || 1,
       priority: offer.priority,
@@ -315,7 +334,7 @@ const OfferSection = () => {
       {showModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-          <div className="relative bg-background-card w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="relative bg-background-card w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-8 border-b border-border/40 flex justify-between items-center bg-background-muted/20">
               <h3 className="text-xl font-black text-text-primary uppercase">{editingOffer ? 'Edit Promotion' : 'New Promotion'}</h3>
               <button onClick={() => setShowModal(false)} className="p-2 hover:bg-background-muted rounded-full transition-colors"><CloseIcon size={24} /></button>
@@ -347,6 +366,409 @@ const OfferSection = () => {
               <div className="space-y-2 relative">
                 <label className="text-[10px] font-black uppercase tracking-widest text-text-muted ml-1">Description</label>
                 <textarea required value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full p-4 bg-background border border-border/40 rounded-2xl focus:border-primary outline-none transition-all font-bold min-h-[80px]" placeholder="Describe the offer..." />
+              </div>
+
+              {/* Dynamic Fields based on Offer Type */}
+              <div className="p-6 bg-background rounded-[2rem] border border-border/40 space-y-6">
+                
+                {formData.offerType === 'discount' && (
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-black text-text-primary uppercase">Discount Details</h4>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-text-muted ml-1">Percentage Discount (%)</label>
+                      <input type="number" min="0" max="100" value={formData.offerValue} onChange={(e) => setFormData({ ...formData, offerValue: Number(e.target.value) })} className="w-full p-4 bg-background-card border border-border/40 rounded-2xl focus:border-primary outline-none transition-all font-bold" />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-text-muted ml-1">Select Items for Discount</label>
+                      <div className="space-y-2">
+                        {formData.applicableItems.map((item, idx) => (
+                          <div key={idx} className="flex flex-col gap-2 p-3 bg-background border border-border/20 rounded-xl">
+                            <div className="flex items-center gap-2 mb-1">
+                               <label className="flex items-center gap-2 text-xs font-bold text-text-primary">
+                                  <input type="checkbox" checked={item.isChoice} onChange={(e) => {
+                                      const newItems = [...formData.applicableItems];
+                                      newItems[idx].isChoice = e.target.checked;
+                                      setFormData({ ...formData, applicableItems: newItems });
+                                  }} className="rounded text-primary focus:ring-primary" />
+                                  Make this a Choice Group (Option B)
+                               </label>
+                            </div>
+                            
+                            {item.isChoice && (
+                              <div className="flex gap-2">
+                                 <input type="text" placeholder="Group Name (e.g. Choose Drink)" value={item.choiceGroupName} onChange={(e) => {
+                                    const newItems = [...formData.applicableItems];
+                                    newItems[idx].choiceGroupName = e.target.value;
+                                    setFormData({ ...formData, applicableItems: newItems });
+                                 }} className="flex-1 p-3 bg-background-card border border-border/40 rounded-xl outline-none text-sm font-bold" />
+                              </div>
+                            )}
+
+                            <div className="flex items-start gap-2">
+                              <select value={item.categoryId || ''} onChange={(e) => {
+                                const newItems = [...formData.applicableItems];
+                                newItems[idx].categoryId = e.target.value;
+                                newItems[idx].menuItem = '';
+                                newItems[idx].menuItems = [];
+                                newItems[idx].selectedSize = '';
+                                setFormData({ ...formData, applicableItems: newItems });
+                              }} className="w-32 p-3 bg-background-card border border-border/40 rounded-xl outline-none text-sm">
+                                <option value="">Category</option>
+                                {categories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                              </select>
+                              
+                              {!item.isChoice ? (
+                                <select value={item.menuItem} onChange={(e) => {
+                                  const newItems = [...formData.applicableItems];
+                                  newItems[idx].menuItem = e.target.value;
+                                  setFormData({ ...formData, applicableItems: newItems });
+                                }} className="flex-1 p-3 bg-background-card border border-border/40 rounded-xl outline-none text-sm">
+                                  <option value="">Select Item</option>
+                                  {menus.filter(m => !item.categoryId || (m.category?._id || m.category) === item.categoryId).map(m => (
+                                    <option key={m._id} value={m._id}>{m.name}</option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <div className="flex-1">
+                                  <select multiple value={item.menuItems || []} onChange={(e) => {
+                                    const opts = Array.from(e.target.selectedOptions).map(o => o.value);
+                                    const newItems = [...formData.applicableItems];
+                                    newItems[idx].menuItems = opts;
+                                    setFormData({ ...formData, applicableItems: newItems });
+                                  }} className="w-full p-2 bg-background-card border border-border/40 rounded-xl outline-none text-sm h-24 no-scrollbar">
+                                    {menus.filter(m => !item.categoryId || (m.category?._id || m.category) === item.categoryId).map(m => (
+                                      <option key={m._id} value={m._id} className="p-1">{m.name}</option>
+                                    ))}
+                                  </select>
+                                  <p className="text-[9px] text-text-muted mt-1 ml-1">Hold Ctrl/Cmd to select multiple options</p>
+                                </div>
+                              )}
+                              
+                              <select value={item.selectedSize} onChange={(e) => {
+                                const newItems = [...formData.applicableItems];
+                                newItems[idx].selectedSize = e.target.value;
+                                setFormData({ ...formData, applicableItems: newItems });
+                              }} className="w-32 p-3 bg-background-card border border-border/40 rounded-xl outline-none text-sm">
+                                <option value="">Any Size</option>
+                                {menus.find(m => m._id === (item.isChoice ? (item.menuItems && item.menuItems[0]) : item.menuItem))?.variants?.map(v => (
+                                  <option key={v.size} value={v.size}>{v.size}</option>
+                                ))}
+                              </select>
+                              <button type="button" onClick={() => {
+                                const newItems = [...formData.applicableItems];
+                                newItems.splice(idx, 1);
+                                setFormData({ ...formData, applicableItems: newItems });
+                              }} className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={16} /></button>
+                            </div>
+                          </div>
+                        ))}
+                        <button type="button" onClick={() => setFormData({ ...formData, applicableItems: [...formData.applicableItems, { categoryId: '', menuItem: '', menuItems: [], isChoice: false, choiceGroupName: '', selectedSize: '', quantity: 1 }] })} className="text-[10px] font-black uppercase text-primary flex items-center gap-1 mt-2">
+                          <Plus size={14} /> Add Item
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {formData.offerType === 'combo' && (
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-black text-text-primary uppercase">Combo Details</h4>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-text-muted ml-1">Combo Total Amount (₹)</label>
+                      <input type="number" min="0" value={formData.offerValue} onChange={(e) => setFormData({ ...formData, offerValue: Number(e.target.value) })} className="w-full p-4 bg-background-card border border-border/40 rounded-2xl focus:border-primary outline-none transition-all font-bold" />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-text-muted ml-1">Combo Items (Category, Name, Size)</label>
+                      <div className="space-y-2">
+                        {formData.applicableItems.map((item, idx) => (
+                          <div key={idx} className="flex flex-col gap-2 p-3 bg-background border border-border/20 rounded-xl">
+                            <div className="flex items-center gap-2 mb-1">
+                               <label className="flex items-center gap-2 text-xs font-bold text-text-primary">
+                                  <input type="checkbox" checked={item.isChoice} onChange={(e) => {
+                                      const newItems = [...formData.applicableItems];
+                                      newItems[idx].isChoice = e.target.checked;
+                                      setFormData({ ...formData, applicableItems: newItems });
+                                  }} className="rounded text-primary focus:ring-primary" />
+                                  Make this a Choice Group
+                               </label>
+                            </div>
+                            
+                            {item.isChoice && (
+                              <div className="flex gap-2">
+                                 <input type="text" placeholder="Group Name (e.g. Choose Drink)" value={item.choiceGroupName} onChange={(e) => {
+                                    const newItems = [...formData.applicableItems];
+                                    newItems[idx].choiceGroupName = e.target.value;
+                                    setFormData({ ...formData, applicableItems: newItems });
+                                 }} className="flex-1 p-3 bg-background-card border border-border/40 rounded-xl outline-none text-sm font-bold" />
+                              </div>
+                            )}
+
+                            <div className="flex items-start gap-2">
+                              <select value={item.categoryId || ''} onChange={(e) => {
+                                const newItems = [...formData.applicableItems];
+                                newItems[idx].categoryId = e.target.value;
+                                newItems[idx].menuItem = '';
+                                newItems[idx].menuItems = [];
+                                newItems[idx].selectedSize = '';
+                                setFormData({ ...formData, applicableItems: newItems });
+                              }} className="w-32 p-3 bg-background-card border border-border/40 rounded-xl outline-none text-sm">
+                                <option value="">Category</option>
+                                {categories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                              </select>
+                              
+                              {!item.isChoice ? (
+                                <select value={item.menuItem} onChange={(e) => {
+                                  const newItems = [...formData.applicableItems];
+                                  newItems[idx].menuItem = e.target.value;
+                                  setFormData({ ...formData, applicableItems: newItems });
+                                }} className="flex-1 p-3 bg-background-card border border-border/40 rounded-xl outline-none text-sm">
+                                  <option value="">Select Item</option>
+                                  {menus.filter(m => !item.categoryId || (m.category?._id || m.category) === item.categoryId).map(m => (
+                                    <option key={m._id} value={m._id}>{m.name}</option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <div className="flex-1">
+                                  <select multiple value={item.menuItems || []} onChange={(e) => {
+                                    const opts = Array.from(e.target.selectedOptions).map(o => o.value);
+                                    const newItems = [...formData.applicableItems];
+                                    newItems[idx].menuItems = opts;
+                                    setFormData({ ...formData, applicableItems: newItems });
+                                  }} className="w-full p-2 bg-background-card border border-border/40 rounded-xl outline-none text-sm h-24 no-scrollbar">
+                                    {menus.filter(m => !item.categoryId || (m.category?._id || m.category) === item.categoryId).map(m => (
+                                      <option key={m._id} value={m._id} className="p-1">{m.name}</option>
+                                    ))}
+                                  </select>
+                                  <p className="text-[9px] text-text-muted mt-1 ml-1">Hold Ctrl/Cmd to select multiple options</p>
+                                </div>
+                              )}
+                              
+                              <select value={item.selectedSize} onChange={(e) => {
+                                const newItems = [...formData.applicableItems];
+                                newItems[idx].selectedSize = e.target.value;
+                                setFormData({ ...formData, applicableItems: newItems });
+                              }} className="w-28 p-3 bg-background-card border border-border/40 rounded-xl outline-none text-sm">
+                                <option value="">Size</option>
+                                {menus.find(m => m._id === (item.isChoice ? (item.menuItems && item.menuItems[0]) : item.menuItem))?.variants?.map(v => (
+                                  <option key={v.size} value={v.size}>{v.size}</option>
+                                ))}
+                              </select>
+                              <input type="number" min="1" placeholder="Qty" value={item.quantity} onChange={(e) => {
+                                const newItems = [...formData.applicableItems];
+                                newItems[idx].quantity = Number(e.target.value);
+                                setFormData({ ...formData, applicableItems: newItems });
+                              }} className="w-20 p-3 bg-background-card border border-border/40 rounded-xl outline-none text-sm text-center" />
+                              <button type="button" onClick={() => {
+                                const newItems = [...formData.applicableItems];
+                                newItems.splice(idx, 1);
+                                setFormData({ ...formData, applicableItems: newItems });
+                              }} className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={16} /></button>
+                            </div>
+                          </div>
+                        ))}
+                        <button type="button" onClick={() => setFormData({ ...formData, applicableItems: [...formData.applicableItems, { categoryId: '', menuItem: '', menuItems: [], isChoice: false, choiceGroupName: '', selectedSize: '', quantity: 1 }] })} className="text-[10px] font-black uppercase text-primary flex items-center gap-1 mt-2">
+                          <Plus size={14} /> Add Item to Combo
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {formData.offerType === 'bogo' && (
+                  <div className="space-y-6">
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-black text-text-primary uppercase">Buy Requirements</h4>
+                      <div className="space-y-2">
+                        {formData.applicableItems.map((item, idx) => (
+                          <div key={idx} className="flex flex-col gap-2 p-3 bg-background border border-border/20 rounded-xl">
+                            <div className="flex items-center gap-2 mb-1">
+                               <label className="flex items-center gap-2 text-xs font-bold text-text-primary">
+                                  <input type="checkbox" checked={item.isChoice} onChange={(e) => {
+                                      const newItems = [...formData.applicableItems];
+                                      newItems[idx].isChoice = e.target.checked;
+                                      setFormData({ ...formData, applicableItems: newItems });
+                                  }} className="rounded text-primary focus:ring-primary" />
+                                  Make this a Choice Group
+                               </label>
+                            </div>
+                            
+                            {item.isChoice && (
+                              <div className="flex gap-2">
+                                 <input type="text" placeholder="Group Name (e.g. Choose Item)" value={item.choiceGroupName} onChange={(e) => {
+                                    const newItems = [...formData.applicableItems];
+                                    newItems[idx].choiceGroupName = e.target.value;
+                                    setFormData({ ...formData, applicableItems: newItems });
+                                 }} className="flex-1 p-3 bg-background-card border border-border/40 rounded-xl outline-none text-sm font-bold" />
+                              </div>
+                            )}
+
+                            <div className="flex items-start gap-2">
+                              <select value={item.categoryId || ''} onChange={(e) => {
+                                const newItems = [...formData.applicableItems];
+                                newItems[idx].categoryId = e.target.value;
+                                newItems[idx].menuItem = '';
+                                newItems[idx].menuItems = [];
+                                newItems[idx].selectedSize = '';
+                                setFormData({ ...formData, applicableItems: newItems });
+                              }} className="w-32 p-3 bg-background-card border border-border/40 rounded-xl outline-none text-sm">
+                                <option value="">Category</option>
+                                {categories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                              </select>
+                              
+                              {!item.isChoice ? (
+                                <select value={item.menuItem} onChange={(e) => {
+                                  const newItems = [...formData.applicableItems];
+                                  newItems[idx].menuItem = e.target.value;
+                                  setFormData({ ...formData, applicableItems: newItems });
+                                }} className="flex-1 p-3 bg-background-card border border-border/40 rounded-xl outline-none text-sm">
+                                  <option value="">Select Item</option>
+                                  {menus.filter(m => !item.categoryId || (m.category?._id || m.category) === item.categoryId).map(m => (
+                                    <option key={m._id} value={m._id}>{m.name}</option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <div className="flex-1">
+                                  <select multiple value={item.menuItems || []} onChange={(e) => {
+                                    const opts = Array.from(e.target.selectedOptions).map(o => o.value);
+                                    const newItems = [...formData.applicableItems];
+                                    newItems[idx].menuItems = opts;
+                                    setFormData({ ...formData, applicableItems: newItems });
+                                  }} className="w-full p-2 bg-background-card border border-border/40 rounded-xl outline-none text-sm h-24 no-scrollbar">
+                                    {menus.filter(m => !item.categoryId || (m.category?._id || m.category) === item.categoryId).map(m => (
+                                      <option key={m._id} value={m._id} className="p-1">{m.name}</option>
+                                    ))}
+                                  </select>
+                                  <p className="text-[9px] text-text-muted mt-1 ml-1">Hold Ctrl/Cmd to select multiple options</p>
+                                </div>
+                              )}
+                              
+                              <select value={item.selectedSize} onChange={(e) => {
+                                const newItems = [...formData.applicableItems];
+                                newItems[idx].selectedSize = e.target.value;
+                                setFormData({ ...formData, applicableItems: newItems });
+                              }} className="w-28 p-3 bg-background-card border border-border/40 rounded-xl outline-none text-sm">
+                                <option value="">Size</option>
+                                {menus.find(m => m._id === (item.isChoice ? (item.menuItems && item.menuItems[0]) : item.menuItem))?.variants?.map(v => (
+                                  <option key={v.size} value={v.size}>{v.size}</option>
+                                ))}
+                              </select>
+                              <input type="number" min="1" placeholder="Qty" value={item.quantity} onChange={(e) => {
+                                const newItems = [...formData.applicableItems];
+                                newItems[idx].quantity = Number(e.target.value);
+                                setFormData({ ...formData, applicableItems: newItems });
+                              }} className="w-20 p-3 bg-background-card border border-border/40 rounded-xl outline-none text-sm text-center" />
+                              <button type="button" onClick={() => {
+                                const newItems = [...formData.applicableItems];
+                                newItems.splice(idx, 1);
+                                setFormData({ ...formData, applicableItems: newItems });
+                              }} className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={16} /></button>
+                            </div>
+                          </div>
+                        ))}
+                        <button type="button" onClick={() => setFormData({ ...formData, applicableItems: [...formData.applicableItems, { categoryId: '', menuItem: '', menuItems: [], isChoice: false, choiceGroupName: '', selectedSize: '', quantity: 1 }] })} className="text-[10px] font-black uppercase text-primary flex items-center gap-1 mt-2">
+                          <Plus size={14} /> Add Buy Item
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 pt-4 border-t border-border/20">
+                      <h4 className="text-sm font-black text-primary uppercase">Get Free / Discounted Items</h4>
+                      <div className="space-y-2">
+                        {formData.getApplicableItems.map((item, idx) => (
+                          <div key={idx} className="flex flex-col gap-2 p-3 bg-background border border-border/20 rounded-xl">
+                            <div className="flex items-center gap-2 mb-1">
+                               <label className="flex items-center gap-2 text-xs font-bold text-text-primary">
+                                  <input type="checkbox" checked={item.isChoice} onChange={(e) => {
+                                      const newItems = [...formData.getApplicableItems];
+                                      newItems[idx].isChoice = e.target.checked;
+                                      setFormData({ ...formData, getApplicableItems: newItems });
+                                  }} className="rounded text-primary focus:ring-primary" />
+                                  Make this a Choice Group
+                               </label>
+                            </div>
+                            
+                            {item.isChoice && (
+                              <div className="flex gap-2">
+                                 <input type="text" placeholder="Group Name (e.g. Choose Free Item)" value={item.choiceGroupName} onChange={(e) => {
+                                    const newItems = [...formData.getApplicableItems];
+                                    newItems[idx].choiceGroupName = e.target.value;
+                                    setFormData({ ...formData, getApplicableItems: newItems });
+                                 }} className="flex-1 p-3 bg-background-card border border-border/40 rounded-xl outline-none text-sm font-bold" />
+                              </div>
+                            )}
+
+                            <div className="flex items-start gap-2">
+                              <select value={item.categoryId || ''} onChange={(e) => {
+                                const newItems = [...formData.getApplicableItems];
+                                newItems[idx].categoryId = e.target.value;
+                                newItems[idx].menuItem = '';
+                                newItems[idx].menuItems = [];
+                                newItems[idx].selectedSize = '';
+                                setFormData({ ...formData, getApplicableItems: newItems });
+                              }} className="w-32 p-3 bg-background-card border border-border/40 rounded-xl outline-none text-sm">
+                                <option value="">Category</option>
+                                {categories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                              </select>
+                              
+                              {!item.isChoice ? (
+                                <select value={item.menuItem} onChange={(e) => {
+                                  const newItems = [...formData.getApplicableItems];
+                                  newItems[idx].menuItem = e.target.value;
+                                  setFormData({ ...formData, getApplicableItems: newItems });
+                                }} className="flex-1 p-3 bg-background-card border border-border/40 rounded-xl outline-none text-sm">
+                                  <option value="">Select Item</option>
+                                  {menus.filter(m => !item.categoryId || (m.category?._id || m.category) === item.categoryId).map(m => (
+                                    <option key={m._id} value={m._id}>{m.name}</option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <div className="flex-1">
+                                  <select multiple value={item.menuItems || []} onChange={(e) => {
+                                    const opts = Array.from(e.target.selectedOptions).map(o => o.value);
+                                    const newItems = [...formData.getApplicableItems];
+                                    newItems[idx].menuItems = opts;
+                                    setFormData({ ...formData, getApplicableItems: newItems });
+                                  }} className="w-full p-2 bg-background-card border border-border/40 rounded-xl outline-none text-sm h-24 no-scrollbar">
+                                    {menus.filter(m => !item.categoryId || (m.category?._id || m.category) === item.categoryId).map(m => (
+                                      <option key={m._id} value={m._id} className="p-1">{m.name}</option>
+                                    ))}
+                                  </select>
+                                  <p className="text-[9px] text-text-muted mt-1 ml-1">Hold Ctrl/Cmd to select multiple options</p>
+                                </div>
+                              )}
+                              
+                              <select value={item.selectedSize} onChange={(e) => {
+                                const newItems = [...formData.getApplicableItems];
+                                newItems[idx].selectedSize = e.target.value;
+                                setFormData({ ...formData, getApplicableItems: newItems });
+                              }} className="w-28 p-3 bg-background-card border border-border/40 rounded-xl outline-none text-sm">
+                                <option value="">Size</option>
+                                {menus.find(m => m._id === (item.isChoice ? (item.menuItems && item.menuItems[0]) : item.menuItem))?.variants?.map(v => (
+                                  <option key={v.size} value={v.size}>{v.size}</option>
+                                ))}
+                              </select>
+                              <input type="number" min="1" placeholder="Qty" value={item.quantity} onChange={(e) => {
+                                const newItems = [...formData.getApplicableItems];
+                                newItems[idx].quantity = Number(e.target.value);
+                                setFormData({ ...formData, getApplicableItems: newItems });
+                              }} className="w-20 p-3 bg-background-card border border-border/40 rounded-xl outline-none text-sm text-center" />
+                              <button type="button" onClick={() => {
+                                const newItems = [...formData.getApplicableItems];
+                                newItems.splice(idx, 1);
+                                setFormData({ ...formData, getApplicableItems: newItems });
+                              }} className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={16} /></button>
+                            </div>
+                          </div>
+                        ))}
+                        <button type="button" onClick={() => setFormData({ ...formData, getApplicableItems: [...formData.getApplicableItems, { categoryId: '', menuItem: '', menuItems: [], isChoice: false, choiceGroupName: '', selectedSize: '', quantity: 1 }] })} className="text-[10px] font-black uppercase text-primary flex items-center gap-1 mt-2">
+                          <Plus size={14} /> Add Get Item
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-between p-4 bg-background rounded-2xl border border-border/40">

@@ -207,7 +207,9 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
                     </h3>
 
                     <p className="text-[8px] sm:text-[9px] text-text-muted/90 group-hover:text-white/90 group-active:text-white/90 line-clamp-2 mb-auto leading-relaxed font-bold tracking-wider transition-colors">
-                      {menu.description}
+                      {menu.isCombo && menu.comboItems?.length > 0
+                        ? menu.comboItems.map(ci => `${ci.quantity || 1}x ${ci.menuItem?.name || ci.name || 'Item'}`).join(' + ')
+                        : menu.description}
                     </p>
 
                     <div className="flex justify-between items-center mt-2 pt-2 border-t border-text-primary/5 group-hover:border-white/10 group-active:border-white/10">

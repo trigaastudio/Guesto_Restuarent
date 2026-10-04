@@ -13,6 +13,7 @@ import PageSkeleton from '../../components/Skeleton/PageSkeleton';
 import { useCart } from '../../context/CartContext';
 import StoreStatusBanner from '../../components/StoreStatus/StoreStatusBanner';
 import OffersCarousel from '../../components/Offers/OffersCarousel';
+import OfferModal from '../../components/Offers/OfferModal';
 import { Utensils, MapPin, Sparkles, Flame, Share2, ChevronLeft, ChevronRight, X, Search, ArrowRight } from 'lucide-react';
 
 const DigitalMenu = () => {
@@ -37,6 +38,7 @@ const DigitalMenu = () => {
   const [restaurantSettings, setRestaurantSettings] = useState(null);
   const [trendingItems, setTrendingItems] = useState([]);
   const [isOffersModalOpen, setIsOffersModalOpen] = useState(false);
+  const [selectedOfferForModal, setSelectedOfferForModal] = useState(null);
   const [offerFilter, setOfferFilter] = useState(null);
   const [offerName, setOfferName] = useState('');
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -335,15 +337,7 @@ const DigitalMenu = () => {
           <div className="mb-16">
             <OffersCarousel
               onOfferClick={(offer) => {
-                setSelectedCategory('all');
-                setOfferFilter(offer._id);
-                setOfferName(offer.title);
-                setPage(1);
-                setHasMore(true);
-                const menuElement = document.getElementById('menu');
-                if (menuElement) {
-                  menuElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
+                setSelectedOfferForModal(offer);
               }}
             />
           </div>
@@ -588,16 +582,8 @@ const DigitalMenu = () => {
             <h2 className="text-2xl font-black text-text-primary mb-4 tracking-tighter">Current Offers</h2>
             <div className="max-h-[60vh] overflow-y-auto no-scrollbar">
               <OffersCarousel onOfferClick={(offer) => {
-                 setSelectedCategory('all');
-                 setOfferFilter(offer._id);
-                 setOfferName(offer.title);
+                 setSelectedOfferForModal(offer);
                  setIsOffersModalOpen(false);
-                 setPage(1);
-                 setHasMore(true);
-                 setTimeout(() => {
-                    const menuElement = document.getElementById('menu');
-                    if (menuElement) menuElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                 }, 100);
               }} />
             </div>
           </div>
@@ -614,6 +600,23 @@ const DigitalMenu = () => {
         viewOnly={true}
       />
       <StoreStatusBanner />
+      <OfferModal
+        isOpen={!!selectedOfferForModal}
+        onClose={() => setSelectedOfferForModal(null)}
+        offer={selectedOfferForModal}
+        menus={menus}
+        onBrowseMenu={(offer) => {
+          setSelectedCategory('all');
+          setOfferFilter(offer._id);
+          setOfferName(offer.title);
+          setPage(1);
+          setHasMore(true);
+          const menuElement = document.getElementById('menu');
+          if (menuElement) {
+            menuElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }}
+      />
 
       <style dangerouslySetInnerHTML={{ __html: `
         .no-scrollbar::-webkit-scrollbar { display: none; }

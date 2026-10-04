@@ -14,6 +14,7 @@ import MenuModal from '../../components/Menu/MenuModal';
 import StoreStatusBanner from '../../components/StoreStatus/StoreStatusBanner';
 import PageSkeleton from '../../components/Skeleton/PageSkeleton';
 import OffersCarousel from '../../components/Offers/OffersCarousel';
+import OfferModal from '../../components/Offers/OfferModal';
 import socket from '../../services/socket';
 import { getEffectiveStock, checkCategoryTiming } from '../../utils/stockHelpers';
 import { Sparkles, X, Flame, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
@@ -36,11 +37,12 @@ const HomePage = () => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [sortBy, setSortBy] = useState('default');
   const [dietaryFilter, setDietaryFilter] = useState('all');
-  const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
   const [selectedMenuForModal, setSelectedMenuForModal] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedOfferForModal, setSelectedOfferForModal] = useState(null);
   const dropdownRef = useRef(null);
   const observerTarget = useRef(null);
   const scrollContainerRef = useRef(null);
@@ -373,15 +375,7 @@ const HomePage = () => {
         <div className="mb-12">
           <OffersCarousel
             onOfferClick={(offer) => {
-              setSelectedCategory('all');
-              setOfferFilter(offer.offerType);
-              setOfferName(offer.title);
-              setPage(1);
-              setHasMore(true);
-              const menuElement = document.getElementById('menu');
-              if (menuElement) {
-                menuElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }
+              setSelectedOfferForModal(offer);
             }}
           />
         </div>
@@ -476,7 +470,11 @@ const HomePage = () => {
 
                     <div className="px-1.5 flex flex-col flex-1 pb-1">
                       <h3 className="text-[10px] md:text-xs font-black text-text-primary mb-0.5 group-hover:text-primary transition-colors line-clamp-2 leading-tight">{item.name}</h3>
-                      <p className="text-[9px] font-medium text-text-muted opacity-80 line-clamp-1 mb-0.5">{item.description || "A delicious favorite from our menu."}</p>
+                      <p className="text-[9px] font-medium text-text-muted opacity-80 line-clamp-1 mb-0.5">
+                        {item.isCombo && item.comboItems?.length > 0
+                          ? item.comboItems.map(ci => `${ci.quantity || 1}x ${ci.menuItem?.name || ci.name || 'Item'}`).join(' + ')
+                          : (item.description || "A delicious favorite from our menu.")}
+                      </p>
                     </div>
                   </div>
                 );
@@ -531,6 +529,24 @@ const HomePage = () => {
         onClose={() => setIsModalOpen(false)}
         menu={selectedMenuForModal}
         onAction={addToCart}
+      />
+
+      <OfferModal
+        isOpen={!!selectedOfferForModal}
+        onClose={() => setSelectedOfferForModal(null)}
+        offer={selectedOfferForModal}
+        menus={menus}
+        onBrowseMenu={(offer) => {
+          setSelectedCategory('all');
+          setOfferFilter(offer._id);
+          setOfferName(offer.title);
+          setPage(1);
+          setHasMore(true);
+          const menuElement = document.getElementById('menu');
+          if (menuElement) {
+            menuElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }}
       />
 
       { }

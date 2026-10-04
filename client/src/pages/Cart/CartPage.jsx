@@ -122,7 +122,7 @@ const QuantityInput = ({ item, updateQuantity, getStock }) => {
 const CartPage = () => {
   const navigate = useNavigate();
   const { theme } = useTheme();
-  const { cartItems, updateQuantity, removeFromCart, offers, settings, loading: cartLoading, subtotal, checkStoreStatus, fetchCart } = useCart();
+  const { cartItems, updateQuantity, removeFromCart, offers, settings, loading: cartLoading, subtotal, appliedOffers, checkStoreStatus, fetchCart } = useCart();
 
 
   const [deliveryAddress, setDeliveryAddress] = useState(null);
@@ -458,7 +458,7 @@ const CartPage = () => {
       setIsValidating(false);
     }
 
-    navigate('/payment', { state: { deliveryAddress, additionalNote, deliveryFee, platformFee, discount, dineInTableId, dineInTableNumber } });
+    navigate('/payment', { state: { deliveryAddress, additionalNote, deliveryFee, platformFee, discount, dineInTableId, dineInTableNumber, appliedOffers } });
   };
 
   if (cartLoading && cartItems.length === 0) return <Loader fullPage={true} />;
@@ -721,10 +721,35 @@ const CartPage = () => {
                     <span className="text-xs sm:text-sm font-black text-text-primary">₹{Math.round(originalTotal)}</span>
                   </div>
 
-                  <div className="flex justify-between items-center text-green-500">
-                    <span className="text-[10px] sm:text-[11px] font-black uppercase opacity-80">Total Savings</span>
-                    <span className="text-xs sm:text-sm font-black">-₹{discount}</span>
-                  </div>
+                  {(() => {
+                    const totalOffersDiscount = (appliedOffers || []).reduce((sum, o) => sum + (o.discountAmount || 0), 0);
+                    const otherDiscount = discount - totalOffersDiscount;
+                    return (
+                      <>
+                        {otherDiscount > 0 && (
+                          <div className="flex justify-between items-center text-green-500">
+                            <span className="text-[10px] sm:text-[11px] font-black uppercase opacity-80">Total Savings</span>
+                            <span className="text-xs sm:text-sm font-black">-₹{Math.round(otherDiscount)}</span>
+                          </div>
+                        )}
+                        {appliedOffers && appliedOffers.length > 0 && (
+                          <div className="space-y-1 mt-1 mb-2">
+                            {appliedOffers.map((offer, idx) => (
+                              <div key={idx} className="flex justify-between items-start text-emerald-500 bg-emerald-500/5 px-2 py-1.5 rounded-lg border border-emerald-500/10">
+                                <div className="flex items-center gap-1.5">
+                                  <Zap size={10} className="fill-emerald-500 text-emerald-500" />
+                                  <span className="text-[9px] font-black uppercase tracking-wider">{offer.title}</span>
+                                </div>
+                                <span className="text-[9px] font-bold text-emerald-600">
+                                  -₹{offer.discountAmount}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
 
                   <div className="flex justify-between items-center bg-primary/5 -mx-2 sm:-mx-4 px-2 sm:px-4 py-2 rounded-xl">
                     <span className="text-[10px] sm:text-[11px] font-black text-primary uppercase">Final Price (Items)</span>

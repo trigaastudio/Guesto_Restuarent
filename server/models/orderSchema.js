@@ -93,6 +93,12 @@ const orderSchema = new mongoose.Schema({
   subtotal: { type: Number, default: 0 },
   tax: { type: Number, default: 0 },
   discount: { type: Number, default: 0 },
+  appliedOffers: [{
+    offerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Offer' },
+    title: String,
+    offerType: String,
+    discountAmount: Number
+  }],
   deliveryFee: { type: Number, default: 0 },
   platformFee: { type: Number, default: 0 },
   totalAmount: { type: Number, default: 0 },
@@ -166,7 +172,7 @@ orderSchema.pre('validate', async function () {
     this.subtotal = this.items.reduce((acc, item) =>
       acc + (item.totalPrice || (item.price * item.quantity) || 0), 0
     );
-    this.totalAmount = Math.max(0, this.subtotal + (this.tax || 0) + (this.deliveryFee || 0) + (this.platformFee || 0) + (this.outstandingBill || 0));
+    this.totalAmount = Math.max(0, this.subtotal - (this.discount || 0) + (this.tax || 0) + (this.deliveryFee || 0) + (this.platformFee || 0) + (this.outstandingBill || 0));
   }
 
   

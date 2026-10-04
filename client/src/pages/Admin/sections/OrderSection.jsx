@@ -332,7 +332,7 @@ const OrderSection = () => {
           <div style="font-size: 13px; font-weight: normal; margin-bottom: 5px;">
             <div style="display: flex; justify-content: space-between;">
               <span>Listing Price:</span>
-              <span>₹${((order.subtotal || 0) + (order.discount || 0)).toFixed(0)}</span>
+              <span>₹${(order.subtotal || 0).toFixed(0)}</span>
             </div>
             ${order.deliveryFee > 0 ? `
               <div style="display: flex; justify-content: space-between;">
@@ -346,12 +346,28 @@ const OrderSection = () => {
                 <span>${order.platformFee.toFixed(0)}</span>
               </div>
             ` : ''}
-            ${order.discount > 0 ? `
-              <div style="display: flex; justify-content: space-between; color: green; font-weight: bold;">
-                <span>Discount:</span>
-                <span>-${order.discount.toFixed(0)}</span>
-              </div>
-            ` : ''}
+            ${(() => {
+              const totalOffersDiscount = (order.appliedOffers || []).reduce((sum, o) => sum + (o.discountAmount || 0), 0);
+              const otherDiscount = (order.discount || 0) - totalOffersDiscount;
+              let html = '';
+              if (otherDiscount > 0) {
+                html += `
+                  <div style="display: flex; justify-content: space-between; color: green; font-weight: bold;">
+                    <span>Discount:</span>
+                    <span>-${otherDiscount.toFixed(0)}</span>
+                  </div>
+                `;
+              }
+              if (order.appliedOffers && order.appliedOffers.length > 0) {
+                html += order.appliedOffers.map(offer => `
+                  <div style="display: flex; justify-content: space-between; color: green; font-weight: bold;">
+                    <span>Offer (${offer.title}):</span>
+                    <span>-${offer.discountAmount.toFixed(0)}</span>
+                  </div>
+                `).join('');
+              }
+              return html;
+            })()}
             ${order.outstandingBill ? `
               <div style="display: flex; justify-content: space-between;">
                 <span>Outstanding Bill:</span>
@@ -979,7 +995,7 @@ const OrderSection = () => {
             <div class="pt-3 border-t-2 border-dashed border-border-light flex flex-col gap-1 px-1">
               <div class="flex justify-between items-center">
                 <span class="text-[10px] font-black text-text-muted uppercase tracking-widest">Listing Price</span>
-                <span class="text-[11px] font-black text-text-primary">₹${Math.round((order.subtotal || 0) + (order.discount || 0))}</span>
+                <span class="text-[11px] font-black text-text-primary">₹${Math.round(order.subtotal || 0)}</span>
               </div>
               ${order.deliveryFee > 0 ? `
                 <div class="flex justify-between items-center text-text-muted">
@@ -1001,7 +1017,7 @@ const OrderSection = () => {
               ` : ''}
               <div class="flex justify-between items-center mt-2 pt-2 border-t border-border-light/50">
                 <p class="text-[11px] font-black text-text-primary uppercase tracking-widest">Total Payable</p>
-                <p class="text-[18px] font-black text-primary">₹${Math.round((order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0))}</p>
+                <p class="text-[18px] font-black text-primary">₹${Math.round(order.totalAmount || ((order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0) - (order.discount || 0)))}</p>
               </div>
             </div>
           </div>
@@ -2200,7 +2216,7 @@ const OrderSection = () => {
                           </div>
                         </td>
                       )}
-                      <td className="px-2 py-2.5 font-black text-text-primary">₹{Math.round((order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0))}</td>
+                      <td className="px-2 py-2.5 font-black text-text-primary">₹{Math.round(order.totalAmount || ((order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0) - (order.discount || 0)))}</td>
                       <td className="px-2 py-2.5 text-center">
                         {(() => {
                           const status = getFriendlyStatus(order);
@@ -2677,7 +2693,7 @@ const OrderSection = () => {
                 <div className="space-y-1">
                   <div className="flex flex-wrap items-center gap-2 mb-1">
                     <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">
-                      Listing Price: ₹{Math.round((selectedOrder.subtotal || 0) + (selectedOrder.discount || 0))}
+                      Listing Price: ₹{Math.round(selectedOrder.subtotal || 0)}
                     </span>
                     {selectedOrder.platformFee > 0 && (
                       <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">
@@ -2689,11 +2705,24 @@ const OrderSection = () => {
                         Delivery: +₹{Math.round(selectedOrder.deliveryFee)}
                       </span>
                     )}
-                    {selectedOrder.discount > 0 && (
-                      <span className="text-[10px] text-green-600 font-bold uppercase tracking-widest">
-                        Discount: -₹{Math.round(selectedOrder.discount)}
-                      </span>
-                    )}
+                    {(() => {
+                      const totalOffersDiscount = (selectedOrder.appliedOffers || []).reduce((sum, o) => sum + (o.discountAmount || 0), 0);
+                      const otherDiscount = (selectedOrder.discount || 0) - totalOffersDiscount;
+                      return (
+                        <>
+                          {otherDiscount > 0 && (
+                            <span className="text-[10px] text-green-600 font-bold uppercase tracking-widest">
+                              Discount: -₹{Math.round(otherDiscount)}
+                            </span>
+                          )}
+                          {selectedOrder.appliedOffers?.length > 0 && selectedOrder.appliedOffers.map((offer, idx) => (
+                            <span key={idx} className="text-[10px] text-primary font-bold uppercase tracking-widest flex items-center gap-1">
+                              🎁 {offer.title}: -₹{Math.round(offer.discountAmount)}
+                            </span>
+                          ))}
+                        </>
+                      );
+                    })()}
                     {selectedOrder.outstandingBill ? (
                       <span className="text-[10px] text-amber-600 font-bold uppercase tracking-widest">
                         OB: ₹{Math.round(selectedOrder.outstandingBill)}
@@ -2722,7 +2751,7 @@ const OrderSection = () => {
                   <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest">Total Bill Amount</p>
                   <div className="flex items-baseline space-x-2">
                     <span className="text-3xl font-black text-text-primary">
-                      ₹{Math.round((selectedOrder.subtotal || 0) + (selectedOrder.deliveryFee || 0) + (selectedOrder.platformFee || 0) + (selectedOrder.tax || 0) + (selectedOrder.outstandingBill || 0))}
+                      ₹{Math.round(selectedOrder.totalAmount || ((selectedOrder.subtotal || 0) + (selectedOrder.deliveryFee || 0) + (selectedOrder.platformFee || 0) + (selectedOrder.tax || 0) + (selectedOrder.outstandingBill || 0) - (selectedOrder.discount || 0)))}
                     </span>
                     {selectedOrder.paidAmount > 0 && (selectedOrder.totalAmount || selectedOrder.subtotal) > selectedOrder.paidAmount && (
                       <span className="px-2 py-0.5 bg-status-off/10 text-status-unavailable text-[10px] font-black rounded-lg uppercase tracking-tighter">

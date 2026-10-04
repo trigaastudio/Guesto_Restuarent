@@ -401,7 +401,7 @@ const OrdersPage = () => {
                               </div>
                               <div className="text-right">
                                 <p className="text-[14px] sm:text-lg font-black text-text-primary tracking-tighter leading-none">
-                                  ₹{Math.round((order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0))}
+                                  ₹{Math.round(order.totalAmount || ((order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0) - (order.discount || 0)))}
                                 </p>
                                 {order.orderStatus !== 'cancelled' && (
                                   <p className={`text-[8px] sm:text-[9px] font-bold uppercase tracking-wide mt-1 ${order.paymentStatus === 'paid' ? 'text-emerald-500' : 'text-orange-500 animate-pulse'}`}>
