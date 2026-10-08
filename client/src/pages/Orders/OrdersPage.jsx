@@ -17,7 +17,8 @@ const OrdersPage = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const selectedOrder = useMemo(() => orders.find(o => o._id === selectedOrderId) || null, [orders, selectedOrderId]);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const ordersPerPage = 10;
@@ -76,13 +77,20 @@ const OrdersPage = () => {
     socket.on('ordersUpdated', onOrdersUpdatedFallback);
 
     const refreshTimer = setInterval(() => {
-      fetchOrders();
-    }, 60000);
+      if (document.visibilityState === 'visible') fetchOrders();
+    }, 30000);
+
+    const handleFocus = () => fetchOrders();
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') fetchOrders();
+    });
 
     return () => {
       socket.off('orderStatusUpdated', onOrderStatusUpdate);
       socket.off('ordersUpdated', onOrdersUpdatedFallback);
       clearInterval(refreshTimer);
+      window.removeEventListener('focus', handleFocus);
     };
   }, [user?._id]);
 
@@ -379,7 +387,7 @@ const OrdersPage = () => {
                       <div
                         key={order._id}
                         onClick={() => {
-                          setSelectedOrder(order);
+                          setSelectedOrderId(order._id);
                           setShowDetailsModal(true);
                         }}
                         className="bg-background rounded-xl border border-border/60 hover:shadow-md transition-all duration-300 overflow-hidden group cursor-pointer active:scale-[0.99]"
@@ -516,7 +524,7 @@ const OrdersPage = () => {
         <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 md:p-6 animate-in fade-in duration-300">
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-            onClick={() => setShowDetailsModal(false)}
+            onClick={() => { setShowDetailsModal(false); setTimeout(() => setSelectedOrderId(null), 300); }}
           />
           <div className="relative w-full max-w-xl bg-white dark:bg-background-card rounded-xl sm:rounded-[2.5rem] shadow-[0_30px_100px_rgba(0,0,0,0.4)] overflow-hidden animate-in zoom-in-95 duration-300">
             {}
@@ -526,7 +534,7 @@ const OrdersPage = () => {
                 <h3 className="text-base sm:text-xl font-black text-text-primary tracking-tight">#{selectedOrder.orderNumber || selectedOrder._id.slice(-8).toUpperCase()}</h3>
               </div>
               <button
-                onClick={() => setShowDetailsModal(false)}
+                onClick={() => { setShowDetailsModal(false); setTimeout(() => setSelectedOrderId(null), 300); }}
                 className="w-10 h-10 rounded-full bg-background-muted/50 flex items-center justify-center text-text-muted hover:text-primary transition-colors active:scale-90"
               >
                 <X size={20} strokeWidth={3} />

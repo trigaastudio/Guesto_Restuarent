@@ -56,7 +56,6 @@ export const initSocket = (httpServer) => {
       socket.userRole = user.role;
       next();
     } catch {
-      
       socket.isAuthenticated = false;
       socket.userId = null;
       socket.userRole = null;
@@ -65,9 +64,42 @@ export const initSocket = (httpServer) => {
   });
 
   io.on('connection', (socket) => {
+    socket.emit('auth_status', { isAuthenticated: socket.isAuthenticated, userId: socket.userId, userRole: socket.userRole });
+
     if (socket.isAuthenticated && ['admin', 'staff', 'waiter', 'kitchen', 'cashier', 'delivery'].includes(socket.userRole)) {
       socket.join('staff_room');
     }
+
+    socket.on('authenticate', async (token) => {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        let user = await User.findById(decoded.id).select('_id role isActive');
+        if (!user) {
+          user = await Staff.findById(decoded.id).select('_id role isActive');
+        }
+
+        if (!user || !user.isActive) {
+          socket.isAuthenticated = false;
+          socket.userId = null;
+          socket.userRole = null;
+          socket.emit('auth_status', { isAuthenticated: false });
+          return;
+        }
+
+        socket.isAuthenticated = true;
+        socket.userId = user._id.toString();
+        socket.userRole = user.role;
+        
+        if (['admin', 'staff', 'waiter', 'kitchen', 'cashier', 'delivery'].includes(user.role)) {
+          socket.join('staff_room');
+        }
+        
+        socket.emit('auth_status', { isAuthenticated: true, userId: socket.userId, userRole: socket.userRole });
+      } catch (err) {
+        socket.isAuthenticated = false;
+        socket.emit('auth_status', { isAuthenticated: false, error: 'Invalid token' });
+      }
+    });
     
     
     socket.on('joinOrder', async (orderId) => {

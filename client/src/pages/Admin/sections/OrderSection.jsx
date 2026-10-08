@@ -101,12 +101,14 @@ const OrderSection = () => {
   const [isPaymentSubmitting, setIsPaymentSubmitting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const selectedOrder = useMemo(() => orders.find(o => o._id === selectedOrderId) || null, [orders, selectedOrderId]);
   const [obInput, setObInput] = useState('');
   const [isSavingOb, setIsSavingOb] = useState(false);
   const [searchTerm, setSearchTerm] = useState(localStorage.getItem('orderSearchTerm') || '');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(localStorage.getItem('orderSearchTerm') || '');
   const fetchRequestIdRef = useRef(0);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -191,9 +193,10 @@ const OrderSection = () => {
 
   // Throttled fetch — skip history re-fetch on socket events (static archived data)
   const scheduleSilentFetch = () => {
-    // Always refresh active order counts for badges
-    fetchActiveOrderCounts();
-    if (activeTabRef.current === 'history') return;
+    if (activeTabRef.current === 'history') {
+      fetchActiveOrderCounts();
+      return;
+    }
     if (socketFetchTimerRef.current) clearTimeout(socketFetchTimerRef.current);
     socketFetchTimerRef.current = setTimeout(() => {
       fetchOrdersRef.current(true);
@@ -207,15 +210,33 @@ const OrderSection = () => {
     // Auto-refresh orders list on new order arrivals or status changes
     const handleNewOrder = () => scheduleSilentFetch();
     const handleOrdersUpdated = () => scheduleSilentFetch();
+    const fallbackPoll = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        scheduleSilentFetch();
+      }
+    }, 30000);
+
 
     socket.on('newOrder', handleNewOrder);
     socket.on('ordersUpdated', handleOrdersUpdated);
     socket.on('orderUpdated', handleOrdersUpdated);
 
+    
+    const handleReconnect = () => scheduleSilentFetch();
+    const handleFocus = () => scheduleSilentFetch();
+    
+    socket.on('connect', handleReconnect);
+    window.addEventListener('focus', handleFocus);
+    
     return () => {
+      socket.off('connect', handleReconnect);
+      window.removeEventListener('focus', handleFocus);
+
       socket.off('newOrder', handleNewOrder);
       socket.off('ordersUpdated', handleOrdersUpdated);
       socket.off('orderUpdated', handleOrdersUpdated);
+      clearInterval(fallbackPoll);
+
       if (socketFetchTimerRef.current) clearTimeout(socketFetchTimerRef.current);
     };
   }, []);
@@ -448,6 +469,7 @@ const OrderSection = () => {
   const fetchOrders = async (silent = false, currentTab = activeTab, start = startDate, end = endDate, page = historyPage, searchVal = debouncedSearchTerm) => {
     const reqId = ++fetchRequestIdRef.current;
     if (!silent) setIsLoading(true);
+    if (!silent) setHasError(false);
     try {
       const params = {};
       if (currentTab === 'history') {
@@ -478,6 +500,7 @@ const OrderSection = () => {
     } catch (error) {
       if (reqId !== fetchRequestIdRef.current) return;
       console.error('Error fetching orders:', error);
+      if (!silent) setHasError(true);
       if (!silent) showToast('error', 'Failed to fetch orders');
     } finally {
       if (reqId === fetchRequestIdRef.current) {
@@ -728,8 +751,8 @@ const OrderSection = () => {
           showToast('success', 'Order updated successfully');
           setIsModalOpen(false);
           setCart([]);
-          setSelectedOrder(response.data.data);
-          setOrders(orders.map(o => o._id === selectedOrder._id ? response.data.data : o));
+          setSelectedOrderId(response.data.data._id);
+          setOrders(prev => prev.map(o => o._id === selectedOrder._id ? response.data.data : o));
           if (shouldPrintBill) {
             handlePrintKOT(response.data.data);
           }
@@ -808,8 +831,8 @@ const OrderSection = () => {
       const response = await api.patch(`/api/orders/${orderId}/status`, updateData);
       if (response.data.success) {
         showToast('success', `Order marked as ${newStatus}${updateData.paymentStatus ? ' and Paid' : ''}`);
-        setOrders(orders.map(o => o._id === orderId ? response.data.data : o));
-        if (selectedOrder?._id === orderId) setSelectedOrder(response.data.data);
+        setOrders(prev => prev.map(o => o._id === orderId ? response.data.data : o));
+        
       }
     } catch (error) {
       showToast('error', error.response?.data?.message || 'Failed to update order status');
@@ -824,8 +847,8 @@ const OrderSection = () => {
       const response = await api.patch(`/api/orders/${selectedOrder._id}/status`, { outstandingBill: parsedOb });
       if (response.data.success) {
         showToast('success', 'Outstanding bill updated');
-        setSelectedOrder(response.data.data);
-        setOrders(orders.map(o => o._id === selectedOrder._id ? response.data.data : o));
+        setSelectedOrderId(response.data.data._id);
+        setOrders(prev => prev.map(o => o._id === selectedOrder._id ? response.data.data : o));
       }
     } catch (error) {
       showToast('error', error.response?.data?.message || 'Failed to update outstanding bill');
@@ -1082,8 +1105,8 @@ const OrderSection = () => {
         showToast('success', 'Status updated');
 
         const updatedOrder = response.data.data;
-        setOrders(orders.map(o => o._id === orderId ? updatedOrder : o));
-        if (selectedOrder?._id === orderId) setSelectedOrder(updatedOrder);
+        setOrders(prev => prev.map(o => o._id === orderId ? updatedOrder : o));
+        
       }
     } catch (error) {
       showToast('error', error.response?.data?.message || 'Update failed');
@@ -1104,8 +1127,8 @@ const OrderSection = () => {
       const response = await api.patch(`/api/orders/${orderId}/status`, updateData);
       if (response.data.success) {
         showToast('success', `Payment marked as ${newStatus}`);
-        setOrders(orders.map(o => o._id === orderId ? response.data.data : o));
-        if (selectedOrder?._id === orderId) setSelectedOrder(response.data.data);
+        setOrders(prev => prev.map(o => o._id === orderId ? response.data.data : o));
+        
       }
     } catch (error) {
       showToast('error', error.response?.data?.message || 'Failed to update payment status');
@@ -1153,8 +1176,8 @@ const OrderSection = () => {
       const response = await api.patch(`/api/orders/${order._id}/status`, updateData);
       if (response.data.success) {
         showToast('success', `Payment accepted via ${payMethod === 'upi/card' ? 'UPI / Card' : 'Cash'}`);
-        setOrders(orders.map(o => o._id === order._id ? response.data.data : o));
-        if (selectedOrder?._id === order._id) setSelectedOrder(response.data.data);
+        setOrders(prev => prev.map(o => o._id === order._id ? response.data.data : o));
+        
         setPaymentModal({ open: false, order: null });
       }
     } catch (error) {
@@ -1253,9 +1276,9 @@ const OrderSection = () => {
     fetchTables();
     fetchUsers();
     if (order) {
-      setSelectedOrder(order);
+      setSelectedOrderId(order?._id);
     } else {
-      setSelectedOrder(null);
+      setSelectedOrderId(null);
       setCart([]);
       setCustomer({ name: 'Walk-in', phone: '' });
       setSelectedUserId(null);
@@ -1269,7 +1292,7 @@ const OrderSection = () => {
   };
 
   const handleOpenDetails = (order) => {
-    setSelectedOrder(order);
+    setSelectedOrderId(order?._id);
     setObInput(order.outstandingBill || '');
     setIsDetailsModalOpen(true);
   };
@@ -1288,8 +1311,8 @@ const OrderSection = () => {
 
       if (response.data.success) {
         showToast('success', 'Order details updated');
-        setOrders(orders.map(o => o._id === selectedOrder._id ? response.data.data : o));
-        setSelectedOrder(response.data.data);
+        setOrders(prev => prev.map(o => o._id === selectedOrder._id ? response.data.data : o));
+        setSelectedOrderId(response.data.data._id);
       }
     } catch (error) {
       showToast('error', 'Failed to update details');
@@ -1305,8 +1328,8 @@ const OrderSection = () => {
       });
       if (response.data.success) {
         showToast('success', 'Note saved');
-        setOrders(orders.map(o => o._id === selectedOrder._id ? response.data.data : o));
-        setSelectedOrder(response.data.data);
+        setOrders(prev => prev.map(o => o._id === selectedOrder._id ? response.data.data : o));
+        setSelectedOrderId(response.data.data._id);
       }
     } catch (error) {
       showToast('error', 'Failed to save note');
@@ -1798,7 +1821,7 @@ const OrderSection = () => {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6">
 
 
       <div className="print:hidden space-y-6">
@@ -1810,7 +1833,7 @@ const OrderSection = () => {
           {activeTab !== 'all' && activeTab !== 'history' && activeTab !== 'dine-in' && (
             <button
               onClick={() => {
-                setSelectedOrder(null);
+                setSelectedOrderId(null);
                 setCart([]);
                 setPosSearchTerm('');
                 setCashReceived('');
@@ -2345,8 +2368,8 @@ const OrderSection = () => {
 
       { }
       {isDetailsModalOpen && selectedOrder && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-hidden print:hidden">
-          <div className="bg-background-card w-full max-w-2xl h-[85vh] rounded-[2.5rem] border border-border-light shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50  overflow-hidden print:hidden">
+          <div className="bg-background-card w-full max-w-2xl h-[85vh] rounded-[2.5rem] border border-border-light shadow-2xl flex flex-col overflow-hidden">
             <div className="p-6 border-b border-border-light flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <div>
@@ -2611,7 +2634,7 @@ const OrderSection = () => {
                             frameBorder="0"
                             scrolling="no"
                             src={`https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`}
-                            className="grayscale contrast-125 opacity-80 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-500"
+                            className="grayscale contrast-125 opacity-80 group-hover:grayscale-0 group-hover:opacity-100 transition-all"
                           />
                           <div className="absolute inset-0 pointer-events-none border border-primary/5 rounded-2xl" />
                         </div>
@@ -2762,7 +2785,7 @@ const OrderSection = () => {
                 </div>
 
                 {selectedOrder.paidAmount > 0 && (selectedOrder.totalAmount || selectedOrder.subtotal) > selectedOrder.paidAmount && (
-                  <div className="animate-in slide-in-from-left duration-500">
+                  <div className="slide-in-from-left">
                     <div className="flex items-center space-x-4 p-4 bg-background-card rounded-[1.5rem] border border-status-unavailable/20 shadow-sm">
                       <div className="w-10 h-10 bg-status-off/10 text-status-unavailable rounded-xl flex items-center justify-center">
                         <AlertCircle size={20} />
@@ -2844,8 +2867,8 @@ const OrderSection = () => {
 
       { }
       {isModalOpen && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-hidden print:hidden">
-          <div className="bg-background-card w-[98vw] max-w-[1600px] h-[88vh] rounded-[2.5rem] border border-border/40 shadow-[0_40px_80px_rgba(0,0,0,0.4)] flex overflow-hidden animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60  overflow-hidden print:hidden">
+          <div className="bg-background-card w-[98vw] max-w-[1600px] h-[88vh] rounded-[2.5rem] border border-border/40 shadow-[0_40px_80px_rgba(0,0,0,0.4)] flex overflow-hidden">
 
             { }
             <div className="flex-1 flex flex-col border-r border-border-light/60 min-w-0">
@@ -2973,12 +2996,12 @@ const OrderSection = () => {
                         className={`bg-background-muted/30 p-3 rounded-2xl border border-border-light hover:border-primary/30 transition-all group relative cursor-pointer active:scale-[0.98] ${isItemOutOfStock ? 'opacity-40 grayscale pointer-events-none' : ''}`}
                       >
                         <div className="w-full aspect-square bg-background-card rounded-xl mb-3 overflow-hidden border border-border-light relative">
-                          <img src={item.image || '/placeholder-dish.png'} alt={item.name} className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${isItemOutOfStock ? 'grayscale' : ''}`} />
+                          <img src={item.image || '/placeholder-dish.png'} alt={item.name} className={`w-full h-full object-cover group-hover:scale-110 transition-transform  ${isItemOutOfStock ? 'grayscale' : ''}`} />
 
                           { }
                           <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
                             {item.isCombo && (
-                              <span className="bg-primary/90 backdrop-blur-sm text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm border border-primary/20">Combo Deal</span>
+                              <span className="bg-primary/90  text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm border border-primary/20">Combo Deal</span>
                             )}
                             {(() => {
                               const menuDiscount = item.discountPercentage || 0;
@@ -2986,7 +3009,7 @@ const OrderSection = () => {
                               const discountPercent = Math.max(menuDiscount, categoryDiscount);
                               if (discountPercent > 0 && !item.isCombo) {
                                 return (
-                                  <span className="bg-green-500/90 backdrop-blur-sm text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm border border-green-500/20">
+                                  <span className="bg-green-500/90  text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm border border-green-500/20">
                                     {discountPercent}% OFF
                                   </span>
                                 );
@@ -2994,14 +3017,14 @@ const OrderSection = () => {
                               return null;
                             })()}
                             {item.variants?.some(v => v.isBOGO) && (
-                              <span className="bg-status-available/90 backdrop-blur-sm text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm border border-status-available/20 flex items-center gap-0.5">
+                              <span className="bg-status-available/90  text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm border border-status-available/20 flex items-center gap-0.5">
                                 <Zap size={8} className="animate-pulse" /> BOGO
                               </span>
                             )}
                           </div>
 
                           {isItemOutOfStock && (
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px]">
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                               <span className="bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest shadow-lg">Out of Stock</span>
                             </div>
                           )}
@@ -3144,7 +3167,7 @@ const OrderSection = () => {
                   </div>
                 ) : (
                   cart.map((item, idx) => (
-                    <div key={idx} className="flex items-start gap-3 group p-3 bg-background-card hover:bg-background-muted/40 rounded-2xl border border-border-light hover:border-border transition-all duration-300">
+                    <div key={idx} className="flex items-start gap-3 group p-3 bg-background-card hover:bg-background-muted/40 rounded-2xl border border-border-light hover:border-border transition-all">
                       <div className="flex-1 min-w-0">
                         <p className="font-black text-text-primary text-[10px] leading-tight mb-0.5 line-clamp-2">{item.name}</p>
                         <p className="text-[9px] text-text-muted font-bold uppercase mb-1.5">{item.size} · ₹{Math.round(item.unitPrice || 0)}</p>
@@ -3285,7 +3308,7 @@ const OrderSection = () => {
                         <button
                           key={id}
                           onClick={() => setPosOrderType(id)}
-                          className={`flex-1 py-3 flex flex-col items-center gap-1 rounded-[0.875rem] transition-all duration-300 ${posOrderType === id ? 'bg-gradient-to-b from-primary/90 to-primary text-white shadow-lg shadow-primary/20 scale-[1.02]' : 'text-text-muted hover:bg-background-card hover:text-text-primary'}`}
+                          className={`flex-1 py-3 flex flex-col items-center gap-1 rounded-[0.875rem] transition-all  ${posOrderType === id ? 'bg-gradient-to-b from-primary/90 to-primary text-white shadow-lg shadow-primary/20 scale-[1.02]' : 'text-text-muted hover:bg-background-card hover:text-text-primary'}`}
                         >
                           <Icon size={14} />
                           <span className="text-[8px] font-black uppercase tracking-wider">{label}</span>
@@ -3342,7 +3365,7 @@ const OrderSection = () => {
 
                   { }
                   {showSuggestions && (
-                    <div className="bg-background-card border border-primary/20 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="bg-background-card border border-primary/20 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden   slide-in-from-top-2">
                       <div className="p-3 border-b border-border-light bg-primary/5 flex items-center justify-between">
                         <p className="text-[10px] font-black text-primary uppercase tracking-widest">Suggestions</p>
                         <button onClick={(e) => { e.stopPropagation(); setShowSuggestions(false); }} className="p-1 hover:bg-primary/10 rounded-full text-text-muted hover:text-primary transition-colors">
@@ -3378,7 +3401,7 @@ const OrderSection = () => {
 
                 { }
                 {posOrderType === 'delivery' && (
-                  <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="space-y-3   slide-in-from-top-2">
                     <label className="text-[9px] font-black text-text-muted/70 uppercase tracking-widest block">Delivery Details</label>
 
                     <div className="flex items-center gap-2 bg-primary/[0.04] px-3 py-2.5 rounded-xl border border-primary/20 focus-within:border-primary transition-all">
@@ -3466,7 +3489,7 @@ const OrderSection = () => {
                       });
                     }}
                     disabled={isSubmitting || cart.length === 0}
-                    className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-[0.1em] transition-all duration-300 relative overflow-hidden group ${isSubmitting || cart.length === 0
+                    className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-[0.1em] transition-all  relative overflow-hidden group ${isSubmitting || cart.length === 0
                       ? 'bg-background-muted text-text-muted/60 cursor-not-allowed border border-border-light'
                       : 'bg-background-card text-primary hover:bg-primary/5 shadow-sm border border-primary/30 hover:border-primary/50'}`}
                   >
@@ -3492,7 +3515,7 @@ const OrderSection = () => {
                       });
                     }}
                     disabled={isSubmitting || cart.length === 0}
-                    className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-[0.1em] transition-all duration-300 relative overflow-hidden group ${isSubmitting || cart.length === 0
+                    className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-[0.1em] transition-all  relative overflow-hidden group ${isSubmitting || cart.length === 0
                       ? 'bg-background-muted text-text-muted/60 cursor-not-allowed border border-border-light'
                       : 'bg-primary text-white hover:scale-[1.01] active:scale-[0.98] shadow-[0_8px_20px_rgba(239,68,68,0.3)] border border-primary/50'}`}
                   >
@@ -3529,9 +3552,9 @@ const OrderSection = () => {
         const canConfirm = !!payMethod;
 
         return (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60">
             <div
-              className="bg-background-card w-full max-w-md rounded-[2.5rem] border border-border/40 shadow-[0_32px_80px_rgba(0,0,0,0.25)] overflow-hidden animate-in zoom-in-95 duration-300"
+              className="bg-background-card w-full max-w-md rounded-[2.5rem] border border-border/40 shadow-[0_32px_80px_rgba(0,0,0,0.25)] overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -3576,7 +3599,7 @@ const OrderSection = () => {
                   {/* Cash Card */}
                   <button
                     onClick={() => setPayMethod('cash')}
-                    className={`relative flex flex-col items-center justify-center gap-2.5 p-5 rounded-2xl border-2 transition-all duration-200 group ${payMethod === 'cash'
+                    className={`relative flex flex-col items-center justify-center gap-2.5 p-5 rounded-2xl border-2 transition-all  group ${payMethod === 'cash'
                       ? 'bg-primary/10 border-primary shadow-lg shadow-primary/15'
                       : 'bg-background-muted/30 border-border-light hover:border-primary/40 hover:bg-primary/5'
                       }`}
@@ -3600,7 +3623,7 @@ const OrderSection = () => {
                   {/* UPI / Card */}
                   <button
                     onClick={() => setPayMethod('upi/card')}
-                    className={`relative flex flex-col items-center justify-center gap-2.5 p-5 rounded-2xl border-2 transition-all duration-200 group ${payMethod === 'upi/card'
+                    className={`relative flex flex-col items-center justify-center gap-2.5 p-5 rounded-2xl border-2 transition-all  group ${payMethod === 'upi/card'
                       ? 'bg-primary/10 border-primary shadow-lg shadow-primary/15'
                       : 'bg-background-muted/30 border-border-light hover:border-primary/40 hover:bg-primary/5'
                       }`}
@@ -3624,7 +3647,7 @@ const OrderSection = () => {
 
                 {/* Cash Detail Section */}
                 {payMethod === 'cash' && (
-                  <div className="mt-4 space-y-3 animate-in slide-in-from-top-2 fade-in duration-300">
+                  <div className="mt-4 space-y-3  slide-in-from-top-2">
                     <div className="h-px bg-border-light" />
                     <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Cash Details</p>
 
@@ -3654,7 +3677,7 @@ const OrderSection = () => {
                     </div>
 
                     {/* Balance/Change Display */}
-                    <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${cash >= total
+                    <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all  ${cash >= total
                       ? 'bg-emerald-500/10 border-emerald-500/20 opacity-100'
                       : cash > 0 
                         ? 'bg-amber-500/10 border-amber-500/20 opacity-100'
@@ -3679,7 +3702,7 @@ const OrderSection = () => {
 
                 {/* UPI Confirmed State */}
                 {payMethod === 'upi/card' && (
-                  <div className="mt-4 animate-in slide-in-from-top-2 fade-in duration-300 space-y-3">
+                  <div className="mt-4  slide-in-from-top-2   space-y-3">
                     <div className="h-px bg-border-light" />
                     <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">UPI Details</p>
 
@@ -3707,7 +3730,7 @@ const OrderSection = () => {
                       </div>
                     </div>
                     {/* UPI Balance Display */}
-                    <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${cash >= total
+                    <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all  ${cash >= total
                       ? 'bg-emerald-500/10 border-emerald-500/20 opacity-100'
                       : cash > 0
                         ? 'bg-amber-500/10 border-amber-500/20 opacity-100'
@@ -3759,7 +3782,7 @@ const OrderSection = () => {
         );
       })()}
       {selectedItemToView && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60  z-[200] flex items-center justify-center p-4">
           {(() => {
             const item = selectedItemToView;
             const menuDiscount = item.discountPercentage || 0;

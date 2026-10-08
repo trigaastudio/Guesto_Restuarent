@@ -8,63 +8,76 @@ const GlobalSocketListener = () => {
   const location = useLocation();
 
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
-    const staffStr = localStorage.getItem('staff_user');
-    const adminStr = localStorage.getItem('admin_user');
-    const user = userStr ? JSON.parse(userStr) : (staffStr ? JSON.parse(staffStr) : (adminStr ? JSON.parse(adminStr) : null));
-    const userId = user?._id || user?.id;
+    const handleAuthAndConnect = () => {
+      const userStr = localStorage.getItem('user');
+      const staffStr = localStorage.getItem('staff_user');
+      const adminStr = localStorage.getItem('admin_user');
+      const user = userStr ? JSON.parse(userStr) : (staffStr ? JSON.parse(staffStr) : (adminStr ? JSON.parse(adminStr) : null));
+      const userId = user?._id || user?.id;
 
-    // Admin and Staff tokens are stored in sessionStorage, user tokens in localStorage
-    const token = sessionStorage.getItem('admin_token') || sessionStorage.getItem('staff_token') || localStorage.getItem('token');
-    
-    // Re-authenticate socket if the token has changed (e.g. user just logged in)
-    if (socket.auth?.token !== token) {
-      if (token) {
-        socket.auth = { token };
-      } else {
-        delete socket.auth;
+      const token = sessionStorage.getItem('admin_token') || sessionStorage.getItem('staff_token') || localStorage.getItem('token');
+      
+      if (socket.auth?.token !== token) {
+        if (token) {
+          socket.auth = { token };
+        } else {
+          delete socket.auth;
+        }
+        if (socket.connected) {
+          socket.disconnect();
+        }
       }
-      // If already connected with old auth, reconnect to apply new auth
-      if (socket.connected) {
-        socket.disconnect();
-      }
-    }
 
-    if (userId) {
       if (!socket.connected) {
         socket.connect();
       }
+    };
 
+    handleAuthAndConnect();
+
+    const handleConnect = () => {
+      const userStr = localStorage.getItem('user');
+      const staffStr = localStorage.getItem('staff_user');
+      const adminStr = localStorage.getItem('admin_user');
+      const user = userStr ? JSON.parse(userStr) : (staffStr ? JSON.parse(staffStr) : (adminStr ? JSON.parse(adminStr) : null));
+      const userId = user?._id || user?.id;
       
-      socket.emit('joinUser', userId);
-
+      if (userId) {
+        socket.emit('joinUser', userId);
+      }
       
-      socket.on('accountStatusChanged', (data) => {
-        if (data.userId === userId && data.isActive === false) {
-          handleForceLogout();
-        }
-      });
-    }
+      const token = sessionStorage.getItem('admin_token') || sessionStorage.getItem('staff_token') || localStorage.getItem('token');
+      if (token) {
+        socket.emit('authenticate', token);
+      }
+    };
 
-    
-    if (!socket.connected) {
-      socket.connect();
-    }
-    
-    
+    const handleAccountStatus = (data) => {
+      const userStr = localStorage.getItem('user');
+      const staffStr = localStorage.getItem('staff_user');
+      const adminStr = localStorage.getItem('admin_user');
+      const user = userStr ? JSON.parse(userStr) : (staffStr ? JSON.parse(staffStr) : (adminStr ? JSON.parse(adminStr) : null));
+      const userId = user?._id || user?.id;
+      
+      if (data.userId === userId && data.isActive === false) {
+        handleForceLogout();
+      }
+    };
+
     const handleDbChange = (data) => {
-      
-      
       window.dispatchEvent(new CustomEvent('db_change', { detail: data }));
     };
     
+    socket.on('connect', handleConnect);
+    socket.on('accountStatusChanged', handleAccountStatus);
     socket.on('db_change', handleDbChange);
 
     return () => {
-      socket.off('accountStatusChanged');
+      socket.off('connect', handleConnect);
+      socket.off('accountStatusChanged', handleAccountStatus);
       socket.off('db_change', handleDbChange);
     };
-  }, [navigate, location.pathname]);
+  }, []);
 
   const handleForceLogout = () => {
     const isStaff = window.location.pathname.startsWith('/kitchen') || 

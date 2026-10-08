@@ -53,8 +53,14 @@ const TrackOrderPage = () => {
     document.addEventListener('mousedown', handleClickOutside);
 
     const refreshTimer = setInterval(() => {
-      fetchOrderDetails();
-    }, 60000);
+      if (document.visibilityState === 'visible') fetchOrderDetails();
+    }, 30000);
+
+    const handleFocus = () => fetchOrderDetails();
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') fetchOrderDetails();
+    });
 
     return () => {
       socket.off('connect', onConnect);
@@ -62,6 +68,7 @@ const TrackOrderPage = () => {
       socket.disconnect();
       document.removeEventListener('mousedown', handleClickOutside);
       clearInterval(refreshTimer);
+      window.removeEventListener('focus', handleFocus);
     };
   }, [orderId]);
 
