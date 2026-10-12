@@ -37,7 +37,10 @@ import {
   Trash2,
   Ticket,
   ExternalLink,
-  Share2
+  Share2,
+  Truck,
+  HandCoins,
+  Receipt
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import CategorySection from './sections/CategorySection';
@@ -51,6 +54,9 @@ import OfferSection from './sections/OfferSection';
 import SalesSection from './sections/SalesSection';
 import StockSection from './sections/StockSection';
 import DineInSection from './sections/DineInSection';
+import DailyExpenseSection from './sections/DailyExpenseSection';
+import SupplierSection from './sections/SupplierSection';
+import WageAdvanceSection from './sections/WageAdvanceSection';
 import CardSkeleton from '../../components/Skeleton/CardSkeleton';
 
 // Tabs accessible by the order-manager role
@@ -81,6 +87,7 @@ const AdminDashboard = () => {
   const [chartTimeframe, setChartTimeframe] = useState('week'); 
   const [notifications, setNotifications] = useState(JSON.parse(localStorage.getItem('admin_notifications') || '[]'));
   const [showNotifications, setShowNotifications] = useState(false);
+  const [todayExpenses, setTodayExpenses] = useState(null);
 
   
   const notificationSound = useRef(new Audio('/sounds/notification.mp3'));
@@ -191,8 +198,16 @@ const AdminDashboard = () => {
   const fetchDashboardStats = async () => {
     setIsStatsLoading(true);
     try {
-      const response = await api.get('/api/dashboard/stats');
-      setStats(response.data.data);
+      const [statsRes, expensesRes] = await Promise.allSettled([
+        api.get('/api/dashboard/stats'),
+        api.get('/api/expenses/daily', { params: { date: new Date().toISOString().split('T')[0] } })
+      ]);
+      if (statsRes.status === 'fulfilled') {
+        setStats(statsRes.value.data.data);
+      }
+      if (expensesRes.status === 'fulfilled' && expensesRes.value.data?.success) {
+        setTodayExpenses(expensesRes.value.data.data.todaySummary);
+      }
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
     } finally {
@@ -341,6 +356,14 @@ const AdminDashboard = () => {
                   { name: 'Sales', icon: LineChart },
                   { name: 'Orders', icon: ShoppingCart },
                   { name: 'Dine-In', icon: UtensilsCrossed },
+                ]
+              },
+              {
+                group: 'Finance & Accounts',
+                items: [
+                  { name: 'Daily Expenses', icon: Receipt },
+                  { name: 'Suppliers', icon: Truck },
+                  { name: 'Wage Advances', icon: HandCoins },
                 ]
               },
               {
@@ -818,6 +841,125 @@ const AdminDashboard = () => {
                     </div>
                   </div>
 
+                  {/* Payment Method Breakdown - Overview */}
+                  {stats.paymentBreakdown && stats.paymentBreakdown.length > 0 && (
+                    <div className="bg-background-card rounded-[2.5rem] border border-border-light shadow-sm overflow-hidden p-8">
+                      <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center space-x-3">
+                          <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl">
+                            <DollarSign size={20} />
+                          </div>
+                          <div>
+                            <h3 className="font-black text-text-primary text-xl">Payment Methods</h3>
+                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Today's breakdown</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleTabChange('Sales')}
+                          className="text-primary text-xs font-bold hover:underline"
+                        >
+                          View All
+                        </button>
+                      </div>
+                      <div className="space-y-4">
+                        {(() => {
+                          const methodConfig = {
+                            'cash': { label: 'Cash', color: 'bg-emerald-500', textColor: 'text-emerald-500', bgLight: 'bg-emerald-500/10' },
+                            'upi/card': { label: 'UPI / Card', color: 'bg-blue-500', textColor: 'text-blue-500', bgLight: 'bg-blue-500/10' },
+                            'online': { label: 'Online', color: 'bg-violet-500', textColor: 'text-violet-500', bgLight: 'bg-violet-500/10' },
+                            'cod': { label: 'COD', color: 'bg-amber-500', textColor: 'text-amber-500', bgLight: 'bg-amber-500/10' },
+                            'wallet': { label: 'Wallet', color: 'bg-pink-500', textColor: 'text-pink-500', bgLight: 'bg-pink-500/10' },
+                            'split': { label: 'Split', color: 'bg-cyan-500', textColor: 'text-cyan-500', bgLight: 'bg-cyan-500/10' },
+                            'Not Specified': { label: 'Not Specified', color: 'bg-gray-400', textColor: 'text-gray-400', bgLight: 'bg-gray-400/10' },
+                          };
+                          const maxRevenue = stats.paymentBreakdown[0]?.totalRevenue || 1;
+                          const totalPayRev = stats.paymentBreakdown.reduce((sum, p) => sum + p.totalRevenue, 0);
+
+                          return stats.paymentBreakdown.map((item, idx) => {
+                            const cfg = methodConfig[item._id] || methodConfig['Not Specified'];
+                            const barPercent = Math.max((item.totalRevenue / maxRevenue) * 100, 4);
+                            const sharePercent = totalPayRev > 0 ? ((item.totalRevenue / totalPayRev) * 100).toFixed(1) : '0.0';
+
+                            return (
+                              <div key={idx}>
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <div className="flex items-center space-x-2.5">
+                                    <div className={`w-2.5 h-2.5 rounded-full ${cfg.color}`} />
+                                    <span className="text-xs font-bold text-text-primary">{cfg.label}</span>
+                                    <span className="text-[10px] font-bold text-text-muted">({item.count})</span>
+                                  </div>
+                                  <div className="flex items-center space-x-3">
+                                    <span className={`text-[10px] font-black ${cfg.textColor}`}>{sharePercent}%</span>
+                                    <span className="text-sm font-black text-text-primary">₹{Math.round(item.totalRevenue).toLocaleString()}</span>
+                                  </div>
+                                </div>
+                                <div className="w-full h-2 bg-background-muted rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full ${cfg.color} transition-all duration-1000 ease-out`}
+                                    style={{ width: `${barPercent}%` }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Today's Daily Outflow - Overview */}
+                  <div className="bg-background-card rounded-[2.5rem] border border-border-light shadow-sm overflow-hidden p-8">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2.5 bg-primary/10 text-primary rounded-2xl">
+                          <Receipt size={20} />
+                        </div>
+                        <div>
+                          <h3 className="font-black text-text-primary text-xl">Today's Daily Outflow</h3>
+                          <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Suppliers & Wage Advances</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleTabChange('Daily Expenses')}
+                        className="text-primary text-xs font-bold hover:underline flex items-center space-x-1"
+                      >
+                        <span>View Daily Sheet</span>
+                        <span>→</span>
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="p-4 bg-primary/5 rounded-2xl border border-primary/20">
+                        <span className="text-[9px] font-black uppercase tracking-wider text-primary block">Total Outflow</span>
+                        <span className="text-2xl font-black text-text-primary mt-1 block">
+                          ₹{(todayExpenses?.todayTotalOutflow || 0).toLocaleString()}
+                        </span>
+                        <span className="text-[10px] text-text-muted mt-0.5 block">Total paid out today</span>
+                      </div>
+                      <div className="p-4 bg-rose-500/5 rounded-2xl border border-rose-500/10">
+                        <span className="text-[9px] font-black uppercase tracking-wider text-rose-500 block">Supplier Bills</span>
+                        <span className="text-2xl font-black text-text-primary mt-1 block">
+                          ₹{(todayExpenses?.todaySupplierExpenses || 0).toLocaleString()}
+                        </span>
+                        <span className="text-[10px] text-text-muted mt-0.5 block">Purchase bills today</span>
+                      </div>
+                      <div className="p-4 bg-blue-500/5 rounded-2xl border border-blue-500/10">
+                        <span className="text-[9px] font-black uppercase tracking-wider text-blue-500 block">Supplier Advances</span>
+                        <span className="text-2xl font-black text-text-primary mt-1 block">
+                          ₹{(todayExpenses?.todaySupplierAdvances || 0).toLocaleString()}
+                        </span>
+                        <span className="text-[10px] text-text-muted mt-0.5 block">Advances to vendors</span>
+                      </div>
+                      <div className="p-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/10">
+                        <span className="text-[9px] font-black uppercase tracking-wider text-emerald-500 block">Wage Advances</span>
+                        <span className="text-2xl font-black text-text-primary mt-1 block">
+                          ₹{(todayExpenses?.todayEmployeeAdvances || 0).toLocaleString()}
+                        </span>
+                        <span className="text-[10px] text-text-muted mt-0.5 block">Advances to workers</span>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 bg-background-card rounded-[2.5rem] border border-border-light shadow-sm overflow-hidden p-8">
                       <div className="flex items-center justify-between mb-8">
@@ -945,6 +1087,15 @@ const AdminDashboard = () => {
           {!isOrderManager && activeTab === 'Settings' && <SettingsSection key={`settings-${refreshKey}`} />}
           {!isOrderManager && activeTab === 'Offers' && <OfferSection key={`offers-${refreshKey}`} />}
           {!isOrderManager && activeTab === 'Sales' && <SalesSection key={`sales-${refreshKey}`} />}
+          {!isOrderManager && activeTab === 'Daily Expenses' && (
+            <DailyExpenseSection key={`daily-expenses-${refreshKey}`} onNavigateTab={handleTabChange} />
+          )}
+          {!isOrderManager && activeTab === 'Suppliers' && (
+            <SupplierSection key={`suppliers-${refreshKey}`} onNavigateTab={handleTabChange} />
+          )}
+          {!isOrderManager && activeTab === 'Wage Advances' && (
+            <WageAdvanceSection key={`wage-advances-${refreshKey}`} onNavigateTab={handleTabChange} />
+          )}
         </div>
       </main>
     </div>

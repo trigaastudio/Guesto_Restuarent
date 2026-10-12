@@ -199,6 +199,89 @@ router.get('/items', protect, admin, async (req, res) => {
   }
 });
 
+// Payment method breakdown (Cash vs UPI/Card vs Online etc.)
+router.get('/payment-breakdown', protect, admin, async (req, res) => {
+  try {
+    const { startDate, endDate, orderType, orderSource } = req.query;
+    let matchQuery = { orderStatus: { $ne: 'cancelled' } };
+
+    if (startDate || endDate) {
+      matchQuery.createdAt = {};
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        matchQuery.createdAt.$gte = start;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        matchQuery.createdAt.$lte = end;
+      }
+    }
+
+    if (orderType && orderType !== 'all') matchQuery.orderType = orderType;
+    if (orderSource && orderSource !== 'all') matchQuery.orderSource = orderSource;
+
+    const breakdown = await Order.aggregate([
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: { $ifNull: ['$paymentMethod', 'Not Specified'] },
+          totalRevenue: { $sum: '$totalAmount' },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { totalRevenue: -1 } }
+    ]);
+
+    res.json({ success: true, data: breakdown });
+  } catch (error) {
+    console.error('Payment breakdown error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// Order type revenue share (Dine-In vs Takeaway vs Delivery)
+router.get('/order-type-revenue', protect, admin, async (req, res) => {
+  try {
+    const { startDate, endDate, orderSource } = req.query;
+    let matchQuery = { orderStatus: { $ne: 'cancelled' } };
+
+    if (startDate || endDate) {
+      matchQuery.createdAt = {};
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        matchQuery.createdAt.$gte = start;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        matchQuery.createdAt.$lte = end;
+      }
+    }
+
+    if (orderSource && orderSource !== 'all') matchQuery.orderSource = orderSource;
+
+    const breakdown = await Order.aggregate([
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: '$orderType',
+          totalRevenue: { $sum: '$totalAmount' },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { totalRevenue: -1 } }
+    ]);
+
+    res.json({ success: true, data: breakdown });
+  } catch (error) {
+    console.error('Order type revenue error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
 router.delete('/clear', protect, admin, async (req, res) => {
   try {
     res.json({ success: true, message: 'Sales clearing is disabled' });

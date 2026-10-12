@@ -16,7 +16,13 @@ import {
   Printer,
   ChevronRight,
   ArrowRight,
-  Trash2
+  Trash2,
+  CreditCard,
+  Banknote,
+  Wallet,
+  Truck,
+  Store,
+  UtensilsCrossed
 } from 'lucide-react';
 import Pagination from '../../../components/Pagination/Pagination';
 import api from '../../../api/axiosInstance';
@@ -32,6 +38,9 @@ const SalesSection = () => {
   const [periodicData, setPeriodicData] = useState({ daily: {}, weekly: {}, monthly: {}, yearly: {} });
   const [itemStats, setItemStats] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
+  const [paymentBreakdown, setPaymentBreakdown] = useState([]);
+  const [orderTypeRevenue, setOrderTypeRevenue] = useState([]);
+  const [activeQuickFilter, setActiveQuickFilter] = useState(null);
 
 
   const [filters, setFilters] = useState({
@@ -76,10 +85,12 @@ const SalesSection = () => {
   const fetchReportData = async () => {
     setLoading(true);
     try {
-      const [salesRes, itemsRes, periodicRes] = await Promise.all([
+      const [salesRes, itemsRes, periodicRes, paymentRes, orderTypeRes] = await Promise.all([
         api.get('/api/reports/sales', { params: filters }),
         api.get('/api/reports/items', { params: filters }),
-        api.get('/api/reports/periodic', { params: { orderType: filters.orderType, orderSource: filters.orderSource, menuItem: filters.menuItem } })
+        api.get('/api/reports/periodic', { params: { orderType: filters.orderType, orderSource: filters.orderSource, menuItem: filters.menuItem } }),
+        api.get('/api/reports/payment-breakdown', { params: { startDate: filters.startDate, endDate: filters.endDate, orderType: filters.orderType, orderSource: filters.orderSource } }),
+        api.get('/api/reports/order-type-revenue', { params: { startDate: filters.startDate, endDate: filters.endDate, orderSource: filters.orderSource } })
       ]);
       setSalesData(salesRes.data?.data || { stats: { totalRevenue: 0, totalQty: 0, totalOrders: 0 } });
       setItemStats(Array.isArray(itemsRes.data?.data) ? itemsRes.data.data : []);
@@ -90,6 +101,8 @@ const SalesSection = () => {
         monthly: pd?.monthly || { revenue: 0, cost: 0 },
         yearly:  pd?.yearly  || { revenue: 0, cost: 0 },
       });
+      setPaymentBreakdown(Array.isArray(paymentRes.data?.data) ? paymentRes.data.data : []);
+      setOrderTypeRevenue(Array.isArray(orderTypeRes.data?.data) ? orderTypeRes.data.data : []);
     } catch (error) {
       console.error('Sales report fetch error:', error);
       showToast('error', 'Failed to fetch report data');
@@ -100,6 +113,7 @@ const SalesSection = () => {
 
   const handleFilterChange = (e) => {
     setFilters({ ...filters, [e.target.name]: e.target.value });
+    setActiveQuickFilter(null);
   };
 
   const resetFilters = () => {
@@ -110,6 +124,35 @@ const SalesSection = () => {
       orderSource: 'all',
       menuItem: 'all'
     });
+    setActiveQuickFilter(null);
+  };
+
+  // Quick date filter chips
+  const applyQuickFilter = (type) => {
+    const today = new Date();
+    let startDate;
+    
+    switch (type) {
+      case 'today':
+        startDate = new Date(today);
+        break;
+      case 'week':
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - today.getDay());
+        break;
+      case 'month':
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        break;
+      default:
+        return;
+    }
+
+    setActiveQuickFilter(type);
+    setFilters(prev => ({
+      ...prev,
+      startDate: startDate.toLocaleDateString('en-CA'),
+      endDate: today.toLocaleDateString('en-CA')
+    }));
   };
 
   const handleClearSales = async () => {
@@ -225,6 +268,48 @@ const SalesSection = () => {
     setCurrentPage(1);
   }, [itemSearchTerm, filters]);
 
+  // Payment method display config
+  const paymentMethodConfig = {
+    'cash': { label: 'Cash', color: 'bg-emerald-500', textColor: 'text-emerald-500', bgLight: 'bg-emerald-500/10', icon: Banknote },
+    'upi/card': { label: 'UPI / Card', color: 'bg-blue-500', textColor: 'text-blue-500', bgLight: 'bg-blue-500/10', icon: CreditCard },
+    'online': { label: 'Online', color: 'bg-violet-500', textColor: 'text-violet-500', bgLight: 'bg-violet-500/10', icon: CreditCard },
+    'cod': { label: 'COD', color: 'bg-amber-500', textColor: 'text-amber-500', bgLight: 'bg-amber-500/10', icon: Truck },
+    'wallet': { label: 'Wallet', color: 'bg-pink-500', textColor: 'text-pink-500', bgLight: 'bg-pink-500/10', icon: Wallet },
+    'split': { label: 'Split', color: 'bg-cyan-500', textColor: 'text-cyan-500', bgLight: 'bg-cyan-500/10', icon: Layers },
+    'Not Specified': { label: 'Not Specified', color: 'bg-gray-400', textColor: 'text-gray-400', bgLight: 'bg-gray-400/10', icon: DollarSign },
+  };
+
+  // Order type display config
+  const orderTypeConfig = {
+    'dine-in': { label: 'Dine-In', color: '#8B5CF6', icon: UtensilsCrossed },
+    'takeaway': { label: 'Takeaway', color: '#F59E0B', icon: Store },
+    'delivery': { label: 'Delivery', color: '#3B82F6', icon: Truck },
+  };
+
+  // Calculate donut chart segments
+  const totalOrderTypeRevenue = orderTypeRevenue.reduce((sum, item) => sum + (item.totalRevenue || 0), 0);
+
+  const getDonutSegments = () => {
+    if (totalOrderTypeRevenue === 0) return [];
+    let cumulativePercent = 0;
+    return orderTypeRevenue.map(item => {
+      const percent = (item.totalRevenue / totalOrderTypeRevenue) * 100;
+      const config = orderTypeConfig[item._id] || { label: item._id, color: '#94A3B8' };
+      const segment = {
+        ...config,
+        revenue: item.totalRevenue,
+        count: item.count,
+        percent,
+        offset: cumulativePercent,
+        id: item._id
+      };
+      cumulativePercent += percent;
+      return segment;
+    });
+  };
+
+  const donutSegments = getDonutSegments();
+
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -255,6 +340,29 @@ const SalesSection = () => {
             <span className="hidden sm:inline">Clear Sales</span>
           </button>
         </div>
+      </div>
+
+      {/* Quick Date Filter Chips */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[10px] font-black text-text-muted uppercase tracking-widest mr-1">Quick Filter:</span>
+        {[
+          { key: 'today', label: 'Today', icon: '📅' },
+          { key: 'week', label: 'This Week', icon: '📊' },
+          { key: 'month', label: 'This Month', icon: '📆' },
+        ].map(chip => (
+          <button
+            key={chip.key}
+            onClick={() => applyQuickFilter(chip.key)}
+            className={`flex items-center space-x-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all duration-300 border ${
+              activeQuickFilter === chip.key
+                ? 'bg-primary text-white border-primary shadow-lg shadow-primary/25 scale-105'
+                : 'bg-background-card text-text-secondary border-border-light hover:border-primary/50 hover:text-primary hover:shadow-md'
+            }`}
+          >
+            <span>{chip.icon}</span>
+            <span>{chip.label}</span>
+          </button>
+        ))}
       </div>
 
       { }
@@ -389,6 +497,142 @@ const SalesSection = () => {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Payment Method Breakdown + Order Type Revenue Share */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        {/* Payment Method Breakdown */}
+        <div className="bg-background-card rounded-[2.5rem] border border-border/40 shadow-sm p-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-3">
+              <div className="p-2.5 bg-emerald-500/10 text-emerald-500 rounded-xl">
+                <CreditCard size={18} />
+              </div>
+              <div>
+                <h3 className="font-black text-text-primary text-lg">Payment Methods</h3>
+                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Revenue by method</p>
+              </div>
+            </div>
+          </div>
+
+          {paymentBreakdown.length === 0 ? (
+            <div className="py-12 text-center text-text-muted italic text-sm">No payment data for this range</div>
+          ) : (
+            <div className="space-y-4">
+              {paymentBreakdown.map((item, idx) => {
+                const config = paymentMethodConfig[item._id] || paymentMethodConfig['Not Specified'];
+                const maxRevenue = paymentBreakdown[0]?.totalRevenue || 1;
+                const barPercent = Math.max((item.totalRevenue / maxRevenue) * 100, 4);
+                const totalPaymentRevenue = paymentBreakdown.reduce((sum, p) => sum + p.totalRevenue, 0);
+                const sharePercent = totalPaymentRevenue > 0 ? ((item.totalRevenue / totalPaymentRevenue) * 100).toFixed(1) : '0.0';
+                const IconComponent = config.icon;
+
+                return (
+                  <div key={idx} className="group">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center space-x-2.5">
+                        <div className={`p-1.5 rounded-lg ${config.bgLight}`}>
+                          <IconComponent size={14} className={config.textColor} />
+                        </div>
+                        <span className="text-xs font-bold text-text-primary">{config.label}</span>
+                        <span className="text-[10px] font-bold text-text-muted">({item.count} orders)</span>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <span className={`text-[10px] font-black ${config.textColor}`}>{sharePercent}%</span>
+                        <span className="text-sm font-black text-text-primary">₹{Math.round(item.totalRevenue).toLocaleString()}</span>
+                      </div>
+                    </div>
+                    <div className="w-full h-2.5 bg-background-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${config.color} transition-all duration-1000 ease-out`}
+                        style={{ width: `${barPercent}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Order Type Revenue Share (Donut Chart) */}
+        <div className="bg-background-card rounded-[2.5rem] border border-border/40 shadow-sm p-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-3">
+              <div className="p-2.5 bg-violet-500/10 text-violet-500 rounded-xl">
+                <PieChart size={18} />
+              </div>
+              <div>
+                <h3 className="font-black text-text-primary text-lg">Revenue Share</h3>
+                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">By order type</p>
+              </div>
+            </div>
+          </div>
+
+          {orderTypeRevenue.length === 0 || totalOrderTypeRevenue === 0 ? (
+            <div className="py-12 text-center text-text-muted italic text-sm">No order type data for this range</div>
+          ) : (
+            <div className="flex flex-col sm:flex-row items-center gap-8">
+              {/* Donut Chart */}
+              <div className="relative w-48 h-48 shrink-0">
+                <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                  {donutSegments.map((seg, idx) => {
+                    const radius = 38;
+                    const circumference = 2 * Math.PI * radius;
+                    const strokeLength = (seg.percent / 100) * circumference;
+                    const strokeOffset = (seg.offset / 100) * circumference;
+
+                    return (
+                      <circle
+                        key={idx}
+                        cx="50"
+                        cy="50"
+                        r={radius}
+                        fill="transparent"
+                        stroke={seg.color}
+                        strokeWidth="12"
+                        strokeDasharray={`${strokeLength} ${circumference - strokeLength}`}
+                        strokeDashoffset={-strokeOffset}
+                        strokeLinecap="round"
+                        className="transition-all duration-1000 ease-out"
+                        style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}
+                      />
+                    );
+                  })}
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-black text-text-primary">₹{Math.round(totalOrderTypeRevenue).toLocaleString()}</span>
+                  <span className="text-[9px] font-bold text-text-muted uppercase tracking-wider">Total</span>
+                </div>
+              </div>
+
+              {/* Legend */}
+              <div className="flex-1 space-y-4 w-full">
+                {donutSegments.map((seg, idx) => {
+                  const IconComponent = seg.icon || Store;
+                  return (
+                    <div key={idx} className="flex items-center justify-between p-3 rounded-2xl hover:bg-background-muted/30 transition-colors group">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: seg.color }} />
+                        <div className="p-1.5 rounded-lg" style={{ backgroundColor: `${seg.color}15` }}>
+                          <IconComponent size={14} style={{ color: seg.color }} />
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-text-primary block">{seg.label}</span>
+                          <span className="text-[10px] text-text-muted font-bold">{seg.count} orders</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm font-black text-text-primary block">₹{Math.round(seg.revenue).toLocaleString()}</span>
+                        <span className="text-[10px] font-black" style={{ color: seg.color }}>{seg.percent.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

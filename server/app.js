@@ -28,6 +28,9 @@ import utilRoutes from './routes/utilRoutes.js';
 import offerRoutes from './routes/offerRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import tableRoutes from './routes/tableRoutes.js';
+import supplierRoutes from './routes/supplierRoutes.js';
+import wageAdvanceRoutes from './routes/wageAdvanceRoutes.js';
+import expenseRoutes from './routes/expenseRoutes.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import http from 'http';
@@ -141,6 +144,9 @@ app.use('/api/utils', utilRoutes);
 app.use('/api/offers', offerRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/tables', tableRoutes);
+app.use('/api/suppliers', supplierRoutes);
+app.use('/api/wage-advances', wageAdvanceRoutes);
+app.use('/api/expenses', expenseRoutes);
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK' });

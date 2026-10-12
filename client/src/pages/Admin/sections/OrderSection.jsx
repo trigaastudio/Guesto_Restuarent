@@ -163,6 +163,7 @@ const OrderSection = () => {
   const [posOrderType, setPosOrderType] = useState('takeaway');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryLocation, setDeliveryLocation] = useState('');
+  const [deliveryDistance, setDeliveryDistance] = useState('');
   const [deliveryFee, setDeliveryFee] = useState('');
   const [isResolvingLink, setIsResolvingLink] = useState(false);
   const [updateProfile, setUpdateProfile] = useState(false);
@@ -750,7 +751,7 @@ const OrderSection = () => {
         if (response.data.success) {
           showToast('success', 'Order updated successfully');
           setIsModalOpen(false);
-          setCart([]);
+          resetOrderForm();
           setSelectedOrderId(response.data.data._id);
           setOrders(prev => prev.map(o => o._id === selectedOrder._id ? response.data.data : o));
           if (shouldPrintBill) {
@@ -806,8 +807,7 @@ const OrderSection = () => {
       if (response.data.success) {
         showToast('success', 'Order created successfully');
         setIsModalOpen(false);
-        setCart([]);
-        setCustomer({ name: 'Walk-in', phone: '' });
+        resetOrderForm();
         fetchOrders(true);
         if (shouldPrintBill) {
           handlePrintKOT(response.data.data);
@@ -1251,6 +1251,27 @@ const OrderSection = () => {
     }, 150);
   };
 
+  const resetOrderForm = () => {
+    setSelectedOrderId(null);
+    setCart([]);
+    setCustomer({ name: 'Walk-in', phone: '' });
+    setSelectedUserId(null);
+    setUpdateProfile(false);
+    setShowSuggestions(false);
+    setUserSuggestions([]);
+    setPaymentMethod('Not Specified');
+    setCashReceived('');
+    setPosSearchTerm('');
+    setDeliveryAddress('');
+    setDeliveryLocation('');
+    setDeliveryFee('');
+    setDeliveryDistance('');
+    setErrors({});
+    setIsResolvingLink(false);
+    const distInput = document.getElementById('pos-distance-input');
+    if (distInput) distInput.value = '';
+  };
+
   const selectUserSuggestion = (user) => {
     setSelectedUserId(user._id);
     setCustomer({
@@ -1265,7 +1286,16 @@ const OrderSection = () => {
       setDeliveryAddress(defaultAddr.address || '');
       if (defaultAddr.location) {
         handleLocationLinkChange(defaultAddr.location);
+      } else {
+        setDeliveryLocation('');
+        setDeliveryFee('');
+        setDeliveryDistance('');
       }
+    } else {
+      setDeliveryAddress('');
+      setDeliveryLocation('');
+      setDeliveryFee('');
+      setDeliveryDistance('');
     }
     setShowSuggestions(false);
     setUpdateProfile(false);
@@ -1273,20 +1303,12 @@ const OrderSection = () => {
 
   const handleOpenModal = (order = null) => {
     fetchMenu();
-    fetchTables();
+    fetchDeliveryStaff();
     fetchUsers();
     if (order) {
       setSelectedOrderId(order?._id);
     } else {
-      setSelectedOrderId(null);
-      setCart([]);
-      setCustomer({ name: 'Walk-in', phone: '' });
-      setSelectedUserId(null);
-      setUpdateProfile(false);
-      setSelectedTableId('');
-      setGuestCount(1);
-      setPaymentMethod('Not Specified');
-      setCashReceived('');
+      resetOrderForm();
     }
     setIsModalOpen(true);
   };
@@ -1551,19 +1573,35 @@ const OrderSection = () => {
 
   const handleLocationLinkChange = async (url) => {
     setDeliveryLocation(url);
-    if (!url) return;
+    if (!url) {
+      setDeliveryDistance('');
+      setDeliveryFee('');
+      const distInput = document.getElementById('pos-distance-input');
+      if (distInput) distInput.value = '';
+      return;
+    }
 
     let targetUrl = url;
 
 
     const extractCoords = (text) => {
       if (!text) return null;
+      // 1. Google Maps data pin: !3d<lat>!4d<lng>
+      const pinMatch = text.match(/!3d([-.\d]+)!4d([-.\d]+)/);
+      if (pinMatch) {
+        const lat = parseFloat(pinMatch[1]);
+        const lng = parseFloat(pinMatch[2]);
+        if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && (Math.abs(lat) > 0.01 || Math.abs(lng) > 0.01)) {
+          return { lat, lng };
+        }
+      }
+      // 2. Query or place coordinates: @<lat>,<lng> or ?q=<lat>,<lng> or daddr=<lat>,<lng>
       const coordRegex = /([-.\d]+),([-.\d]+)/g;
       let match;
       while ((match = coordRegex.exec(text)) !== null) {
         const lat = parseFloat(match[1]);
         const lng = parseFloat(match[2]);
-        if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && Math.abs(lat) > 0.01) {
+        if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && (Math.abs(lat) > 0.01 || Math.abs(lng) > 0.01)) {
           return { lat, lng };
         }
       }
@@ -1571,14 +1609,19 @@ const OrderSection = () => {
     };
 
 
-    if (url.includes('maps.app.goo.gl') || url.includes('share.google') || !extractCoords(url)) {
+    const trimmed = url.trim();
+    const isUrl = trimmed.startsWith('http://') || trimmed.startsWith('https://');
+    const isShortUrl = trimmed.includes('maps.app.goo.gl') || trimmed.includes('goo.gl') || trimmed.includes('share.google') || trimmed.includes('g.co');
+
+    if (isUrl && (isShortUrl || !extractCoords(trimmed))) {
       try {
         setIsResolvingLink(true);
-        showToast('info', 'Processing link...');
-        const res = await api.post(`/api/utils/expand-url`, { url });
-        targetUrl = res.data.expandedUrl;
+        const res = await api.post(`/api/utils/expand-url`, { url: trimmed });
+        if (res.data?.expandedUrl) {
+          targetUrl = res.data.expandedUrl;
+        }
       } catch (err) {
-        console.error('Failed to expand URL:', err);
+        console.warn('[Google Maps] Backend expansion note:', err?.response?.data?.error || err.message);
       } finally {
         setIsResolvingLink(false);
       }
@@ -1607,6 +1650,7 @@ const OrderSection = () => {
       }
 
 
+      setDeliveryDistance(roundedDist);
       const distInput = document.getElementById('pos-distance-input');
       if (distInput) distInput.value = roundedDist;
 
@@ -1833,15 +1877,8 @@ const OrderSection = () => {
           {activeTab !== 'all' && activeTab !== 'history' && activeTab !== 'dine-in' && (
             <button
               onClick={() => {
-                setSelectedOrderId(null);
-                setCart([]);
-                setPosSearchTerm('');
-                setCashReceived('');
-                setPaymentMethod('Not Specified');
-                setPosOrderType(activeTab === 'all' ? 'takeaway' : activeTab);
-                setDeliveryAddress('');
-                setDeliveryFee('');
-                setCustomer({ name: 'Walk-in', phone: '' });
+                resetOrderForm();
+                setPosOrderType(activeTab === 'all' || activeTab === 'history' ? 'takeaway' : activeTab);
                 setIsModalOpen(true);
               }}
               className="bg-primary text-white px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-primary/20 hover:bg-primary-light transition-all flex items-center space-x-2"
@@ -2411,7 +2448,16 @@ const OrderSection = () => {
                             phone: selectedOrder.customerDetails?.phone || selectedOrder.address?.mobile || ''
                           });
                           setDeliveryAddress(selectedOrder.customerDetails?.address || selectedOrder.address?.address || '');
-                          setDeliveryLocation(selectedOrder.address?.location || (typeof selectedOrder.customerDetails?.location === 'string' ? selectedOrder.customerDetails.location : ''));
+                          const loc = selectedOrder.address?.location || selectedOrder.customerDetails?.location;
+                          let locStr = '';
+                          if (typeof loc === 'object' && loc?.lat) {
+                            locStr = `https://www.google.com/maps?q=${loc.lat},${loc.lng}`;
+                          } else if (typeof loc === 'string') {
+                            locStr = loc;
+                          }
+                          setDeliveryLocation(locStr);
+                          setDeliveryFee(selectedOrder.deliveryFee ? String(selectedOrder.deliveryFee) : '');
+                          setDeliveryDistance('');
                           setPosOrderType(selectedOrder.orderType);
                           setPaymentMethod(selectedOrder.paymentMethod || 'Not Specified');
 
@@ -3289,7 +3335,13 @@ const OrderSection = () => {
                   <p className="text-[9px] font-black text-primary uppercase tracking-[0.25em] mb-0.5">Step 3</p>
                   <h3 className="text-lg font-black text-text-primary">Order Details</h3>
                 </div>
-                <button onClick={() => setIsModalOpen(false)} className="p-1.5 bg-white/5 hover:bg-red-500/10 rounded-full text-text-muted hover:text-red-500 transition-all mt-1">
+                <button
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    resetOrderForm();
+                  }}
+                  className="p-1.5 bg-white/5 hover:bg-red-500/10 rounded-full text-text-muted hover:text-red-500 transition-all mt-1"
+                >
                   <X size={14} strokeWidth={3} />
                 </button>
               </div>
@@ -3307,7 +3359,10 @@ const OrderSection = () => {
                       ].map(({ id, label, icon: Icon }) => (
                         <button
                           key={id}
-                          onClick={() => setPosOrderType(id)}
+                          onClick={() => {
+                            setPosOrderType(id);
+                            setErrors({});
+                          }}
                           className={`flex-1 py-3 flex flex-col items-center gap-1 rounded-[0.875rem] transition-all  ${posOrderType === id ? 'bg-gradient-to-b from-primary/90 to-primary text-white shadow-lg shadow-primary/20 scale-[1.02]' : 'text-text-muted hover:bg-background-card hover:text-text-primary'}`}
                         >
                           <Icon size={14} />
@@ -3410,11 +3465,14 @@ const OrderSection = () => {
                         id="pos-distance-input"
                         type="number"
                         placeholder="Distance (KM)"
+                        value={deliveryDistance}
                         onChange={(e) => {
-                          const dist = parseFloat(e.target.value) || 0;
-                          const freeLimit = settings.deliverySettings?.freeDistanceLimit || 5;
-                          const rate = settings.deliverySettings?.chargePerExtraKm || 10;
-                          setDeliveryFee(dist <= freeLimit ? '0' : ((dist - freeLimit) * rate).toFixed(0));
+                          const distVal = e.target.value;
+                          setDeliveryDistance(distVal);
+                          const dist = parseFloat(distVal) || 0;
+                          const freeLimit = settings?.deliverySettings?.freeDistanceLimit || 5;
+                          const rate = settings?.deliverySettings?.chargePerExtraKm || 10;
+                          setDeliveryFee(distVal === '' ? '' : (dist <= freeLimit ? '0' : ((dist - freeLimit) * rate).toFixed(0)));
                         }}
                         className="bg-transparent text-[11px] font-black text-primary outline-none w-full placeholder:text-primary/30"
                       />
@@ -3432,7 +3490,17 @@ const OrderSection = () => {
                         }}
                         className="bg-transparent text-[11px] font-black text-primary outline-none w-full placeholder:text-primary/30"
                       />
-                      <button onClick={() => handleLocationLinkChange(deliveryLocation)} className="p-1 hover:bg-primary/10 rounded-lg text-primary disabled:opacity-30" disabled={isResolvingLink}>
+                      {deliveryLocation && (
+                        <button
+                          type="button"
+                          onClick={() => handleLocationLinkChange('')}
+                          className="p-1 hover:bg-primary/10 rounded-lg text-text-muted hover:text-primary transition-colors"
+                          title="Clear Google Maps link"
+                        >
+                          <X size={11} />
+                        </button>
+                      )}
+                      <button onClick={() => handleLocationLinkChange(deliveryLocation)} className="p-1 hover:bg-primary/10 rounded-lg text-primary disabled:opacity-30" disabled={isResolvingLink} title="Calculate Distance">
                         <Loader2 size={11} className={isResolvingLink ? 'animate-spin' : ''} />
                       </button>
                     </div>

@@ -28,7 +28,8 @@ class DashboardService {
       revenueTrend,
       topDishesRaw,
       monthlyTrend,
-      stockDataResult
+      stockDataResult,
+      paymentBreakdownResult
     ] = await Promise.all([
       
       Order.aggregate([
@@ -127,6 +128,19 @@ class DashboardService {
               { $project: { name: 1, image: 1, effectiveStock: 1, 'category.name': '$cat.name' } }
             ]
         }}
+      ]),
+
+      // Today's payment method breakdown
+      Order.aggregate([
+        { $match: { orderStatus: { $ne: 'cancelled' }, createdAt: { $gte: today } } },
+        {
+          $group: {
+            _id: { $ifNull: ['$paymentMethod', 'Not Specified'] },
+            totalRevenue: { $sum: '$totalAmount' },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { totalRevenue: -1 } }
       ])
     ]);
 
@@ -170,6 +184,7 @@ class DashboardService {
       revenueTrend,
       monthlyTrend,
       topDishes,
+      paymentBreakdown: paymentBreakdownResult || [],
       stockStats: {
         outOfStock: stockDataResult[0]?.outOfStockCount[0]?.count || 0,
         lowStock: stockDataResult[0]?.lowStockCount[0]?.count || 0,
