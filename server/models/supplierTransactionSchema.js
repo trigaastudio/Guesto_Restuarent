@@ -43,6 +43,11 @@ const supplierTransactionSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
   },
+  status: {
+    type: String,
+    enum: ['pending', 'settled'],
+    default: 'pending',
+  },
 }, {
   timestamps: true,
 });

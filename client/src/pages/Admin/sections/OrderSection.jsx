@@ -5,7 +5,7 @@ import {
   ShoppingCart, User, Phone, CreditCard, ChevronRight,
   MoreVertical, Printer, Package, Utensils, RotateCcw,
   Copy, MapPin, ExternalLink, Minus, Truck, X, ChevronLeft,
-  Zap, Banknote, Smartphone, IndianRupee, Store
+  Zap, Banknote, Smartphone, IndianRupee, Store, Ticket, Gift, Tag
 } from 'lucide-react';
 import axios from 'axios';
 import socket from '../../../services/socket';
@@ -119,6 +119,7 @@ const OrderSection = () => {
   const [posSearchTerm, setPosSearchTerm] = useState('');
   const [posCategoryFilter, setPosCategoryFilter] = useState('all');
   const [posViewMode, setPosViewMode] = useState('category');
+  const [availableOffers, setAvailableOffers] = useState([]);
   const [orderStatusFilter, setOrderStatusFilter] = useState(localStorage.getItem('orderStatusFilter') || 'all');
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
@@ -207,6 +208,7 @@ const OrderSection = () => {
   useEffect(() => {
     fetchMenu();
     fetchDeliveryStaff();
+    fetchOffers();
 
     // Auto-refresh orders list on new order arrivals or status changes
     const handleNewOrder = () => scheduleSilentFetch();
@@ -610,6 +612,20 @@ const OrderSection = () => {
       setMenuItems(response.data.filter(m => !m.isBlocked));
     } catch (error) {
       console.error('Error fetching menu:', error);
+    }
+  };
+
+  const fetchOffers = async () => {
+    try {
+      const response = await api.get('/api/offers');
+      // Handle both { success, data } and bare array shapes
+      const raw = response.data;
+      const allOffers = raw?.data || (Array.isArray(raw) ? raw : []);
+      // Only exclude explicitly deactivated offers (isActive === false)
+      const active = allOffers.filter(o => o.isActive !== false);
+      setAvailableOffers(active);
+    } catch (error) {
+      console.error('Error fetching offers:', error);
     }
   };
 
@@ -1305,6 +1321,7 @@ const OrderSection = () => {
     fetchMenu();
     fetchDeliveryStaff();
     fetchUsers();
+    fetchOffers();
     if (order) {
       setSelectedOrderId(order?._id);
     } else {
@@ -2927,6 +2944,18 @@ const OrderSection = () => {
                     <div className="flex items-center bg-background-muted/50 p-1 rounded-xl">
                       <button onClick={() => setPosViewMode('category')} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${posViewMode === 'category' ? 'bg-background-card shadow-sm text-primary' : 'text-text-muted hover:text-text-primary'}`}>Categories</button>
                       <button onClick={() => setPosViewMode('menu')} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${posViewMode === 'menu' ? 'bg-background-card shadow-sm text-primary' : 'text-text-muted hover:text-text-primary'}`}>Menu</button>
+                      <button
+                        onClick={() => setPosViewMode('offers')}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${posViewMode === 'offers' ? 'bg-background-card shadow-sm text-amber-500' : 'text-text-muted hover:text-text-primary'}`}
+                      >
+                        <Ticket size={11} />
+                        Offers
+                        {availableOffers.length > 0 && (
+                          <span className="bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full min-w-[16px] text-center leading-none">
+                            {availableOffers.length}
+                          </span>
+                        )}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -2976,8 +3005,342 @@ const OrderSection = () => {
                   )}
                 </div>
               </div>
-              <div className={`flex-1 overflow-y-auto p-4 grid gap-3 no-scrollbar content-start ${posViewMode === 'category' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'grid-cols-2 xl:grid-cols-3'}`}>
-                {posViewMode === 'category' ? (
+              <div className={`flex-1 overflow-y-auto p-4 gap-3 no-scrollbar content-start ${posViewMode === 'offers' ? 'flex flex-col' : `grid ${posViewMode === 'category' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'grid-cols-2 xl:grid-cols-3'}`}`}>
+                {posViewMode === 'offers' ? (
+                  availableOffers.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-text-muted/50 py-16">
+                      <div className="w-16 h-16 bg-background-muted rounded-full flex items-center justify-center mb-3 border border-border-light">
+                        <Ticket size={24} />
+                      </div>
+                      <p className="text-[10px] font-black uppercase tracking-widest">No Active Offers</p>
+                      <p className="text-[9px] font-bold mt-1 text-center max-w-[200px] opacity-70">Create offers in the Offers section to see them here.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 content-start">
+                      {availableOffers.map(offer => {
+                        const isComboOffer = offer.offerType === 'combo';
+                        const isDiscount = offer.offerType === 'discount';
+                        const isBogo = offer.offerType === 'bogo';
+
+                        // Build items to add to cart from applicableItems
+                        const handleAddOfferToCart = () => {
+                          const itemsToAdd = offer.applicableItems || [];
+                          if (itemsToAdd.length === 0) {
+                            showToast('warning', 'This offer has no items configured.');
+                            return;
+                          }
+
+                          // Resolve each non-choice item to its fullItem + variant
+                          const resolved = [];
+                          let hasChoice = false;
+                          for (const offerItem of itemsToAdd) {
+                            if (offerItem.isChoice) { hasChoice = true; continue; }
+                            const menuId = offerItem.menuItem?._id || offerItem.menuItem;
+                            const fullItem = menuItems.find(m => m._id === menuId);
+                            if (!fullItem) continue;
+                            const size = offerItem.selectedSize || null;
+                            let variant = size
+                              ? (fullItem.variants || []).find(v => v.size === size)
+                              : (fullItem.variants?.[0] || { size: 'Standard', price: fullItem.price || 0 });
+                            if (!variant) variant = { size: size || 'Standard', price: fullItem.price || 0 };
+                            resolved.push({ fullItem, variant, qty: offerItem.quantity || 1 });
+                          }
+                          if (hasChoice) {
+                            showToast('info', `"${offer.title}" has choice items — please add them manually from the menu.`);
+                          }
+                          if (resolved.length === 0) return;
+
+                          // ── Combo offer: distribute offerValue proportionally ──
+                          if (isComboOffer && offer.offerValue > 0) {
+                            const totalOriginal = resolved.reduce(
+                              (sum, { variant: v, fullItem: fi, qty }) =>
+                                sum + (v.price || fi.price || 0) * qty,
+                              0
+                            );
+
+                            // PASS 1 — compute integer item-totals that sum to EXACTLY offerValue
+                            // (last item absorbs rounding remainder as a whole-total, not per-unit)
+                            let allocated = 0;
+                            const itemTotals = resolved.map(({ variant: v, fullItem: fi, qty }, idx) => {
+                              const isLast = idx === resolved.length - 1;
+                              const origTotal = (v.price || fi.price || 0) * qty;
+                              if (isLast) {
+                                return offer.offerValue - allocated; // exact remainder → total always sums correctly
+                              }
+                              const share = totalOriginal > 0
+                                ? Math.round(offer.offerValue * (origTotal / totalOriginal))
+                                : 0;
+                              allocated += share;
+                              return share;
+                            });
+
+                            // PASS 2 — add each item to cart with the exact allocated total
+                            resolved.forEach(({ fullItem, variant, qty }, idx) => {
+                              const itemTotal = itemTotals[idx];           // exact integer portion of offerValue
+                              const unitPrice  = Math.round(itemTotal / qty); // display price per unit
+                              const sizeName   = variant.size || 'Standard';
+
+                              setCart(prevCart => {
+                                const existingIdx = prevCart.findIndex(
+                                  c => c.menuItem === fullItem._id && c.size === sizeName
+                                );
+                                if (existingIdx > -1) {
+                                  // Item already in cart — just bump qty & recalculate total
+                                  return prevCart.map((c, i) => {
+                                    if (i !== existingIdx) return c;
+                                    const newQty = c.quantity + qty;
+                                    return { ...c, quantity: newQty, totalPrice: newQty * c.unitPrice };
+                                  });
+                                }
+                                return [...prevCart, {
+                                  menuItem:      fullItem._id,
+                                  name:          fullItem.name,
+                                  image:         fullItem.image || '',
+                                  size:          sizeName,
+                                  quantity:      qty,
+                                  unitPrice,
+                                  originalPrice: variant.price || fullItem.price || 0,
+                                  totalPrice:    itemTotal,   // ← exact allocated amount, NOT unitPrice * qty
+                                  bogoItem:      null,
+                                  comboItems:    fullItem.comboItems || [],
+                                  includedItems: variant.includedItems || fullItem.includedItems || [],
+                                  discountPercent: 0,
+                                  isCombo:       fullItem.isCombo,
+                                  offerApplied:  offer.title,
+                                }];
+                              });
+                            });
+                            showToast('success', `"${offer.title}" added — combo price ₹${offer.offerValue}!`);
+                            return;
+                          }
+
+                          // ── BOGO: add buy-items at normal price + get-items FREE at ₹0 ──
+                          if (isBogo) {
+                            // Add the "buy" items normally
+                            resolved.forEach(({ fullItem, variant, qty }) => {
+                              addToCart(fullItem, variant, qty);
+                            });
+
+                            // Resolve & add the "get" (free) items at ₹0
+                            const freeItems = offer.getApplicableItems || [];
+                            let freeAdded = 0;
+                            freeItems.forEach(offerItem => {
+                              if (offerItem.isChoice) {
+                                showToast('info', `"${offer.title}": choose your free item manually from the menu.`);
+                                return;
+                              }
+                              const menuId = offerItem.menuItem?._id || offerItem.menuItem;
+                              const fullItem = menuItems.find(m => m._id === menuId);
+                              if (!fullItem) return;
+                              const size = offerItem.selectedSize || null;
+                              let variant = size
+                                ? (fullItem.variants || []).find(v => v.size === size)
+                                : (fullItem.variants?.[0] || { size: 'Standard', price: fullItem.price || 0 });
+                              if (!variant) variant = { size: size || 'Standard', price: fullItem.price || 0 };
+                              const qty = offerItem.quantity || 1;
+                              const sizeName = variant.size || 'Standard';
+                              const realPrice = variant.price || fullItem.price || 0;
+
+                              // Add at ₹0 — NEVER merge with a paid entry of the same item.
+                              // Only find an existing FREE entry (unitPrice===0) to bump qty.
+                              setCart(prevCart => {
+                                const existingFreeIdx = prevCart.findIndex(
+                                  c => c.menuItem === fullItem._id && c.size === sizeName && c.unitPrice === 0
+                                );
+                                if (existingFreeIdx > -1) {
+                                  return prevCart.map((c, i) => {
+                                    if (i !== existingFreeIdx) return c;
+                                    const newQty = c.quantity + qty;
+                                    return { ...c, quantity: newQty, totalPrice: 0 };
+                                  });
+                                }
+                                // Always add as a fresh line so it stays at ₹0
+                                return [...prevCart, {
+                                  menuItem:        fullItem._id,
+                                  name:            `${fullItem.name} (FREE)`,
+                                  image:           fullItem.image || '',
+                                  size:            sizeName,
+                                  quantity:        qty,
+                                  unitPrice:       0,
+                                  originalPrice:   realPrice,
+                                  totalPrice:      0,
+                                  bogoItem:        null,
+                                  comboItems:      fullItem.comboItems || [],
+                                  includedItems:   variant.includedItems || fullItem.includedItems || [],
+                                  discountPercent: 100,
+                                  isCombo:         fullItem.isCombo,
+                                  offerApplied:    offer.title,
+                                }];
+                              });
+                              freeAdded++;
+                            });
+
+                            const msg = freeAdded > 0
+                              ? `"${offer.title}" added — ${freeAdded} free item${freeAdded > 1 ? 's' : ''} included!`
+                              : `"${offer.title}" added to cart!`;
+                            showToast('success', msg);
+                            return;
+                          }
+
+                          // ── Discount: use normal addToCart (applies menu/category discountPercent) ──
+                          let addedCount = 0;
+                          resolved.forEach(({ fullItem, variant, qty }) => {
+                            addToCart(fullItem, variant, qty);
+                            addedCount++;
+                          });
+                          if (addedCount > 0) {
+                            showToast('success', `"${offer.title}" added to cart!`);
+                          }
+                        };
+
+                        const offerColor = isComboOffer
+                          ? { bg: 'from-purple-500/10 to-primary/5', border: 'border-purple-500/30', badge: 'bg-purple-500/90', text: 'text-purple-600', icon: Gift }
+                          : isDiscount
+                          ? { bg: 'from-green-500/10 to-emerald-500/5', border: 'border-green-500/30', badge: 'bg-green-500/90', text: 'text-green-600', icon: Tag }
+                          : { bg: 'from-amber-500/10 to-orange-500/5', border: 'border-amber-500/30', badge: 'bg-amber-500/90', text: 'text-amber-600', icon: Zap };
+
+                        const OfferIcon = offerColor.icon;
+
+                        return (
+                          <div
+                            key={offer._id}
+                            onClick={handleAddOfferToCart}
+                            className={`relative cursor-pointer rounded-2xl border ${offerColor.border} bg-gradient-to-br ${offerColor.bg} p-0 overflow-hidden group transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]`}
+                          >
+                            {/* Banner image */}
+                            {offer.bannerImage && (
+                              <div className="w-full h-28 overflow-hidden relative">
+                                <img src={offer.bannerImage} alt={offer.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                                {/* Offer type badge */}
+                                <span className={`absolute top-2 left-2 ${offerColor.badge} text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest flex items-center gap-1`}>
+                                  <OfferIcon size={8} />
+                                  {offer.offerType === 'bogo' ? 'BOGO' : offer.offerType.toUpperCase()}
+                                </span>
+                                {isDiscount && offer.offerValue > 0 && (
+                                  <span className="absolute top-2 right-2 bg-white/90 text-green-600 text-[9px] font-black px-2 py-0.5 rounded-full">
+                                    {offer.offerValue}% OFF
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            <div className="p-3">
+                              {!offer.bannerImage && (
+                                <span className={`inline-flex items-center gap-1 ${offerColor.badge} text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest mb-2`}>
+                                  <OfferIcon size={8} />
+                                  {offer.offerType === 'bogo' ? 'BOGO' : offer.offerType.toUpperCase()}
+                                  {isDiscount && offer.offerValue > 0 && ` · ${offer.offerValue}% OFF`}
+                                </span>
+                              )}
+                              <h4 className="font-black text-text-primary text-[11px] leading-tight mb-1 line-clamp-2">{offer.title}</h4>
+                              {offer.description && (
+                                <p className="text-[9px] text-text-muted font-medium line-clamp-2 mb-2">{offer.description}</p>
+                              )}
+                              {/* Items preview — BOGO shows buy + free separately */}
+                              {isBogo ? (
+                                <div className="space-y-1.5 mb-2">
+                                  {/* Buy items */}
+                                  {(offer.applicableItems || []).length > 0 && (
+                                    <div>
+                                      <p className="text-[7px] font-black uppercase tracking-widest text-text-muted mb-1">Buy</p>
+                                      <div className="flex flex-wrap gap-1">
+                                        {offer.applicableItems.map((ai, idx) => {
+                                          const name = ai.menuItem?.name || ai.choiceGroupName || 'Item';
+                                          return (
+                                            <span key={idx} className="text-[7px] font-bold text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                                              {ai.quantity > 1 && `${ai.quantity}x `}{ai.isChoice ? `[Choice: ${name}]` : name}
+                                            </span>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {/* Get FREE items */}
+                                  {(offer.getApplicableItems || []).length > 0 && (
+                                    <div>
+                                      <p className="text-[7px] font-black uppercase tracking-widest text-green-600 mb-1 flex items-center gap-1">
+                                        <Gift size={7} /> Get FREE
+                                      </p>
+                                      <div className="flex flex-wrap gap-1">
+                                        {offer.getApplicableItems.map((ai, idx) => {
+                                          const name = ai.menuItem?.name || ai.choiceGroupName || 'Item';
+                                          return (
+                                            <span key={idx} className="text-[7px] font-bold text-green-600 bg-green-500/10 px-1.5 py-0.5 rounded border border-green-500/20">
+                                              {ai.quantity > 1 && `${ai.quantity}x `}{ai.isChoice ? `[Choice: ${name}]` : name}
+                                            </span>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                /* Combo / Discount: flat chips */
+                                (offer.applicableItems || []).length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mb-2">
+                                    {offer.applicableItems.slice(0, 4).map((ai, idx) => {
+                                      const name = ai.menuItem?.name || ai.choiceGroupName || 'Item';
+                                      return (
+                                        <span key={idx} className={`text-[7px] font-bold ${offerColor.text} bg-white/50 px-1.5 py-0.5 rounded border border-current/20`}>
+                                          {ai.quantity > 1 && `${ai.quantity}x `}{ai.isChoice ? `[Choice: ${name}]` : name}
+                                        </span>
+                                      );
+                                    })}
+                                    {offer.applicableItems.length > 4 && (
+                                      <span className="text-[7px] font-bold text-text-muted bg-white/50 px-1.5 py-0.5 rounded">+{offer.applicableItems.length - 4} more</span>
+                                    )}
+                                  </div>
+                                )
+                              )}
+                              {/* Price display */}
+                              {isComboOffer && offer.offerValue > 0 && (() => {
+                                // Calculate original total from applicable items
+                                const originalTotal = (offer.applicableItems || []).reduce((sum, ai) => {
+                                  const item = menuItems.find(m => m._id === (ai.menuItem?._id || ai.menuItem));
+                                  if (!item) return sum;
+                                  const size = ai.selectedSize || null;
+                                  const variant = size
+                                    ? (item.variants || []).find(v => v.size === size)
+                                    : item.variants?.[0];
+                                  const price = variant?.price || item.price || 0;
+                                  return sum + price * (ai.quantity || 1);
+                                }, 0);
+                                const savings = originalTotal - offer.offerValue;
+                                return (
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-[13px] font-black text-purple-600">₹{offer.offerValue}</span>
+                                    {originalTotal > offer.offerValue && (
+                                      <>
+                                        <span className="text-[10px] line-through text-text-muted font-bold">₹{Math.round(originalTotal)}</span>
+                                        <span className="text-[8px] font-black text-green-600 bg-green-500/10 px-1.5 py-0.5 rounded-full">Save ₹{Math.round(savings)}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                              {isDiscount && offer.offerValue > 0 && (
+                                <div className="flex items-center gap-1.5 mb-2">
+                                  <span className="text-[11px] font-black text-green-600">{offer.offerValue}% OFF</span>
+                                  <span className="text-[8px] text-text-muted font-bold">on all items</span>
+                                </div>
+                              )}
+                              {isBogo && (
+                                <div className="flex items-center gap-1.5 mb-2">
+                                  <span className="text-[10px] font-black text-amber-600">Buy 1 Get 1 FREE</span>
+                                </div>
+                              )}
+                              {/* One-click CTA */}
+                              <div className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-xl ${offerColor.badge} text-white text-[9px] font-black uppercase tracking-wider group-hover:opacity-90 transition-opacity`}>
+                                <ShoppingCart size={10} />
+                                {isComboOffer && offer.offerValue > 0 ? `Add Combo · ₹${offer.offerValue}` : 'Add to Cart'}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )
+                ) : posViewMode === 'category' ? (
                   <>
                     <div 
                        onClick={() => { setPosCategoryFilter('all'); setPosViewMode('menu'); }}
@@ -3278,12 +3641,19 @@ const OrderSection = () => {
                     <span>Listing Price</span>
                     <span>₹{Math.round(cart.reduce((acc, item) => acc + ((item.originalPrice || item.unitPrice) * item.quantity), 0))}</span>
                   </div>
-                  {cart.reduce((acc, item) => acc + (Math.max(0, (item.originalPrice || item.unitPrice) - item.unitPrice) * item.quantity), 0) > 0 && (
-                    <div className="flex items-center justify-between text-status-available text-[10px] font-black">
-                      <span className="flex items-center gap-1"><Zap size={9} /> Savings</span>
-                      <span>-₹{Math.round(cart.reduce((acc, item) => acc + (Math.max(0, (item.originalPrice || item.unitPrice) - item.unitPrice) * item.quantity), 0))}</span>
-                    </div>
-                  )}
+                  {(() => {
+                    // Savings = sum of original totals - sum of actual totalPrice (exact, avoids rounding drift)
+                    const totalSavings = Math.round(
+                      cart.reduce((acc, item) => acc + (item.originalPrice || item.unitPrice) * item.quantity, 0)
+                      - cart.reduce((acc, item) => acc + item.totalPrice, 0)
+                    );
+                    return totalSavings > 0 ? (
+                      <div className="flex items-center justify-between text-status-available text-[10px] font-black">
+                        <span className="flex items-center gap-1"><Zap size={9} /> Savings</span>
+                        <span>-₹{totalSavings}</span>
+                      </div>
+                    ) : null;
+                  })()}
                   <div className="flex items-center justify-between text-primary text-[10px] font-black bg-primary/10 -mx-4 px-4 py-1.5 border-y border-primary/10">
                     <span>Items Total</span>
                     <span>₹{Math.round(cart.reduce((acc, i) => acc + i.totalPrice, 0))}</span>

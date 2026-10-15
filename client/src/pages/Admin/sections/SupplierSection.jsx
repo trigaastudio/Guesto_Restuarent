@@ -64,6 +64,7 @@ const SupplierSection = ({ onNavigateTab }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all'); // 'all' | 'expense' | 'advance'
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'pending' | 'settled'
   const [selectedSupplierId, setSelectedSupplierId] = useState('all');
   const [dateFilter, setDateFilter] = useState('all'); // 'all' | 'today' | 'thisWeek' | 'thisMonth' | 'custom'
   const [customStartDate, setCustomStartDate] = useState('');
@@ -84,7 +85,8 @@ const SupplierSection = ({ onNavigateTab }) => {
     amount: '',
     paymentMethod: 'Cash',
     billNumber: '',
-    description: ''
+    description: '',
+    status: 'pending'
   });
 
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
@@ -211,7 +213,8 @@ const SupplierSection = ({ onNavigateTab }) => {
         amount: existingTx.amount || '',
         paymentMethod: existingTx.paymentMethod || 'Cash',
         billNumber: existingTx.billNumber || '',
-        description: existingTx.description || ''
+        description: existingTx.description || '',
+        status: existingTx.status || 'pending'
       });
       setIsEditingTx(true);
     } else {
@@ -223,7 +226,8 @@ const SupplierSection = ({ onNavigateTab }) => {
         amount: '',
         paymentMethod: 'Cash',
         billNumber: '',
-        description: ''
+        description: '',
+        status: 'pending'
       });
       setIsEditingTx(false);
     }
@@ -379,9 +383,10 @@ const SupplierSection = ({ onNavigateTab }) => {
         desc.toLowerCase().includes(s);
       const matchesType = typeFilter === 'all' || tx.type === typeFilter;
       const matchesSupplier = selectedSupplierId === 'all' || (tx.supplier?._id === selectedSupplierId);
-      return matchesSearch && matchesType && matchesSupplier;
+      const matchesStatus = statusFilter === 'all' || (tx.status || 'pending') === statusFilter;
+      return matchesSearch && matchesType && matchesSupplier && matchesStatus;
     });
-  }, [transactions, searchTerm, typeFilter, selectedSupplierId]);
+  }, [transactions, searchTerm, typeFilter, selectedSupplierId, statusFilter]);
 
   // Paginated transactions
   const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
@@ -669,6 +674,19 @@ const SupplierSection = ({ onNavigateTab }) => {
                 </select>
 
                 <select
+                  value={statusFilter}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="bg-background-muted/40 text-text-primary border border-border-main rounded-xl px-3 py-2 text-xs font-bold outline-none cursor-pointer"
+                >
+                  <option value="all">All Status</option>
+                  <option value="pending">Pending</option>
+                  <option value="settled">Settled</option>
+                </select>
+
+                <select
                   value={selectedSupplierId}
                   onChange={(e) => {
                     setSelectedSupplierId(e.target.value);
@@ -685,11 +703,12 @@ const SupplierSection = ({ onNavigateTab }) => {
             )}
 
             {/* Clear Filters */}
-            {(searchTerm || typeFilter !== 'all' || selectedSupplierId !== 'all' || dateFilter !== 'all') && (
+            {(searchTerm || typeFilter !== 'all' || statusFilter !== 'all' || selectedSupplierId !== 'all' || dateFilter !== 'all') && (
               <button
                 onClick={() => {
                   setSearchTerm('');
                   setTypeFilter('all');
+                  setStatusFilter('all');
                   setSelectedSupplierId('all');
                   setDateFilter('all');
                   setCustomStartDate('');
@@ -735,6 +754,7 @@ const SupplierSection = ({ onNavigateTab }) => {
                   <th className="px-5 py-4">Date</th>
                   <th className="px-5 py-4">Supplier</th>
                   <th className="px-5 py-4">Type</th>
+                  <th className="px-5 py-4">Status</th>
                   <th className="px-5 py-4">Bill No</th>
                   <th className="px-5 py-4">Description / Items</th>
                   <th className="px-5 py-4">Payment Mode</th>
@@ -745,13 +765,13 @@ const SupplierSection = ({ onNavigateTab }) => {
               <tbody className="divide-y divide-border-light">
                 {isLoading ? (
                   <tr>
-                    <td colSpan="8" className="px-6 py-10">
-                      <TableSkeleton columns={8} rows={6} />
+                    <td colSpan="9" className="px-6 py-10">
+                      <TableSkeleton columns={9} rows={6} />
                     </td>
                   </tr>
                 ) : paginatedTransactions.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="px-6 py-16 text-center text-text-muted">
+                    <td colSpan="9" className="px-6 py-16 text-center text-text-muted">
                       <div className="flex flex-col items-center justify-center space-y-3">
                         <FileText size={36} className="text-text-muted/40" />
                         <p className="font-bold text-sm">No transactions found</p>
@@ -799,6 +819,19 @@ const SupplierSection = ({ onNavigateTab }) => {
                         }`}>
                           {tx.type === 'expense' ? 'Expense / Bill' : 'Advance Paid'}
                         </span>
+                      </td>
+
+                      {/* Status Badge */}
+                      <td className="px-5 py-4">
+                        {(tx.status || 'pending') === 'settled' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                            <CheckCircle2 size={9} /> Settled
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                            <Clock size={9} /> Pending
+                          </span>
+                        )}
                       </td>
 
                       {/* Bill No */}
@@ -1181,6 +1214,44 @@ const SupplierSection = ({ onNavigateTab }) => {
                       className="w-full px-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-medium outline-none"
                     />
                   </div>
+                </div>
+
+                {/* Status */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                    Payment Status
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTxFormData({ ...txFormData, status: 'pending' })}
+                      className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider border transition-all ${
+                        txFormData.status === 'pending'
+                          ? 'bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/20'
+                          : 'bg-background-muted/50 text-text-secondary border-border-main hover:border-amber-400 hover:text-amber-500'
+                      }`}
+                    >
+                      <Clock size={13} />
+                      Pending
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTxFormData({ ...txFormData, status: 'settled' })}
+                      className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider border transition-all ${
+                        txFormData.status === 'settled'
+                          ? 'bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-500/20'
+                          : 'bg-background-muted/50 text-text-secondary border-border-main hover:border-emerald-400 hover:text-emerald-500'
+                      }`}
+                    >
+                      <CheckCircle2 size={13} />
+                      Settled
+                    </button>
+                  </div>
+                  <p className="text-[9px] text-text-muted font-medium">
+                    {txFormData.status === 'pending'
+                      ? 'Payment is due / not yet cleared'
+                      : 'Payment has been fully settled / paid'}
+                  </p>
                 </div>
 
                 {/* Description / Items purchased */}
