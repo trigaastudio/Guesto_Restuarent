@@ -92,6 +92,16 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
     }
   };
 
+  const getEditingOrderStock = (item) => {
+    if (!editingOrder || !editingOrder.items || !item?._id) return 0;
+    return editingOrder.items
+      .filter(c => (c.menuItem?._id || c.menuItem) === item._id)
+      .reduce((acc, c) => {
+        const variant = item.variants?.find(v => v.size === c.size);
+        const stockValue = variant?.stockValue || 1;
+        return acc + ((c.quantity || 0) * stockValue);
+      }, 0);
+  };
 
   const getConsumedStock = (item) =>
     cart
@@ -102,10 +112,10 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
         return acc + (c.quantity * stockValue);
       }, 0);
 
-
-  const getDynamicRawStock = (item) =>
-    Math.max(0, getEffectiveStock(item) - getConsumedStock(item));
-
+  const getDynamicRawStock = (item) => {
+    const baseStock = getEffectiveStock(item) + getEditingOrderStock(item);
+    return Math.max(0, baseStock - getConsumedStock(item));
+  };
 
   const canAddVariant = (item, variant, qty = 1) => {
     const stockValue = variant?.stockValue || 1;
@@ -139,7 +149,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
       for (const included of variant.includedItems) {
         const addonMenuItem = menuItems.find(m => m._id === (included.menuItem?._id || included.menuItem));
         if (addonMenuItem && addonMenuItem.totalStock !== undefined) {
-          const addonStock = getEffectiveStock(addonMenuItem);
+          const addonStock = getEffectiveStock(addonMenuItem) + getEditingOrderStock(addonMenuItem);
           const addonNeeded = qty * (included.quantity || 1);
           if (addonStock < addonNeeded) {
             const addonName = included.name || addonMenuItem.name || 'Add-on';
@@ -238,8 +248,9 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
               const v = menuItem.variants?.find(vv => vv.size === c.size);
               return acc + (c.quantity * (v?.stockValue || 1));
             }, 0);
-          if (totalConsumed + stockValue > getEffectiveStock(menuItem)) {
-            const remaining = Math.floor((getEffectiveStock(menuItem) - totalConsumed) / stockValue);
+          const maxAvailableStock = getEffectiveStock(menuItem) + getEditingOrderStock(menuItem);
+          if (totalConsumed + stockValue > maxAvailableStock) {
+            const remaining = Math.max(0, Math.floor((maxAvailableStock - totalConsumed) / stockValue));
             showToast('error', `Only ${remaining} more serving${remaining !== 1 ? 's' : ''} of ${targetItem.name} available`);
             return prevCart;
           }
@@ -278,9 +289,17 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
         const delta = newQty - targetItem.quantity;
         const menuItem = menuItems.find(m => m._id === targetItem.menuItem);
         if (menuItem && menuItem.totalStock !== undefined) {
-          const currentTotalInCart = prevCart.reduce((acc, c) => c.menuItem === targetItem.menuItem ? acc + (c.quantity || 1) : acc, 0);
-          if (currentTotalInCart + delta > menuItem.totalStock) {
-            showToast('error', `Cannot exceed available stock of ${menuItem.totalStock} for ${targetItem.name}`);
+          const variant = menuItem.variants?.find(v => v.size === targetItem.size);
+          const stockValue = variant?.stockValue || 1;
+          const totalConsumed = prevCart
+            .filter(c => c.menuItem === targetItem.menuItem)
+            .reduce((acc, c) => {
+              const v = menuItem.variants?.find(vv => vv.size === c.size);
+              return acc + (c.quantity * (v?.stockValue || 1));
+            }, 0);
+          const maxAvailableStock = getEffectiveStock(menuItem) + getEditingOrderStock(menuItem);
+          if (totalConsumed + (delta * stockValue) > maxAvailableStock) {
+            showToast('error', `Cannot exceed available stock for ${targetItem.name}`);
             return prevCart;
           }
         }
@@ -333,8 +352,14 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
           return false;
         }
 
-        const totalQtyInCart = cart.reduce((acc, c) => c.menuItem === cartItem.menuItem ? acc + c.quantity : acc, 0);
-        const effectiveStock = getEffectiveStock(menuItem);
+        const totalQtyInCart = cart
+          .filter(c => c.menuItem === cartItem.menuItem)
+          .reduce((acc, c) => {
+            const v = menuItem.variants?.find(vv => vv.size === c.size);
+            return acc + (c.quantity * (v?.stockValue || 1));
+          }, 0);
+        const originalOrderStock = getEditingOrderStock(menuItem);
+        const effectiveStock = getEffectiveStock(menuItem) + originalOrderStock;
 
         if (totalQtyInCart > effectiveStock) {
           showToast('error', `Insufficient stock for ${cartItem.name}. Available: ${effectiveStock}, Requested: ${totalQtyInCart}`);
@@ -583,7 +608,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                 ? (item.variants || []).flatMap(v =>
                     (v.includedItems || []).filter(inc => {
                       const addonDoc = menuItems.find(m => m._id === (inc.menuItem?._id || inc.menuItem));
-                      return addonDoc && addonDoc.totalStock !== undefined && getEffectiveStock(addonDoc) <= 0;
+                      return addonDoc && addonDoc.totalStock !== undefined && (getEffectiveStock(addonDoc) + getEditingOrderStock(addonDoc)) <= 0;
                     }).map(inc => {
                       const addonDoc = menuItems.find(m => m._id === (inc.menuItem?._id || inc.menuItem));
                       return inc.name || addonDoc?.name || 'Add-on';
@@ -888,6 +913,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
         menu={selectedItemForModal}
         onAction={handleModalAddToCart}
         viewOnly={false}
+        extraStockAvailable={getEditingOrderStock(selectedItemForModal)}
       />
     </div>
   );

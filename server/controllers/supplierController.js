@@ -31,6 +31,34 @@ export const getSuppliers = async (req, res) => {
           totalExpenses: {
             $sum: { $cond: [{ $eq: ['$type', 'expense'] }, '$amount', 0] }
           },
+          pendingExpenses: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ['$type', 'expense'] },
+                    { $ne: ['$status', 'settled'] } // pending expenses
+                  ]
+                },
+                '$amount',
+                0
+              ]
+            }
+          },
+          settledExpenses: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ['$type', 'expense'] },
+                    { $eq: ['$status', 'settled'] }
+                  ]
+                },
+                '$amount',
+                0
+              ]
+            }
+          },
           totalAdvances: {
             $sum: { $cond: [{ $eq: ['$type', 'advance'] }, '$amount', 0] }
           },
@@ -42,10 +70,14 @@ export const getSuppliers = async (req, res) => {
 
     const aggMap = new Map();
     aggregates.forEach(agg => {
+      const pendingExpenses = agg.pendingExpenses || 0;
+      const totalAdvances = agg.totalAdvances || 0;
       aggMap.set(agg._id.toString(), {
         totalExpenses: agg.totalExpenses || 0,
-        totalAdvances: agg.totalAdvances || 0,
-        balance: (agg.totalExpenses || 0) - (agg.totalAdvances || 0), // positive = amount owed to supplier
+        pendingExpenses,
+        settledExpenses: agg.settledExpenses || 0,
+        totalAdvances,
+        balance: pendingExpenses - totalAdvances, // positive = pending amount owed to supplier
         lastTransactionDate: agg.lastTransactionDate,
         transactionCount: agg.transactionCount || 0,
       });
@@ -54,6 +86,8 @@ export const getSuppliers = async (req, res) => {
     const enrichedSuppliers = suppliers.map(s => {
       const agg = aggMap.get(s._id.toString()) || {
         totalExpenses: 0,
+        pendingExpenses: 0,
+        settledExpenses: 0,
         totalAdvances: 0,
         balance: 0,
         lastTransactionDate: null,
@@ -153,7 +187,7 @@ export const deleteSupplier = async (req, res) => {
 // GET supplier transactions (expenses & advances)
 export const getTransactions = async (req, res) => {
   try {
-    const { supplierId, type, startDate, endDate, search, limit = 100, page = 1 } = req.query;
+    const { supplierId, type, status, startDate, endDate, search, limit = 100, page = 1 } = req.query;
     let query = {};
 
     if (supplierId && mongoose.Types.ObjectId.isValid(supplierId)) {
@@ -162,6 +196,10 @@ export const getTransactions = async (req, res) => {
 
     if (type && ['expense', 'advance'].includes(type)) {
       query.type = type;
+    }
+
+    if (status && ['pending', 'settled'].includes(status)) {
+      query.status = status;
     }
 
     if (startDate || endDate) {
@@ -225,7 +263,7 @@ export const getTransactions = async (req, res) => {
 // CREATE supplier transaction (expense or advance)
 export const createTransaction = async (req, res) => {
   try {
-    const { supplier, date, type, amount, paymentMethod, billNumber, description } = req.body;
+    const { supplier, date, type, amount, paymentMethod, billNumber, description, status } = req.body;
 
     if (!supplier) {
       return res.status(400).json({ success: false, message: 'Supplier is required' });
@@ -245,6 +283,7 @@ export const createTransaction = async (req, res) => {
       paymentMethod: paymentMethod || 'Cash',
       billNumber: billNumber?.trim() || '',
       description: description?.trim() || '',
+      status: status && ['pending', 'settled'].includes(status) ? status : 'pending',
       recordedBy: req.user?._id,
     });
 
@@ -266,7 +305,7 @@ export const createTransaction = async (req, res) => {
 export const updateTransaction = async (req, res) => {
   try {
     const { id } = req.params;
-    const { supplier, date, type, amount, paymentMethod, billNumber, description } = req.body;
+    const { supplier, date, type, amount, paymentMethod, billNumber, description, status } = req.body;
 
     const updateData = {};
     if (supplier) updateData.supplier = supplier;
@@ -276,6 +315,7 @@ export const updateTransaction = async (req, res) => {
     if (paymentMethod) updateData.paymentMethod = paymentMethod;
     if (billNumber !== undefined) updateData.billNumber = billNumber.trim();
     if (description !== undefined) updateData.description = description.trim();
+    if (status && ['pending', 'settled'].includes(status)) updateData.status = status;
 
     const transaction = await SupplierTransaction.findByIdAndUpdate(id, updateData, { new: true, runValidators: true })
       .populate('supplier', 'name category phone contactPerson');
@@ -291,6 +331,34 @@ export const updateTransaction = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating transaction:', error);
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// TOGGLE SETTLEMENT STATUS (pending <-> settled)
+export const toggleSettlementStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const transaction = await SupplierTransaction.findById(id);
+    if (!transaction) {
+      return res.status(404).json({ success: false, message: 'Transaction not found' });
+    }
+
+    const newStatus = transaction.status === 'settled' ? 'pending' : 'settled';
+    transaction.status = newStatus;
+    await transaction.save();
+
+    const populated = await SupplierTransaction.findById(transaction._id)
+      .populate('supplier', 'name category phone contactPerson');
+
+    res.status(200).json({
+      success: true,
+      message: `Transaction marked as ${newStatus === 'settled' ? 'Settled' : 'Pending'}`,
+      data: populated,
+    });
+  } catch (error) {
+    console.error('Error toggling transaction settlement status:', error);
     res.status(400).json({ success: false, message: error.message });
   }
 };
@@ -329,6 +397,34 @@ export const getSupplierSummary = async (req, res) => {
             totalExpenses: {
               $sum: { $cond: [{ $eq: ['$type', 'expense'] }, '$amount', 0] }
             },
+            pendingExpenses: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $eq: ['$type', 'expense'] },
+                      { $ne: ['$status', 'settled'] }
+                    ]
+                  },
+                  '$amount',
+                  0
+                ]
+              }
+            },
+            settledExpenses: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $eq: ['$type', 'expense'] },
+                      { $eq: ['$status', 'settled'] }
+                    ]
+                  },
+                  '$amount',
+                  0
+                ]
+              }
+            },
             totalAdvances: {
               $sum: { $cond: [{ $eq: ['$type', 'advance'] }, '$amount', 0] }
             },
@@ -344,6 +440,34 @@ export const getSupplierSummary = async (req, res) => {
             totalExpenses: {
               $sum: { $cond: [{ $eq: ['$type', 'expense'] }, '$amount', 0] }
             },
+            pendingExpenses: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $eq: ['$type', 'expense'] },
+                      { $ne: ['$status', 'settled'] }
+                    ]
+                  },
+                  '$amount',
+                  0
+                ]
+              }
+            },
+            settledExpenses: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $eq: ['$type', 'expense'] },
+                      { $eq: ['$status', 'settled'] }
+                    ]
+                  },
+                  '$amount',
+                  0
+                ]
+              }
+            },
             totalAdvances: {
               $sum: { $cond: [{ $eq: ['$type', 'advance'] }, '$amount', 0] }
             },
@@ -355,18 +479,29 @@ export const getSupplierSummary = async (req, res) => {
     ]);
 
     const totalExpenses = allTimeStats[0]?.totalExpenses || 0;
+    const pendingExpenses = allTimeStats[0]?.pendingExpenses || 0;
+    const settledExpenses = allTimeStats[0]?.settledExpenses || 0;
     const totalAdvances = allTimeStats[0]?.totalAdvances || 0;
+
     const monthExpenses = thisMonthStats[0]?.totalExpenses || 0;
+    const monthPending = thisMonthStats[0]?.pendingExpenses || 0;
+    const monthSettled = thisMonthStats[0]?.settledExpenses || 0;
     const monthAdvances = thisMonthStats[0]?.totalAdvances || 0;
-    const netBalance = totalExpenses - totalAdvances;
+
+    // Net balance is pending unpaid expenses minus advances
+    const netBalance = pendingExpenses - totalAdvances;
 
     res.status(200).json({
       success: true,
       data: {
         totalExpenses,
+        pendingExpenses,
+        settledExpenses,
         totalAdvances,
         netBalance,
         monthExpenses,
+        monthPending,
+        monthSettled,
         monthAdvances,
         totalSuppliers,
         activeSuppliers,

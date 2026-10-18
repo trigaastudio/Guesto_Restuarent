@@ -92,9 +92,6 @@ export default defineConfig({
             if (id.includes('sweetalert2')) {
               return 'alerts';
             }
-            if (id.includes('gsap')) {
-              return 'animations';
-            }
             if (id.includes('lucide-react')) {
               return 'icons';
             }

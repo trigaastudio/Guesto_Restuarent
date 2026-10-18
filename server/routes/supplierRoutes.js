@@ -8,6 +8,7 @@ import {
   createTransaction,
   updateTransaction,
   deleteTransaction,
+  toggleSettlementStatus,
   getSupplierSummary,
 } from '../controllers/supplierController.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
@@ -30,6 +31,7 @@ router.delete('/:id', deleteSupplier);
 router.get('/transactions/all', getTransactions);
 router.post('/transactions', createTransaction);
 router.put('/transactions/:id', updateTransaction);
+router.patch('/transactions/:id/toggle-settle', toggleSettlementStatus);
 router.delete('/transactions/:id', deleteTransaction);
 
 export default router;

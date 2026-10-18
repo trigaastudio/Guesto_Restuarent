@@ -137,6 +137,7 @@ export const getDailyExpenses = async (req, res) => {
         paymentMethod: tx.paymentMethod || 'Cash',
         reference: tx.billNumber ? `Bill #${tx.billNumber}` : '',
         description: tx.description || '',
+        status: tx.status || 'pending',
         date: tx.date,
       });
     });

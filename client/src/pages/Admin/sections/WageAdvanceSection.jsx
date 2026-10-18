@@ -729,10 +729,10 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
                   <th className="px-5 py-4">Date</th>
                   <th className="px-5 py-4">Worker / Employee</th>
                   <th className="px-5 py-4">Role</th>
-                  <th className="px-5 py-4 text-right">Advance Amount</th>
-                  <th className="px-5 py-4">Payment Mode</th>
+                  <th className="px-5 py-4">Status</th>
                   <th className="px-5 py-4">Reason / Notes</th>
-                  <th className="px-5 py-4 text-center">Settlement Status</th>
+                  <th className="px-5 py-4">Payment Mode</th>
+                  <th className="px-5 py-4 text-right">Advance Amount</th>
                   <th className="px-5 py-4 text-center">Actions</th>
                 </tr>
               </thead>
@@ -794,46 +794,47 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
                         </span>
                       </td>
 
-                      {/* Amount */}
-                      <td className="px-5 py-4 text-right font-black text-sm text-text-primary">
-                        ₹{adv.amount?.toLocaleString()}
-                      </td>
-
-                      {/* Payment Method */}
+                      {/* Status */}
                       <td className="px-5 py-4">
-                        <span className="px-2 py-0.5 bg-background-muted rounded-lg text-[10px] font-bold text-text-secondary">
-                          {adv.paymentMethod || 'Cash'}
-                        </span>
-                      </td>
-
-                      {/* Reason */}
-                      <td className="px-5 py-4 text-text-secondary max-w-xs truncate" title={adv.reason}>
-                        {adv.reason || '-'}
-                      </td>
-
-                      {/* Settlement Status & 1-Click Toggle */}
-                      <td className="px-5 py-4 text-center">
                         <button
+                          type="button"
                           onClick={() => handleToggleSettle(adv)}
-                          className={`inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border transition-all ${
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border transition-all ${
                             adv.status === 'settled'
                               ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
-                              : 'bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500/20'
+                              : 'bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20'
                           }`}
                           title={adv.status === 'settled' ? 'Click to mark as Pending' : 'Click to mark as Settled (Deducted)'}
                         >
                           {adv.status === 'settled' ? (
                             <>
-                              <Check size={11} strokeWidth={3} />
-                              <span>Deducted / Settled</span>
+                              <CheckCircle2 size={10} />
+                              <span>Settled</span>
                             </>
                           ) : (
                             <>
-                              <Clock size={11} strokeWidth={3} />
-                              <span>Pending (Click to Settle)</span>
+                              <Clock size={10} />
+                              <span>Pending</span>
                             </>
                           )}
                         </button>
+                      </td>
+
+                      {/* Reason / Notes */}
+                      <td className="px-5 py-4 text-text-secondary max-w-xs truncate" title={adv.reason}>
+                        {adv.reason || '-'}
+                      </td>
+
+                      {/* Payment Mode */}
+                      <td className="px-5 py-4">
+                        <span className="px-2.5 py-1 bg-background-muted rounded-lg text-[10px] font-bold text-text-secondary">
+                          {adv.paymentMethod || 'Cash'}
+                        </span>
+                      </td>
+
+                      {/* Advance Amount */}
+                      <td className="px-5 py-4 text-right font-black text-sm text-text-primary">
+                        ₹{adv.amount?.toLocaleString()}
                       </td>
 
                       {/* Actions */}

@@ -7,7 +7,6 @@ import {
   Copy, MapPin, ExternalLink, Minus, Truck, X, ChevronLeft,
   Zap, Banknote, Smartphone, IndianRupee, Store, Ticket, Gift, Tag
 } from 'lucide-react';
-import axios from 'axios';
 import socket from '../../../services/socket';
 import { getEffectiveStock } from '../../../utils/stockHelpers';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
@@ -15,7 +14,6 @@ import Swal from 'sweetalert2';
 import TableSkeleton from '../../../components/Skeleton/TableSkeleton';
 import Loader from '../../../components/Loader/Loader';
 import Pagination from '../../../components/Pagination/Pagination';
-import TableSection from './TableSection';
 import api from '../../../api/axiosInstance';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://guest-o-backend.onrender.com/api';

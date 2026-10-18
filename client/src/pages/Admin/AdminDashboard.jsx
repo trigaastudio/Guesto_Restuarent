@@ -43,21 +43,24 @@ import {
   Receipt
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
-import CategorySection from './sections/CategorySection';
-import MenuSection from './sections/MenuSection';
-import TableSection from './sections/TableSection';
-import OrderSection from './sections/OrderSection';
-import StaffManagement from './sections/StaffManagement';
-import UserManagement from './sections/UserManagement';
-import SettingsSection from './sections/SettingsSection';
-import OfferSection from './sections/OfferSection';
-import SalesSection from './sections/SalesSection';
-import StockSection from './sections/StockSection';
-import DineInSection from './sections/DineInSection';
-import DailyExpenseSection from './sections/DailyExpenseSection';
-import SupplierSection from './sections/SupplierSection';
-import WageAdvanceSection from './sections/WageAdvanceSection';
 import CardSkeleton from '../../components/Skeleton/CardSkeleton';
+import TableSkeleton from '../../components/Skeleton/TableSkeleton';
+
+// Lazy load admin sections for optimized bundle splitting and faster initial load
+const CategorySection = React.lazy(() => import('./sections/CategorySection'));
+const MenuSection = React.lazy(() => import('./sections/MenuSection'));
+const TableSection = React.lazy(() => import('./sections/TableSection'));
+const OrderSection = React.lazy(() => import('./sections/OrderSection'));
+const StaffManagement = React.lazy(() => import('./sections/StaffManagement'));
+const UserManagement = React.lazy(() => import('./sections/UserManagement'));
+const SettingsSection = React.lazy(() => import('./sections/SettingsSection'));
+const OfferSection = React.lazy(() => import('./sections/OfferSection'));
+const SalesSection = React.lazy(() => import('./sections/SalesSection'));
+const StockSection = React.lazy(() => import('./sections/StockSection'));
+const DineInSection = React.lazy(() => import('./sections/DineInSection'));
+const DailyExpenseSection = React.lazy(() => import('./sections/DailyExpenseSection'));
+const SupplierSection = React.lazy(() => import('./sections/SupplierSection'));
+const WageAdvanceSection = React.lazy(() => import('./sections/WageAdvanceSection'));
 
 // Tabs accessible by the order-manager role
 const ORDER_MANAGER_TABS = ['Orders', 'Dine-In'];
@@ -1075,27 +1078,29 @@ const AdminDashboard = () => {
             </div>
           )}
 
-          {activeTab === 'Orders' && <OrderSection key={`order-${refreshKey}`} />}
-          {activeTab === 'Dine-In' && <DineInSection key={`dinein-${refreshKey}`} />}
-          {/* Below sections are restricted to full admins only */}
-          {!isOrderManager && activeTab === 'Categories' && <CategorySection refreshKey={refreshKey} />}
-          {!isOrderManager && activeTab === 'Stock' && <StockSection refreshKey={refreshKey} />}
-          {!isOrderManager && activeTab === 'Menu' && <MenuSection key={`menu-${refreshKey}`} />}
-          {!isOrderManager && activeTab === 'Tables' && <TableSection refreshKey={refreshKey} />}
-          {!isOrderManager && activeTab === 'Staff' && <StaffManagement key={`staff-${refreshKey}`} />}
-          {!isOrderManager && activeTab === 'Users' && <UserManagement key={`users-${refreshKey}`} />}
-          {!isOrderManager && activeTab === 'Settings' && <SettingsSection key={`settings-${refreshKey}`} />}
-          {!isOrderManager && activeTab === 'Offers' && <OfferSection key={`offers-${refreshKey}`} />}
-          {!isOrderManager && activeTab === 'Sales' && <SalesSection key={`sales-${refreshKey}`} />}
-          {!isOrderManager && activeTab === 'Daily Expenses' && (
-            <DailyExpenseSection key={`daily-expenses-${refreshKey}`} onNavigateTab={handleTabChange} />
-          )}
-          {!isOrderManager && activeTab === 'Suppliers' && (
-            <SupplierSection key={`suppliers-${refreshKey}`} onNavigateTab={handleTabChange} />
-          )}
-          {!isOrderManager && activeTab === 'Wage Advances' && (
-            <WageAdvanceSection key={`wage-advances-${refreshKey}`} onNavigateTab={handleTabChange} />
-          )}
+          <React.Suspense fallback={<TableSkeleton rows={6} columns={5} />}>
+            {activeTab === 'Orders' && <OrderSection key={`order-${refreshKey}`} />}
+            {activeTab === 'Dine-In' && <DineInSection key={`dinein-${refreshKey}`} />}
+            {/* Below sections are restricted to full admins only */}
+            {!isOrderManager && activeTab === 'Categories' && <CategorySection refreshKey={refreshKey} />}
+            {!isOrderManager && activeTab === 'Stock' && <StockSection refreshKey={refreshKey} />}
+            {!isOrderManager && activeTab === 'Menu' && <MenuSection key={`menu-${refreshKey}`} />}
+            {!isOrderManager && activeTab === 'Tables' && <TableSection refreshKey={refreshKey} />}
+            {!isOrderManager && activeTab === 'Staff' && <StaffManagement key={`staff-${refreshKey}`} />}
+            {!isOrderManager && activeTab === 'Users' && <UserManagement key={`users-${refreshKey}`} />}
+            {!isOrderManager && activeTab === 'Settings' && <SettingsSection key={`settings-${refreshKey}`} />}
+            {!isOrderManager && activeTab === 'Offers' && <OfferSection key={`offers-${refreshKey}`} />}
+            {!isOrderManager && activeTab === 'Sales' && <SalesSection key={`sales-${refreshKey}`} />}
+            {!isOrderManager && activeTab === 'Daily Expenses' && (
+              <DailyExpenseSection key={`daily-expenses-${refreshKey}`} onNavigateTab={handleTabChange} />
+            )}
+            {!isOrderManager && activeTab === 'Suppliers' && (
+              <SupplierSection key={`suppliers-${refreshKey}`} onNavigateTab={handleTabChange} />
+            )}
+            {!isOrderManager && activeTab === 'Wage Advances' && (
+              <WageAdvanceSection key={`wage-advances-${refreshKey}`} onNavigateTab={handleTabChange} />
+            )}
+          </React.Suspense>
         </div>
       </main>
     </div>

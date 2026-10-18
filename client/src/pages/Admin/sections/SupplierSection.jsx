@@ -53,9 +53,13 @@ const SupplierSection = ({ onNavigateTab }) => {
   const [transactions, setTransactions] = useState([]);
   const [summary, setSummary] = useState({
     totalExpenses: 0,
+    pendingExpenses: 0,
+    settledExpenses: 0,
     totalAdvances: 0,
     netBalance: 0,
     monthExpenses: 0,
+    monthPending: 0,
+    monthSettled: 0,
     monthAdvances: 0,
     totalSuppliers: 0,
     activeSuppliers: 0
@@ -285,6 +289,22 @@ const SupplierSection = ({ onNavigateTab }) => {
     }
   };
 
+  // Toggle Settlement Status (1-click settle)
+  const handleToggleSettle = async (tx) => {
+    try {
+      const res = await api.patch(`/api/suppliers/transactions/${tx._id}/toggle-settle`, {});
+      if (res.data?.success) {
+        showToast('success', res.data.message);
+        fetchTransactions(true);
+        fetchSuppliers();
+        fetchSummary();
+      }
+    } catch (err) {
+      console.error('Error toggling settlement:', err);
+      showToast('error', 'Failed to update settlement status');
+    }
+  };
+
   // Open Supplier Modal
   const handleOpenSupplierModal = (sup = null) => {
     if (sup) {
@@ -482,10 +502,11 @@ const SupplierSection = ({ onNavigateTab }) => {
           <div className="text-2xl font-black text-text-primary tracking-tight">
             ₹{summary.totalExpenses.toLocaleString()}
           </div>
-          <p className="text-[10px] text-text-secondary mt-1 flex items-center gap-1 font-medium">
-            <span>This Month:</span>
-            <span className="font-bold text-text-primary">₹{summary.monthExpenses.toLocaleString()}</span>
-          </p>
+          <div className="text-[10px] text-text-secondary mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-medium">
+            <span className="text-amber-500 font-bold">₹{(summary.pendingExpenses || 0).toLocaleString()} Pending</span>
+            <span className="text-text-muted">•</span>
+            <span className="text-emerald-500 font-bold">₹{(summary.settledExpenses || 0).toLocaleString()} Settled</span>
+          </div>
         </div>
 
         {/* Total Advances */}
@@ -823,15 +844,28 @@ const SupplierSection = ({ onNavigateTab }) => {
 
                       {/* Status Badge */}
                       <td className="px-5 py-4">
-                        {(tx.status || 'pending') === 'settled' ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                            <CheckCircle2 size={9} /> Settled
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-600 border border-amber-500/20">
-                            <Clock size={9} /> Pending
-                          </span>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleSettle(tx)}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border transition-all ${
+                            (tx.status || 'pending') === 'settled'
+                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
+                              : 'bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20'
+                          }`}
+                          title={(tx.status || 'pending') === 'settled' ? 'Click to mark as Pending' : 'Click to mark as Settled'}
+                        >
+                          {(tx.status || 'pending') === 'settled' ? (
+                            <>
+                              <CheckCircle2 size={10} />
+                              <span>Settled</span>
+                            </>
+                          ) : (
+                            <>
+                              <Clock size={10} />
+                              <span>Pending</span>
+                            </>
+                          )}
+                        </button>
                       </td>
 
                       {/* Bill No */}
@@ -972,8 +1006,15 @@ const SupplierSection = ({ onNavigateTab }) => {
                       </td>
 
                       {/* Total Expenses */}
-                      <td className="px-5 py-4 text-right font-bold text-text-primary">
-                        ₹{(sup.totalExpenses || 0).toLocaleString()}
+                      <td className="px-5 py-4 text-right">
+                        <div className="flex flex-col items-end">
+                          <span className="font-bold text-text-primary">
+                            ₹{(sup.totalExpenses || 0).toLocaleString()}
+                          </span>
+                          <span className="text-[9px] font-semibold text-amber-500">
+                            ₹{(sup.pendingExpenses || 0).toLocaleString()} pending
+                          </span>
+                        </div>
                       </td>
 
                       {/* Total Advances */}

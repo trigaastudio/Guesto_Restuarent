@@ -1,6 +1,5 @@
 import React, { Fragment, useState, useEffect, useRef } from 'react';
 import { Plus, Edit2, Trash2, Search, Image as ImageIcon, Filter, CheckCircle2, XCircle, AlertCircle, Loader2, ArrowUpDown, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
-import axios from 'axios';
 import api from '../../../api/axiosInstance';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 import ImageCropper from '../../../components/ImageCropper/ImageCropper';
@@ -178,8 +177,14 @@ const MenuSection = () => {
     setErrors({});
 
     const comboTotalPrice = isComboCategory
-      ? currentMenu.comboItems.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0) * (1 - (currentMenu.offerPercentage || 0) / 100)
+      ? (currentMenu.comboItems || []).reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0) * (1 - (currentMenu.offerPercentage || 0) / 100)
       : 0;
+
+    const finalPrice = isComboCategory
+      ? Math.round(comboTotalPrice)
+      : (currentMenu.price !== '' && currentMenu.price !== undefined && currentMenu.price !== null)
+      ? Number(currentMenu.price)
+      : (currentMenu.variants?.[0]?.price ? Number(currentMenu.variants[0].price) : 0);
 
     const payload = {
       ...currentMenu,

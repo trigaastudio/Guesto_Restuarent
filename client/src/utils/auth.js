@@ -1,6 +1,4 @@
 import api from '../api/axiosInstance';
-import Swal from 'sweetalert2';
-
 
 export const clearAllAuth = () => {
   const AUTH_KEYS = [
@@ -11,8 +9,8 @@ export const clearAllAuth = () => {
   AUTH_KEYS.forEach((key) => localStorage.removeItem(key));
 };
 
-export const logoutToLanding = async (navigate) => {
-  try { await api.post('/api/auth/logout'); } catch (err) { }
+export const logoutToLanding = async () => {
+  try { await api.post('/api/auth/logout'); } catch { }
   localStorage.removeItem('user');
   localStorage.removeItem('token');
   localStorage.removeItem('dineInTableId');
@@ -20,8 +18,8 @@ export const logoutToLanding = async (navigate) => {
   window.location.href = '/';
 };
 
-export const logoutAdmin = async (navigate) => {
-  try { await api.post('/api/auth/logout'); } catch (err) { }
+export const logoutAdmin = async () => {
+  try { await api.post('/api/auth/logout'); } catch { }
   const isStaffUser = !!localStorage.getItem('staff_user') || !!sessionStorage.getItem('staff_token');
   localStorage.removeItem('admin_user');
   sessionStorage.removeItem('admin_token');
@@ -35,8 +33,8 @@ export const logoutAdmin = async (navigate) => {
   window.location.href = isStaffUser ? '/staff/login' : '/admin/login';
 };
 
-export const logoutStaff = async (navigate) => {
-  try { await api.post('/api/auth/logout'); } catch (err) { }
+export const logoutStaff = async () => {
+  try { await api.post('/api/auth/logout'); } catch { }
   localStorage.removeItem('staff_user');
   sessionStorage.removeItem('staff_token');
   window.location.href = '/staff/login';

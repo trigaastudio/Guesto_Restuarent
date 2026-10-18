@@ -3,7 +3,7 @@ import { X, Check, Plus, Minus } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { getEffectiveStock } from '../../utils/stockHelpers';
 
-const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
+const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly, extraStockAvailable = 0 }) => {
   const { checkStoreStatus, cartItems = [] } = useCart();
   const storeStatus = checkStoreStatus ? checkStoreStatus() : { isOpen: true };
   const isClosed = !storeStatus.isOpen;
@@ -13,7 +13,7 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
   useEffect(() => {
     const variants = menu?.variants || menu?.sizes || [];
     if (variants.length > 0) {
-      const effectiveStock = menu?.isCombo ? Infinity : getEffectiveStock(menu);
+      const effectiveStock = menu?.isCombo ? Infinity : (getEffectiveStock(menu) + (extraStockAvailable || 0));
       const inStockVariants = variants.filter(v => Math.max(0, Math.floor(effectiveStock / (v.stockValue || 1))) > 0);
       const targetVariants = inStockVariants.length > 0 ? inStockVariants : variants;
       const lowestVariant = [...targetVariants].sort((a, b) => a.price - b.price)[0];
@@ -22,7 +22,7 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
       setSelectedSize(null);
     }
     setQuantity(1);
-  }, [menu]);
+  }, [menu, extraStockAvailable]);
 
   useEffect(() => {
     if (isOpen) {
@@ -57,8 +57,8 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly }) => {
     ? menu.comboItems?.reduce((sum, item) => sum + (item.price || 0), 0) || 0
     : basePrice;
 
-  const isGlobalOutOfStock = getEffectiveStock(menu) < 1 || menu?.isBlocked || isClosed;
-  const effectiveStock = menu?.isCombo ? Infinity : getEffectiveStock(menu);
+  const effectiveStock = menu?.isCombo ? Infinity : (getEffectiveStock(menu) + (extraStockAvailable || 0));
+  const isGlobalOutOfStock = effectiveStock < 1 || menu?.isBlocked || isClosed;
 
   const currentInCart = cartItems
     .filter(c => (c.menuItemId || c.menuItem?._id || c._id) === menu._id && c.selectedSize === selectedSize)

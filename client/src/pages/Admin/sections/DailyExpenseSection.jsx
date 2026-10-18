@@ -600,6 +600,7 @@ const DailyExpenseSection = ({ onNavigateTab }) => {
                               <th className="px-4 py-3">Category</th>
                               <th className="px-4 py-3">Paid To (Supplier / Employee)</th>
                               <th className="px-4 py-3">Role / Supply Type</th>
+                              <th className="px-4 py-3">Status</th>
                               <th className="px-4 py-3">Payment Mode</th>
                               <th className="px-4 py-3">Bill # / Purpose</th>
                               <th className="px-4 py-3 text-right">Amount</th>
@@ -643,6 +644,19 @@ const DailyExpenseSection = ({ onNavigateTab }) => {
                                 {/* Role / Category */}
                                 <td className="px-4 py-3 text-text-secondary text-[11px]">
                                   {item.subText}
+                                </td>
+
+                                {/* Status */}
+                                <td className="px-4 py-3">
+                                  {item.status === 'settled' ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                      <CheckCircle2 size={9} /> Settled
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                                      <Clock size={9} /> Pending
+                                    </span>
+                                  )}
                                 </td>
 
                                 {/* Payment Mode */}

@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Edit2, Trash2, CheckCircle, XCircle, Search, Loader2, ArrowUpDown, Filter, Image as ImageIcon, RotateCcw, ChevronLeft, ChevronRight, Check } from 'lucide-react';
-import { io } from 'socket.io-client';
 import api from '../../../api/axiosInstance';
-const SOCKET_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'https://guest-o-backend.onrender.com';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
-import Swal from 'sweetalert2';
 import ImageCropper from '../../../components/ImageCropper/ImageCropper';
 import TableSkeleton from '../../../components/Skeleton/TableSkeleton';
 import Pagination from '../../../components/Pagination/Pagination';
@@ -25,7 +22,6 @@ const CategorySection = ({ refreshKey }) => {
 
   const [editingDiscountId, setEditingDiscountId] = useState(null);
   const [discountValue, setDiscountValue] = useState('');
-  const socketRef = useRef();
 
   const [showCropper, setShowCropper] = useState(false);
   const [imageToCrop, setImageToCrop] = useState(null);
