@@ -5,7 +5,9 @@ import { showToast } from '../../utils/sweetAlert';
 import { getEffectiveStock } from '../../utils/stockHelpers';
 
 const OfferModal = ({ isOpen, onClose, offer, menus, onBrowseMenu }) => {
-  const { addToCart } = useCart();
+  const { addToCart, checkStoreStatus } = useCart();
+  const storeStatus = checkStoreStatus ? checkStoreStatus() : { isOpen: true };
+  const isClosed = !storeStatus.isOpen;
   
   // Track selections for Choice Groups
   // Key: item ID (for fixed items) or index (for choice groups)
@@ -34,6 +36,11 @@ const OfferModal = ({ isOpen, onClose, offer, menus, onBrowseMenu }) => {
              menuElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
            }
         }
+        return;
+      }
+
+      if (isClosed) {
+        showToast('error', storeStatus.reason === 'holiday' ? 'Closed for Holidays' : 'The store is currently closed.');
         return;
       }
 
@@ -247,10 +254,19 @@ const OfferModal = ({ isOpen, onClose, offer, menus, onBrowseMenu }) => {
           
           <button
             onClick={handleAddToCart}
-            className="w-full py-4 bg-primary text-white rounded-[2rem] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl shadow-primary/30 hover:scale-[1.02] active:scale-95 transition-all"
+            disabled={offer.offerType !== 'discount' && isClosed}
+            className={`w-full py-4 rounded-[2rem] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
+              offer.offerType !== 'discount' && isClosed
+                ? 'bg-background-muted text-text-muted cursor-not-allowed opacity-60 grayscale'
+                : 'bg-primary text-white shadow-xl shadow-primary/30 hover:scale-[1.02] active:scale-95'
+            }`}
           >
             <ShoppingBag size={20} />
-            {offer.offerType === 'discount' ? 'Browse Menu' : 'Add to Cart'}
+            {offer.offerType === 'discount'
+              ? 'Browse Menu'
+              : isClosed
+                ? (storeStatus.reason === 'holiday' ? 'Closed for Holidays' : 'Store Closed')
+                : 'Add to Cart'}
           </button>
         </div>
       </div>
