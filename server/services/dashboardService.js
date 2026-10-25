@@ -130,19 +130,61 @@ class DashboardService {
         }}
       ]),
 
-      // Today's payment method breakdown
-      Order.aggregate([
-        { $match: { orderStatus: { $ne: 'cancelled' }, createdAt: { $gte: today } } },
-        {
-          $group: {
-            _id: { $ifNull: ['$paymentMethod', 'Not Specified'] },
-            totalRevenue: { $sum: '$totalAmount' },
-            count: { $sum: 1 }
-          }
-        },
-        { $sort: { totalRevenue: -1 } }
-      ])
+      // Today's orders for payment method breakdown (attribute 'split' to cash/upi etc.)
+      Order.find({ orderStatus: { $ne: 'cancelled' }, createdAt: { $gte: today } })
+        .select('paymentMethod paymentHistory totalAmount paidAmount')
+        .lean()
     ]);
+
+    // Aggregate payment breakdown attributes 'split' orders to their actual methods (cash, upi/card, etc.)
+    const paymentBreakdownMap = {};
+    (paymentBreakdownResult || []).forEach(order => {
+      const isSplit = order.paymentMethod === 'split';
+      const history = Array.isArray(order.paymentHistory) && order.paymentHistory.length > 0 ? order.paymentHistory : [];
+
+      if (isSplit && history.length > 0) {
+        let historyTotal = 0;
+        history.forEach(item => {
+          const method = item.method && item.method !== 'split' ? item.method : 'cash';
+          const amt = Number(item.amount) || 0;
+          historyTotal += amt;
+          if (!paymentBreakdownMap[method]) {
+            paymentBreakdownMap[method] = { totalRevenue: 0, count: 0 };
+          }
+          paymentBreakdownMap[method].totalRevenue += amt;
+          paymentBreakdownMap[method].count += 1;
+        });
+
+        // If there's any remaining balance not in history, allocate to cash
+        const remainder = Math.max(0, (Number(order.totalAmount) || 0) - historyTotal);
+        if (remainder > 0) {
+          const fallbackMethod = 'cash';
+          if (!paymentBreakdownMap[fallbackMethod]) {
+            paymentBreakdownMap[fallbackMethod] = { totalRevenue: 0, count: 0 };
+          }
+          paymentBreakdownMap[fallbackMethod].totalRevenue += remainder;
+        }
+      } else {
+        // Normal order or split with no history
+        let method = order.paymentMethod || 'Not Specified';
+        if (method === 'split') method = 'cash'; // Fallback if split has no payment history
+        const amt = Number(order.totalAmount) || 0;
+
+        if (!paymentBreakdownMap[method]) {
+          paymentBreakdownMap[method] = { totalRevenue: 0, count: 0 };
+        }
+        paymentBreakdownMap[method].totalRevenue += amt;
+        paymentBreakdownMap[method].count += 1;
+      }
+    });
+
+    const formattedPaymentBreakdown = Object.entries(paymentBreakdownMap)
+      .map(([_id, data]) => ({
+        _id,
+        totalRevenue: data.totalRevenue,
+        count: data.count
+      }))
+      .sort((a, b) => b.totalRevenue - a.totalRevenue);
 
     const totalRevenue = totalRevenueData[0]?.total || 0;
     const todayRevenue = todayRevenueData[0]?.total || 0;
@@ -184,7 +226,7 @@ class DashboardService {
       revenueTrend,
       monthlyTrend,
       topDishes,
-      paymentBreakdown: paymentBreakdownResult || [],
+      paymentBreakdown: formattedPaymentBreakdown || [],
       stockStats: {
         outOfStock: stockDataResult[0]?.outOfStockCount[0]?.count || 0,
         lowStock: stockDataResult[0]?.lowStockCount[0]?.count || 0,

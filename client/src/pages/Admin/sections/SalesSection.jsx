@@ -516,17 +516,21 @@ const SalesSection = () => {
             </div>
           </div>
 
-          {paymentBreakdown.length === 0 ? (
-            <div className="py-12 text-center text-text-muted italic text-sm">No payment data for this range</div>
-          ) : (
-            <div className="space-y-4">
-              {paymentBreakdown.map((item, idx) => {
-                const config = paymentMethodConfig[item._id] || paymentMethodConfig['Not Specified'];
-                const maxRevenue = paymentBreakdown[0]?.totalRevenue || 1;
-                const barPercent = Math.max((item.totalRevenue / maxRevenue) * 100, 4);
-                const totalPaymentRevenue = paymentBreakdown.reduce((sum, p) => sum + p.totalRevenue, 0);
-                const sharePercent = totalPaymentRevenue > 0 ? ((item.totalRevenue / totalPaymentRevenue) * 100).toFixed(1) : '0.0';
-                const IconComponent = config.icon;
+          {(() => {
+            const validPaymentBreakdown = paymentBreakdown.filter(item => item._id !== 'split');
+            if (validPaymentBreakdown.length === 0) {
+              return <div className="py-12 text-center text-text-muted italic text-sm">No payment data for this range</div>;
+            }
+            const maxRevenue = validPaymentBreakdown[0]?.totalRevenue || 1;
+            const totalPaymentRevenue = validPaymentBreakdown.reduce((sum, p) => sum + p.totalRevenue, 0);
+
+            return (
+              <div className="space-y-4">
+                {validPaymentBreakdown.map((item, idx) => {
+                  const config = paymentMethodConfig[item._id] || paymentMethodConfig['Not Specified'];
+                  const barPercent = Math.max((item.totalRevenue / maxRevenue) * 100, 4);
+                  const sharePercent = totalPaymentRevenue > 0 ? ((item.totalRevenue / totalPaymentRevenue) * 100).toFixed(1) : '0.0';
+                  const IconComponent = config.icon;
 
                 return (
                   <div key={idx} className="group">
@@ -553,7 +557,8 @@ const SalesSection = () => {
                 );
               })}
             </div>
-          )}
+            );
+          })()}
         </div>
 
         {/* Order Type Revenue Share (Donut Chart) */}

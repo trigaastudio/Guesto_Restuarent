@@ -490,7 +490,7 @@ const SupplierSection = ({ onNavigateTab }) => {
       </div>
 
       {/* Summary KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Total Expenses */}
         <div className="bg-background-card p-5 rounded-[1.8rem] border border-border-light shadow-sm relative overflow-hidden group hover:border-primary/40 transition-all">
           <div className="flex items-center justify-between mb-3">
@@ -509,20 +509,37 @@ const SupplierSection = ({ onNavigateTab }) => {
           </div>
         </div>
 
+        {/* Total Settled Expenses */}
+        <div className="bg-background-card p-5 rounded-[1.8rem] border border-border-light shadow-sm relative overflow-hidden group hover:border-emerald-500/40 transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">Total Settled Amount</span>
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold">
+              <CheckCircle2 size={18} />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
+            ₹{(summary.settledExpenses || 0).toLocaleString()}
+          </div>
+          <p className="text-[10px] text-text-secondary mt-1 flex items-center gap-1 font-medium">
+            <span>This Month Settled:</span>
+            <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{(summary.monthSettled || 0).toLocaleString()}</span>
+          </p>
+        </div>
+
         {/* Total Advances */}
         <div className="bg-background-card p-5 rounded-[1.8rem] border border-border-light shadow-sm relative overflow-hidden group hover:border-primary/40 transition-all">
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">Advances Paid</span>
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold">
               <DollarSign size={18} />
             </div>
           </div>
-          <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
+          <div className="text-2xl font-black text-blue-600 dark:text-blue-400 tracking-tight">
             ₹{summary.totalAdvances.toLocaleString()}
           </div>
           <p className="text-[10px] text-text-secondary mt-1 flex items-center gap-1 font-medium">
             <span>This Month:</span>
-            <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{summary.monthAdvances.toLocaleString()}</span>
+            <span className="font-bold text-blue-600 dark:text-blue-400">₹{summary.monthAdvances.toLocaleString()}</span>
           </p>
         </div>
 
@@ -938,6 +955,7 @@ const SupplierSection = ({ onNavigateTab }) => {
                   <th className="px-5 py-4">Category</th>
                   <th className="px-5 py-4">Contact</th>
                   <th className="px-5 py-4 text-right">Total Bills</th>
+                  <th className="px-5 py-4 text-right">Settled Amount</th>
                   <th className="px-5 py-4 text-right">Total Advances</th>
                   <th className="px-5 py-4 text-right">Net Balance</th>
                   <th className="px-5 py-4 text-center">Quick Actions</th>
@@ -947,7 +965,7 @@ const SupplierSection = ({ onNavigateTab }) => {
               <tbody className="divide-y divide-border-light">
                 {filteredSuppliers.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="px-6 py-16 text-center text-text-muted">
+                    <td colSpan="9" className="px-6 py-16 text-center text-text-muted">
                       <div className="flex flex-col items-center justify-center space-y-3">
                         <Building2 size={36} className="text-text-muted/40" />
                         <p className="font-bold text-sm">No suppliers registered yet</p>
@@ -1017,8 +1035,13 @@ const SupplierSection = ({ onNavigateTab }) => {
                         </div>
                       </td>
 
-                      {/* Total Advances */}
+                      {/* Settled Expenses */}
                       <td className="px-5 py-4 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                        ₹{(sup.settledExpenses || 0).toLocaleString()}
+                      </td>
+
+                      {/* Total Advances */}
+                      <td className="px-5 py-4 text-right font-bold text-blue-600 dark:text-blue-400">
                         ₹{(sup.totalAdvances || 0).toLocaleString()}
                       </td>
 

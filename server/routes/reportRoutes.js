@@ -222,17 +222,56 @@ router.get('/payment-breakdown', protect, admin, async (req, res) => {
     if (orderType && orderType !== 'all') matchQuery.orderType = orderType;
     if (orderSource && orderSource !== 'all') matchQuery.orderSource = orderSource;
 
-    const breakdown = await Order.aggregate([
-      { $match: matchQuery },
-      {
-        $group: {
-          _id: { $ifNull: ['$paymentMethod', 'Not Specified'] },
-          totalRevenue: { $sum: '$totalAmount' },
-          count: { $sum: 1 }
+    const orders = await Order.find(matchQuery)
+      .select('paymentMethod paymentHistory totalAmount paidAmount')
+      .lean();
+
+    const paymentBreakdownMap = {};
+    orders.forEach(order => {
+      const isSplit = order.paymentMethod === 'split';
+      const history = Array.isArray(order.paymentHistory) && order.paymentHistory.length > 0 ? order.paymentHistory : [];
+
+      if (isSplit && history.length > 0) {
+        let historyTotal = 0;
+        history.forEach(item => {
+          const method = item.method && item.method !== 'split' ? item.method : 'cash';
+          const amt = Number(item.amount) || 0;
+          historyTotal += amt;
+          if (!paymentBreakdownMap[method]) {
+            paymentBreakdownMap[method] = { totalRevenue: 0, count: 0 };
+          }
+          paymentBreakdownMap[method].totalRevenue += amt;
+          paymentBreakdownMap[method].count += 1;
+        });
+
+        const remainder = Math.max(0, (Number(order.totalAmount) || 0) - historyTotal);
+        if (remainder > 0) {
+          const fallbackMethod = 'cash';
+          if (!paymentBreakdownMap[fallbackMethod]) {
+            paymentBreakdownMap[fallbackMethod] = { totalRevenue: 0, count: 0 };
+          }
+          paymentBreakdownMap[fallbackMethod].totalRevenue += remainder;
         }
-      },
-      { $sort: { totalRevenue: -1 } }
-    ]);
+      } else {
+        let method = order.paymentMethod || 'Not Specified';
+        if (method === 'split') method = 'cash';
+        const amt = Number(order.totalAmount) || 0;
+
+        if (!paymentBreakdownMap[method]) {
+          paymentBreakdownMap[method] = { totalRevenue: 0, count: 0 };
+        }
+        paymentBreakdownMap[method].totalRevenue += amt;
+        paymentBreakdownMap[method].count += 1;
+      }
+    });
+
+    const breakdown = Object.entries(paymentBreakdownMap)
+      .map(([_id, data]) => ({
+        _id,
+        totalRevenue: data.totalRevenue,
+        count: data.count
+      }))
+      .sort((a, b) => b.totalRevenue - a.totalRevenue);
 
     res.json({ success: true, data: breakdown });
   } catch (error) {

@@ -77,15 +77,32 @@ export const getDailyExpenses = async (req, res) => {
 
     // Calculate Today's KPI values
     let todaySupplierExpenses = 0;
+    let todaySupplierExpensesSettled = 0;
+    let todaySupplierExpensesPending = 0;
     let todaySupplierAdvances = 0;
+    let todaySupplierAdvancesSettled = 0;
+
     todaySupplierTx.forEach(tx => {
-      if (tx.type === 'expense') todaySupplierExpenses += (tx.amount || 0);
-      else if (tx.type === 'advance') todaySupplierAdvances += (tx.amount || 0);
+      const amt = tx.amount || 0;
+      if (tx.type === 'expense') {
+        todaySupplierExpenses += amt;
+        if (tx.status === 'settled') todaySupplierExpensesSettled += amt;
+        else todaySupplierExpensesPending += amt;
+      } else if (tx.type === 'advance') {
+        todaySupplierAdvances += amt;
+        if (tx.status === 'settled') todaySupplierAdvancesSettled += amt;
+      }
     });
 
     let todayEmployeeAdvances = 0;
+    let todayEmployeeAdvancesSettled = 0;
+    let todayEmployeeAdvancesPending = 0;
+
     todayWageAdv.forEach(adv => {
-      todayEmployeeAdvances += (adv.amount || 0);
+      const amt = adv.amount || 0;
+      todayEmployeeAdvances += amt;
+      if (adv.status === 'settled') todayEmployeeAdvancesSettled += amt;
+      else todayEmployeeAdvancesPending += amt;
     });
 
     const todayTotalOutflow = todaySupplierExpenses + todaySupplierAdvances + todayEmployeeAdvances;
@@ -102,8 +119,13 @@ export const getDailyExpenses = async (req, res) => {
           isToday: dateKey === todayKey,
           isYesterday: dateKey === yesterdayKey,
           supplierExpenses: 0,
+          supplierExpensesSettled: 0,
+          supplierExpensesPending: 0,
           supplierAdvances: 0,
+          supplierAdvancesSettled: 0,
           employeeAdvances: 0,
+          employeeAdvancesSettled: 0,
+          employeeAdvancesPending: 0,
           totalOutflow: 0,
           transactionCount: 0,
           items: [],
@@ -116,13 +138,17 @@ export const getDailyExpenses = async (req, res) => {
     supplierTransactions.forEach(tx => {
       const dKey = formatDateKey(tx.date);
       const dayData = getOrCreateDay(dKey, tx.date);
+      const amt = tx.amount || 0;
 
       if (tx.type === 'expense') {
-        dayData.supplierExpenses += (tx.amount || 0);
+        dayData.supplierExpenses += amt;
+        if (tx.status === 'settled') dayData.supplierExpensesSettled += amt;
+        else dayData.supplierExpensesPending += amt;
       } else {
-        dayData.supplierAdvances += (tx.amount || 0);
+        dayData.supplierAdvances += amt;
+        if (tx.status === 'settled') dayData.supplierAdvancesSettled += amt;
       }
-      dayData.totalOutflow += (tx.amount || 0);
+      dayData.totalOutflow += amt;
       dayData.transactionCount += 1;
 
       dayData.items.push({
@@ -146,9 +172,13 @@ export const getDailyExpenses = async (req, res) => {
     wageAdvances.forEach(adv => {
       const dKey = formatDateKey(adv.date);
       const dayData = getOrCreateDay(dKey, adv.date);
+      const amt = adv.amount || 0;
 
-      dayData.employeeAdvances += (adv.amount || 0);
-      dayData.totalOutflow += (adv.amount || 0);
+      dayData.employeeAdvances += amt;
+      if (adv.status === 'settled') dayData.employeeAdvancesSettled += amt;
+      else dayData.employeeAdvancesPending += amt;
+
+      dayData.totalOutflow += amt;
       dayData.transactionCount += 1;
 
       dayData.items.push({
@@ -176,8 +206,13 @@ export const getDailyExpenses = async (req, res) => {
     // Sort items inside each day chronologically (most recent first)
     // and calculate Range totals
     let rangeSupplierExpenses = 0;
+    let rangeSupplierExpensesSettled = 0;
+    let rangeSupplierExpensesPending = 0;
     let rangeSupplierAdvances = 0;
+    let rangeSupplierAdvancesSettled = 0;
     let rangeEmployeeAdvances = 0;
+    let rangeEmployeeAdvancesSettled = 0;
+    let rangeEmployeeAdvancesPending = 0;
     let rangeTotalOutflow = 0;
     let rangeTransactionCount = 0;
 
@@ -187,8 +222,13 @@ export const getDailyExpenses = async (req, res) => {
         day.items.sort((a, b) => new Date(b.date) - new Date(a.date));
 
         rangeSupplierExpenses += day.supplierExpenses;
+        rangeSupplierExpensesSettled += day.supplierExpensesSettled;
+        rangeSupplierExpensesPending += day.supplierExpensesPending;
         rangeSupplierAdvances += day.supplierAdvances;
+        rangeSupplierAdvancesSettled += day.supplierAdvancesSettled;
         rangeEmployeeAdvances += day.employeeAdvances;
+        rangeEmployeeAdvancesSettled += day.employeeAdvancesSettled;
+        rangeEmployeeAdvancesPending += day.employeeAdvancesPending;
         rangeTotalOutflow += day.totalOutflow;
         rangeTransactionCount += day.transactionCount;
 
@@ -212,16 +252,26 @@ export const getDailyExpenses = async (req, res) => {
       data: {
         todaySummary: {
           todaySupplierExpenses,
+          todaySupplierExpensesSettled,
+          todaySupplierExpensesPending,
           todaySupplierAdvances,
+          todaySupplierAdvancesSettled,
           todayEmployeeAdvances,
+          todayEmployeeAdvancesSettled,
+          todayEmployeeAdvancesPending,
           todayTotalOutflow,
           todayTotalExpenses: todaySupplierExpenses, // Purchases
           todayTotalAdvances: todaySupplierAdvances + todayEmployeeAdvances, // Total cash given as advances
         },
         rangeSummary: {
           rangeSupplierExpenses,
+          rangeSupplierExpensesSettled,
+          rangeSupplierExpensesPending,
           rangeSupplierAdvances,
+          rangeSupplierAdvancesSettled,
           rangeEmployeeAdvances,
+          rangeEmployeeAdvancesSettled,
+          rangeEmployeeAdvancesPending,
           rangeTotalOutflow,
           rangeTransactionCount,
           daysCount: dailyBreakdown.length,

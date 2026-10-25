@@ -47,12 +47,16 @@ const OrderSection = () => {
         }
       }
 
-      const text = `*ORDER: ${order.orderNumber}*\n` +
+      let text = `*ORDER: ${order.orderNumber}*\n` +
         `--------------------------\n` +
         `👤 *Customer:* ${name}\n` +
-        `📞 *Phone:* ${phone}\n` +
-        `🏠 *Address:* ${address}\n` +
-        `--------------------------\n` +
+        `📞 *Phone:* ${phone}\n`;
+
+      if (address && address !== 'N/A') {
+        text += `🏠 *Address:* ${address}\n`;
+      }
+
+      text += `--------------------------\n` +
         `📦 *Items:*\n${itemsText}\n` +
         `--------------------------\n` +
         `💰 *Total:* ₹${Math.round(order.totalAmount || 0)}\n` +
@@ -2385,7 +2389,7 @@ const OrderSection = () => {
                                   </button>
                                 )}
 
-                                {order.orderType === 'delivery' && (
+                                {(order.orderType === 'delivery' || order.orderType === 'takeaway') && (
                                   <button
                                     type="button"
                                     onClick={(e) => {
@@ -2440,7 +2444,16 @@ const OrderSection = () => {
                 })()}
               </div>
               <div className="flex items-center space-x-3">
-
+                {(selectedOrder.orderType === 'delivery' || selectedOrder.orderType === 'takeaway') && (
+                  <button
+                    type="button"
+                    onClick={() => handleCopyForWhatsApp(selectedOrder)}
+                    className="p-2 hover:bg-primary/10 text-primary rounded-xl transition-all border border-primary/20"
+                    title="Copy for WhatsApp"
+                  >
+                    <Copy size={18} />
+                  </button>
+                )}
                 <button onClick={() => setIsDetailsModalOpen(false)} className="p-2 hover:bg-background-muted rounded-xl text-text-muted transition-colors">
                   <XCircle size={24} />
                 </button>

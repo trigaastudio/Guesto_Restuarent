@@ -43,7 +43,7 @@ const ROLES = [
 ];
 
 const REASON_PRESETS = [
-  'Monthly Wage Advance',
+  'Daily Wage Advance',
   'Medical Expense',
   'Festival / Holiday Advance',
   'Family Emergency',
@@ -65,6 +65,9 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
     monthAdvances: 0,
     monthPending: 0,
     monthSettled: 0,
+    todayAdvances: 0,
+    todayPending: 0,
+    todaySettled: 0,
     totalEmployees: 0,
     activeEmployees: 0
   });
@@ -90,7 +93,7 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
     date: new Date().toISOString().split('T')[0],
     amount: '',
     paymentMethod: 'Cash',
-    reason: 'Monthly Wage Advance',
+    reason: 'Daily Wage Advance',
     status: 'pending'
   });
 
@@ -215,7 +218,7 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
         date: existingAdv.date ? new Date(existingAdv.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         amount: existingAdv.amount || '',
         paymentMethod: existingAdv.paymentMethod || 'Cash',
-        reason: existingAdv.reason || 'Monthly Wage Advance',
+        reason: existingAdv.reason || 'Daily Wage Advance',
         status: existingAdv.status || 'pending'
       });
       setIsEditingAdvance(true);
@@ -226,7 +229,7 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
         date: new Date().toISOString().split('T')[0],
         amount: '',
         paymentMethod: 'Cash',
-        reason: 'Monthly Wage Advance',
+        reason: 'Daily Wage Advance',
         status: 'pending'
       });
       setIsEditingAdvance(false);
@@ -473,13 +476,31 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
       </div>
 
       {/* Summary KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Advances This Month */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* Today's Advances & Settled */}
+        <div className="bg-background-card p-5 rounded-[1.8rem] border border-border-light shadow-sm relative overflow-hidden group hover:border-primary/40 transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[10px] font-black uppercase tracking-widest text-primary">Today Wage Outflow</span>
+            <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+              <HandCoins size={18} />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-text-primary tracking-tight">
+            ₹{(summary.todayAdvances || 0).toLocaleString()}
+          </div>
+          <div className="text-[10px] text-text-secondary mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-medium">
+            <span className="text-emerald-500 font-bold">₹{(summary.todaySettled || 0).toLocaleString()} Settled</span>
+            <span className="text-text-muted">•</span>
+            <span className="text-amber-500 font-bold">₹{(summary.todayPending || 0).toLocaleString()} Pending</span>
+          </div>
+        </div>
+
+        {/* Total Advances This Month / Period */}
         <div className="bg-background-card p-5 rounded-[1.8rem] border border-border-light shadow-sm relative overflow-hidden group hover:border-primary/40 transition-all">
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">This Month Advances</span>
             <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold">
-              <HandCoins size={18} />
+              <DollarSign size={18} />
             </div>
           </div>
           <div className="text-2xl font-black text-text-primary tracking-tight">
@@ -519,7 +540,7 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
             ₹{summary.settledAdvances.toLocaleString()}
           </div>
           <p className="text-[10px] text-text-secondary mt-1">
-            Cleared from salaries
+            Cleared from wages
           </p>
         </div>
 
@@ -882,7 +903,7 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
                   <th className="px-5 py-4">Worker Name</th>
                   <th className="px-5 py-4">Role / Designation</th>
                   <th className="px-5 py-4">Phone</th>
-                  <th className="px-5 py-4 text-right">Monthly Base Wage</th>
+                  <th className="px-5 py-4 text-right">Daily / Base Wage</th>
                   <th className="px-5 py-4 text-right">Total Advance Taken</th>
                   <th className="px-5 py-4 text-right">Pending To Deduct</th>
                   <th className="px-5 py-4 text-right">Settled Amount</th>
@@ -1265,10 +1286,10 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  {/* Monthly Base Wage */}
+                  {/* Daily Base Wage */}
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                      Monthly Wage (₹) (Optional)
+                      Daily / Base Wage (₹) (Optional)
                     </label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted font-bold text-xs">₹</span>
@@ -1277,7 +1298,7 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
                         min="0"
                         value={employeeFormData.monthlyWage}
                         onChange={(e) => setEmployeeFormData({ ...employeeFormData, monthlyWage: e.target.value })}
-                        placeholder="e.g. 15000"
+                        placeholder="e.g. 500"
                         className="w-full pl-8 pr-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-bold outline-none"
                       />
                     </div>

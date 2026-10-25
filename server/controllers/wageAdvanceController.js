@@ -357,7 +357,12 @@ export const getWageAdvanceSummary = async (req, res) => {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    const [allTimeStats, thisMonthStats, totalEmployees, activeEmployees] = await Promise.all([
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(now);
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const [allTimeStats, thisMonthStats, todayStats, totalEmployees, activeEmployees] = await Promise.all([
       WageAdvance.aggregate([
         {
           $group: {
@@ -388,6 +393,21 @@ export const getWageAdvanceSummary = async (req, res) => {
           }
         }
       ]),
+      WageAdvance.aggregate([
+        { $match: { date: { $gte: todayStart, $lte: todayEnd } } },
+        {
+          $group: {
+            _id: null,
+            todayAdvances: { $sum: '$amount' },
+            todayPending: {
+              $sum: { $cond: [{ $eq: ['$status', 'pending'] }, '$amount', 0] }
+            },
+            todaySettled: {
+              $sum: { $cond: [{ $eq: ['$status', 'settled'] }, '$amount', 0] }
+            },
+          }
+        }
+      ]),
       WageEmployee.countDocuments(),
       WageEmployee.countDocuments({ status: 'active' }),
     ]);
@@ -400,6 +420,10 @@ export const getWageAdvanceSummary = async (req, res) => {
     const monthPending = thisMonthStats[0]?.pendingAdvances || 0;
     const monthSettled = thisMonthStats[0]?.settledAdvances || 0;
 
+    const todayAdvances = todayStats[0]?.todayAdvances || 0;
+    const todayPending = todayStats[0]?.todayPending || 0;
+    const todaySettled = todayStats[0]?.todaySettled || 0;
+
     res.status(200).json({
       success: true,
       data: {
@@ -409,6 +433,9 @@ export const getWageAdvanceSummary = async (req, res) => {
         monthAdvances,
         monthPending,
         monthSettled,
+        todayAdvances,
+        todayPending,
+        todaySettled,
         totalEmployees,
         activeEmployees,
       }

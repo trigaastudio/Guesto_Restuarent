@@ -34,16 +34,26 @@ const DailyExpenseSection = ({ onNavigateTab }) => {
   const [dailyData, setDailyData] = useState({
     todaySummary: {
       todaySupplierExpenses: 0,
+      todaySupplierExpensesSettled: 0,
+      todaySupplierExpensesPending: 0,
       todaySupplierAdvances: 0,
+      todaySupplierAdvancesSettled: 0,
       todayEmployeeAdvances: 0,
+      todayEmployeeAdvancesSettled: 0,
+      todayEmployeeAdvancesPending: 0,
       todayTotalOutflow: 0,
       todayTotalExpenses: 0,
       todayTotalAdvances: 0,
     },
     rangeSummary: {
       rangeSupplierExpenses: 0,
+      rangeSupplierExpensesSettled: 0,
+      rangeSupplierExpensesPending: 0,
       rangeSupplierAdvances: 0,
+      rangeSupplierAdvancesSettled: 0,
       rangeEmployeeAdvances: 0,
+      rangeEmployeeAdvancesSettled: 0,
+      rangeEmployeeAdvancesPending: 0,
       rangeTotalOutflow: 0,
       rangeTransactionCount: 0,
       daysCount: 0,
@@ -277,11 +287,13 @@ const DailyExpenseSection = ({ onNavigateTab }) => {
               </div>
             </div>
             <div className="text-2xl font-black text-text-primary tracking-tight">
-              ₹{todaySummary.todaySupplierExpenses.toLocaleString()}
+              ₹{(todaySummary.todaySupplierExpenses || 0).toLocaleString()}
             </div>
-            <p className="text-[10px] text-text-secondary mt-1 font-medium">
-              Purchases & material bills
-            </p>
+            <div className="text-[10px] text-text-secondary mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-medium">
+              <span className="text-emerald-500 font-bold">₹{(todaySummary.todaySupplierExpensesSettled || 0).toLocaleString()} Settled</span>
+              <span className="text-text-muted">•</span>
+              <span className="text-amber-500 font-bold">₹{(todaySummary.todaySupplierExpensesPending || 0).toLocaleString()} Pending</span>
+            </div>
           </div>
 
           {/* Today Supplier Advances */}
@@ -293,11 +305,13 @@ const DailyExpenseSection = ({ onNavigateTab }) => {
               </div>
             </div>
             <div className="text-2xl font-black text-text-primary tracking-tight">
-              ₹{todaySummary.todaySupplierAdvances.toLocaleString()}
+              ₹{(todaySummary.todaySupplierAdvances || 0).toLocaleString()}
             </div>
-            <p className="text-[10px] text-text-secondary mt-1 font-medium">
-              Advance payments to vendors
-            </p>
+            <div className="text-[10px] text-text-secondary mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-medium">
+              <span className="text-emerald-500 font-bold">₹{(todaySummary.todaySupplierAdvancesSettled || 0).toLocaleString()} Settled</span>
+              <span className="text-text-muted">•</span>
+              <span>Paid to vendors</span>
+            </div>
           </div>
 
           {/* Today Employee Wage Advances */}
@@ -309,11 +323,13 @@ const DailyExpenseSection = ({ onNavigateTab }) => {
               </div>
             </div>
             <div className="text-2xl font-black text-text-primary tracking-tight">
-              ₹{todaySummary.todayEmployeeAdvances.toLocaleString()}
+              ₹{(todaySummary.todayEmployeeAdvances || 0).toLocaleString()}
             </div>
-            <p className="text-[10px] text-text-secondary mt-1 font-medium">
-              Advances given to workers
-            </p>
+            <div className="text-[10px] text-text-secondary mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-medium">
+              <span className="text-emerald-500 font-bold">₹{(todaySummary.todayEmployeeAdvancesSettled || 0).toLocaleString()} Settled</span>
+              <span className="text-text-muted">•</span>
+              <span className="text-amber-500 font-bold">₹{(todaySummary.todayEmployeeAdvancesPending || 0).toLocaleString()} Pending</span>
+            </div>
           </div>
         </div>
       </div>
@@ -557,25 +573,40 @@ const DailyExpenseSection = ({ onNavigateTab }) => {
                     {/* Supplier Bills pill */}
                     <div className="flex flex-col items-end px-3 py-1 bg-rose-500/5 rounded-xl border border-rose-500/10 text-right">
                       <span className="text-[9px] font-black uppercase tracking-wider text-rose-500">Supplier Bills</span>
-                      <span className="font-bold text-xs text-text-primary">₹{day.supplierExpenses.toLocaleString()}</span>
+                      <span className="font-bold text-xs text-text-primary">₹{(day.supplierExpenses || 0).toLocaleString()}</span>
+                      {(day.supplierExpensesSettled > 0 || day.supplierExpensesPending > 0) && (
+                        <span className="text-[8px] font-bold text-emerald-500">
+                          ₹{(day.supplierExpensesSettled || 0).toLocaleString()} settled
+                        </span>
+                      )}
                     </div>
 
                     {/* Supplier Advances pill */}
                     <div className="flex flex-col items-end px-3 py-1 bg-blue-500/5 rounded-xl border border-blue-500/10 text-right">
                       <span className="text-[9px] font-black uppercase tracking-wider text-blue-500">Supplier Advances</span>
-                      <span className="font-bold text-xs text-text-primary">₹{day.supplierAdvances.toLocaleString()}</span>
+                      <span className="font-bold text-xs text-text-primary">₹{(day.supplierAdvances || 0).toLocaleString()}</span>
+                      {day.supplierAdvancesSettled > 0 && (
+                        <span className="text-[8px] font-bold text-emerald-500">
+                          ₹{(day.supplierAdvancesSettled || 0).toLocaleString()} settled
+                        </span>
+                      )}
                     </div>
 
                     {/* Employee Wage Advances pill */}
                     <div className="flex flex-col items-end px-3 py-1 bg-emerald-500/5 rounded-xl border border-emerald-500/10 text-right">
                       <span className="text-[9px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Wage Advances</span>
-                      <span className="font-bold text-xs text-text-primary">₹{day.employeeAdvances.toLocaleString()}</span>
+                      <span className="font-bold text-xs text-text-primary">₹{(day.employeeAdvances || 0).toLocaleString()}</span>
+                      {(day.employeeAdvancesSettled > 0 || day.employeeAdvancesPending > 0) && (
+                        <span className="text-[8px] font-bold text-emerald-500">
+                          ₹{(day.employeeAdvancesSettled || 0).toLocaleString()} settled
+                        </span>
+                      )}
                     </div>
 
                     {/* Grand Day Outflow */}
                     <div className="flex flex-col items-end px-4 py-1.5 bg-background-muted rounded-xl border border-border-main text-right">
                       <span className="text-[9px] font-black uppercase tracking-wider text-text-muted">Total Day Outflow</span>
-                      <span className="font-black text-sm text-text-primary">₹{day.totalOutflow.toLocaleString()}</span>
+                      <span className="font-black text-sm text-text-primary">₹{(day.totalOutflow || 0).toLocaleString()}</span>
                     </div>
 
                     {/* Accordion toggle arrow */}

@@ -875,10 +875,11 @@ const AdminDashboard = () => {
                             'split': { label: 'Split', color: 'bg-cyan-500', textColor: 'text-cyan-500', bgLight: 'bg-cyan-500/10' },
                             'Not Specified': { label: 'Not Specified', color: 'bg-gray-400', textColor: 'text-gray-400', bgLight: 'bg-gray-400/10' },
                           };
-                          const maxRevenue = stats.paymentBreakdown[0]?.totalRevenue || 1;
-                          const totalPayRev = stats.paymentBreakdown.reduce((sum, p) => sum + p.totalRevenue, 0);
+                          const validBreakdown = (stats.paymentBreakdown || []).filter(item => item._id !== 'split');
+                          const maxRevenue = validBreakdown[0]?.totalRevenue || 1;
+                          const totalPayRev = validBreakdown.reduce((sum, p) => sum + p.totalRevenue, 0);
 
-                          return stats.paymentBreakdown.map((item, idx) => {
+                          return validBreakdown.map((item, idx) => {
                             const cfg = methodConfig[item._id] || methodConfig['Not Specified'];
                             const barPercent = Math.max((item.totalRevenue / maxRevenue) * 100, 4);
                             const sharePercent = totalPayRev > 0 ? ((item.totalRevenue / totalPayRev) * 100).toFixed(1) : '0.0';
