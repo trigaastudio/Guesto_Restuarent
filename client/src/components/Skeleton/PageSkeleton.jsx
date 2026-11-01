@@ -4,7 +4,7 @@ import CardSkeleton from './CardSkeleton';
 
 const PageSkeleton = () => {
   return (
-    <div className="min-h-screen bg-background font-sans animate-in fade-in duration-500">
+    <div className="min-h-dvh bg-background font-sans animate-in fade-in duration-500">
       {}
       <div className="w-full bg-[#B91C1C] h-64 sm:h-80 md:h-96 relative flex flex-col pt-16 px-6 sm:px-12">
         <Skeleton className="w-1/2 md:w-1/3 h-8 sm:h-12 bg-white/20 rounded-xl mb-4" />

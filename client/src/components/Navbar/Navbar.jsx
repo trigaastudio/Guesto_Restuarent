@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { useCart } from '../../context/CartContext';
 import { ShoppingCart, User as UserIcon, LayoutGrid, UtensilsCrossed, Menu, X, Home, Info, Phone, Utensils, LogOut, Sun, Moon, LayoutDashboard } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
@@ -13,6 +14,17 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [localUser, setLocalUser] = useState(user);
+
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobileMenuOpen]);
 
   const [isAdminSession, setIsAdminSession] = useState(() => !!sessionStorage.getItem('admin_token'));
 
@@ -102,7 +114,7 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
       <div className="max-w-7xl mx-auto px-3 md:px-6">
         <div
           className={`flex items-center justify-between px-3 md:px-6 py-2 rounded-[2rem] transition-all duration-500 ${isScrolled
-              ? 'bg-background-card/80 backdrop-blur-md border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.1)]'
+              ? 'bg-background-card/95 border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.1)]'
               : 'bg-transparent border border-transparent'
             }`}
         >
@@ -300,50 +312,56 @@ const Navbar = React.memo(({ user = null, showUserDropdown, setShowUserDropdown,
       </div>
 
       {/* Mobile Sidebar */}
-      <div className={`fixed inset-0 z-[200] lg:hidden transition-all duration-500 ${isMobileMenuOpen ? 'visible' : 'invisible pointer-events-none'}`}>
-        <div className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-500 ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0'}`} onClick={() => setIsMobileMenuOpen(false)} />
-        <div className={`absolute inset-y-0 left-0 w-[280px] sm:w-80 bg-background shadow-2xl transition-transform duration-500 ease-out flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-          <div className="p-6 md:p-8 bg-[#B91C1C] text-white flex flex-col gap-8 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl"></div>
-            <div className="flex items-center justify-between relative z-10">
-              <img src={settings?.branding?.logoGold || "/logo-golden.png"} alt={settings?.restaurantDetails?.name || "GuestO"} className="h-8" />
-              <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={24} /></button>
+      {typeof document !== 'undefined' && ReactDOM.createPortal(
+        <div 
+          data-modal="true" 
+          className={`fixed inset-0 z-[200] lg:hidden transition-all duration-300 isolate transform-gpu ${isMobileMenuOpen ? 'visible' : 'invisible pointer-events-none'}`}
+        >
+          <div className={`absolute inset-0 bg-black/70 transition-opacity duration-300 ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0'}`} onClick={() => setIsMobileMenuOpen(false)} />
+          <div className={`absolute inset-y-0 left-0 w-[280px] sm:w-80 bg-background shadow-2xl transition-transform duration-300 ease-out flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            <div className="p-6 md:p-8 bg-[#B91C1C] text-white flex flex-col gap-8 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl"></div>
+              <div className="flex items-center justify-between relative z-10">
+                <img src={settings?.branding?.logoGold || "/logo-golden.png"} alt={settings?.restaurantDetails?.name || "GuestO"} className="h-8" />
+                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={24} /></button>
+              </div>
+              <div className="relative z-10">
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60 mb-1">Guesto Experience</p>
+                <p className="text-2xl font-black tracking-tighter">Premium Dining</p>
+              </div>
             </div>
-            <div className="relative z-10">
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60 mb-1">Guesto Experience</p>
-              <p className="text-2xl font-black tracking-tighter">Premium Dining</p>
-            </div>
+            <nav className="flex-1 p-4 md:p-6 space-y-2 bg-background">
+              {navLinks.map((link) => (
+                <button
+                  key={link.name}
+                  onClick={(e) => handleNavClick(e, link.path, link.name)}
+                  className="w-full flex items-center gap-4 px-5 py-5 rounded-2xl hover:bg-background-muted transition-all group"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-background-muted flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+                    <link.icon size={20} />
+                  </div>
+                  <span className="font-black text-sm uppercase tracking-[0.2em] text-text-primary">{link.name}</span>
+                </button>
+              ))}
+              {localUser && (localUser.role === 'admin' || localUser.role === 'kitchen' || localUser.role === 'waiter') && (
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    navigate(localUser.role === 'admin' ? '/admin/dashboard' : '/kitchen/dashboard');
+                  }}
+                  className="w-full flex items-center gap-4 px-5 py-5 rounded-2xl bg-primary/5 text-primary border border-primary/10 transition-all group"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-white transition-all shadow-lg shadow-primary/20">
+                    <LayoutDashboard size={20} />
+                  </div>
+                  <span className="font-black text-sm uppercase tracking-[0.2em]">Dashboard</span>
+                </button>
+              )}
+            </nav>
           </div>
-          <nav className="flex-1 p-4 md:p-6 space-y-2 bg-background">
-            {navLinks.map((link) => (
-              <button
-                key={link.name}
-                onClick={(e) => handleNavClick(e, link.path, link.name)}
-                className="w-full flex items-center gap-4 px-5 py-5 rounded-2xl hover:bg-background-muted transition-all group"
-              >
-                <div className="w-12 h-12 rounded-xl bg-background-muted flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
-                  <link.icon size={20} />
-                </div>
-                <span className="font-black text-sm uppercase tracking-[0.2em] text-text-primary">{link.name}</span>
-              </button>
-            ))}
-            {localUser && (localUser.role === 'admin' || localUser.role === 'kitchen' || localUser.role === 'waiter') && (
-              <button
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  navigate(localUser.role === 'admin' ? '/admin/dashboard' : '/kitchen/dashboard');
-                }}
-                className="w-full flex items-center gap-4 px-5 py-5 rounded-2xl bg-primary/5 text-primary border border-primary/10 transition-all group"
-              >
-                <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-white transition-all shadow-lg shadow-primary/20">
-                  <LayoutDashboard size={20} />
-                </div>
-                <span className="font-black text-sm uppercase tracking-[0.2em]">Dashboard</span>
-              </button>
-            )}
-          </nav>
-        </div>
-      </div>
+        </div>,
+        document.body
+      )}
     </header>
   );
 });

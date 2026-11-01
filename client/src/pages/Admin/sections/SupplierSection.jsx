@@ -30,6 +30,7 @@ import api from '../../../api/axiosInstance';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 import TableSkeleton from '../../../components/Skeleton/TableSkeleton';
 import Pagination from '../../../components/Pagination/Pagination';
+import Modal from '../../../components/Modal/Modal';
 
 const CATEGORIES = [
   'Vegetables & Fruits',
@@ -1128,9 +1129,12 @@ const SupplierSection = ({ onNavigateTab }) => {
       </div>
 
       {/* MODAL 1: Record Transaction (Expense or Advance) */}
-      {isTxModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-background-card w-full max-w-lg rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+      <Modal
+        isOpen={isTxModalOpen}
+        onClose={() => setIsTxModalOpen(false)}
+        zIndex="z-[100]"
+      >
+        <div className="bg-background-card w-full max-w-lg rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="p-6 border-b border-border-light flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -1355,13 +1359,15 @@ const SupplierSection = ({ onNavigateTab }) => {
               </div>
             </form>
           </div>
-        </div>
-      )}
+      </Modal>
 
       {/* MODAL 2: Add / Edit Supplier */}
-      {isSupplierModalOpen && (
-        <div className="fixed inset-0 z-[105] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-background-card w-full max-w-lg rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+      <Modal
+        isOpen={isSupplierModalOpen}
+        onClose={() => setIsSupplierModalOpen(false)}
+        zIndex="z-[105]"
+      >
+        <div className="bg-background-card w-full max-w-lg rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="p-6 border-b border-border-light flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -1506,8 +1512,7 @@ const SupplierSection = ({ onNavigateTab }) => {
               </div>
             </form>
           </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 };

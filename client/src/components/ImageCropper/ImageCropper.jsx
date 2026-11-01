@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import Cropper from 'react-easy-crop';
 import { X, Crop, Check } from 'lucide-react';
 import { getCroppedImgFile } from '../../utils/cropImage';
+import Modal from '../Modal/Modal';
 
 const ImageCropper = ({ image, onCropComplete, onCancel, aspect = 1 }) => {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -31,8 +32,12 @@ const ImageCropper = ({ image, onCropComplete, onCancel, aspect = 1 }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-4 sm:p-8">
-      <div className="relative w-full max-w-4xl h-[60vh] sm:h-[70vh] bg-background-card rounded-[2.5rem] overflow-hidden border border-border-light shadow-2xl animate-in zoom-in-95 duration-300">
+    <Modal
+      isOpen={true}
+      onClose={onCancel}
+      zIndex="z-[200]"
+    >
+      <div className="relative w-full max-w-4xl h-[60dvh] sm:h-[70dvh] bg-background-card rounded-[2.5rem] overflow-hidden border border-border-light shadow-2xl animate-in zoom-in-95 duration-300">
         <div className="absolute inset-0" style={{ backgroundImage: 'repeating-conic-gradient(#333 0% 25%, #222 0% 50%)', backgroundSize: '20px 20px' }}>
           <Cropper
             image={image}
@@ -51,9 +56,9 @@ const ImageCropper = ({ image, onCropComplete, onCancel, aspect = 1 }) => {
         </div>
         
         {}
-        <div className="absolute top-0 inset-x-0 p-6 bg-gradient-to-b from-black/60 to-transparent flex items-center justify-between z-10">
+        <div className="absolute top-0 inset-x-0 p-6 bg-gradient-to-b from-black/80 to-transparent flex items-center justify-between z-10">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-primary/20 backdrop-blur-md rounded-xl">
+            <div className="p-2 bg-primary/40 rounded-xl">
               <Crop size={20} className="text-white" />
             </div>
             <div>
@@ -63,14 +68,14 @@ const ImageCropper = ({ image, onCropComplete, onCancel, aspect = 1 }) => {
           </div>
           <button 
             onClick={onCancel}
-            className="p-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white rounded-full transition-all hover:rotate-90"
+            className="p-2.5 bg-white/20 hover:bg-white/30 text-white rounded-full transition-transform hover:rotate-90 active:scale-95"
           >
             <X size={20} />
           </button>
         </div>
 
         {}
-        <div className="absolute bottom-0 inset-x-0 p-8 bg-gradient-to-t from-black/60 to-transparent flex flex-col items-center space-y-6 z-10">
+        <div className="absolute bottom-0 inset-x-0 p-8 bg-gradient-to-t from-black/80 to-transparent flex flex-col items-center space-y-6 z-10">
           <div className="w-full max-w-sm px-4">
             <input
               type="range"
@@ -91,13 +96,13 @@ const ImageCropper = ({ image, onCropComplete, onCancel, aspect = 1 }) => {
           <div className="flex items-center space-x-4">
             <button
               onClick={onCancel}
-              className="px-8 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all"
+              className="px-8 py-3 bg-white/20 hover:bg-white/30 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-colors active:scale-95"
             >
               Cancel
             </button>
             <button
               onClick={handleCrop}
-              className="px-10 py-3 bg-primary text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center space-x-2"
+              className="px-10 py-3 bg-primary text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-transform flex items-center space-x-2"
             >
               <Check size={18} />
               <span>Apply Crop</span>
@@ -105,7 +110,7 @@ const ImageCropper = ({ image, onCropComplete, onCancel, aspect = 1 }) => {
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };
 

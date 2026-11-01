@@ -50,7 +50,7 @@ const StoreStatusBanner = () => {
 
   return (
     <div className="fixed top-20 right-4 z-[150] pointer-events-none select-none animate-in fade-in slide-in-from-right duration-500">
-      <div className={`${bgClass} backdrop-blur-md border border-white/10 shadow-2xl p-3 rounded-2xl flex items-center gap-3 max-w-[200px]`}>
+      <div className={`${bgClass} border border-white/10 shadow-2xl p-3 rounded-2xl flex items-center gap-3 max-w-[200px]`}>
         <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center">
           {icon}
         </div>

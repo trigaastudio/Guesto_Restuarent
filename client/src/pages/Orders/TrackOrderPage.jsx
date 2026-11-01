@@ -158,7 +158,7 @@ const TrackOrderPage = () => {
 
   if (!order) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
+      <div className="min-h-dvh bg-background flex flex-col items-center justify-center p-6 text-center">
         <div className="w-20 h-20 bg-primary/5 rounded-full flex items-center justify-center text-primary mb-6">
           <Package size={40} />
         </div>
@@ -225,7 +225,7 @@ const TrackOrderPage = () => {
   const mainItem = order.items[0];
 
   return (
-    <div className={`min-h-screen bg-background font-sans selection:bg-primary/10 overflow-x-hidden ${theme}`}>
+    <div className={`min-h-dvh bg-background font-sans selection:bg-primary/10 overflow-x-hidden ${theme}`}>
       <div className="relative w-full overflow-hidden flex flex-col bg-primary">
         <div className="absolute inset-0 z-0 bg-primary"></div>
 

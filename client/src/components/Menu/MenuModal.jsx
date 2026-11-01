@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Check, Plus, Minus } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { getEffectiveStock } from '../../utils/stockHelpers';
+import Modal from '../Modal/Modal';
 
 const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly, extraStockAvailable = 0 }) => {
   const { checkStoreStatus, cartItems = [] } = useCart();
@@ -71,8 +72,11 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly, extraStockAvaila
   const isLowStock = !isOutOfStock && !isClosed && effectiveStock > 0 && effectiveStock < (5 * mult);
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose}></div>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      zIndex="z-[2000]"
+    >
       <div className="bg-background-card w-full max-w-[500px] max-h-[90dvh] flex flex-col rounded-[2rem] shadow-2xl relative z-10 overflow-hidden animate-in fade-in zoom-in duration-300 border border-border/10">
         {}
         <div className="relative h-40 md:h-44 shrink-0 bg-background-muted/50 flex items-center justify-center p-3">
@@ -82,13 +86,13 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly, extraStockAvaila
             className="w-full h-full object-contain drop-shadow-2xl"
           />
           {isLowStock && (
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-red-500/90 backdrop-blur-sm border border-red-400 text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-lg z-10 uppercase tracking-widest whitespace-nowrap">
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-red-600 border border-red-400 text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-lg z-10 uppercase tracking-widest whitespace-nowrap">
               Only {effectiveStock} Left
             </div>
           )}
           <button
             onClick={onClose}
-            className="absolute top-5 right-5 p-2 bg-background-card/80 backdrop-blur-md rounded-full text-text-primary hover:bg-primary hover:text-white transition-all shadow-lg border border-border/10 active:scale-90"
+            className="absolute top-5 right-5 p-2 bg-background-card/95 rounded-full text-text-primary hover:bg-primary hover:text-white transition-colors shadow-lg border border-border/10 active:scale-90"
           >
             <X size={18} />
           </button>
@@ -172,7 +176,7 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly, extraStockAvaila
                     }`}
                   >
                     {isVariantOutOfStock && (
-                      <div className="absolute inset-0 bg-background-muted/60 backdrop-blur-[1px] flex items-center justify-center z-20">
+                      <div className="absolute inset-0 bg-background-muted/80 flex items-center justify-center z-20">
                         <span className="text-[8px] font-black text-text-primary px-2 py-1 bg-background rounded-md border border-border/10 uppercase tracking-wider shadow-md">Out of Stock</span>
                       </div>
                     )}
@@ -284,7 +288,7 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly, extraStockAvaila
 
         </div>
 
-        <div className="p-4 md:p-5 pt-0 flex items-center justify-between border-t border-border/10 bg-background-card/50 backdrop-blur-sm relative z-20 shrink-0">
+        <div className="p-4 md:p-5 pt-0 flex items-center justify-between border-t border-border/10 bg-background-card relative z-20 shrink-0">
           <div className="flex flex-col">
             <span className="text-[8px] font-black tracking-widest text-text-muted opacity-40 mb-1 uppercase">Price</span>
             <div className="flex items-center gap-2">
@@ -313,7 +317,7 @@ const MenuModal = ({ isOpen, onClose, menu, onAction, viewOnly, extraStockAvaila
           )}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };
 

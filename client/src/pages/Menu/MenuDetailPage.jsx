@@ -196,7 +196,7 @@ const MenuDetailPage = () => {
 
   if (!menu) {
     return (
-      <div className={`min-h-screen bg-background ${theme} flex flex-col`}>
+      <div className={`min-h-dvh bg-background ${theme} flex flex-col`}>
         <Navbar user={user} cartItems={cartItems} navigate={navigate} />
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4">
           <AlertCircle size={64} className="text-[#B91C1C] opacity-20" />
@@ -222,7 +222,7 @@ const MenuDetailPage = () => {
   const hasSavings = discountPercent > 0 && !menu.isCombo;
 
   return (
-    <div className={`min-h-screen bg-background font-sans ${theme}`}>
+    <div className={`min-h-dvh bg-background font-sans ${theme}`}>
       <header className="relative bg-[#B91C1C] sticky top-0 z-50 shadow-xl overflow-hidden">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3 blur-[120px] pointer-events-none"></div>
         <Navbar

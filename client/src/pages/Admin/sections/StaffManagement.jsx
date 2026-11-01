@@ -4,6 +4,7 @@ import api from '../../../api/axiosInstance';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 import TableSkeleton from '../../../components/Skeleton/TableSkeleton';
 import Pagination from '../../../components/Pagination/Pagination';
+import Modal from '../../../components/Modal/Modal';
 
 
 
@@ -12,25 +13,59 @@ const StaffRow = React.memo(({ staff, handleToggleStatus, handleOpenModal, handl
     <tr className="hover:bg-background-muted/30 transition-colors group">
       <td className="px-3 py-4">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-            {staff.name.charAt(0)}
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shadow-sm shrink-0"
+            style={{
+              backgroundColor: staff.role === 'delivery' && staff.color ? staff.color : undefined
+            }}
+          >
+            {staff.role === 'delivery' && staff.color ? (
+              staff.name.charAt(0)
+            ) : (
+              <div className="w-full h-full rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                {staff.name.charAt(0)}
+              </div>
+            )}
           </div>
           <div className="flex flex-col">
-            <span className="font-bold text-text-primary">{staff.name}</span>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-text-primary">{staff.name}</span>
+              {staff.role === 'delivery' && staff.color && (
+                <span
+                  className="w-3 h-3 rounded-full border border-white/60 shadow-xs shrink-0"
+                  style={{ backgroundColor: staff.color }}
+                  title={`Delivery Color: ${staff.color}`}
+                />
+              )}
+            </div>
             <span className="text-[10px] text-text-muted uppercase">{staff.email || 'No Email'}</span>
           </div>
         </div>
       </td>
       <td className="px-3 py-4">
-        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
-            staff.role === 'kitchen' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-            staff.role === 'waiter' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-            staff.role === 'delivery' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
-            staff.role === 'order-manager' ? 'bg-primary/10 text-primary border-primary/20' :
-              'bg-purple-500/10 text-purple-500 border-purple-500/20'
-          }`}>
-          {staff.role === 'order-manager' ? 'Order Manager' : staff.role}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
+              staff.role === 'kitchen' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+              staff.role === 'waiter' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+              staff.role === 'delivery' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
+              staff.role === 'order-manager' ? 'bg-primary/10 text-primary border-primary/20' :
+                'bg-purple-500/10 text-purple-500 border-purple-500/20'
+            }`}>
+            {staff.role === 'order-manager' ? 'Order Manager' : staff.role}
+          </span>
+          {staff.role === 'delivery' && staff.color && (
+            <span
+              className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border"
+              style={{
+                backgroundColor: staff.color + '1A',
+                borderColor: staff.color + '55',
+                color: staff.color
+              }}
+            >
+              {staff.color}
+            </span>
+          )}
+        </div>
       </td>
       <td className="px-3 py-4 font-mono font-bold text-text-primary">{staff.employeeId}</td>
       <td className="px-3 py-4 text-text-secondary text-xs">
@@ -81,6 +116,7 @@ const StaffManagement = () => {
     phoneNumber: '',
     employeeId: '',
     role: 'waiter',
+    color: '#3B82F6',
     password: '',
     isActive: true
   });
@@ -113,6 +149,7 @@ const StaffManagement = () => {
     if (staff) {
       setCurrentStaff({
         ...staff,
+        color: staff.color || (staff.role === 'delivery' ? '#3B82F6' : ''),
         password: '' // Don't show hashed password
       });
       setIsEditing(true);
@@ -123,6 +160,7 @@ const StaffManagement = () => {
         phoneNumber: '',
         employeeId: '',
         role: 'waiter',
+        color: '#3B82F6',
         password: '',
         isActive: true
       });
@@ -347,10 +385,13 @@ const StaffManagement = () => {
         />
       </div>
 
-      {}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-hidden">
-          <div className="bg-background-card w-full max-w-lg rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+      {/* Staff Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        zIndex="z-[100]"
+      >
+        <div className="bg-background-card w-full max-w-lg rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
             <div className="p-6 border-b border-border-light flex items-center justify-between">
               <h3 className="text-xl font-black text-text-primary">{isEditing ? 'Edit Staff Member' : 'Add New Staff'}</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-text-muted hover:text-text-primary transition-all">
@@ -474,6 +515,68 @@ const StaffManagement = () => {
                     />
                   </div>
                 </div>
+
+                {currentStaff.role === 'delivery' && (
+                  <div className="col-span-2 space-y-2.5 p-4 bg-background-muted/40 rounded-2xl border border-border-light">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] text-text-muted font-bold uppercase tracking-widest">
+                        Delivery Boy Tag Color
+                      </label>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-[10px] text-text-muted font-bold">Preview:</span>
+                        <div
+                          className="px-2.5 py-0.5 rounded-full text-xs font-bold border flex items-center gap-1.5 shadow-xs"
+                          style={{
+                            backgroundColor: (currentStaff.color || '#3B82F6') + '20',
+                            borderColor: (currentStaff.color || '#3B82F6') + '60',
+                            color: currentStaff.color || '#3B82F6'
+                          }}
+                        >
+                          <span
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: currentStaff.color || '#3B82F6' }}
+                          />
+                          <span>{currentStaff.name || 'Delivery Boy'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      {[
+                        '#EF4444', '#F97316', '#F59E0B', '#10B981', '#06B6D4',
+                        '#3B82F6', '#6366F1', '#8B5CF6', '#EC4899', '#14B8A6'
+                      ].map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setCurrentStaff(prev => ({ ...prev, color: c }))}
+                          className={`w-7 h-7 rounded-full transition-transform active:scale-95 border-2 ${
+                            (currentStaff.color || '').toLowerCase() === c.toLowerCase()
+                              ? 'scale-110 ring-2 ring-primary border-white'
+                              : 'border-transparent hover:scale-105'
+                          }`}
+                          style={{ backgroundColor: c }}
+                          title={c}
+                        />
+                      ))}
+                      <label
+                        className="relative flex items-center justify-center w-7 h-7 rounded-full border-2 border-border-main hover:border-primary cursor-pointer overflow-hidden transition-all bg-background-card"
+                        title="Custom Color"
+                      >
+                        <input
+                          type="color"
+                          value={currentStaff.color || '#3B82F6'}
+                          onChange={(e) => setCurrentStaff(prev => ({ ...prev, color: e.target.value }))}
+                          className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                        />
+                        <span className="text-xs font-bold text-text-muted">+</span>
+                      </label>
+                      <span className="text-xs font-mono font-bold text-text-secondary ml-2">
+                        {currentStaff.color || '#3B82F6'}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
             </div>
@@ -493,8 +596,7 @@ const StaffManagement = () => {
               </button>
             </div>
           </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 };

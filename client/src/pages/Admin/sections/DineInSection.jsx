@@ -10,6 +10,7 @@ import Pagination from '../../../components/Pagination/Pagination';
 import CardSkeleton from '../../../components/Skeleton/CardSkeleton';
 import DineInPOSModal from '../../../components/POS/DineInPOSModal';
 import { useCart } from '../../../context/CartContext';
+import Modal from '../../../components/Modal/Modal';
 
 const DineInSection = () => {
   const [tables, setTables] = useState([]);
@@ -740,7 +741,7 @@ const DineInSection = () => {
                     </div>
                   </div>
 
-                  <div className="lg:col-span-8 bg-background-card border border-border-light rounded-[2.5rem] shadow-sm p-6 lg:p-8 flex flex-col min-h-[55vh]">
+                  <div className="lg:col-span-8 bg-background-card border border-border-light rounded-[2.5rem] shadow-sm p-6 lg:p-8 flex flex-col min-h-[55dvh]">
                     {isOccupied ? (
                       <div className="space-y-6 flex-1 flex flex-col">
                         <div className="flex items-center justify-between text-[11px] font-black text-text-muted uppercase tracking-[0.2em] opacity-90 border-b border-border-light pb-4">
@@ -1034,12 +1035,15 @@ const DineInSection = () => {
       />
 
       {isDetailsModalOpen && selectedOrderForView && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => {
+        <Modal
+          isOpen={true}
+          onClose={() => {
             setIsDetailsModalOpen(false);
             setSelectedOrderForView(null);
-          }}></div>
-          <div className="bg-background-card w-full max-w-lg max-h-[80vh] rounded-[2.5rem] shadow-2xl relative z-10 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 border border-border-light">
+          }}
+          zIndex="z-[100]"
+        >
+        <div className="bg-background-card w-full max-w-lg max-h-[80dvh] rounded-[2.5rem] shadow-2xl relative z-10 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 border border-border-light">
             <div className="p-6 border-b border-border-light flex justify-between items-center bg-background-card">
               <div>
                 <h3 className="text-xl font-black text-text-primary tracking-tight">Order Details</h3>
@@ -1192,7 +1196,7 @@ const DineInSection = () => {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
     </div>

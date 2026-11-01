@@ -38,7 +38,7 @@ const SideNavbar = ({
               </div>
             </div>
             
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex flex-col items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-all duration-500">
+            <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-all duration-300">
               <Camera className="text-white mb-1" size={20} />
               <span className="text-[10px] font-black text-white uppercase tracking-widest">Update</span>
             </div>

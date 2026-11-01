@@ -78,7 +78,7 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative transition-colors duration-300">
+    <div className="min-h-dvh bg-background flex flex-col items-center justify-center p-4 relative transition-colors duration-300">
       {}
       <div className="mb-12 text-center flex flex-col items-center animate-in fade-in slide-in-from-top-4 duration-700">
         <img

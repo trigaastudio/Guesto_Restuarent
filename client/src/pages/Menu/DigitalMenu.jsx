@@ -9,6 +9,7 @@ import Navbar from '../../components/Navbar/Navbar';
 import CategorySection from '../../components/Category/CategorySection';
 import MenuSection from '../../components/Menu/MenuSection';
 import MenuModal from '../../components/Menu/MenuModal';
+import Modal from '../../components/Modal/Modal';
 import PageSkeleton from '../../components/Skeleton/PageSkeleton';
 import { useCart } from '../../context/CartContext';
 import StoreStatusBanner from '../../components/StoreStatus/StoreStatusBanner';
@@ -243,7 +244,7 @@ const DigitalMenu = () => {
   const logoSrc = restaurantSettings?.branding?.logoGold || '/logo-golden.png';
 
   return (
-    <div className={`min-h-screen bg-background font-sans overflow-x-hidden ${theme}`}>
+    <div className={`min-h-dvh bg-background font-sans overflow-x-hidden ${theme}`}>
       {/* ── Header: same red hero style as LandingPage ── */}
       <div className="relative w-full overflow-hidden flex flex-col bg-[#B91C1C]">
         <div className="absolute inset-0 z-0 bg-[#B91C1C]"></div>
@@ -400,7 +401,7 @@ const DigitalMenu = () => {
                             />
                             
                             {isItemUnavailable && (
-                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px] z-20">
+                              <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-20">
                                 <span className="bg-white text-black text-[9px] font-black px-3 py-1.5 rounded-lg uppercase tracking-widest shadow-xl border border-black/10">
                                   Closed
                                 </span>
@@ -525,7 +526,7 @@ const DigitalMenu = () => {
 
       {/* ── Bottom Floating Navbar — Landing Page Style ── */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] w-[92%] max-w-[400px] md:hidden">
-        <nav className="bg-background-card/95 backdrop-blur-2xl border border-border/20 rounded-[2.5rem] px-4 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.15)] flex items-center justify-around gap-2 transition-all">
+        <nav className="bg-background-card/95 border border-border/20 rounded-[2.5rem] px-4 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.15)] flex items-center justify-around gap-2 transition-all">
 
           {/* Offers */}
           <button
@@ -569,26 +570,27 @@ const DigitalMenu = () => {
         </nav>
       </div>
 
-      {isOffersModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setIsOffersModalOpen(false)}></div>
-          <div className="bg-background-card w-full max-w-[500px] rounded-[2rem] shadow-2xl relative z-10 overflow-hidden animate-in fade-in zoom-in duration-300 border border-border/10 p-6 pt-12">
-            <button
-              onClick={() => setIsOffersModalOpen(false)}
-              className="absolute top-4 right-4 p-2 bg-background-muted/80 backdrop-blur-md rounded-full text-text-primary hover:bg-primary hover:text-white transition-all shadow-lg border border-border/10 active:scale-90 z-20"
-            >
-              <X size={18} />
-            </button>
-            <h2 className="text-2xl font-black text-text-primary mb-4 tracking-tighter">Current Offers</h2>
-            <div className="max-h-[60vh] overflow-y-auto no-scrollbar">
-              <OffersCarousel onOfferClick={(offer) => {
-                 setSelectedOfferForModal(offer);
-                 setIsOffersModalOpen(false);
-              }} />
-            </div>
+      <Modal
+        isOpen={isOffersModalOpen}
+        onClose={() => setIsOffersModalOpen(false)}
+        zIndex="z-[100]"
+      >
+        <div className="bg-background-card w-full max-w-[500px] rounded-[2rem] shadow-2xl relative z-10 overflow-hidden animate-in fade-in zoom-in duration-300 border border-border/10 p-6 pt-12">
+          <button
+            onClick={() => setIsOffersModalOpen(false)}
+            className="absolute top-4 right-4 p-2 bg-background-muted rounded-full text-text-primary hover:bg-primary hover:text-white transition-all shadow-lg border border-border/10 active:scale-90 z-20"
+          >
+            <X size={18} />
+          </button>
+          <h2 className="text-2xl font-black text-text-primary mb-4 tracking-tighter">Current Offers</h2>
+          <div className="max-h-[60dvh] overflow-y-auto no-scrollbar">
+            <OffersCarousel onOfferClick={(offer) => {
+               setSelectedOfferForModal(offer);
+               setIsOffersModalOpen(false);
+            }} />
           </div>
         </div>
-      )}
+      </Modal>
 
       <Footer />
 

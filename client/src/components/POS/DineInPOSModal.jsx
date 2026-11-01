@@ -5,6 +5,7 @@ import { getEffectiveStock } from '../../utils/stockHelpers';
 import api from '../../api/axiosInstance';
 import { showToast } from '../../utils/sweetAlert';
 import MenuModal from '../Menu/MenuModal';
+import Modal from '../Modal/Modal';
 
 const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, orderSource = 'admin', occupiedSeats, handlePrintKOT }) => {
   const [menuItems, setMenuItems] = useState([]);
@@ -480,9 +481,13 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
   const cartItemCount = cart.length;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose}></div>
-      <div className="bg-background-card w-[98vw] max-w-[1600px] h-[92vh] sm:h-[85vh] rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl relative z-10 flex flex-col lg:flex-row overflow-hidden animate-in zoom-in-95 duration-200">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      zIndex="z-[100]"
+      containerClassName="flex items-center justify-center p-2 sm:p-4"
+    >
+      <div className="bg-background-card w-[98vw] max-w-[1600px] h-[92dvh] sm:h-[85dvh] rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl relative z-10 flex flex-col lg:flex-row overflow-hidden animate-in zoom-in-95 duration-200">
 
         {/* Mobile Tab Switcher */}
         <div className="lg:hidden flex items-center border-b border-border-light bg-background-card shrink-0">
@@ -662,7 +667,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
                       )}
                     </div>
                     {isFullyOutOfStock && (
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px]">
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
                         <span className="bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest shadow-lg">Out of Stock</span>
                       </div>
                     )}
@@ -840,13 +845,13 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
           </div>
         </div>
 
-        { }
+        {/* Confirmation Modal */}
         {showConfirmModal && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px] animate-in fade-in duration-200">
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 animate-in fade-in duration-200">
             <div className="bg-background-card w-full max-w-md md:max-w-lg lg:max-w-xl p-5 sm:p-6 md:p-8 rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl animate-in zoom-in-95 duration-200 m-3 sm:m-4">
               <h3 className="text-xl md:text-2xl font-black text-text-primary mb-5 md:mb-6 uppercase tracking-tight text-center">Confirm Order</h3>
 
-              <div className="space-y-3 min-h-[35vh] max-h-[50vh] overflow-y-auto mb-6 pr-2 no-scrollbar bg-background-muted/20 p-4 rounded-2xl">
+              <div className="space-y-3 min-h-[35dvh] max-h-[50dvh] overflow-y-auto mb-6 pr-2 no-scrollbar bg-background-muted/20 p-4 rounded-2xl">
                 {cart.map((item, idx) => (
                   <div key={idx} className="flex justify-between items-center bg-background p-4 rounded-xl shadow-sm">
                     <div className="min-w-0 flex-1 pr-3">
@@ -915,7 +920,7 @@ const DineInPOSModal = ({ isOpen, onClose, table, fetchTables, editingOrder, ord
         viewOnly={false}
         extraStockAvailable={getEditingOrderStock(selectedItemForModal)}
       />
-    </div>
+    </Modal>
   );
 };
 

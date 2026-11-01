@@ -15,6 +15,7 @@ import TableSkeleton from '../../../components/Skeleton/TableSkeleton';
 import Loader from '../../../components/Loader/Loader';
 import Pagination from '../../../components/Pagination/Pagination';
 import api from '../../../api/axiosInstance';
+import Modal from '../../../components/Modal/Modal';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://guest-o-backend.onrender.com/api';
 
@@ -123,6 +124,7 @@ const OrderSection = () => {
   const [posViewMode, setPosViewMode] = useState('category');
   const [availableOffers, setAvailableOffers] = useState([]);
   const [orderStatusFilter, setOrderStatusFilter] = useState(localStorage.getItem('orderStatusFilter') || 'all');
+  const [deliveryBoyFilter, setDeliveryBoyFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
   const [activeTab, setActiveTab] = useState(localStorage.getItem('orderActiveTab') === 'all' ? 'takeaway' : (localStorage.getItem('orderActiveTab') || 'takeaway'));
@@ -154,6 +156,11 @@ const OrderSection = () => {
     localStorage.setItem('orderActiveTab', tab);
     setSelectedOrderIds([]);
     setCurrentPage(1);
+    if (tab === 'delivery') {
+      fetchDeliveryStaff();
+    } else {
+      setDeliveryBoyFilter('all');
+    }
   };
   const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
 
@@ -486,6 +493,7 @@ const OrderSection = () => {
         if (historyTemporaryFilter) params.temporary = true;
         if (historyOrderTypeFilter !== 'all') params.type = historyOrderTypeFilter;
         if (orderStatusFilter !== 'all') params.status = orderStatusFilter;
+        if (deliveryBoyFilter !== 'all') params.deliveryBoy = deliveryBoyFilter;
         if (paymentFilter !== 'all') params.paymentStatus = paymentFilter;
         if (paymentMethodFilter !== 'all') params.paymentMethod = paymentMethodFilter;
         if (searchVal.trim()) params.search = searchVal.trim();
@@ -542,9 +550,9 @@ const OrderSection = () => {
       fetchOrders(true, activeTab, startDate, endDate, historyPage, debouncedSearchTerm);
       if (activeTab === 'history') fetchActiveOrderCounts();
     }
-  }, [activeTab, startDate, endDate, activeDateFilter, historyPage, historyOrderTypeFilter, historyTemporaryFilter, orderStatusFilter, paymentFilter, paymentMethodFilter, debouncedSearchTerm]);
+  }, [activeTab, startDate, endDate, activeDateFilter, historyPage, historyOrderTypeFilter, historyTemporaryFilter, orderStatusFilter, deliveryBoyFilter, paymentFilter, paymentMethodFilter, debouncedSearchTerm]);
 
-  const prevFilterState = useRef({ historyOrderTypeFilter, historyTemporaryFilter, orderStatusFilter, paymentFilter, paymentMethodFilter, startDate, endDate, debouncedSearchTerm });
+  const prevFilterState = useRef({ historyOrderTypeFilter, historyTemporaryFilter, orderStatusFilter, deliveryBoyFilter, paymentFilter, paymentMethodFilter, startDate, endDate, debouncedSearchTerm });
 
   useEffect(() => {
     const prev = prevFilterState.current;
@@ -552,18 +560,19 @@ const OrderSection = () => {
       prev.historyOrderTypeFilter !== historyOrderTypeFilter ||
       prev.historyTemporaryFilter !== historyTemporaryFilter ||
       prev.orderStatusFilter !== orderStatusFilter ||
+      prev.deliveryBoyFilter !== deliveryBoyFilter ||
       prev.paymentFilter !== paymentFilter ||
       prev.paymentMethodFilter !== paymentMethodFilter ||
       prev.startDate !== startDate ||
       prev.endDate !== endDate ||
       prev.debouncedSearchTerm !== debouncedSearchTerm
     );
-    prevFilterState.current = { historyOrderTypeFilter, historyTemporaryFilter, orderStatusFilter, paymentFilter, paymentMethodFilter, startDate, endDate, debouncedSearchTerm };
+    prevFilterState.current = { historyOrderTypeFilter, historyTemporaryFilter, orderStatusFilter, deliveryBoyFilter, paymentFilter, paymentMethodFilter, startDate, endDate, debouncedSearchTerm };
 
     if (filterChanged && activeTab === 'history' && historyPage !== 1) {
       setHistoryPage(1);
     }
-  }, [activeTab, historyPage, historyOrderTypeFilter, historyTemporaryFilter, orderStatusFilter, paymentFilter, paymentMethodFilter, startDate, endDate, debouncedSearchTerm]);
+  }, [activeTab, historyPage, historyOrderTypeFilter, historyTemporaryFilter, orderStatusFilter, deliveryBoyFilter, paymentFilter, paymentMethodFilter, startDate, endDate, debouncedSearchTerm]);
 
   const handleClearHistory = async (ids = null) => {
     const isManualSelection = Array.isArray(ids);
@@ -1774,6 +1783,7 @@ const OrderSection = () => {
       payment = paymentFilter,
       method = paymentMethodFilter,
       histType = historyOrderTypeFilter,
+      deliveryBoy = deliveryBoyFilter,
       sDate = startDate,
       eDate = endDate,
       actDate = activeDateFilter
@@ -1792,6 +1802,19 @@ const OrderSection = () => {
       const matchesStatus = status === 'all' || orderStatus === status;
       const matchesPayment = payment === 'all' || o.paymentStatus === payment;
       const matchesPaymentMethod = method === 'all' || o.paymentMethod === method;
+
+      // Delivery boy filter
+      let matchesDeliveryBoy = true;
+      if (deliveryBoy !== 'all') {
+        if (deliveryBoy === 'unassigned') {
+          matchesDeliveryBoy = !o.assignedDeliveryBoy;
+        } else {
+          const assignedId = o.assignedDeliveryBoy?._id
+            ? o.assignedDeliveryBoy._id.toString()
+            : (o.assignedDeliveryBoy ? o.assignedDeliveryBoy.toString() : '');
+          matchesDeliveryBoy = assignedId === deliveryBoy;
+        }
+      }
 
       const isHistoryOrder = o.orderStatus === 'cancelled' || ((o.orderStatus === 'completed' || o.orderStatus === 'delivered') && o.paymentStatus === 'paid');
 
@@ -1843,7 +1866,7 @@ const OrderSection = () => {
           }
         }
       }
-      return matchesSearch && matchesStatus && matchesPayment && matchesPaymentMethod && matchesType;
+      return matchesSearch && matchesStatus && matchesPayment && matchesPaymentMethod && matchesDeliveryBoy && matchesType;
     });
   };
 
@@ -1854,7 +1877,7 @@ const OrderSection = () => {
       ? getSortedData(orders)  // server already filtered; just sort for column clicks
       : getSortedData(applyFilters(orders, activeTab)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [orders, activeTab, debouncedSearchTerm, orderStatusFilter, paymentFilter, paymentMethodFilter, historyOrderTypeFilter, startDate, endDate, sortConfig, activeDateFilter]
+    [orders, activeTab, debouncedSearchTerm, orderStatusFilter, deliveryBoyFilter, paymentFilter, paymentMethodFilter, historyOrderTypeFilter, startDate, endDate, sortConfig, activeDateFilter]
   );
 
   const totalPages = activeTab === 'history'
@@ -1980,6 +2003,35 @@ const OrderSection = () => {
                       <option value="upi/card">UPI / Card</option>
                       <option value="online">Online</option>
                     </select>
+                    {historyOrderTypeFilter === 'delivery' && (
+                      <div className="flex items-center space-x-1.5">
+                        {(() => {
+                          const selectedStaff = deliveryStaff.find(s => s._id === deliveryBoyFilter);
+                          return selectedStaff && selectedStaff.color ? (
+                            <span 
+                              className="w-3 h-3 rounded-full shrink-0 border border-white/40 shadow-xs" 
+                              style={{ backgroundColor: selectedStaff.color }}
+                              title={`Delivery: ${selectedStaff.name}`}
+                            />
+                          ) : null;
+                        })()}
+                        <select
+                          value={deliveryBoyFilter}
+                          onChange={(e) => setDeliveryBoyFilter(e.target.value)}
+                          className={`bg-background-card text-text-primary border rounded-lg px-3 py-1.5 text-xs outline-none font-medium transition-all ${
+                            deliveryBoyFilter !== 'all' ? 'border-primary ring-1 ring-primary/20 font-bold' : 'border-border-main'
+                          }`}
+                        >
+                          <option value="all">All Delivery Boys</option>
+                          <option value="unassigned">Unassigned Orders</option>
+                          {deliveryStaff.map(staff => (
+                            <option key={staff._id} value={staff._id}>
+                              {staff.name} {staff.phoneNumber ? `(${staff.phoneNumber})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                     <div className="flex items-center space-x-2">
                       <input
                         type="date"
@@ -2025,6 +2077,7 @@ const OrderSection = () => {
                       <option value="cancelled">Cancelled</option>
                       <option value="placed">Placed</option>
                       <option value="processing">Processing</option>
+                      <option value="ready">Ready</option>
                       {(activeTab === 'delivery' || activeTab === 'all') && (
                         <>
                           <option value="out-for-delivery">Out for Delivery</option>
@@ -2052,6 +2105,36 @@ const OrderSection = () => {
                       <option value="upi/card">UPI / Card</option>
                       <option value="online">Online</option>
                     </select>
+
+                    {(activeTab === 'delivery' || activeTab === 'all') && (
+                      <div className="flex items-center space-x-1.5">
+                        {(() => {
+                          const selectedStaff = deliveryStaff.find(s => s._id === deliveryBoyFilter);
+                          return selectedStaff && selectedStaff.color ? (
+                            <span 
+                              className="w-3 h-3 rounded-full shrink-0 border border-white/40 shadow-xs" 
+                              style={{ backgroundColor: selectedStaff.color }}
+                              title={`Delivery: ${selectedStaff.name}`}
+                            />
+                          ) : null;
+                        })()}
+                        <select
+                          value={deliveryBoyFilter}
+                          onChange={(e) => setDeliveryBoyFilter(e.target.value)}
+                          className={`bg-background-card text-text-primary border rounded-lg px-3 py-1.5 text-xs outline-none font-medium transition-all ${
+                            deliveryBoyFilter !== 'all' ? 'border-primary ring-1 ring-primary/20 font-bold' : 'border-border-main'
+                          }`}
+                        >
+                          <option value="all">All Delivery Boys</option>
+                          <option value="unassigned">Unassigned Orders</option>
+                          {deliveryStaff.map(staff => (
+                            <option key={staff._id} value={staff._id}>
+                              {staff.name} {staff.phoneNumber ? `(${staff.phoneNumber})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </>
                 )}
 
@@ -2061,6 +2144,7 @@ const OrderSection = () => {
                     localStorage.removeItem('orderSearchTerm');
                     setOrderStatusFilter('all');
                     localStorage.removeItem('orderStatusFilter');
+                    setDeliveryBoyFilter('all');
                     setPaymentFilter('all');
                     setPaymentMethodFilter('all');
                     setHistoryOrderTypeFilter('all');
@@ -2070,8 +2154,8 @@ const OrderSection = () => {
                     setStartDate('');
                     setEndDate('');
                   }}
-                  disabled={!searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all' && paymentMethodFilter === 'all' && historyOrderTypeFilter === 'all' && !historyTemporaryFilter && activeDateFilter === 'all' && !startDate && !endDate}
-                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${!searchTerm && orderStatusFilter === 'all' && paymentFilter === 'all' && paymentMethodFilter === 'all' && historyOrderTypeFilter === 'all' && !historyTemporaryFilter && activeDateFilter === 'all' && !startDate && !endDate
+                  disabled={!searchTerm && orderStatusFilter === 'all' && deliveryBoyFilter === 'all' && paymentFilter === 'all' && paymentMethodFilter === 'all' && historyOrderTypeFilter === 'all' && !historyTemporaryFilter && activeDateFilter === 'all' && !startDate && !endDate}
+                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all ${!searchTerm && orderStatusFilter === 'all' && deliveryBoyFilter === 'all' && paymentFilter === 'all' && paymentMethodFilter === 'all' && historyOrderTypeFilter === 'all' && !historyTemporaryFilter && activeDateFilter === 'all' && !startDate && !endDate
                     ? 'bg-background-muted/50 text-text-muted/30 border-border-light cursor-not-allowed'
                     : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white'
                     }`}
@@ -2182,6 +2266,9 @@ const OrderSection = () => {
                       <ArrowUpDown size={12} className={sortConfig.key === 'amount' ? 'text-primary' : 'text-text-muted'} />
                     </div>
                   </th>
+                  {activeTab !== 'dine-in' && (
+                    <th className="px-2 py-2.5">Delivery</th>
+                  )}
                   <th className="px-2 py-2.5 text-center">Order</th>
                   <th className="px-2 py-2.5 text-center">Payment</th>
                   {activeTab === 'history' && (
@@ -2193,13 +2280,13 @@ const OrderSection = () => {
               <tbody className="divide-y divide-border-light">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={activeTab === 'history' ? 10 : 7} className="px-6 py-10">
-                      <TableSkeleton columns={activeTab === 'history' ? 10 : 7} rows={5} />
+                    <td colSpan={activeTab === 'history' ? 11 : (activeTab === 'dine-in' ? 7 : 8)} className="px-6 py-10">
+                      <TableSkeleton columns={activeTab === 'history' ? 11 : (activeTab === 'dine-in' ? 7 : 8)} rows={5} />
                     </td>
                   </tr>
                 ) : filteredOrders.length === 0 ? (
                   <tr>
-                    <td colSpan={activeTab === 'history' ? 10 : 7} className="px-6 py-12 text-center text-text-muted italic">No orders found</td>
+                    <td colSpan={activeTab === 'history' ? 11 : (activeTab === 'dine-in' ? 7 : 8)} className="px-6 py-12 text-center text-text-muted italic">No orders found</td>
                   </tr>
                 ) : (
                   paginatedOrders.map((order) => (
@@ -2255,7 +2342,7 @@ const OrderSection = () => {
                       <td className="px-2 py-2.5">
                         <div className="flex flex-col">
                           <span className="text-xs font-bold text-text-primary">{new Date(order.createdAt).toLocaleDateString('en-GB')}</span>
-                          <span className="text-[10px] text-text-muted">{new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span className="text-[10px] text-text-muted">{new Date(order.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
                         </div>
                       </td>
                       {activeTab === 'dine-in' ? (
@@ -2296,6 +2383,31 @@ const OrderSection = () => {
                         </td>
                       )}
                       <td className="px-2 py-2.5 font-black text-text-primary">₹{Math.round(order.totalAmount || ((order.subtotal || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0) - (order.discount || 0)))}</td>
+                      {activeTab !== 'dine-in' && (
+                        <td className="px-2 py-2.5">
+                          {order.assignedDeliveryBoy ? (
+                            <div
+                              className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-bold border shadow-xs transition-transform hover:scale-105"
+                              style={{
+                                backgroundColor: (order.assignedDeliveryBoy.color || '#6b7280') + '18',
+                                borderColor: (order.assignedDeliveryBoy.color || '#6b7280') + '55',
+                                color: order.assignedDeliveryBoy.color || '#374151'
+                              }}
+                              title={`Delivery: ${order.assignedDeliveryBoy.name}`}
+                            >
+                              <span
+                                className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs"
+                                style={{ backgroundColor: order.assignedDeliveryBoy.color || '#6b7280' }}
+                              />
+                              <span className="truncate max-w-[85px] font-extrabold text-[11px]">
+                                {order.assignedDeliveryBoy.name}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-text-muted italic px-2">—</span>
+                          )}
+                        </td>
+                      )}
                       <td className="px-2 py-2.5 text-center">
                         {(() => {
                           const status = getFriendlyStatus(order);
@@ -2422,10 +2534,14 @@ const OrderSection = () => {
         </div>
       </div>
 
-      { }
+      {/* Order Details Modal */}
       {isDetailsModalOpen && selectedOrder && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50  overflow-hidden print:hidden">
-          <div className="bg-background-card w-full max-w-2xl h-[85vh] rounded-[2.5rem] border border-border-light shadow-2xl flex flex-col overflow-hidden">
+        <Modal
+          isOpen={true}
+          onClose={() => setIsDetailsModalOpen(false)}
+          zIndex="z-[100]"
+        >
+          <div className="bg-background-card w-full max-w-2xl h-[85dvh] rounded-[2.5rem] border border-border-light shadow-2xl flex flex-col overflow-hidden">
             <div className="p-6 border-b border-border-light flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <div>
@@ -2635,14 +2751,34 @@ const OrderSection = () => {
 
               { }
               {selectedOrder.orderType === 'delivery' && selectedOrder.assignedDeliveryBoy && (
-                <div className="p-4 bg-primary/10 rounded-3xl border border-primary/20 overflow-hidden flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-background-card border border-primary/30 flex items-center justify-center shrink-0">
-                    <Truck size={18} className="text-primary" />
+                <div 
+                  className="p-4 rounded-3xl border overflow-hidden flex items-center gap-4"
+                  style={{
+                    backgroundColor: (selectedOrder.assignedDeliveryBoy.color || '#3B82F6') + '15',
+                    borderColor: (selectedOrder.assignedDeliveryBoy.color || '#3B82F6') + '40'
+                  }}
+                >
+                  <div 
+                    className="w-10 h-10 rounded-full border flex items-center justify-center shrink-0 shadow-sm"
+                    style={{
+                      backgroundColor: selectedOrder.assignedDeliveryBoy.color || '#3B82F6',
+                      borderColor: 'white'
+                    }}
+                  >
+                    <Truck size={18} className="text-white" />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[9px] text-primary font-bold uppercase tracking-widest">Assigned Delivery Boy</p>
-                    <p className="text-xs font-black text-text-primary">
+                    <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: selectedOrder.assignedDeliveryBoy.color || 'var(--color-primary)' }}>
+                      Assigned Delivery Boy
+                    </p>
+                    <p className="text-xs font-black text-text-primary flex items-center gap-2">
                       {selectedOrder.assignedDeliveryBoy.name}
+                      {selectedOrder.assignedDeliveryBoy.color && (
+                        <span 
+                          className="w-2.5 h-2.5 rounded-full inline-block border border-white/40 shadow-xs" 
+                          style={{ backgroundColor: selectedOrder.assignedDeliveryBoy.color }} 
+                        />
+                      )}
                     </p>
                     {selectedOrder.assignedDeliveryBoy.phoneNumber && (
                       <p className="text-[10px] text-text-muted font-bold">
@@ -2936,13 +3072,17 @@ const OrderSection = () => {
               </div>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
-      { }
+      {/* Create Order Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60  overflow-hidden print:hidden">
-          <div className="bg-background-card w-[98vw] max-w-[1600px] h-[88vh] rounded-[2.5rem] border border-border/40 shadow-[0_40px_80px_rgba(0,0,0,0.4)] flex overflow-hidden">
+        <Modal
+          isOpen={true}
+          onClose={() => setIsModalOpen(false)}
+          zIndex="z-[150]"
+        >
+          <div className="bg-background-card w-[98vw] max-w-[1600px] h-[88dvh] rounded-[2.5rem] border border-border/40 shadow-[0_40px_80px_rgba(0,0,0,0.4)] flex overflow-hidden">
 
             { }
             <div className="flex-1 flex flex-col border-r border-border-light/60 min-w-0">
@@ -3413,7 +3553,7 @@ const OrderSection = () => {
                           setViewItemSelectedSize(targetVariant);
                           setViewItemQuantity(1);
                         }}
-                        className={`bg-background-muted/30 p-3 rounded-2xl border border-border-light hover:border-primary/30 transition-all group relative cursor-pointer active:scale-[0.98] ${isItemOutOfStock ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+                        className={`bg-background-muted/30 p-3 rounded-2xl border border-border-light hover:border-primary/30 transition-colors group relative cursor-pointer active:scale-[0.98] ${isItemOutOfStock ? 'opacity-40 grayscale pointer-events-none' : ''}`}
                       >
                         <div className="w-full aspect-square bg-background-card rounded-xl mb-3 overflow-hidden border border-border-light relative">
                           <img src={item.image || '/placeholder-dish.png'} alt={item.name} className={`w-full h-full object-cover group-hover:scale-110 transition-transform  ${isItemOutOfStock ? 'grayscale' : ''}`} />
@@ -3587,7 +3727,7 @@ const OrderSection = () => {
                   </div>
                 ) : (
                   cart.map((item, idx) => (
-                    <div key={idx} className="flex items-start gap-3 group p-3 bg-background-card hover:bg-background-muted/40 rounded-2xl border border-border-light hover:border-border transition-all">
+                    <div key={idx} className="flex items-start gap-3 group p-3 bg-background-card hover:bg-background-muted/40 rounded-2xl border border-border-light hover:border-border transition-colors">
                       <div className="flex-1 min-w-0">
                         <p className="font-black text-text-primary text-[10px] leading-tight mb-0.5 line-clamp-2">{item.name}</p>
                         <p className="text-[9px] text-text-muted font-bold uppercase mb-1.5">{item.size} · ₹{Math.round(item.unitPrice || 0)}</p>
@@ -3986,7 +4126,7 @@ const OrderSection = () => {
             </div>
 
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* ── Payment Method Modal ── */}
@@ -4001,7 +4141,11 @@ const OrderSection = () => {
         const canConfirm = !!payMethod;
 
         return (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60">
+          <Modal
+            isOpen={true}
+            onClose={() => setPaymentModal({ open: false, order: null })}
+            zIndex="z-[200]"
+          >
             <div
               className="bg-background-card w-full max-w-md rounded-[2.5rem] border border-border/40 shadow-[0_32px_80px_rgba(0,0,0,0.25)] overflow-hidden"
               onClick={(e) => e.stopPropagation()}
@@ -4227,11 +4371,16 @@ const OrderSection = () => {
                 </button>
               </div>
             </div>
-          </div>
+          </Modal>
         );
       })()}
       {selectedItemToView && (
-        <div className="fixed inset-0 bg-black/60  z-[200] flex items-center justify-center p-4">
+        <Modal
+          isOpen={true}
+          onClose={() => setSelectedItemToView(null)}
+          zIndex="z-[200]"
+        >
+        <div className="relative">
           {(() => {
             const item = selectedItemToView;
             const menuDiscount = item.discountPercentage || 0;
@@ -4400,6 +4549,7 @@ const OrderSection = () => {
             );
           })()}
         </div>
+        </Modal>
       )}
     </div>
   );

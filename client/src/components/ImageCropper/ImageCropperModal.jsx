@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import Cropper from 'react-easy-crop';
 import { X, Check, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
+import Modal from '../Modal/Modal';
 
 const ImageCropperModal = ({ isOpen, image, onCropComplete, onCancel }) => {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -77,11 +78,13 @@ const ImageCropperModal = ({ isOpen, image, onCropComplete, onCancel }) => {
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
-      <div className="bg-background-card w-full max-w-2xl rounded-[3rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-500 flex flex-col h-[80vh] md:h-[70vh]">
+    <Modal
+      isOpen={isOpen}
+      onClose={onCancel}
+      zIndex="z-[3000]"
+    >
+      <div className="bg-background-card w-full max-w-2xl rounded-[3rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col h-[80dvh] md:h-[70dvh]">
         
         {}
         <div className="p-6 md:p-8 bg-primary text-white flex justify-between items-center shrink-0">
@@ -89,7 +92,7 @@ const ImageCropperModal = ({ isOpen, image, onCropComplete, onCancel }) => {
             <h3 className="text-xl font-black tracking-tight">Perfect Your Profile</h3>
             <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mt-1">Crop and scale your image</p>
           </div>
-          <button onClick={onCancel} className="p-2 hover:bg-white/20 rounded-full transition-all active:scale-90">
+          <button onClick={onCancel} className="p-2 hover:bg-white/20 rounded-full transition-colors active:scale-90">
             <X size={20} />
           </button>
         </div>
@@ -164,7 +167,7 @@ const ImageCropperModal = ({ isOpen, image, onCropComplete, onCancel }) => {
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, ShieldCheck, Eye, EyeOff, AlertCircle, Mail, Lock, CheckCircle2, ArrowRight, KeyRound } from 'lucide-react';
 import api from '../../api/axiosInstance';
 import { showToast } from '../../utils/sweetAlert';
+import Modal from '../Modal/Modal';
 
 const ForgotPasswordModal = ({ isOpen, onClose }) => {
   const [step, setStep] = useState(1); 
@@ -30,22 +31,6 @@ const ForgotPasswordModal = ({ isOpen, onClose }) => {
       setError('');
     }
   }, [isOpen]);
-
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-      document.body.classList.add('modal-open');
-    } else {
-      document.body.style.overflow = 'unset';
-      document.body.classList.remove('modal-open');
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-      document.body.classList.remove('modal-open');
-    };
-  }, [isOpen]);
-
-  if (!isOpen) return null;
 
   const maskEmail = (email) => {
     if (!email) return '';
@@ -162,8 +147,11 @@ const ForgotPasswordModal = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 sm:p-6">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose}></div>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      zIndex="z-[2000]"
+    >
       <div className="bg-background-card w-full max-w-md rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden animate-in fade-in zoom-in duration-300 border border-border/40">
         
         {/* Header */}
@@ -365,7 +353,7 @@ const ForgotPasswordModal = ({ isOpen, onClose }) => {
           animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
         }
       `}} />
-    </div>
+    </Modal>
   );
 };
 

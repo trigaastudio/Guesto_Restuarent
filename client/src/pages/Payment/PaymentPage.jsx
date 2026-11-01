@@ -391,7 +391,7 @@ const PaymentPage = () => {
   if (!isOrderSuccess && (!(deliveryAddress || dineInTableId) || cartItems.length === 0)) return null;
 
   return (
-    <div className="min-h-screen bg-background font-sans selection:bg-primary/10 overflow-x-hidden">
+    <div className="min-h-dvh bg-background font-sans selection:bg-primary/10 overflow-x-hidden">
       <Navbar
         user={user}
         cartItems={cartItems}
@@ -424,7 +424,7 @@ const PaymentPage = () => {
                 </div>
 
                 {dineInTableId ? (
-                  <div className="relative bg-primary/10 backdrop-blur-xl rounded-[2.5rem] p-6 md:p-8 border border-primary/20 shadow-xl flex flex-col md:flex-row gap-8 items-start md:items-center">
+                  <div className="relative bg-primary/10 rounded-[2.5rem] p-6 md:p-8 border border-primary/20 shadow-xl flex flex-col md:flex-row gap-8 items-start md:items-center">
                     <div className="w-16 h-16 rounded-3xl bg-primary shadow-[0_15px_35px_rgba(185,28,28,0.2)] flex items-center justify-center text-white flex-shrink-0 animate-bounce-slow">
                       <Banknote size={32} strokeWidth={2} />
                     </div>
@@ -443,7 +443,7 @@ const PaymentPage = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="relative bg-background/50 backdrop-blur-xl rounded-[2.5rem] p-6 md:p-8 border border-white/10 shadow-xl flex flex-col md:flex-row gap-8 items-start md:items-center">
+                  <div className="relative bg-background-muted/60 rounded-[2.5rem] p-6 md:p-8 border border-white/10 shadow-xl flex flex-col md:flex-row gap-8 items-start md:items-center">
                     <div className="w-16 h-16 rounded-3xl bg-primary shadow-[0_15px_35px_rgba(185,28,28,0.2)] flex items-center justify-center text-white flex-shrink-0 animate-bounce-slow">
                       <MapPin size={32} strokeWidth={2} />
                     </div>

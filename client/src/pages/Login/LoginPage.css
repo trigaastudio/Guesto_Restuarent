@@ -1,6 +1,7 @@
 .login-page-wrapper {
   display: flex;
   min-height: 100vh;
+  min-height: 100dvh;
   width: 100%;
   justify-content: center;
   align-items: center;
@@ -210,6 +211,7 @@
     border-radius: 0;
     max-width: 100%;
     min-height: 100vh;
+  min-height: 100dvh;
     box-shadow: none;
     border: none;
     margin: 0;

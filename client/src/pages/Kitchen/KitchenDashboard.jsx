@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import {
@@ -13,6 +14,7 @@ import { useCart } from '../../context/CartContext';
 import { showToast, showAlert } from '../../utils/sweetAlert';
 import ListSkeleton from '../../components/Skeleton/ListSkeleton';
 import { logoutStaff } from '../../utils/auth';
+import useForceRepaint from '../../hooks/useForceRepaint';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://guest-o-backend.onrender.com/api';
 const SOCKET_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'https://guest-o-backend.onrender.com';
@@ -61,6 +63,8 @@ const TABS = [
 ];
 
 const KitchenDashboard = () => {
+  useForceRepaint();
+
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState(localStorage.getItem('kitchenActiveTab') || 'takeaway');
@@ -368,11 +372,12 @@ const KitchenDashboard = () => {
   ).length;
 
   return (
-    <div className="flex h-screen bg-background text-text-primary overflow-hidden transition-colors duration-300">
+    <div className="flex h-dvh bg-background text-text-primary overflow-hidden transition-colors duration-300">
 
       {/* Mobile Sidebar Overlay */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />
+      {typeof document !== 'undefined' && isMobileMenuOpen && ReactDOM.createPortal(
+        <div className="fixed inset-0 bg-black/70 z-40 lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />,
+        document.body
       )}
 
       { }
@@ -619,7 +624,7 @@ const KitchenDashboard = () => {
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-8 space-y-4 sm:space-y-6">
           {/* Status Filter Bar */}
-          <div className="sticky top-0 z-30 bg-background/90 backdrop-blur-md pb-3 pt-1 -mt-1 flex items-center gap-2 overflow-x-auto no-scrollbar">
+          <div className="sticky top-0 z-30 bg-background/95 pb-3 pt-1 -mt-1 flex items-center gap-2 overflow-x-auto no-scrollbar">
             {[
               { id: 'new', label: 'New Orders', icon: Bell, filterKey: 'placed' },
               { id: 'preparing', label: 'Preparing', icon: ChefHat, filterKey: 'preparing' },
@@ -668,7 +673,7 @@ const KitchenDashboard = () => {
               ))}
             </div>
           ) : filteredOrders.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-[60vh] space-y-6 text-center animate-in fade-in zoom-in duration-500">
+            <div className="flex flex-col items-center justify-center h-[60dvh] space-y-6 text-center animate-in fade-in zoom-in duration-500">
               <div className="w-28 h-28 bg-background-muted/50 rounded-full flex items-center justify-center border-2 border-dashed border-border-light">
                 {activeTab === 'takeaway' && <ShoppingCart size={40} className="text-text-muted opacity-30" />}
                 {activeTab === 'dine-in' && <UtensilsCrossed size={40} className="text-text-muted opacity-30" />}
@@ -686,7 +691,7 @@ const KitchenDashboard = () => {
                 return (
                   <div
                     key={order._id}
-                    className={`bg-background-card/80 backdrop-blur-sm rounded-[2.5rem] border flex flex-col transition-all duration-300 relative overflow-hidden
+                    className={`bg-background-card rounded-[2.5rem] border flex flex-col transition-colors shadow-sm duration-200 relative overflow-hidden
                       ${allReady ? 'border-status-on/30 shadow-emerald-500/5' : order.kitchenStatus === 'delayed' ? 'border-red-500/40 shadow-red-500/10 shadow-[0_8px_30px_rgb(0,0,0,0.12)]' : 'border-border-light shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:border-primary/30'}
                     `}
                   >
@@ -802,7 +807,7 @@ const KitchenDashboard = () => {
                       )?.slice().reverse().map((item) => {
                         const status = item.kitchenStatus || 'placed';
                         return (
-                          <div key={item._id} className={`grid ${activeStatusFilter === 'new' ? 'grid-cols-[40px_1fr]' : 'grid-cols-[48px_1fr_auto]'} items-center p-3 bg-background-muted/10 rounded-2xl border border-border-light hover:border-primary/20 transition-all gap-3 group/item`}>
+                          <div key={item._id} className={`grid ${activeStatusFilter === 'new' ? 'grid-cols-[40px_1fr]' : 'grid-cols-[48px_1fr_auto]'} items-center p-3 bg-background-muted/10 rounded-2xl border border-border-light hover:border-primary/20 transition-colors gap-3 group/item`}>
                             { }
                             <div className="w-10 h-10 bg-background-card rounded-xl flex items-center justify-center border border-border-light shrink-0 overflow-hidden shadow-sm">
                               {item.image || (item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.image : '') ? (

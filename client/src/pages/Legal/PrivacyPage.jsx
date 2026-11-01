@@ -14,7 +14,7 @@ const PrivacyPage = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background text-text-primary flex flex-col font-sans">
+    <div className="min-h-dvh bg-background text-text-primary flex flex-col font-sans">
       <Navbar 
         user={user} 
         navigate={navigate} 

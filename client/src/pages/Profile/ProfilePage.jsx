@@ -210,7 +210,7 @@ const ProfilePage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background font-sans selection:bg-primary/10 overflow-x-hidden">
+    <div className="min-h-dvh bg-background font-sans selection:bg-primary/10 overflow-x-hidden">
       <Navbar
         user={user}
         cartItems={cartItems}

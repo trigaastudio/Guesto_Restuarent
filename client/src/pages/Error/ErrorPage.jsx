@@ -46,7 +46,7 @@ const ErrorPage = () => {
   }, [type, customMessage]);
 
   return (
-    <div className={`min-h-screen bg-background font-sans flex flex-col ${theme}`}>
+    <div className={`min-h-dvh bg-background font-sans flex flex-col ${theme}`}>
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="max-w-md w-full text-center space-y-8 animate-in fade-in zoom-in duration-500">
           <div className="relative mx-auto w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center">

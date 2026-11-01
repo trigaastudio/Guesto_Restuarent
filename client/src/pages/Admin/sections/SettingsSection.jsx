@@ -697,7 +697,7 @@ const SettingsSection = () => {
             </div>
 
             {}
-            <div className="bg-background-muted/30 backdrop-blur-md rounded-[3rem] border border-white/5 p-8 md:p-12 space-y-10 shadow-2xl">
+            <div className="bg-background-muted/70 rounded-[3rem] border border-white/5 p-8 md:p-12 space-y-10 shadow-2xl">
               <div className="flex items-center space-x-6">
                 <div className="p-5 bg-primary/10 text-primary rounded-[2rem] shadow-lg shadow-primary/10 border border-primary/20">
                   <Clock size={28} />
@@ -993,7 +993,7 @@ const SettingsSection = () => {
                         {settings.printingSettings?.kotQRCodeImage ? (
                           <div className="relative w-full h-full p-6 flex items-center justify-center">
                             <img src={settings.printingSettings.kotQRCodeImage} alt="KOT QR Code" className="max-w-full max-h-full object-contain drop-shadow-2xl" />
-                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center backdrop-blur-[2px]">
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center">
                               <div className="bg-white p-4 rounded-full shadow-2xl transform scale-75 group-hover:scale-100 transition-all duration-300">
                                 <Upload size={24} className="text-primary" />
                               </div>
@@ -1168,7 +1168,7 @@ const SettingsSection = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="bg-background-card/80 backdrop-blur-xl p-10 rounded-[3rem] border border-border/40 space-y-8 animate-in zoom-in-95 duration-300 text-center relative shadow-2xl">
+                    <div className="bg-background-card p-10 rounded-[3rem] border border-border/40 space-y-8 animate-in zoom-in-95 duration-300 text-center relative shadow-2xl">
                       <button
                         onClick={() => setOtpStep(false)}
                         className="absolute top-6 left-6 p-2 hover:bg-primary/10 rounded-xl text-primary transition-all flex items-center space-x-2 text-[10px] font-black uppercase tracking-widest"

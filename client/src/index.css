@@ -299,3 +299,9 @@ input:-webkit-autofill:active {
   -webkit-text-fill-color: var(--color-text-primary) !important;
 }
 
+.modal-root, [data-modal] {
+  contain: layout paint;
+  isolation: isolate;
+}
+
+

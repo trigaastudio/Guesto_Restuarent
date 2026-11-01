@@ -211,7 +211,7 @@ const BottomNavbar = () => {
           className={`absolute bottom-0 right-0 w-11 h-11 md:w-12 md:h-12 bg-blue-500 text-white rounded-2xl flex items-center justify-center shadow-[0_20px_50px_rgba(59,130,246,0.3)] transition-all duration-500 transform hover:scale-110 active:scale-90 ${showProfileOptions ? '-translate-y-36 md:-translate-y-40 scale-100 rotate-0' : 'translate-y-0 scale-0 rotate-45'}`}
         >
           <MapPin size={18} className="md:size-5" strokeWidth={2.5} />
-          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-background-card/90 backdrop-blur-sm text-blue-500 text-[8px] font-black px-2.5 py-1.5 rounded-xl shadow-xl border border-blue-500/20 uppercase tracking-widest whitespace-nowrap">Address</div>
+          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-background-card text-blue-500 text-[8px] font-black px-2.5 py-1.5 rounded-xl shadow-xl border border-blue-500/20 uppercase tracking-widest whitespace-nowrap">Address</div>
         </button>
 
         { }
@@ -220,7 +220,7 @@ const BottomNavbar = () => {
           className={`absolute bottom-0 right-0 w-11 h-11 md:w-12 md:h-12 bg-orange-500 text-white rounded-2xl flex items-center justify-center shadow-[0_20px_50px_rgba(249,115,22,0.3)] transition-all duration-500 delay-75 transform hover:scale-110 active:scale-90 ${showProfileOptions ? '-translate-y-24 -translate-x-24 md:-translate-y-28 md:-translate-x-28 scale-100 rotate-0' : 'translate-y-0 scale-0 rotate-45'}`}
         >
           <Package size={18} className="md:size-5" strokeWidth={2.5} />
-          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-background-card/90 backdrop-blur-sm text-orange-500 text-[8px] font-black px-2.5 py-1.5 rounded-xl shadow-xl border border-orange-500/20 uppercase tracking-widest whitespace-nowrap">Orders</div>
+          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-background-card text-orange-500 text-[8px] font-black px-2.5 py-1.5 rounded-xl shadow-xl border border-orange-500/20 uppercase tracking-widest whitespace-nowrap">Orders</div>
         </button>
 
         { }
@@ -229,7 +229,7 @@ const BottomNavbar = () => {
           className={`absolute bottom-0 right-0 w-11 h-11 md:w-12 md:h-12 bg-red-500 text-white rounded-2xl flex items-center justify-center shadow-[0_20px_50px_rgba(239,68,68,0.3)] transition-all duration-500 delay-150 transform hover:scale-110 active:scale-90 ${showProfileOptions ? '-translate-x-36 md:-translate-x-40 scale-100 rotate-0' : 'translate-x-0 scale-0 rotate-45'}`}
         >
           <LogOut size={18} className="md:size-5" strokeWidth={2.5} />
-          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-background-card/90 backdrop-blur-sm text-red-500 text-[8px] font-black px-2.5 py-1.5 rounded-xl shadow-xl border border-red-500/20 uppercase tracking-widest whitespace-nowrap">Sign Out</div>
+          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-background-card text-red-500 text-[8px] font-black px-2.5 py-1.5 rounded-xl shadow-xl border border-red-500/20 uppercase tracking-widest whitespace-nowrap">Sign Out</div>
         </button>
       </div>
 
@@ -240,7 +240,7 @@ const BottomNavbar = () => {
         onMouseLeave={handleMouseLeave}
         className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[1000] w-[92%] sm:w-[85%] md:w-[70%] max-w-[500px] transition-all duration-500 translate-y-0 opacity-100 visible"
       >
-        <div className="bg-[#1A1A1A]/95 backdrop-blur-md border border-white/10 shadow-[0_25px_80px_rgba(0,0,0,0.5)] rounded-[2rem] px-2 py-2 flex items-center justify-around transition-all duration-500">
+        <div className="bg-[#1A1A1A]/95 border border-white/10 shadow-[0_25px_80px_rgba(0,0,0,0.5)] rounded-[2rem] px-2 py-2 flex items-center justify-around transition-all duration-500">
 
           {navItems.map((item) => {
             const ActiveIcon = item.isProfile && showProfileOptions ? X : item.icon;

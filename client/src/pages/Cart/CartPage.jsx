@@ -8,6 +8,7 @@ import { useTheme } from '../../context/ThemeContext';
 import api from '../../api/axiosInstance';
 import Swal from 'sweetalert2';
 import AddressModal from '../../components/AddressModal/AddressModal';
+import Modal from '../../components/Modal/Modal';
 import { getEffectiveStock } from '../../utils/stockHelpers';
 import {
   Trash2,
@@ -36,11 +37,13 @@ import {
 
 
 const AddressListModal = ({ isOpen, onClose, addresses, onSelect, onAddAddress }) => {
-  if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in" onClick={onClose}></div>
-      <div className="bg-background-card w-full max-w-lg rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden border border-border/10 max-h-[80vh] flex flex-col">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      zIndex="z-[200]"
+    >
+      <div className="bg-background-card w-full max-w-lg rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden border border-border/10 max-h-[80dvh] flex flex-col">
         <div className="p-8 border-b border-border/10 flex justify-between items-center bg-primary/5">
           <h3 className="text-xl font-black text-text-primary uppercase tracking-tight">Your Addresses</h3>
           <button onClick={onClose} className="p-2 hover:bg-background-muted rounded-full transition-colors"><X size={20} /></button>
@@ -66,7 +69,7 @@ const AddressListModal = ({ isOpen, onClose, addresses, onSelect, onAddAddress }
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };
 
@@ -465,7 +468,7 @@ const CartPage = () => {
 
   if (cartItems.length === 0) {
     return (
-      <div className={`min-h-screen bg-background ${theme}`}>
+      <div className={`min-h-dvh bg-background ${theme}`}>
         <Navbar user={user} cartItems={cartItems} showUserDropdown={showUserDropdown} setShowUserDropdown={setShowUserDropdown} handleLogout={handleLogout} navigate={navigate} dropdownRef={dropdownRef} />
         <div className="relative pt-24 md:pt-32 pb-24">
           <div className="absolute top-0 left-0 w-full h-[120px] bg-primary z-0"></div>
@@ -506,13 +509,13 @@ const CartPage = () => {
   }
 
   return (
-    <div className={`min-h-screen bg-background font-sans selection:bg-primary/10 overflow-x-hidden ${theme}`}>
+    <div className={`min-h-dvh bg-background font-sans selection:bg-primary/10 overflow-x-hidden ${theme}`}>
       <Navbar user={user} cartItems={cartItems} showUserDropdown={showUserDropdown} setShowUserDropdown={setShowUserDropdown} handleLogout={handleLogout} navigate={navigate} dropdownRef={dropdownRef} />
       <div className="relative">
         <div className="absolute top-0 left-0 w-full h-[120px] bg-primary z-0"></div>
         <main className="max-w-7xl mx-auto px-3 sm:px-6 pt-24 md:pt-32 relative z-10 pb-24">
           <div className="flex flex-col lg:flex-row gap-8 items-start relative">
-            <div className="flex-1 space-y-4 w-full lg:h-[calc(100vh-200px)] lg:overflow-y-auto no-scrollbar pr-0 sm:pr-2">
+            <div className="flex-1 space-y-4 w-full lg:h-[calc(100dvh-200px)] lg:overflow-y-auto no-scrollbar pr-0 sm:pr-2">
               {dineInTableId ? (
                 <div className="bg-primary/10 rounded-2xl p-4 md:p-6 border border-primary/20 shadow-sm flex items-center justify-between">
                   <div className="flex items-center gap-3">

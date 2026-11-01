@@ -5,6 +5,7 @@ import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/swe
 import ImageCropper from '../../../components/ImageCropper/ImageCropper';
 import TableSkeleton from '../../../components/Skeleton/TableSkeleton';
 import Pagination from '../../../components/Pagination/Pagination';
+import Modal from '../../../components/Modal/Modal';
 
 const STANDARD_VARIANTS = ['Piece', 'Quarter', 'Half', 'Full', 'Roll', 'Plate'];
 
@@ -752,18 +753,20 @@ const MenuSection = () => {
         />
       </div>
 
-      {}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-background-card w-full max-w-2xl rounded-2xl border border-border-light shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 my-8">
-            <div className="p-6 border-b border-border-light flex items-center justify-between sticky top-0 bg-background-card z-10">
-              <h3 className="text-xl font-bold text-text-primary">{isEditing ? 'Edit Menu Item' : 'Add Menu Item'}</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-text-secondary hover:text-text-primary">
-                <XCircle size={24} />
-              </button>
-            </div>
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        zIndex="z-[60]"
+      >
+        <div className="bg-background-card w-full max-w-2xl rounded-2xl border border-border-light shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 my-8">
+          <div className="p-6 border-b border-border-light flex items-center justify-between sticky top-0 bg-background-card z-10">
+            <h3 className="text-xl font-bold text-text-primary">{isEditing ? 'Edit Menu Item' : 'Add Menu Item'}</h3>
+            <button onClick={() => setIsModalOpen(false)} className="text-text-secondary hover:text-text-primary">
+              <XCircle size={24} />
+            </button>
+          </div>
 
-            <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh] no-scrollbar">
+          <div className="p-6 space-y-6 overflow-y-auto max-h-[70dvh] no-scrollbar">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-1.5">
                   <label className={`text-sm font-semibold ${errors.name ? 'text-primary' : 'text-text-secondary'}`}>Item Name</label>
@@ -1044,8 +1047,7 @@ const MenuSection = () => {
               </button>
             </div>
           </div>
-        </div>
-      )}
+      </Modal>
       {showCropper && (
         <ImageCropper
           image={imageToCrop}

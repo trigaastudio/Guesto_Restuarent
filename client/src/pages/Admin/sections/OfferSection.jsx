@@ -13,6 +13,7 @@ import {
 import api from '../../../api/axiosInstance';
 import { showToast } from '../../../utils/sweetAlert';
 import CardSkeleton from '../../../components/Skeleton/CardSkeleton';
+import Modal from '../../../components/Modal/Modal';
 
 const OfferSection = () => {
   const [offers, setOffers] = useState([]);
@@ -282,7 +283,7 @@ const OfferSection = () => {
                 <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider ${offer.offerType === 'bogo' ? 'bg-orange-600 text-white' : offer.offerType === 'combo' ? 'bg-blue-600 text-white' : 'bg-green-600 text-white'}`}>{offer.offerType}</span>
               </div>
               <div className="absolute top-3 right-3 flex gap-2">
-                <button onClick={() => handleToggleStatus(offer)} className="p-1.5 bg-black/20 backdrop-blur-md rounded-xl text-white hover:bg-black/40 transition-all border border-white/10">{offer.isActive ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}</button>
+                <button onClick={() => handleToggleStatus(offer)} className="p-1.5 bg-black/50 rounded-xl text-white hover:bg-black/70 transition-colors border border-white/10">{offer.isActive ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}</button>
               </div>
             </div>
             <div className="p-5 space-y-3">
@@ -331,15 +332,17 @@ const OfferSection = () => {
         </div>
       )}
 
-      {showModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-          <div className="relative bg-background-card w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-8 border-b border-border/40 flex justify-between items-center bg-background-muted/20">
-              <h3 className="text-xl font-black text-text-primary uppercase">{editingOffer ? 'Edit Promotion' : 'New Promotion'}</h3>
-              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-background-muted rounded-full transition-colors"><CloseIcon size={24} /></button>
-            </div>
-            <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto no-scrollbar">
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        zIndex="z-[100]"
+      >
+        <div className="relative bg-background-card w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="p-8 border-b border-border/40 flex justify-between items-center bg-background-muted/20">
+            <h3 className="text-xl font-black text-text-primary uppercase">{editingOffer ? 'Edit Promotion' : 'New Promotion'}</h3>
+            <button onClick={() => setShowModal(false)} className="p-2 hover:bg-background-muted rounded-full transition-colors"><CloseIcon size={24} /></button>
+          </div>
+          <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[70dvh] overflow-y-auto no-scrollbar">
               <div className="space-y-4">
                 <label className="text-[10px] font-black uppercase tracking-widest text-text-muted ml-1">Campaign Poster</label>
                 <div onClick={() => fileInputRef.current.click()} className="w-full aspect-video bg-background border-2 border-dashed border-border/60 rounded-[2rem] flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-all overflow-hidden relative group shadow-inner">
@@ -786,8 +789,7 @@ const OfferSection = () => {
               </div>
             </form>
           </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 };

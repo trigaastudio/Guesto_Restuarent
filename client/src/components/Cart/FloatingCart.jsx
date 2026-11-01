@@ -117,12 +117,12 @@ const QuantityInput = ({ item, updateQuantity }) => {
 };
 
   return (
-    <div className="hidden lg:flex fixed top-24 right-4 sm:right-6 lg:right-10 z-[999] w-[calc(100vw-32px)] sm:w-[380px] max-h-[calc(100vh-120px)] flex-col bg-background-card border border-border-light shadow-[0_20px_60px_rgba(0,0,0,0.3)] rounded-3xl overflow-hidden animate-in slide-in-from-right-8 duration-500">
+    <div className="hidden lg:flex fixed top-24 right-4 sm:right-6 lg:right-10 z-[999] w-[calc(100vw-32px)] sm:w-[380px] max-h-[calc(100dvh-120px)] flex-col bg-background-card border border-border-light shadow-[0_20px_60px_rgba(0,0,0,0.3)] rounded-3xl overflow-hidden animate-in slide-in-from-right-8 duration-500">
       {/* Header */}
       <div className="bg-primary p-4 sm:p-5 flex items-center justify-between text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-white/10" style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.05) 10px, rgba(255,255,255,0.05) 20px)' }}></div>
         <div className="flex items-center gap-3 relative z-10">
-          <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm shadow-inner">
+          <div className="p-2 bg-white/20 rounded-xl shadow-inner">
             <ShoppingBag size={20} className="text-white" />
           </div>
           <div className="flex flex-col">

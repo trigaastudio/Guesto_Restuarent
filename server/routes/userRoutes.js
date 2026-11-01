@@ -1,7 +1,7 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import userController from '../controllers/userController.js';
-import { protect, admin } from '../middleware/authMiddleware.js';
+import { protect, admin, adminOrOrderManager } from '../middleware/authMiddleware.js';
 import { upload } from '../config/cloudinaryConfig.js';
 
 const router = express.Router();
@@ -30,11 +30,11 @@ router.delete('/address/:addressId', protect, userController.deleteAddress);
 
 
 
+// Allow order-manager to read users (for customer search when placing orders)
 
-
-router.get('/', protect, admin, userController.getAllUsers);
+router.get('/', protect, adminOrOrderManager, userController.getAllUsers);
 router.post('/', protect, admin, userController.createUser);
-router.put('/:id', protect, admin, userController.updateUser);
+router.put('/:id', protect, adminOrOrderManager, userController.updateUser);
 router.delete('/:id', protect, admin, userController.deleteUser);
 router.patch('/:id/toggle-status', protect, admin, userController.toggleUserStatus);
 

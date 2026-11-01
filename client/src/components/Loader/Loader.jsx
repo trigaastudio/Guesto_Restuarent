@@ -1,4 +1,5 @@
 import React from 'react';
+import ReactDOM from 'react-dom';
 import { useTheme } from '../../context/ThemeContext';
 
 const Loader = ({ size = 'medium', fullPage = false, className = "" }) => {
@@ -16,13 +17,18 @@ const Loader = ({ size = 'medium', fullPage = false, className = "" }) => {
   );
 
   if (fullPage) {
-    return (
-      <div className="fixed inset-0 z-[999] flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+    if (typeof document === 'undefined') return null;
+    return ReactDOM.createPortal(
+      <div 
+        data-modal="true" 
+        className="fixed inset-0 z-[999] flex flex-col items-center justify-center bg-background/95 select-none isolate transform-gpu"
+      >
         {loaderContent}
         <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.2em] text-primary/60">
           Loading...
         </p>
-      </div>
+      </div>,
+      document.body
     );
   }
 

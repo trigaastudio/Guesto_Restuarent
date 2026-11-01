@@ -44,6 +44,11 @@ const staffSchema = new mongoose.Schema({
   isActive: { 
     type: Boolean, 
     default: true 
+  },
+
+  color: {
+    type: String,
+    default: ''
   }
 
 }, { timestamps: true });

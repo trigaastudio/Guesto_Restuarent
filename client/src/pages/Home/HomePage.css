@@ -17,6 +17,7 @@
   color: var(--sw-text-primary);
   background: var(--sw-bg);
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 

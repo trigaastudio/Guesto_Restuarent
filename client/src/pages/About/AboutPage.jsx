@@ -35,7 +35,7 @@ const AboutPage = () => {
   const restaurantName = settings?.restaurantDetails?.name || 'GuestO';
 
   return (
-    <div className={`min-h-screen bg-background ${theme} font-sans selection:bg-primary/30 selection:text-primary overflow-x-hidden`}>
+    <div className={`min-h-dvh bg-background ${theme} font-sans selection:bg-primary/30 selection:text-primary overflow-x-hidden`}>
       <div className="relative w-full flex flex-col bg-background">
 
         <Navbar
@@ -104,7 +104,7 @@ const AboutPage = () => {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80"></div>
 
                 <div className="absolute bottom-6 left-6 right-6 flex items-center gap-4">
-                  <div className="w-10 h-10 md:w-12 md:h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 shrink-0">
+                  <div className="w-10 h-10 md:w-12 md:h-12 bg-white/30 rounded-full flex items-center justify-center border border-white/30 shrink-0">
                     <Star size={18} className="text-white fill-white md:w-5 md:h-5" />
                   </div>
                   <div>

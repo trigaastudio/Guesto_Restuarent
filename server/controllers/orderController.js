@@ -877,7 +877,7 @@ class OrderController {
 
       const orders = await Order.find({ customer: req.user._id })
         .populate('items.menuItem')
-        .populate('assignedDeliveryBoy', 'name phoneNumber')
+        .populate('assignedDeliveryBoy', 'name phoneNumber color')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -1097,6 +1097,19 @@ class OrderController {
           histQuery.paymentMethod = paymentMethodFilter;
         }
 
+        // Delivery boy filter
+        const deliveryBoy = req.query.deliveryBoy;
+        if (deliveryBoy && deliveryBoy !== 'all') {
+          if (deliveryBoy === 'unassigned') {
+            histQuery.$or = [
+              { assignedDeliveryBoy: { $exists: false } },
+              { assignedDeliveryBoy: null }
+            ];
+          } else {
+            histQuery.assignedDeliveryBoy = deliveryBoy;
+          }
+        }
+
         // Search filter
         const search = req.query.search;
         if (search && search.trim()) {
@@ -1141,7 +1154,7 @@ class OrderController {
         Order.find(finalQuery)
           .populate('items.menuItem', 'name image')
           .populate('table', 'tableNumber mergedGroup')
-          .populate('assignedDeliveryBoy', 'name phoneNumber')
+          .populate('assignedDeliveryBoy', 'name phoneNumber color')
           .sort({ createdAt: -1 })
           .skip(skip)
           .limit(limit)
@@ -1251,7 +1264,7 @@ class OrderController {
 
       
       if (order.assignedDeliveryBoy) {
-        await order.populate('assignedDeliveryBoy', 'name phoneNumber');
+        await order.populate('assignedDeliveryBoy', 'name phoneNumber color');
       }
 
       getIO().to('staff_room').emit('ordersUpdated');

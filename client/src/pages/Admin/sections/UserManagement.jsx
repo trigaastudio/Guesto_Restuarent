@@ -4,6 +4,7 @@ import api from '../../../api/axiosInstance';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 import TableSkeleton from '../../../components/Skeleton/TableSkeleton';
 import Pagination from '../../../components/Pagination/Pagination';
+import Modal from '../../../components/Modal/Modal';
 
 const UserManagement = () => {
   const [userList, setUserList] = useState([]);
@@ -373,17 +374,20 @@ const UserManagement = () => {
       </div>
 
       {/* Add / Edit Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-hidden">
-          <div className="bg-background-card w-full max-w-lg rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="p-6 border-b border-border-light flex items-center justify-between">
-              <h3 className="text-xl font-black text-text-primary">{isEditing ? 'Edit User' : 'Add New User'}</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-text-muted hover:text-text-primary transition-all">
-                <XCircle size={24} />
-              </button>
-            </div>
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        zIndex="z-[100]"
+      >
+        <div className="bg-background-card w-full max-w-lg rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+          <div className="p-6 border-b border-border-light flex items-center justify-between">
+            <h3 className="text-xl font-black text-text-primary">{isEditing ? 'Edit User' : 'Add New User'}</h3>
+            <button onClick={() => setIsModalOpen(false)} className="text-text-muted hover:text-text-primary transition-all">
+              <XCircle size={24} />
+            </button>
+          </div>
 
-            <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto no-scrollbar">
+          <div className="p-6 space-y-5 max-h-[70dvh] overflow-y-auto no-scrollbar">
               {/* Full Name */}
               <div className="space-y-1.5">
                 <label className={`text-[10px] font-bold uppercase tracking-widest ${errors.name ? 'text-primary' : 'text-text-muted'}`}>Full Name</label>
@@ -659,8 +663,7 @@ const UserManagement = () => {
               </button>
             </div>
           </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 };

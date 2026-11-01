@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import { X, User as UserIcon, Users, MapPin, Home, Briefcase, Navigation, Loader2, AlertCircle } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { showAlert } from '../../utils/sweetAlert';
+import Modal from '../Modal/Modal';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -300,8 +302,12 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-background-card w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 relative flex flex-col max-h-[90vh]">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      zIndex="z-[2000]"
+    >
+      <div className="bg-background-card w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 relative flex flex-col max-h-[90dvh]">
 
         {/* Header */}
         <div className="bg-primary p-6 md:p-8 text-white relative">
@@ -500,7 +506,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
         </div>
 
         {/* ── Full-screen Leaflet map ── */}
-        {isMapOpen && (
+        {isMapOpen && typeof document !== 'undefined' && ReactDOM.createPortal(
           <div className="fixed inset-0 z-[3000] flex flex-col bg-background-card animate-in fade-in duration-200">
 
             {/* Map header */}
@@ -529,7 +535,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
 
             {/* GPS locating overlay spinner */}
             {mapGpsStatus === 'locating' && (
-              <div className="absolute top-20 left-1/2 -translate-x-1/2 z-[3100] bg-background-card/95 backdrop-blur-sm px-5 py-3 rounded-2xl shadow-xl border border-border/40 flex items-center gap-3">
+              <div className="absolute top-20 left-1/2 -translate-x-1/2 z-[3100] bg-background-card/95 px-5 py-3 rounded-2xl shadow-xl border border-border/40 flex items-center gap-3">
                 <Loader2 size={16} className="animate-spin text-primary" />
                 <p className="text-xs font-black text-text-primary">Finding your exact location…</p>
               </div>
@@ -540,7 +546,7 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
               <div ref={mapRef} className="absolute inset-0 z-10" />
 
               {/* Instruction chip */}
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[20] bg-background-card/90 backdrop-blur-sm px-4 py-2 rounded-full shadow-lg border border-border/40 pointer-events-none">
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[20] bg-background-card/95 px-4 py-2 rounded-full shadow-lg border border-border/40 pointer-events-none">
                 <p className="text-[10px] font-black text-text-primary whitespace-nowrap">Drag the pin or tap to place it</p>
               </div>
             </div>
@@ -554,10 +560,11 @@ const AddressModal = ({ isOpen, onClose, onSave, user, editData }) => {
                 ✓ Confirm This Location
               </button>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
-    </div>
+    </Modal>
   );
 };
 

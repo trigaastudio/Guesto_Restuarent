@@ -262,7 +262,7 @@ const LandingPage = () => {
   }
 
   return (
-    <div className={`min-h-screen bg-background font-sans overflow-x-hidden ${theme}`}>
+    <div className={`min-h-dvh bg-background font-sans overflow-x-hidden ${theme}`}>
       <div className="relative w-full overflow-hidden flex flex-col bg-[#B91C1C]">
         <div className="absolute inset-0 z-0 bg-[#B91C1C]"></div>
         <Navbar
@@ -351,7 +351,7 @@ const LandingPage = () => {
                         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 
                         {isItemOutOfStock && (
-                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px] z-20">
+                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-20">
                             <span className="bg-white text-black text-[9px] font-black px-3 py-1.5 rounded-lg uppercase tracking-widest shadow-xl border border-black/10">
                               {isClosed || isCategoryClosed ? 'Closed' : 'Out of Stock'}
                             </span>

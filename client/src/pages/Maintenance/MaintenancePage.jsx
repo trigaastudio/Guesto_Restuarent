@@ -34,7 +34,7 @@ const MaintenancePage = () => {
     : settings?.branding?.logoDark || '/logo-dark.png';
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+    <div className="min-h-dvh bg-background flex flex-col items-center justify-center p-4">
       <div className="max-w-md w-full bg-background-card rounded-[2.5rem] p-8 md:p-10 text-center shadow-2xl border border-border/40 animate-in slide-in-from-bottom-10 fade-in duration-700">
         <div className="flex items-center justify-center mx-auto mb-8 h-20">
           <img src={logo} alt="Restaurant Logo" className="max-h-full max-w-full object-contain drop-shadow-xl" />

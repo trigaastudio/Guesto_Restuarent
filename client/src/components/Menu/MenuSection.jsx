@@ -171,7 +171,7 @@ const MenuSection = React.memo(({ title, loading, filteredMenus, addToCart, navi
                     />
 
                     {isOutOfStock && (
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px] z-20">
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-20">
                         <span className="bg-white text-black text-[8px] font-black px-2 py-1 rounded-lg uppercase tracking-widest shadow-xl border border-black/10">
                           {isClosed || isCategoryClosed ? 'Closed' : 'OOS'}
                         </span>

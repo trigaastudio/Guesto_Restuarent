@@ -4,6 +4,7 @@ import { Plus, Edit2, Trash2, RefreshCw, Users, Hash, Search, RotateCcw, XCircle
 import TableSkeleton from '../../../components/Skeleton/TableSkeleton';
 import { showToast } from '../../../utils/sweetAlert';
 import Swal from 'sweetalert2';
+import Modal from '../../../components/Modal/Modal';
 
 const TableSection = ({ refreshKey }) => {
   const [tables, setTables] = useState([]);
@@ -300,9 +301,12 @@ const TableSection = ({ refreshKey }) => {
       </div>
 
       {/* Add/Edit Table Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-hidden animate-in fade-in duration-300">
-          <div className="bg-background-card w-full max-w-md rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        zIndex="z-[100]"
+      >
+        <div className="bg-background-card w-full max-w-md rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
             <div className="p-6 border-b border-border-light flex items-center justify-between">
               <h3 className="text-xl font-black text-text-primary">
                 {formData._id ? 'Edit Table Details' : 'Add New Dining Table'}
@@ -374,8 +378,7 @@ const TableSection = ({ refreshKey }) => {
               </div>
             </form>
           </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { X, ShoppingBag, Plus, Minus, Info } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { showToast } from '../../utils/sweetAlert';
 import { getEffectiveStock } from '../../utils/stockHelpers';
+import Modal from '../Modal/Modal';
 
 const OfferModal = ({ isOpen, onClose, offer, menus, onBrowseMenu }) => {
   const { addToCart, checkStoreStatus } = useCart();
@@ -191,8 +192,11 @@ const OfferModal = ({ isOpen, onClose, offer, menus, onBrowseMenu }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose}></div>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      zIndex="z-[2000]"
+    >
       <div className="bg-background-card w-full max-w-[500px] rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden animate-in zoom-in-95 duration-300 border border-border/10">
         
         {/* Header Image */}
@@ -201,7 +205,7 @@ const OfferModal = ({ isOpen, onClose, offer, menus, onBrowseMenu }) => {
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 bg-black/40 backdrop-blur-md rounded-full text-white hover:bg-white hover:text-black transition-all shadow-lg active:scale-90 z-20"
+            className="absolute top-4 right-4 p-2 bg-black/60 rounded-full text-white hover:bg-white hover:text-black transition-colors shadow-lg active:scale-90 z-20"
           >
             <X size={20} />
           </button>
@@ -218,7 +222,7 @@ const OfferModal = ({ isOpen, onClose, offer, menus, onBrowseMenu }) => {
         </div>
 
         {/* Content */}
-        <div className="p-6 max-h-[50vh] overflow-y-auto no-scrollbar">
+        <div className="p-6 max-h-[50dvh] overflow-y-auto no-scrollbar">
           <p className="text-sm font-bold text-text-secondary mb-6">{offer.description}</p>
 
           {offer.offerType === 'combo' && (
@@ -270,7 +274,7 @@ const OfferModal = ({ isOpen, onClose, offer, menus, onBrowseMenu }) => {
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };
 

@@ -11,6 +11,7 @@ import ListSkeleton from '../../components/Skeleton/ListSkeleton';
 import { logoutToLanding } from '../../utils/auth';
 import socket from '../../services/socket';
 import Pagination from '../../components/Pagination/Pagination';
+import Modal from '../../components/Modal/Modal';
 
 const OrdersPage = () => {
   const navigate = useNavigate();
@@ -302,7 +303,7 @@ const OrdersPage = () => {
   const hasOrders = orders.length > 0 || loading;
 
   return (
-    <div className={`min-h-screen bg-background font-sans overflow-x-hidden ${theme}`}>
+    <div className={`min-h-dvh bg-background font-sans overflow-x-hidden ${theme}`}>
       <Navbar
         user={user}
         cartItems={cartItems}
@@ -318,7 +319,7 @@ const OrdersPage = () => {
           <div className="absolute top-0 right-0 w-64 h-64 bg-background-card/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
         </div>
 
-        <main className={`max-w-7xl mx-auto px-3 sm:px-6 pt-24 md:pt-32 ${hasOrders ? '' : 'min-h-[70vh] flex items-center justify-center'} relative z-10 pb-24`}>
+        <main className={`max-w-7xl mx-auto px-3 sm:px-6 pt-24 md:pt-32 ${hasOrders ? '' : 'min-h-[70dvh] flex items-center justify-center'} relative z-10 pb-24`}>
           {loading ? (
             <div className="max-w-6xl mx-auto w-full space-y-6 relative z-10 pt-10">
               <div className="grid grid-cols-1 gap-6">
@@ -521,11 +522,11 @@ const OrdersPage = () => {
       </div>
       {}
       {showDetailsModal && selectedOrder && (
-        <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 md:p-6 animate-in fade-in duration-300">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-            onClick={() => { setShowDetailsModal(false); setTimeout(() => setSelectedOrderId(null), 300); }}
-          />
+        <Modal
+          isOpen={true}
+          onClose={() => { setShowDetailsModal(false); setTimeout(() => setSelectedOrderId(null), 300); }}
+          zIndex="z-[1100]"
+        >
           <div className="relative w-full max-w-xl bg-white dark:bg-background-card rounded-xl sm:rounded-[2.5rem] shadow-[0_30px_100px_rgba(0,0,0,0.4)] overflow-hidden animate-in zoom-in-95 duration-300">
             {}
             <div className="p-4 sm:p-6 md:p-8 border-b border-border/10 flex items-center justify-between">
@@ -542,7 +543,7 @@ const OrdersPage = () => {
             </div>
 
             {}
-            <div className="p-4 sm:p-6 md:p-8 max-h-[60vh] overflow-y-auto custom-scrollbar space-y-4">
+            <div className="p-4 sm:p-6 md:p-8 max-h-[60dvh] overflow-y-auto custom-scrollbar space-y-4">
               <div className="space-y-3">
                 {selectedOrder.items.map((item, idx) => (
                   <div key={idx} className="flex items-start justify-between p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-background-muted/20 border border-border/5">
@@ -611,7 +612,7 @@ const OrdersPage = () => {
               </div>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {!loading && hasOrders && <Footer />}

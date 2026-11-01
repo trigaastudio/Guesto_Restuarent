@@ -13,10 +13,14 @@ import Swal from 'sweetalert2';
 import CardSkeleton from '../../components/Skeleton/CardSkeleton';
 import DineInPOSModal from '../../components/POS/DineInPOSModal';
 import { logoutStaff } from '../../utils/auth';
+import Modal from '../../components/Modal/Modal';
+import useForceRepaint from '../../hooks/useForceRepaint';
 
 const SOCKET_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'https://guest-o-backend.onrender.com';
 
 const WaiterDashboard = () => {
+  useForceRepaint();
+
   const [tables, setTables] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -618,7 +622,7 @@ const WaiterDashboard = () => {
   };
 
   return (
-    <div className="flex h-screen bg-background text-text-primary overflow-hidden transition-colors duration-300">
+    <div className="flex h-dvh bg-background text-text-primary overflow-hidden transition-colors duration-300">
       { }
       <main className="flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out">
         {/* ═══════════════════════════════════════════════
@@ -749,7 +753,7 @@ const WaiterDashboard = () => {
               ))}
             </div>
           ) : tables.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-[60vh] space-y-6 text-center animate-in fade-in zoom-in duration-500">
+            <div className="flex flex-col items-center justify-center h-[60dvh] space-y-6 text-center animate-in fade-in zoom-in duration-500">
               <div className="w-28 h-28 bg-background-muted/50 rounded-full flex items-center justify-center border-2 border-dashed border-border-light">
                 <Hash size={40} className="text-text-muted opacity-30" />
               </div>
@@ -873,7 +877,7 @@ const WaiterDashboard = () => {
                     </div>
 
                     {/* Right Column: Active Orders Area */}
-                    <div className="lg:col-span-8 bg-background-card border border-border-light rounded-[2.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.02)] p-6 lg:p-8 flex flex-col min-h-[55vh]">
+                    <div className="lg:col-span-8 bg-background-card border border-border-light rounded-[2.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.02)] p-6 lg:p-8 flex flex-col min-h-[55dvh]">
                       {isOccupied ? (
                         <div className="space-y-6 flex-1 flex flex-col">
                           <div className="flex items-center justify-between text-[11px] font-black text-text-muted uppercase tracking-[0.2em] opacity-90 border-b border-border-light pb-4">
@@ -899,7 +903,7 @@ const WaiterDashboard = () => {
                                     setSelectedOrderForView(order);
                                     setIsDetailsModalOpen(true);
                                   }}
-                                  className={`rounded-3xl border transition-all duration-300 shadow-sm hover:shadow-lg ${cardStatusStyle} group/order overflow-hidden flex flex-col cursor-pointer hover:border-primary/30`}
+                                  className={`rounded-3xl border transition-shadow transition-colors duration-300 shadow-sm hover:shadow-lg ${cardStatusStyle} group/order overflow-hidden flex flex-col cursor-pointer hover:border-primary/30`}
                                 >
                                   <div className="flex items-center justify-between px-5 pt-5 pb-2">
                                     <div className="flex items-center gap-3">
@@ -1079,7 +1083,7 @@ const WaiterDashboard = () => {
                             setSelectedViewTableId(table._id);
                           }
                         }}
-                        className={`relative cursor-pointer rounded-2xl overflow-hidden shadow-sm hover:shadow-md bg-white dark:bg-gray-900 transition-all duration-300 ${isSelectedForMerge
+                        className={`relative cursor-pointer rounded-2xl overflow-hidden shadow-sm hover:shadow-md bg-white dark:bg-gray-900 transition-shadow transition-colors duration-300 ${isSelectedForMerge
                           ? 'border-2 border-primary ring-4 ring-primary/10 scale-[1.02] shadow-lg'
                           : isMergeMode && table.occupiedSeats > 0
                             ? 'border border-border-light opacity-60 cursor-not-allowed grayscale'
@@ -1190,12 +1194,15 @@ const WaiterDashboard = () => {
       />
 
       {isDetailsModalOpen && selectedOrderForView && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => {
+        <Modal
+          isOpen={true}
+          onClose={() => {
             setIsDetailsModalOpen(false);
             setSelectedOrderForView(null);
-          }}></div>
-          <div className="bg-background-card w-full max-w-lg max-h-[80vh] rounded-[2.5rem] shadow-2xl relative z-10 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 border border-border-light">
+          }}
+          zIndex="z-[100]"
+        >
+          <div className="bg-background-card w-full max-w-lg max-h-[80dvh] rounded-[2.5rem] shadow-2xl relative z-10 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 border border-border-light">
             {/* Header */}
             <div className="p-6 border-b border-border-light flex justify-between items-center bg-background-card">
               <div>
@@ -1381,7 +1388,7 @@ const WaiterDashboard = () => {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
 

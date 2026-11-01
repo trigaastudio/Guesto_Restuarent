@@ -1,9 +1,11 @@
 import React, { Fragment, useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import socket from '../../services/socket';
 import { showToast } from '../../utils/sweetAlert';
 import api from '../../api/axiosInstance';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { logoutAdmin } from '../../utils/auth';
+import useForceRepaint from '../../hooks/useForceRepaint';
 import {
   LayoutDashboard,
   Users,
@@ -79,6 +81,8 @@ const AdminDashboard = () => {
   const rawTab = searchParams.get('tab') || defaultTab;
   // If order-manager somehow lands on a forbidden tab, silently redirect to Orders
   const activeTab = isOrderManager && !ORDER_MANAGER_TABS.includes(rawTab) ? 'Orders' : rawTab;
+
+  useForceRepaint();
 
   const [refreshKey, setRefreshKey] = useState(0);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -300,12 +304,13 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className={`flex h-screen bg-background text-text-primary overflow-hidden transition-colors duration-300`}>
-      {isMobileMenuOpen && (
+    <div className={`flex h-dvh bg-background text-text-primary overflow-hidden transition-colors duration-300`}>
+      {typeof document !== 'undefined' && isMobileMenuOpen && ReactDOM.createPortal(
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/70 z-40 lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
-        />
+        />,
+        document.body
       )}
 
       <aside className={`
@@ -530,7 +535,10 @@ const AdminDashboard = () => {
               {}
               {showNotifications && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
+                  {typeof document !== 'undefined' && ReactDOM.createPortal(
+                    <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />,
+                    document.body
+                  )}
                   <div className="absolute right-0 mt-4 w-80 max-h-[500px] bg-background-card border border-border-light rounded-[2rem] shadow-2xl z-50 flex flex-col overflow-hidden animate-in slide-in-from-top-2 duration-200">
                     <div className="p-4 border-b border-border-light flex items-center justify-between bg-background-muted/20">
                       <h4 className="font-black text-text-primary text-sm uppercase tracking-widest">Notifications</h4>

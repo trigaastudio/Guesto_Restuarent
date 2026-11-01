@@ -5,6 +5,7 @@ import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/swe
 import ImageCropper from '../../../components/ImageCropper/ImageCropper';
 import TableSkeleton from '../../../components/Skeleton/TableSkeleton';
 import Pagination from '../../../components/Pagination/Pagination';
+import Modal from '../../../components/Modal/Modal';
 
 const CategorySection = ({ refreshKey }) => {
   const [categories, setCategories] = useState([]);
@@ -538,10 +539,13 @@ const CategorySection = ({ refreshKey }) => {
         />
       </div>
 
-      { }
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-background-card w-full max-w-md rounded-2xl border border-border-light shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+      {/* Category Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        zIndex="z-[60]"
+      >
+        <div className="bg-background-card w-full max-w-md rounded-2xl border border-border-light shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-border-light flex items-center justify-between">
               <h3 className="text-xl font-bold text-text-primary">{isEditing ? 'Edit Category' : 'Add Category'}</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-text-secondary hover:text-text-primary">
@@ -675,8 +679,7 @@ const CategorySection = ({ refreshKey }) => {
               </button>
             </div>
           </div>
-        </div>
-      )}
+      </Modal>
       {showCropper && (
         <ImageCropper
           image={imageToCrop}

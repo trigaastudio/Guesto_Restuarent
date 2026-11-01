@@ -85,7 +85,7 @@ const Footer = React.memo(() => {
                 <a
                   key={i}
                   href="#"
-                  className="w-11 h-11 rounded-2xl bg-white/10 dark:bg-background-muted backdrop-blur-md border border-white/20 dark:border-border/60 flex items-center justify-center hover:bg-white hover:text-primary dark:hover:bg-primary dark:hover:text-white transition-all duration-500 group shadow-lg"
+                  className="w-11 h-11 rounded-2xl bg-white/20 dark:bg-background-muted border border-white/20 dark:border-border/60 flex items-center justify-center hover:bg-white hover:text-primary dark:hover:bg-primary dark:hover:text-white transition-all duration-500 group shadow-lg"
                 >
                   <Icon size={20} className="group-hover:scale-110 transition-transform duration-500" strokeWidth={2.5} />
                 </a>
@@ -145,7 +145,7 @@ const Footer = React.memo(() => {
           {}
           <div className="space-y-8">
             <h4 className="text-[10px] font-black tracking-[0.3em] text-white/60 dark:text-text-muted/50 uppercase">The Experience</h4>
-            <div className="bg-white/10 dark:bg-background-muted backdrop-blur-md rounded-[2rem] p-8 border border-white/20 dark:border-border/10 space-y-4 shadow-2xl">
+            <div className="bg-white/20 dark:bg-background-muted rounded-[2rem] p-8 border border-white/20 dark:border-border/10 space-y-4 shadow-2xl">
               <p className="text-[11px] font-black text-white dark:text-text-primary leading-relaxed italic opacity-90">
                 "We don't just serve food; we serve memories of home, crafted with the finest ingredients and a pinch of love."
               </p>
