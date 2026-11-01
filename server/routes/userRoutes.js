@@ -30,12 +30,11 @@ router.delete('/address/:addressId', protect, userController.deleteAddress);
 
 
 
-// Allow order-manager to read users (for customer search when placing orders)
-
+// Allow admin and order-manager to manage users
 router.get('/', protect, adminOrOrderManager, userController.getAllUsers);
-router.post('/', protect, admin, userController.createUser);
+router.post('/', protect, adminOrOrderManager, userController.createUser);
 router.put('/:id', protect, adminOrOrderManager, userController.updateUser);
-router.delete('/:id', protect, admin, userController.deleteUser);
-router.patch('/:id/toggle-status', protect, admin, userController.toggleUserStatus);
+router.delete('/:id', protect, adminOrOrderManager, userController.deleteUser);
+router.patch('/:id/toggle-status', protect, adminOrOrderManager, userController.toggleUserStatus);
 
 export default router;

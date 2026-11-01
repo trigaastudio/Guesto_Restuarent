@@ -65,7 +65,7 @@ const SupplierSection = React.lazy(() => import('./sections/SupplierSection'));
 const WageAdvanceSection = React.lazy(() => import('./sections/WageAdvanceSection'));
 
 // Tabs accessible by the order-manager role
-const ORDER_MANAGER_TABS = ['Orders', 'Dine-In'];
+const ORDER_MANAGER_TABS = ['Orders', 'Dine-In', 'Users'];
 
 const AdminDashboard = () => {
   const { theme, toggleTheme } = useTheme();
@@ -1096,7 +1096,7 @@ const AdminDashboard = () => {
             {!isOrderManager && activeTab === 'Menu' && <MenuSection key={`menu-${refreshKey}`} />}
             {!isOrderManager && activeTab === 'Tables' && <TableSection refreshKey={refreshKey} />}
             {!isOrderManager && activeTab === 'Staff' && <StaffManagement key={`staff-${refreshKey}`} />}
-            {!isOrderManager && activeTab === 'Users' && <UserManagement key={`users-${refreshKey}`} />}
+            {activeTab === 'Users' && <UserManagement key={`users-${refreshKey}`} />}
             {!isOrderManager && activeTab === 'Settings' && <SettingsSection key={`settings-${refreshKey}`} />}
             {!isOrderManager && activeTab === 'Offers' && <OfferSection key={`offers-${refreshKey}`} />}
             {!isOrderManager && activeTab === 'Sales' && <SalesSection key={`sales-${refreshKey}`} />}
