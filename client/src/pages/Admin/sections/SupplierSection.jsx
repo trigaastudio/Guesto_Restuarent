@@ -314,9 +314,17 @@ const SupplierSection = ({ onNavigateTab }) => {
       showToast('warning', 'Please select a supplier');
       return;
     }
+    // If no total bill amount entered, default to paidAmount (partial payment without bill)
+    const paidNum = Number(txFormData.paidAmount) || 0;
     if (!txFormData.amount || Number(txFormData.amount) <= 0) {
-      showToast('warning', 'Please enter a valid amount');
-      return;
+      if (paidNum <= 0) {
+        showToast('warning', 'Please enter at least the amount being paid');
+        return;
+      }
+      // Auto-set total = paidAmount so it saves cleanly as partial/full payment
+      setTxFormData(prev => ({ ...prev, amount: paidNum, status: 'settled' }));
+      txFormData.amount = paidNum;
+      txFormData.status = 'settled';
     }
 
     try {
@@ -1490,7 +1498,9 @@ const SupplierSection = ({ onNavigateTab }) => {
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                        {txFormData.type === 'expense' ? 'Total Bill Amount (₹) *' : 'Total Advance Amount (₹) *'}
+                        {txFormData.type === 'expense'
+                          ? isEditingTx ? 'Total Bill Amount (₹) *' : 'Total Bill Amount (₹)'
+                          : 'Total Advance Amount (₹) *'}
                       </label>
                       {!isEditingTx && txFormData.type === 'advance' && (() => {
                         const curSelectedSup = suppliers.find(s => s._id === txFormData.supplier);
@@ -1522,7 +1532,7 @@ const SupplierSection = ({ onNavigateTab }) => {
                         type="number"
                         min="1"
                         step="any"
-                        required
+                        required={txFormData.type === 'advance' || isEditingTx}
                         value={txFormData.amount}
                         onChange={(e) => {
                           const newAmt = e.target.value;
@@ -1536,7 +1546,7 @@ const SupplierSection = ({ onNavigateTab }) => {
                             return { ...prev, amount: newAmt, status: newStat };
                           });
                         }}
-                        placeholder="0.00"
+                        placeholder={!isEditingTx && txFormData.type === 'expense' ? 'Optional — if unknown' : '0.00'}
                         className="w-full pl-8 pr-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-sm font-black outline-none"
                       />
                     </div>
@@ -1622,8 +1632,16 @@ const SupplierSection = ({ onNavigateTab }) => {
                   {(() => {
                     const t = Number(txFormData.amount) || 0;
                     const p = Number(txFormData.paidAmount) || 0;
-                    const bal = Math.max(0, t - p);
-
+                    const bal = t > 0 ? Math.max(0, t - p) : 0;
+                    // No total entered yet — just show what will be recorded
+                    if (t === 0 && p > 0 && txFormData.type === 'expense' && !isEditingTx) {
+                      return (
+                        <div className="p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between bg-blue-500/10 border-blue-500/30 text-blue-600">
+                          <span>Recording payment of:</span>
+                          <span className="font-black text-sm">₹{p.toLocaleString()} <span className="text-[10px] font-bold opacity-70">(total = paid)</span></span>
+                        </div>
+                      );
+                    }
                     return (
                       <div className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between ${
                         bal === 0
