@@ -29,10 +29,20 @@ export const getEmployees = async (req, res) => {
           _id: '$employee',
           totalAdvances: { $sum: '$amount' },
           pendingAdvances: {
-            $sum: { $cond: [{ $eq: ['$status', 'pending'] }, '$amount', 0] }
+            $sum: {
+              $ifNull: [
+                '$balanceAmount',
+                { $cond: [{ $eq: ['$status', 'settled'] }, 0, '$amount'] }
+              ]
+            }
           },
           settledAdvances: {
-            $sum: { $cond: [{ $eq: ['$status', 'settled'] }, '$amount', 0] }
+            $sum: {
+              $ifNull: [
+                '$paidAmount',
+                { $cond: [{ $eq: ['$status', 'settled'] }, '$amount', 0] }
+              ]
+            }
           },
           lastAdvanceDate: { $max: '$date' },
           advanceCount: { $sum: 1 },
@@ -226,23 +236,53 @@ export const getWageAdvances = async (req, res) => {
 // CREATE wage advance
 export const createWageAdvance = async (req, res) => {
   try {
-    const { employee, date, amount, paymentMethod, reason, status } = req.body;
+    const { employee, date, amount, paidAmount, paymentMethod, reason, status } = req.body;
 
     if (!employee) {
       return res.status(400).json({ success: false, message: 'Employee is required' });
     }
-    if (!amount || Number(amount) <= 0) {
+    const numAmount = Number(amount);
+    if (!amount || isNaN(numAmount) || numAmount <= 0) {
       return res.status(400).json({ success: false, message: 'Valid advance amount is required' });
+    }
+
+    let parsedPaid = paidAmount !== undefined ? Number(paidAmount) : (status === 'settled' ? numAmount : 0);
+    if (isNaN(parsedPaid) || parsedPaid < 0) parsedPaid = 0;
+    parsedPaid = Math.min(numAmount, parsedPaid);
+
+    const balanceAmount = Math.max(0, numAmount - parsedPaid);
+    let finalStatus = 'pending';
+    if (parsedPaid >= numAmount || status === 'settled') {
+      finalStatus = 'settled';
+      parsedPaid = numAmount;
+    } else if (parsedPaid > 0) {
+      finalStatus = 'partially_paid';
+    } else {
+      finalStatus = 'pending';
+    }
+
+    const payments = [];
+    if (parsedPaid > 0) {
+      payments.push({
+        amount: parsedPaid,
+        paymentMethod: paymentMethod || 'Cash',
+        date: date ? new Date(date) : new Date(),
+        notes: reason?.trim() || 'Initial payment',
+        recordedBy: req.user?._id,
+      });
     }
 
     const advance = await WageAdvance.create({
       employee,
       date: date ? new Date(date) : new Date(),
-      amount: Number(amount),
+      amount: numAmount,
+      paidAmount: parsedPaid,
+      balanceAmount: Math.max(0, numAmount - parsedPaid),
       paymentMethod: paymentMethod || 'Cash',
       reason: reason?.trim() || '',
-      status: status || 'pending',
-      settledDate: status === 'settled' ? new Date() : null,
+      status: finalStatus,
+      settledDate: finalStatus === 'settled' ? new Date() : null,
+      payments,
       recordedBy: req.user?._id,
     });
 
@@ -264,30 +304,48 @@ export const createWageAdvance = async (req, res) => {
 export const updateWageAdvance = async (req, res) => {
   try {
     const { id } = req.params;
-    const { employee, date, amount, paymentMethod, reason, status, settledNotes } = req.body;
+    const { employee, date, amount, paidAmount, paymentMethod, reason, status, settledNotes } = req.body;
 
-    const updateData = {};
+    const existingAdv = await WageAdvance.findById(id);
+    if (!existingAdv) {
+      return res.status(404).json({ success: false, message: 'Wage advance record not found' });
+    }
+
+    const finalAmount = amount !== undefined ? Number(amount) : existingAdv.amount;
+    let finalPaid = paidAmount !== undefined
+      ? Number(paidAmount)
+      : (existingAdv.paidAmount !== undefined ? existingAdv.paidAmount : (existingAdv.status === 'settled' ? finalAmount : 0));
+
+    if (isNaN(finalPaid) || finalPaid < 0) finalPaid = 0;
+    finalPaid = Math.min(finalAmount, finalPaid);
+
+    let finalStatus = status;
+    if (status === 'settled') {
+      finalPaid = finalAmount;
+    } else if (finalPaid >= finalAmount) {
+      finalStatus = 'settled';
+    } else if (finalPaid > 0) {
+      finalStatus = 'partially_paid';
+    } else {
+      finalStatus = 'pending';
+    }
+
+    const updateData = {
+      amount: finalAmount,
+      paidAmount: finalPaid,
+      balanceAmount: Math.max(0, finalAmount - finalPaid),
+      status: finalStatus,
+      settledDate: finalStatus === 'settled' ? (existingAdv.settledDate || new Date()) : null,
+    };
+
     if (employee) updateData.employee = employee;
     if (date) updateData.date = new Date(date);
-    if (amount !== undefined) updateData.amount = Number(amount);
     if (paymentMethod) updateData.paymentMethod = paymentMethod;
     if (reason !== undefined) updateData.reason = reason.trim();
-    if (status) {
-      updateData.status = status;
-      if (status === 'settled') {
-        updateData.settledDate = updateData.settledDate || new Date();
-      } else {
-        updateData.settledDate = null;
-      }
-    }
     if (settledNotes !== undefined) updateData.settledNotes = settledNotes.trim();
 
     const advance = await WageAdvance.findByIdAndUpdate(id, updateData, { new: true, runValidators: true })
       .populate('employee', 'name phone role monthlyWage');
-
-    if (!advance) {
-      return res.status(404).json({ success: false, message: 'Wage advance record not found' });
-    }
 
     res.status(200).json({
       success: true,
@@ -296,6 +354,67 @@ export const updateWageAdvance = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating wage advance:', error);
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// RECORD PARTIAL OR FULL PAYMENT TO WAGE / ADVANCE
+export const recordWageAdvancePayment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { paymentAmount, paymentMethod, notes, date } = req.body;
+
+    const advance = await WageAdvance.findById(id);
+    if (!advance) {
+      return res.status(404).json({ success: false, message: 'Wage advance record not found' });
+    }
+
+    const payVal = Number(paymentAmount);
+    if (isNaN(payVal) || payVal <= 0) {
+      return res.status(400).json({ success: false, message: 'Please enter a valid payment amount greater than 0' });
+    }
+
+    const currentPaid = advance.paidAmount !== undefined
+      ? advance.paidAmount
+      : (advance.status === 'settled' ? advance.amount : 0);
+    const currentBalance = Math.max(0, advance.amount - currentPaid);
+
+    if (currentBalance <= 0) {
+      return res.status(400).json({ success: false, message: 'This record is already fully paid and settled' });
+    }
+
+    const actualPayment = Math.min(currentBalance, payVal);
+    const newPaidAmount = currentPaid + actualPayment;
+    const newBalanceAmount = Math.max(0, advance.amount - newPaidAmount);
+    const newStatus = newBalanceAmount === 0 ? 'settled' : 'partially_paid';
+
+    advance.paidAmount = newPaidAmount;
+    advance.balanceAmount = newBalanceAmount;
+    advance.status = newStatus;
+    if (newStatus === 'settled') {
+      advance.settledDate = new Date();
+    }
+    if (!advance.payments) advance.payments = [];
+    advance.payments.push({
+      amount: actualPayment,
+      paymentMethod: paymentMethod || advance.paymentMethod || 'Cash',
+      date: date ? new Date(date) : new Date(),
+      notes: notes?.trim() || `Partial payment of ₹${actualPayment}`,
+      recordedBy: req.user?._id,
+    });
+
+    await advance.save();
+
+    const populated = await WageAdvance.findById(advance._id)
+      .populate('employee', 'name phone role monthlyWage');
+
+    res.status(200).json({
+      success: true,
+      message: `Payment of ₹${actualPayment.toLocaleString()} recorded. Remaining balance: ₹${newBalanceAmount.toLocaleString()}`,
+      data: populated,
+    });
+  } catch (error) {
+    console.error('Error recording wage payment:', error);
     res.status(400).json({ success: false, message: error.message });
   }
 };
@@ -311,9 +430,17 @@ export const toggleSettlementStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Wage advance record not found' });
     }
 
-    const newStatus = advance.status === 'pending' ? 'settled' : 'pending';
-    advance.status = newStatus;
-    advance.settledDate = newStatus === 'settled' ? new Date() : null;
+    if (advance.status === 'settled') {
+      advance.status = 'pending';
+      advance.paidAmount = 0;
+      advance.balanceAmount = advance.amount;
+      advance.settledDate = null;
+    } else {
+      advance.status = 'settled';
+      advance.paidAmount = advance.amount;
+      advance.balanceAmount = 0;
+      advance.settledDate = new Date();
+    }
     if (settledNotes !== undefined) advance.settledNotes = settledNotes;
 
     await advance.save();
@@ -322,7 +449,7 @@ export const toggleSettlementStatus = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Advance marked as ${newStatus === 'settled' ? 'Settled (Deducted)' : 'Pending'}`,
+      message: `Advance marked as ${advance.status === 'settled' ? 'Settled (Deducted)' : 'Pending'}`,
       data: populated,
     });
   } catch (error) {
@@ -369,10 +496,20 @@ export const getWageAdvanceSummary = async (req, res) => {
             _id: null,
             totalAdvances: { $sum: '$amount' },
             pendingAdvances: {
-              $sum: { $cond: [{ $eq: ['$status', 'pending'] }, '$amount', 0] }
+              $sum: {
+                $ifNull: [
+                  '$balanceAmount',
+                  { $cond: [{ $eq: ['$status', 'settled'] }, 0, '$amount'] }
+                ]
+              }
             },
             settledAdvances: {
-              $sum: { $cond: [{ $eq: ['$status', 'settled'] }, '$amount', 0] }
+              $sum: {
+                $ifNull: [
+                  '$paidAmount',
+                  { $cond: [{ $eq: ['$status', 'settled'] }, '$amount', 0] }
+                ]
+              }
             },
             count: { $sum: 1 },
           }
@@ -385,10 +522,20 @@ export const getWageAdvanceSummary = async (req, res) => {
             _id: null,
             totalAdvances: { $sum: '$amount' },
             pendingAdvances: {
-              $sum: { $cond: [{ $eq: ['$status', 'pending'] }, '$amount', 0] }
+              $sum: {
+                $ifNull: [
+                  '$balanceAmount',
+                  { $cond: [{ $eq: ['$status', 'settled'] }, 0, '$amount'] }
+                ]
+              }
             },
             settledAdvances: {
-              $sum: { $cond: [{ $eq: ['$status', 'settled'] }, '$amount', 0] }
+              $sum: {
+                $ifNull: [
+                  '$paidAmount',
+                  { $cond: [{ $eq: ['$status', 'settled'] }, '$amount', 0] }
+                ]
+              }
             },
           }
         }
@@ -400,10 +547,20 @@ export const getWageAdvanceSummary = async (req, res) => {
             _id: null,
             todayAdvances: { $sum: '$amount' },
             todayPending: {
-              $sum: { $cond: [{ $eq: ['$status', 'pending'] }, '$amount', 0] }
+              $sum: {
+                $ifNull: [
+                  '$balanceAmount',
+                  { $cond: [{ $eq: ['$status', 'settled'] }, 0, '$amount'] }
+                ]
+              }
             },
             todaySettled: {
-              $sum: { $cond: [{ $eq: ['$status', 'settled'] }, '$amount', 0] }
+              $sum: {
+                $ifNull: [
+                  '$paidAmount',
+                  { $cond: [{ $eq: ['$status', 'settled'] }, '$amount', 0] }
+                ]
+              }
             },
           }
         }

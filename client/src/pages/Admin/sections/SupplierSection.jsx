@@ -24,6 +24,7 @@ import {
   ArrowDownLeft,
   Receipt,
   Layers,
+  Zap,
   X
 } from 'lucide-react';
 import api from '../../../api/axiosInstance';
@@ -88,11 +89,21 @@ const SupplierSection = ({ onNavigateTab }) => {
     date: new Date().toISOString().split('T')[0],
     type: 'expense',
     amount: '',
+    paidAmount: '',
     paymentMethod: 'Cash',
     billNumber: '',
     description: '',
     status: 'pending'
   });
+
+  // Dedicated Payment modal state (Partial / Full payment)
+  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
+  const [payModalTx, setPayModalTx] = useState(null);
+  const [payAmount, setPayAmount] = useState('');
+  const [payMethod, setPayMethod] = useState('Cash');
+  const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
+  const [payNotes, setPayNotes] = useState('');
+  const [isSubmittingPay, setIsSubmittingPay] = useState(false);
 
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
   const [isEditingSupplier, setIsEditingSupplier] = useState(false);
@@ -210,12 +221,16 @@ const SupplierSection = ({ onNavigateTab }) => {
   // Open transaction modal
   const handleOpenTxModal = (type = 'expense', supplierId = null, existingTx = null) => {
     if (existingTx) {
+      const existingPaid = existingTx.paidAmount !== undefined
+        ? existingTx.paidAmount
+        : (existingTx.status === 'settled' ? existingTx.amount : 0);
       setTxFormData({
         _id: existingTx._id,
         supplier: existingTx.supplier?._id || existingTx.supplier || '',
         date: existingTx.date ? new Date(existingTx.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         type: existingTx.type || 'expense',
         amount: existingTx.amount || '',
+        paidAmount: existingPaid !== undefined && existingPaid !== null ? existingPaid : '',
         paymentMethod: existingTx.paymentMethod || 'Cash',
         billNumber: existingTx.billNumber || '',
         description: existingTx.description || '',
@@ -223,20 +238,73 @@ const SupplierSection = ({ onNavigateTab }) => {
       });
       setIsEditingTx(true);
     } else {
+      const targetSupId = supplierId || (suppliers.length > 0 ? suppliers[0]._id : '');
+      const targetSup = suppliers.find(s => s._id === targetSupId);
+      const shouldPrefillPending = type === 'advance' && targetSup?.balance > 0;
       setTxFormData({
         _id: null,
-        supplier: supplierId || (suppliers.length > 0 ? suppliers[0]._id : ''),
+        supplier: targetSupId,
         date: new Date().toISOString().split('T')[0],
         type: type,
-        amount: '',
+        amount: shouldPrefillPending ? targetSup.balance : '',
+        paidAmount: shouldPrefillPending ? targetSup.balance : '',
         paymentMethod: 'Cash',
         billNumber: '',
-        description: '',
-        status: 'pending'
+        description: shouldPrefillPending ? `Settlement of pending balance for ${targetSup.name}` : '',
+        status: shouldPrefillPending ? 'settled' : 'pending'
       });
       setIsEditingTx(false);
     }
     setIsTxModalOpen(true);
+  };
+
+  // Open Quick Pay Modal (Partial / Full payment)
+  const handleOpenPayModal = (tx) => {
+    const paid = tx.paidAmount !== undefined ? tx.paidAmount : (tx.status === 'settled' ? tx.amount : 0);
+    const balance = tx.balanceAmount !== undefined ? tx.balanceAmount : Math.max(0, tx.amount - paid);
+    setPayModalTx(tx);
+    setPayAmount(balance > 0 ? balance : '');
+    setPayMethod(tx.paymentMethod || 'Cash');
+    setPayDate(new Date().toISOString().split('T')[0]);
+    setPayNotes('');
+    setIsPayModalOpen(true);
+  };
+
+  // Confirm Payment to Supplier
+  const handleConfirmPayment = async (e) => {
+    e.preventDefault();
+    if (!payModalTx) return;
+    const num = Number(payAmount);
+    if (!num || num <= 0) {
+      showToast('warning', 'Please enter a valid payment amount');
+      return;
+    }
+
+    setIsSubmittingPay(true);
+    try {
+      const res = await api.post(`/api/suppliers/transactions/${payModalTx._id}/pay`, {
+        paymentAmount: num,
+        paymentMethod: payMethod,
+        notes: payNotes,
+        date: payDate,
+      });
+      if (res.data?.success) {
+        showToast('success', res.data.message || 'Payment recorded successfully');
+        setIsPayModalOpen(false);
+        fetchTransactions(true);
+        fetchSuppliers();
+        fetchSummary();
+      }
+    } catch (err) {
+      console.error('Error submitting payment:', err);
+      showAlert({
+        icon: 'error',
+        title: 'Payment Failed',
+        text: err.response?.data?.message || 'Failed to record payment'
+      });
+    } finally {
+      setIsSubmittingPay(false);
+    }
   };
 
   // Save Transaction
@@ -722,6 +790,7 @@ const SupplierSection = ({ onNavigateTab }) => {
                 >
                   <option value="all">All Status</option>
                   <option value="pending">Pending</option>
+                  <option value="partially_paid">Partially Paid</option>
                   <option value="settled">Settled</option>
                 </select>
 
@@ -790,27 +859,29 @@ const SupplierSection = ({ onNavigateTab }) => {
             <table className="w-full text-left text-xs whitespace-nowrap">
               <thead className="bg-background-muted/50 text-text-secondary uppercase text-[10px] font-black tracking-widest border-b border-border-light">
                 <tr>
-                  <th className="px-5 py-4">Date</th>
-                  <th className="px-5 py-4">Supplier</th>
-                  <th className="px-5 py-4">Type</th>
-                  <th className="px-5 py-4">Status</th>
-                  <th className="px-5 py-4">Bill No</th>
-                  <th className="px-5 py-4">Description / Items</th>
-                  <th className="px-5 py-4">Payment Mode</th>
-                  <th className="px-5 py-4 text-right">Amount</th>
-                  <th className="px-5 py-4 text-center">Actions</th>
+                  <th className="px-4 py-4">Date</th>
+                  <th className="px-4 py-4">Supplier</th>
+                  <th className="px-4 py-4">Type</th>
+                  <th className="px-4 py-4">Status</th>
+                  <th className="px-4 py-4">Bill No</th>
+                  <th className="px-4 py-4">Description / Items</th>
+                  <th className="px-4 py-4">Payment Mode</th>
+                  <th className="px-4 py-4 text-right">Total Bill</th>
+                  <th className="px-4 py-4 text-right">Paid Amount</th>
+                  <th className="px-4 py-4 text-right">Balance Due</th>
+                  <th className="px-4 py-4 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light">
                 {isLoading ? (
                   <tr>
-                    <td colSpan="9" className="px-6 py-10">
-                      <TableSkeleton columns={9} rows={6} />
+                    <td colSpan="11" className="px-6 py-10">
+                      <TableSkeleton columns={11} rows={6} />
                     </td>
                   </tr>
                 ) : paginatedTransactions.length === 0 ? (
                   <tr>
-                    <td colSpan="9" className="px-6 py-16 text-center text-text-muted">
+                    <td colSpan="11" className="px-6 py-16 text-center text-text-muted">
                       <div className="flex flex-col items-center justify-center space-y-3">
                         <FileText size={36} className="text-text-muted/40" />
                         <p className="font-bold text-sm">No transactions found</p>
@@ -827,110 +898,154 @@ const SupplierSection = ({ onNavigateTab }) => {
                     </td>
                   </tr>
                 ) : (
-                  paginatedTransactions.map((tx) => (
-                    <tr key={tx._id} className="hover:bg-background-muted/30 transition-colors group">
-                      {/* Date */}
-                      <td className="px-5 py-4 font-bold text-text-primary">
-                        {tx.date ? new Date(tx.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
-                      </td>
+                  paginatedTransactions.map((tx) => {
+                    const paidAmt = tx.paidAmount !== undefined
+                      ? tx.paidAmount
+                      : (tx.status === 'settled' ? tx.amount : 0);
+                    const balAmt = tx.balanceAmount !== undefined
+                      ? tx.balanceAmount
+                      : Math.max(0, tx.amount - paidAmt);
 
-                      {/* Supplier */}
-                      <td className="px-5 py-4">
-                        <div className="flex flex-col">
-                          <span
-                            onClick={() => setSelectedSupplierId(tx.supplier?._id || 'all')}
-                            className="font-bold text-text-primary hover:text-primary cursor-pointer transition-colors"
-                          >
-                            {tx.supplier?.name || 'Unknown Supplier'}
+                    return (
+                      <tr key={tx._id} className="hover:bg-background-muted/30 transition-colors group">
+                        {/* Date */}
+                        <td className="px-4 py-4 font-bold text-text-primary">
+                          {tx.date ? new Date(tx.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
+                        </td>
+
+                        {/* Supplier */}
+                        <td className="px-4 py-4">
+                          <div className="flex flex-col">
+                            <span
+                              onClick={() => setSelectedSupplierId(tx.supplier?._id || 'all')}
+                              className="font-bold text-text-primary hover:text-primary cursor-pointer transition-colors"
+                            >
+                              {tx.supplier?.name || 'Unknown Supplier'}
+                            </span>
+                            <span className="text-[10px] text-text-muted">
+                              {tx.supplier?.category || 'General'}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Type Badge */}
+                        <td className="px-4 py-4">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
+                            tx.type === 'expense'
+                              ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
+                              : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                          }`}>
+                            {tx.type === 'expense' ? 'Expense / Bill' : 'Advance Paid'}
                           </span>
-                          <span className="text-[10px] text-text-muted">
-                            {tx.supplier?.category || 'General'}
-                          </span>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Type Badge */}
-                      <td className="px-5 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
-                          tx.type === 'expense'
-                            ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
-                            : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                        }`}>
-                          {tx.type === 'expense' ? 'Expense / Bill' : 'Advance Paid'}
-                        </span>
-                      </td>
-
-                      {/* Status Badge */}
-                      <td className="px-5 py-4">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleSettle(tx)}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border transition-all ${
-                            (tx.status || 'pending') === 'settled'
-                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
-                              : 'bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20'
-                          }`}
-                          title={(tx.status || 'pending') === 'settled' ? 'Click to mark as Pending' : 'Click to mark as Settled'}
-                        >
-                          {(tx.status || 'pending') === 'settled' ? (
-                            <>
+                        {/* Status Badge */}
+                        <td className="px-4 py-4">
+                          {balAmt === 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleSettle(tx)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 transition-all"
+                              title="Fully Settled! Click to mark as Pending"
+                            >
                               <CheckCircle2 size={10} />
                               <span>Settled</span>
-                            </>
+                            </button>
+                          ) : paidAmt > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenPayModal(tx)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 hover:bg-blue-500/20 transition-all"
+                              title="Partially Paid. Click to record payment"
+                            >
+                              <Clock size={10} />
+                              <span>Partial</span>
+                            </button>
                           ) : (
-                            <>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenPayModal(tx)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20 transition-all cursor-pointer"
+                              title={`Pending Payment. Click to settle balance of ₹${balAmt.toLocaleString()}`}
+                            >
                               <Clock size={10} />
                               <span>Pending</span>
-                            </>
+                            </button>
                           )}
-                        </button>
-                      </td>
+                        </td>
 
-                      {/* Bill No */}
-                      <td className="px-5 py-4 font-mono font-bold text-text-secondary">
-                        {tx.billNumber ? `#${tx.billNumber}` : '-'}
-                      </td>
+                        {/* Bill No */}
+                        <td className="px-4 py-4 font-mono font-bold text-text-secondary">
+                          {tx.billNumber ? `#${tx.billNumber}` : '-'}
+                        </td>
 
-                      {/* Description */}
-                      <td className="px-5 py-4 text-text-secondary max-w-xs truncate" title={tx.description}>
-                        {tx.description || '-'}
-                      </td>
+                        {/* Description */}
+                        <td className="px-4 py-4 text-text-secondary max-w-xs truncate" title={tx.description}>
+                          {tx.description || '-'}
+                        </td>
 
-                      {/* Payment Mode */}
-                      <td className="px-5 py-4">
-                        <span className="px-2.5 py-1 bg-background-muted rounded-lg text-[10px] font-bold text-text-secondary">
-                          {tx.paymentMethod || 'Cash'}
-                        </span>
-                      </td>
+                        {/* Payment Mode */}
+                        <td className="px-4 py-4">
+                          <span className="px-2.5 py-1 bg-background-muted rounded-lg text-[10px] font-bold text-text-secondary">
+                            {tx.paymentMethod || 'Cash'}
+                          </span>
+                        </td>
 
-                      {/* Amount */}
-                      <td className={`px-5 py-4 text-right font-black text-sm ${
-                        tx.type === 'expense' ? 'text-text-primary' : 'text-emerald-600 dark:text-emerald-400'
-                      }`}>
-                        {tx.type === 'expense' ? '' : '-'}₹{tx.amount?.toLocaleString()}
-                      </td>
+                        {/* Total Bill Amount */}
+                        <td className="px-4 py-4 text-right font-black text-sm text-text-primary">
+                          ₹{tx.amount?.toLocaleString()}
+                        </td>
 
-                      {/* Actions */}
-                      <td className="px-5 py-4 text-center">
-                        <div className="flex items-center justify-center space-x-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => handleOpenTxModal(tx.type, tx.supplier?._id, tx)}
-                            className="p-1.5 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all"
-                            title="Edit Transaction"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteTransaction(tx._id)}
-                            className="p-1.5 hover:bg-rose-500/10 text-text-secondary hover:text-rose-500 rounded-lg transition-all"
-                            title="Delete Transaction"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                        {/* Paid Amount */}
+                        <td className="px-4 py-4 text-right font-black text-sm text-emerald-600 dark:text-emerald-400">
+                          ₹{paidAmt.toLocaleString()}
+                        </td>
+
+                        {/* Balance Amount Due */}
+                        <td className="px-4 py-4 text-right">
+                          {balAmt > 0 ? (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-500/10 text-amber-600 border border-amber-500/20 shadow-sm">
+                              ₹{balAmt.toLocaleString()}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+                              ₹0 (Cleared)
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Actions */}
+                        <td className="px-4 py-4 text-center">
+                          <div className="flex items-center justify-center space-x-1.5 opacity-85 group-hover:opacity-100 transition-opacity">
+                            {balAmt > 0 && (
+                              <button
+                                onClick={() => handleOpenPayModal(tx)}
+                                className="flex items-center space-x-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all shadow-sm shadow-emerald-600/25 active:scale-95"
+                                title={`Settle pending balance of ₹${balAmt.toLocaleString()}`}
+                              >
+                                <CreditCard size={11} />
+                                <span>Settle ₹{balAmt.toLocaleString()}</span>
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleOpenTxModal(tx.type, tx.supplier?._id, tx)}
+                              className="p-1.5 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all"
+                              title="Edit Transaction"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteTransaction(tx._id)}
+                              className="p-1.5 hover:bg-rose-500/10 text-text-secondary hover:text-rose-500 rounded-lg transition-all"
+                              title="Delete Transaction"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -1083,6 +1198,23 @@ const SupplierSection = ({ onNavigateTab }) => {
                           >
                             Ledger
                           </button>
+                          {sup.balance > 0 && (
+                            <button
+                              onClick={() => {
+                                const supTx = transactions.find(t => (t.supplier?._id === sup._id || t.supplier === sup._id) && (t.balanceAmount > 0 || (t.status !== 'settled' && t.amount > 0)));
+                                if (supTx) {
+                                  handleOpenPayModal(supTx);
+                                } else {
+                                  handleOpenTxModal('advance', sup._id);
+                                }
+                              }}
+                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all shadow-sm flex items-center space-x-1"
+                              title={`Settle pending balance of ₹${(sup.balance || 0).toLocaleString()}`}
+                            >
+                              <CreditCard size={10} />
+                              <span>Settle ₹{(sup.balance || 0).toLocaleString()}</span>
+                            </button>
+                          )}
                           <button
                             onClick={() => handleOpenTxModal('expense', sup._id)}
                             className="px-2 py-1 bg-rose-500/10 text-rose-600 hover:bg-rose-500 hover:text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all"
@@ -1134,9 +1266,9 @@ const SupplierSection = ({ onNavigateTab }) => {
         onClose={() => setIsTxModalOpen(false)}
         zIndex="z-[100]"
       >
-        <div className="bg-background-card w-full max-w-lg rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="bg-background-card w-full max-w-lg max-h-[90vh] rounded-[2rem] sm:rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden flex flex-col my-auto animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="p-6 border-b border-border-light flex items-center justify-between">
+            <div className="p-5 sm:p-6 border-b border-border-light flex items-center justify-between shrink-0 bg-background-card">
               <div className="flex items-center space-x-3">
                 <span className={`p-2 rounded-xl ${txFormData.type === 'expense' ? 'bg-rose-500/10 text-rose-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
                   {txFormData.type === 'expense' ? <ArrowUpRight size={20} /> : <ArrowDownLeft size={20} />}
@@ -1157,8 +1289,8 @@ const SupplierSection = ({ onNavigateTab }) => {
               </button>
             </div>
 
-            <form onSubmit={handleSaveTransaction}>
-              <div className="p-6 space-y-4">
+            <form onSubmit={handleSaveTransaction} className="flex flex-col min-h-0 flex-1 overflow-hidden">
+              <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 overscroll-contain">
                 {/* Type Switcher (only when creating new) */}
                 {!isEditingTx && (
                   <div className="grid grid-cols-2 gap-2 p-1.5 bg-background-muted/60 rounded-2xl">
@@ -1203,7 +1335,17 @@ const SupplierSection = ({ onNavigateTab }) => {
                   </div>
                   <select
                     value={txFormData.supplier}
-                    onChange={(e) => setTxFormData({ ...txFormData, supplier: e.target.value })}
+                    onChange={(e) => {
+                      const supId = e.target.value;
+                      const foundSup = suppliers.find(s => s._id === supId);
+                      setTxFormData(prev => ({
+                        ...prev,
+                        supplier: supId,
+                        amount: !isEditingTx && prev.type === 'advance' && foundSup?.balance > 0 && !prev.amount ? foundSup.balance : prev.amount,
+                        paidAmount: !isEditingTx && prev.type === 'advance' && foundSup?.balance > 0 && !prev.paidAmount ? foundSup.balance : prev.paidAmount,
+                        status: !isEditingTx && prev.type === 'advance' && foundSup?.balance > 0 && !prev.amount ? 'settled' : prev.status
+                      }));
+                    }}
                     required
                     className="w-full px-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-bold outline-none"
                   >
@@ -1216,12 +1358,107 @@ const SupplierSection = ({ onNavigateTab }) => {
                   </select>
                 </div>
 
+                {/* Show Pending Balance Alert & 1-Click Settle Button (Only when creating an advance / payment to supplier, not editing) */}
+                {!isEditingTx && txFormData.type === 'advance' && (() => {
+                  const curSelectedSup = suppliers.find(s => s._id === txFormData.supplier);
+                  if (curSelectedSup && curSelectedSup.balance > 0) {
+                    return (
+                      <div className="p-3 bg-amber-500/10 border border-amber-500/25 rounded-2xl flex items-center justify-between animate-in fade-in duration-200">
+                        <div>
+                          <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block">
+                            Supplier Outstanding Balance
+                          </span>
+                          <span className="text-sm font-black text-amber-600">
+                            ₹{curSelectedSup.balance.toLocaleString()} Payable
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTxFormData(prev => ({
+                              ...prev,
+                              amount: curSelectedSup.balance,
+                              paidAmount: curSelectedSup.balance,
+                              status: 'settled',
+                              description: prev.description || `Settlement of pending balance for ${curSelectedSup.name}`
+                            }));
+                          }}
+                          className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm flex items-center space-x-1 active:scale-95"
+                        >
+                          <Zap size={12} />
+                          <span>Settle Outstanding (₹{curSelectedSup.balance.toLocaleString()})</span>
+                        </button>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+
+                {/* If Editing and remaining balance exists */}
+                {isEditingTx && (() => {
+                  const tAmt = Number(txFormData.amount) || 0;
+                  const pAmt = Number(txFormData.paidAmount) || 0;
+                  const remBal = Math.max(0, tAmt - pAmt);
+                  if (remBal <= 0) return null;
+                  return (
+                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/25 rounded-2xl flex items-center justify-between animate-in fade-in duration-200">
+                      <div>
+                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">
+                          Remaining Pending Balance
+                        </span>
+                        <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                          ₹{remBal.toLocaleString()}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTxFormData(prev => ({
+                            ...prev,
+                            paidAmount: prev.amount,
+                            status: 'settled'
+                          }));
+                        }}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm flex items-center space-x-1 active:scale-95"
+                      >
+                        <CheckCircle2 size={13} />
+                        <span>Settle Full (₹{remBal.toLocaleString()})</span>
+                      </button>
+                    </div>
+                  );
+                })()}
+
                 <div className="grid grid-cols-2 gap-4">
                   {/* Amount */}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                      Amount (₹) *
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                        {txFormData.type === 'expense' ? 'Total Bill Amount (₹) *' : 'Total Advance Amount (₹) *'}
+                      </label>
+                      {!isEditingTx && txFormData.type === 'advance' && (() => {
+                        const curSelectedSup = suppliers.find(s => s._id === txFormData.supplier);
+                        if (curSelectedSup && curSelectedSup.balance > 0) {
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const bal = curSelectedSup.balance;
+                                setTxFormData(prev => ({
+                                  ...prev,
+                                  amount: bal,
+                                  paidAmount: bal,
+                                  status: 'settled'
+                                }));
+                              }}
+                              className="text-[9px] font-black text-amber-500 hover:underline uppercase"
+                            >
+                              Fill Outstanding: ₹{curSelectedSup.balance.toLocaleString()}
+                            </button>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted font-bold text-xs">₹</span>
                       <input
@@ -1230,7 +1467,18 @@ const SupplierSection = ({ onNavigateTab }) => {
                         step="any"
                         required
                         value={txFormData.amount}
-                        onChange={(e) => setTxFormData({ ...txFormData, amount: e.target.value })}
+                        onChange={(e) => {
+                          const newAmt = e.target.value;
+                          setTxFormData(prev => {
+                            const curPaid = Number(prev.paidAmount) || 0;
+                            const totalVal = Number(newAmt) || 0;
+                            let newStat = prev.status;
+                            if (curPaid >= totalVal && totalVal > 0) newStat = 'settled';
+                            else if (curPaid > 0) newStat = 'partially_paid';
+                            else newStat = 'pending';
+                            return { ...prev, amount: newAmt, status: newStat };
+                          });
+                        }}
                         placeholder="0.00"
                         className="w-full pl-8 pr-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-sm font-black outline-none"
                       />
@@ -1250,6 +1498,88 @@ const SupplierSection = ({ onNavigateTab }) => {
                       className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-bold outline-none"
                     />
                   </div>
+                </div>
+
+                {/* Paid Amount & Live Balance Section */}
+                <div className="p-4 bg-background-muted/40 rounded-2xl border border-border-light space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                      Amount Paid Now (₹)
+                    </label>
+                    <div className="flex items-center space-x-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTxFormData(prev => ({
+                            ...prev,
+                            paidAmount: 0,
+                            status: 'pending'
+                          }));
+                        }}
+                        className="text-[9px] font-black uppercase px-2 py-0.5 rounded-lg bg-background-card border border-border-main text-text-secondary hover:text-text-primary transition-all"
+                      >
+                        Unpaid (₹0)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const full = Number(txFormData.amount) || 0;
+                          setTxFormData(prev => ({
+                            ...prev,
+                            paidAmount: full,
+                            status: full > 0 ? 'settled' : 'pending'
+                          }));
+                        }}
+                        className="text-[9px] font-black uppercase px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-all font-bold"
+                      >
+                        Paid Full
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-emerald-400 font-bold text-xs">₹</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max={txFormData.amount || undefined}
+                      step="any"
+                      value={txFormData.paidAmount}
+                      onChange={(e) => {
+                        const paidVal = e.target.value;
+                        setTxFormData(prev => {
+                          const pNum = Number(paidVal) || 0;
+                          const tNum = Number(prev.amount) || 0;
+                          let s = 'pending';
+                          if (pNum >= tNum && tNum > 0) s = 'settled';
+                          else if (pNum > 0) s = 'partially_paid';
+                          return { ...prev, paidAmount: paidVal, status: s };
+                        });
+                      }}
+                      placeholder="0.00 (leave empty if unpaid)"
+                      className="w-full pl-8 pr-4 py-2.5 bg-background-card rounded-xl border border-border-main focus:border-emerald-500 text-emerald-600 dark:text-emerald-400 text-sm font-black outline-none"
+                    />
+                  </div>
+
+                  {/* Calculated Balance Preview */}
+                  {(() => {
+                    const t = Number(txFormData.amount) || 0;
+                    const p = Number(txFormData.paidAmount) || 0;
+                    const bal = Math.max(0, t - p);
+
+                    return (
+                      <div className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between ${
+                        bal === 0
+                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                          : 'bg-amber-500/10 border-amber-500/30 text-amber-600'
+                      }`}>
+                        <span>Remaining Balance to Pay:</span>
+                        <span className="font-black text-sm">
+                          ₹{bal.toLocaleString()} {bal === 0 && t > 0 ? '(Fully Cleared)' : ''}
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -1284,42 +1614,57 @@ const SupplierSection = ({ onNavigateTab }) => {
                   </div>
                 </div>
 
-                {/* Status */}
+                {/* Status Indicator */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
                     Payment Status
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
-                      onClick={() => setTxFormData({ ...txFormData, status: 'pending' })}
-                      className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider border transition-all ${
+                      onClick={() => setTxFormData({ ...txFormData, status: 'pending', paidAmount: 0 })}
+                      className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider border transition-all ${
                         txFormData.status === 'pending'
                           ? 'bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/20'
                           : 'bg-background-muted/50 text-text-secondary border-border-main hover:border-amber-400 hover:text-amber-500'
                       }`}
                     >
-                      <Clock size={13} />
+                      <Clock size={12} />
                       Pending
                     </button>
                     <button
                       type="button"
-                      onClick={() => setTxFormData({ ...txFormData, status: 'settled' })}
-                      className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider border transition-all ${
+                      onClick={() => setTxFormData(prev => ({
+                        ...prev,
+                        status: 'partially_paid',
+                        paidAmount: prev.paidAmount && Number(prev.paidAmount) > 0 ? prev.paidAmount : Math.round((Number(prev.amount) || 0) / 2)
+                      }))}
+                      className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider border transition-all ${
+                        txFormData.status === 'partially_paid'
+                          ? 'bg-blue-500 text-white border-blue-500 shadow-md shadow-blue-500/20'
+                          : 'bg-background-muted/50 text-text-secondary border-border-main hover:border-blue-400 hover:text-blue-500'
+                      }`}
+                    >
+                      <Clock size={12} />
+                      Partial
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTxFormData(prev => ({
+                        ...prev,
+                        status: 'settled',
+                        paidAmount: Number(prev.amount) || 0
+                      }))}
+                      className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider border transition-all ${
                         txFormData.status === 'settled'
                           ? 'bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-500/20'
                           : 'bg-background-muted/50 text-text-secondary border-border-main hover:border-emerald-400 hover:text-emerald-500'
                       }`}
                     >
-                      <CheckCircle2 size={13} />
+                      <CheckCircle2 size={12} />
                       Settled
                     </button>
                   </div>
-                  <p className="text-[9px] text-text-muted font-medium">
-                    {txFormData.status === 'pending'
-                      ? 'Payment is due / not yet cleared'
-                      : 'Payment has been fully settled / paid'}
-                  </p>
                 </div>
 
                 {/* Description / Items purchased */}
@@ -1338,7 +1683,7 @@ const SupplierSection = ({ onNavigateTab }) => {
               </div>
 
               {/* Modal Footer */}
-              <div className="p-6 bg-background-muted/30 border-t border-border-light flex space-x-3">
+              <div className="p-4 sm:p-6 bg-background-muted/30 border-t border-border-light flex space-x-3 shrink-0 bg-background-card">
                 <button
                   type="button"
                   onClick={() => setIsTxModalOpen(false)}
@@ -1361,15 +1706,226 @@ const SupplierSection = ({ onNavigateTab }) => {
           </div>
       </Modal>
 
+      {/* QUICK PAYMENT MODAL (Pay Partial or Full Balance) */}
+      <Modal
+        isOpen={isPayModalOpen}
+        onClose={() => setIsPayModalOpen(false)}
+        zIndex="z-[105]"
+      >
+        <div className="bg-background-card w-full max-w-md max-h-[90vh] rounded-[2rem] sm:rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden flex flex-col my-auto animate-in zoom-in-95 duration-200">
+          <div className="p-5 sm:p-6 border-b border-border-light flex items-center justify-between shrink-0 bg-background-card">
+            <div className="flex items-center space-x-3">
+              <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <CreditCard size={20} />
+              </span>
+              <div>
+                <h3 className="text-lg font-black text-text-primary">
+                  Settle Supplier Balance
+                </h3>
+                <p className="text-[10px] text-text-secondary">
+                  Pending amount is automatically shown to settle
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsPayModalOpen(false)}
+              className="text-text-muted hover:text-text-primary transition-all"
+            >
+              <XCircle size={24} />
+            </button>
+          </div>
+
+          {payModalTx && (() => {
+            const paidNow = payModalTx.paidAmount !== undefined
+              ? payModalTx.paidAmount
+              : (payModalTx.status === 'settled' ? payModalTx.amount : 0);
+            const currentBal = payModalTx.balanceAmount !== undefined
+              ? payModalTx.balanceAmount
+              : Math.max(0, payModalTx.amount - paidNow);
+            const enterVal = Number(payAmount) || 0;
+            const newBal = Math.max(0, currentBal - enterVal);
+
+            return (
+              <form onSubmit={handleConfirmPayment} className="flex flex-col min-h-0 flex-1 overflow-hidden">
+                <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 overscroll-contain">
+                  {/* Pending Balance Banner */}
+                  <div className="p-3.5 bg-amber-500/10 border border-amber-500/25 rounded-2xl flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block">
+                        Pending Balance to Settle
+                      </span>
+                      <span className="text-base font-black text-amber-600">
+                        ₹{currentBal.toLocaleString()}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPayAmount(currentBal)}
+                      className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm"
+                    >
+                      Pay Full (₹{currentBal.toLocaleString()})
+                    </button>
+                  </div>
+
+                  {/* Supplier Info Pill */}
+                  <div className="p-3 bg-background-muted/40 rounded-2xl border border-border-light flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-black uppercase text-text-muted block">Supplier</span>
+                      <span className="font-black text-sm text-text-primary">
+                        {payModalTx.supplier?.name || 'Selected Supplier'}
+                      </span>
+                      {payModalTx.billNumber && (
+                        <span className="text-[10px] text-text-secondary block font-mono">
+                          Bill #{payModalTx.billNumber}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-bold">
+                      {payModalTx.type === 'expense' ? 'Purchase Bill' : 'Advance'}
+                    </span>
+                  </div>
+
+                  {/* Financial Breakdown Cards */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="p-3 bg-background-muted/30 rounded-xl border border-border-light text-center">
+                      <span className="text-[9px] font-bold text-text-muted uppercase block">Total Bill</span>
+                      <span className="font-black text-xs text-text-primary block mt-0.5">
+                        ₹{payModalTx.amount?.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="p-3 bg-emerald-500/5 rounded-xl border border-emerald-500/20 text-center">
+                      <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase block">Already Paid</span>
+                      <span className="font-black text-xs text-emerald-600 dark:text-emerald-400 block mt-0.5">
+                        ₹{paidNow.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="p-3 bg-amber-500/5 rounded-xl border border-amber-500/20 text-center">
+                      <span className="text-[9px] font-bold text-amber-500 uppercase block">Balance Due</span>
+                      <span className="font-black text-xs text-amber-500 block mt-0.5">
+                        ₹{currentBal.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Payment Amount Input */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                        Pending Amount to Settle (₹) *
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setPayAmount(currentBal)}
+                        className="text-[10px] font-black text-primary hover:underline uppercase"
+                      >
+                        Settle Full Balance (₹{currentBal.toLocaleString()})
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted font-bold text-xs">₹</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max={currentBal}
+                        step="any"
+                        required
+                        value={payAmount}
+                        onChange={(e) => setPayAmount(e.target.value)}
+                        placeholder="Enter amount to pay..."
+                        className="w-full pl-8 pr-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-emerald-500 text-text-primary text-base font-black outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Live Balance Preview */}
+                  <div className={`p-3 rounded-xl border text-xs font-bold flex items-center justify-between ${
+                    newBal === 0
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                      : 'bg-amber-500/10 border-amber-500/30 text-amber-600'
+                  }`}>
+                    <span>Balance After This Payment:</span>
+                    <span className="font-black text-sm">
+                      ₹{newBal.toLocaleString()} {newBal === 0 ? '(Fully Cleared!)' : ''}
+                    </span>
+                  </div>
+
+                  {/* Payment Method & Date */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                        Payment Mode
+                      </label>
+                      <select
+                        value={payMethod}
+                        onChange={(e) => setPayMethod(e.target.value)}
+                        className="w-full px-3 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-emerald-500 text-text-primary text-xs font-bold outline-none"
+                      >
+                        {PAYMENT_METHODS.map(m => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                        Payment Date
+                      </label>
+                      <input
+                        type="date"
+                        value={payDate}
+                        onChange={(e) => setPayDate(e.target.value)}
+                        className="w-full px-3 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-emerald-500 text-text-primary text-xs font-bold outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Payment Notes */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                      Payment Notes / Ref
+                    </label>
+                    <input
+                      type="text"
+                      value={payNotes}
+                      onChange={(e) => setPayNotes(e.target.value)}
+                      placeholder="e.g. Paid via GPay / UPI ref #12345"
+                      className="w-full px-3 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-emerald-500 text-text-primary text-xs font-medium outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="p-4 sm:p-6 bg-background-muted/30 border-t border-border-light flex space-x-3 shrink-0 bg-background-card">
+                  <button
+                    type="button"
+                    onClick={() => setIsPayModalOpen(false)}
+                    className="flex-1 px-5 py-2.5 border border-border-main text-text-primary rounded-xl font-black text-xs uppercase tracking-widest hover:bg-background-card transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingPay}
+                    className="flex-1 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-600/20 transition-all flex items-center justify-center space-x-2"
+                  >
+                    <span>{isSubmittingPay ? 'Recording...' : `Settle ₹${(Number(payAmount) || currentBal).toLocaleString()}`}</span>
+                  </button>
+                </div>
+              </form>
+            );
+          })()}
+        </div>
+      </Modal>
+
       {/* MODAL 2: Add / Edit Supplier */}
       <Modal
         isOpen={isSupplierModalOpen}
         onClose={() => setIsSupplierModalOpen(false)}
         zIndex="z-[105]"
       >
-        <div className="bg-background-card w-full max-w-lg rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="bg-background-card w-full max-w-lg max-h-[90vh] rounded-[2rem] sm:rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden flex flex-col my-auto animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="p-6 border-b border-border-light flex items-center justify-between">
+            <div className="p-5 sm:p-6 border-b border-border-light flex items-center justify-between shrink-0 bg-background-card">
               <div className="flex items-center space-x-3">
                 <span className="p-2 rounded-xl bg-primary/10 text-primary">
                   <Building2 size={20} />
@@ -1386,8 +1942,8 @@ const SupplierSection = ({ onNavigateTab }) => {
               </button>
             </div>
 
-            <form onSubmit={handleSaveSupplier}>
-              <div className="p-6 space-y-4">
+            <form onSubmit={handleSaveSupplier} className="flex flex-col min-h-0 flex-1 overflow-hidden">
+              <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 overscroll-contain">
                 {/* Supplier Name */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
@@ -1495,7 +2051,7 @@ const SupplierSection = ({ onNavigateTab }) => {
               </div>
 
               {/* Modal Footer */}
-              <div className="p-6 bg-background-muted/30 border-t border-border-light flex space-x-3">
+              <div className="p-4 sm:p-6 bg-background-muted/30 border-t border-border-light flex space-x-3 shrink-0 bg-background-card">
                 <button
                   type="button"
                   onClick={() => setIsSupplierModalOpen(false)}

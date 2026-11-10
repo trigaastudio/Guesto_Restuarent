@@ -8,6 +8,7 @@ import {
   createWageAdvance,
   updateWageAdvance,
   toggleSettlementStatus,
+  recordWageAdvancePayment,
   deleteWageAdvance,
   getWageAdvanceSummary,
 } from '../controllers/wageAdvanceController.js';
@@ -32,6 +33,7 @@ router.get('/', getWageAdvances);
 router.post('/', createWageAdvance);
 router.put('/:id', updateWageAdvance);
 router.patch('/:id/toggle-settle', toggleSettlementStatus);
+router.post('/:id/pay', recordWageAdvancePayment);
 router.delete('/:id', deleteWageAdvance);
 
 export default router;

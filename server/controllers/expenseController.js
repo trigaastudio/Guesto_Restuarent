@@ -84,13 +84,15 @@ export const getDailyExpenses = async (req, res) => {
 
     todaySupplierTx.forEach(tx => {
       const amt = tx.amount || 0;
+      const paid = tx.paidAmount !== undefined ? tx.paidAmount : (tx.status === 'settled' ? amt : 0);
+      const pending = tx.balanceAmount !== undefined ? tx.balanceAmount : Math.max(0, amt - paid);
       if (tx.type === 'expense') {
         todaySupplierExpenses += amt;
-        if (tx.status === 'settled') todaySupplierExpensesSettled += amt;
-        else todaySupplierExpensesPending += amt;
+        todaySupplierExpensesSettled += paid;
+        todaySupplierExpensesPending += pending;
       } else if (tx.type === 'advance') {
         todaySupplierAdvances += amt;
-        if (tx.status === 'settled') todaySupplierAdvancesSettled += amt;
+        todaySupplierAdvancesSettled += paid;
       }
     });
 
@@ -100,9 +102,11 @@ export const getDailyExpenses = async (req, res) => {
 
     todayWageAdv.forEach(adv => {
       const amt = adv.amount || 0;
+      const paid = adv.paidAmount !== undefined ? adv.paidAmount : (adv.status === 'settled' ? amt : 0);
+      const pending = adv.balanceAmount !== undefined ? adv.balanceAmount : Math.max(0, amt - paid);
       todayEmployeeAdvances += amt;
-      if (adv.status === 'settled') todayEmployeeAdvancesSettled += amt;
-      else todayEmployeeAdvancesPending += amt;
+      todayEmployeeAdvancesSettled += paid;
+      todayEmployeeAdvancesPending += pending;
     });
 
     const todayTotalOutflow = todaySupplierExpenses + todaySupplierAdvances + todayEmployeeAdvances;
@@ -139,14 +143,16 @@ export const getDailyExpenses = async (req, res) => {
       const dKey = formatDateKey(tx.date);
       const dayData = getOrCreateDay(dKey, tx.date);
       const amt = tx.amount || 0;
+      const paid = tx.paidAmount !== undefined ? tx.paidAmount : (tx.status === 'settled' ? amt : 0);
+      const pending = tx.balanceAmount !== undefined ? tx.balanceAmount : Math.max(0, amt - paid);
 
       if (tx.type === 'expense') {
         dayData.supplierExpenses += amt;
-        if (tx.status === 'settled') dayData.supplierExpensesSettled += amt;
-        else dayData.supplierExpensesPending += amt;
+        dayData.supplierExpensesSettled += paid;
+        dayData.supplierExpensesPending += pending;
       } else {
         dayData.supplierAdvances += amt;
-        if (tx.status === 'settled') dayData.supplierAdvancesSettled += amt;
+        dayData.supplierAdvancesSettled += paid;
       }
       dayData.totalOutflow += amt;
       dayData.transactionCount += 1;
@@ -160,6 +166,8 @@ export const getDailyExpenses = async (req, res) => {
         subText: tx.supplier?.category || 'Vendor',
         phone: tx.supplier?.phone || '',
         amount: tx.amount,
+        paidAmount: paid,
+        balanceAmount: pending,
         paymentMethod: tx.paymentMethod || 'Cash',
         reference: tx.billNumber ? `Bill #${tx.billNumber}` : '',
         description: tx.description || '',
@@ -173,10 +181,12 @@ export const getDailyExpenses = async (req, res) => {
       const dKey = formatDateKey(adv.date);
       const dayData = getOrCreateDay(dKey, adv.date);
       const amt = adv.amount || 0;
+      const paid = adv.paidAmount !== undefined ? adv.paidAmount : (adv.status === 'settled' ? amt : 0);
+      const pending = adv.balanceAmount !== undefined ? adv.balanceAmount : Math.max(0, amt - paid);
 
       dayData.employeeAdvances += amt;
-      if (adv.status === 'settled') dayData.employeeAdvancesSettled += amt;
-      else dayData.employeeAdvancesPending += amt;
+      dayData.employeeAdvancesSettled += paid;
+      dayData.employeeAdvancesPending += pending;
 
       dayData.totalOutflow += amt;
       dayData.transactionCount += 1;
@@ -190,9 +200,11 @@ export const getDailyExpenses = async (req, res) => {
         subText: adv.employee?.role || 'Staff / Worker',
         phone: adv.employee?.phone || '',
         amount: adv.amount,
+        paidAmount: paid,
+        balanceAmount: pending,
         paymentMethod: adv.paymentMethod || 'Cash',
         reference: adv.reason || 'Salary Advance',
-        description: adv.status === 'settled' ? 'Settled / Deducted' : 'Pending Deduction',
+        description: adv.status === 'settled' ? 'Settled / Deducted' : (adv.status === 'partially_paid' ? 'Partially Paid' : 'Pending Deduction'),
         status: adv.status,
         date: adv.date,
       });

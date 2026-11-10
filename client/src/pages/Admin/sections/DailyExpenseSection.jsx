@@ -683,6 +683,10 @@ const DailyExpenseSection = ({ onNavigateTab }) => {
                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                                       <CheckCircle2 size={9} /> Settled
                                     </span>
+                                  ) : item.status === 'partially_paid' || (item.paidAmount > 0 && item.balanceAmount > 0) ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                                      <Clock size={9} /> Partial
+                                    </span>
                                   ) : (
                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-600 border border-amber-500/20">
                                       <Clock size={9} /> Pending
@@ -708,8 +712,19 @@ const DailyExpenseSection = ({ onNavigateTab }) => {
                                 </td>
 
                                 {/* Amount */}
-                                <td className="px-4 py-3 text-right font-black text-xs text-text-primary">
-                                  ₹{item.amount?.toLocaleString()}
+                                <td className="px-4 py-3 text-right">
+                                  <div className="flex flex-col items-end">
+                                    <span className="font-black text-xs text-text-primary">
+                                      ₹{item.amount?.toLocaleString()}
+                                    </span>
+                                    {item.paidAmount !== undefined && item.paidAmount !== item.amount && (
+                                      <div className="text-[9px] font-bold flex items-center space-x-1 mt-0.5">
+                                        <span className="text-emerald-600 dark:text-emerald-400">Paid: ₹{item.paidAmount?.toLocaleString()}</span>
+                                        <span className="text-text-muted">•</span>
+                                        <span className="text-amber-500">Bal: ₹{(item.balanceAmount !== undefined ? item.balanceAmount : Math.max(0, item.amount - item.paidAmount)).toLocaleString()}</span>
+                                      </div>
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                             ))}

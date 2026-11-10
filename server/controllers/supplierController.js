@@ -34,13 +34,13 @@ export const getSuppliers = async (req, res) => {
           pendingExpenses: {
             $sum: {
               $cond: [
+                { $eq: ['$type', 'expense'] },
                 {
-                  $and: [
-                    { $eq: ['$type', 'expense'] },
-                    { $ne: ['$status', 'settled'] } // pending expenses
+                  $ifNull: [
+                    '$balanceAmount',
+                    { $cond: [{ $eq: ['$status', 'settled'] }, 0, '$amount'] }
                   ]
                 },
-                '$amount',
                 0
               ]
             }
@@ -48,13 +48,13 @@ export const getSuppliers = async (req, res) => {
           settledExpenses: {
             $sum: {
               $cond: [
+                { $eq: ['$type', 'expense'] },
                 {
-                  $and: [
-                    { $eq: ['$type', 'expense'] },
-                    { $eq: ['$status', 'settled'] }
+                  $ifNull: [
+                    '$paidAmount',
+                    { $cond: [{ $eq: ['$status', 'settled'] }, '$amount', 0] }
                   ]
                 },
-                '$amount',
                 0
               ]
             }
@@ -263,7 +263,7 @@ export const getTransactions = async (req, res) => {
 // CREATE supplier transaction (expense or advance)
 export const createTransaction = async (req, res) => {
   try {
-    const { supplier, date, type, amount, paymentMethod, billNumber, description, status } = req.body;
+    const { supplier, date, type, amount, paidAmount, paymentMethod, billNumber, description, status } = req.body;
 
     if (!supplier) {
       return res.status(400).json({ success: false, message: 'Supplier is required' });
@@ -271,19 +271,49 @@ export const createTransaction = async (req, res) => {
     if (!type || !['expense', 'advance'].includes(type)) {
       return res.status(400).json({ success: false, message: 'Transaction type must be expense or advance' });
     }
-    if (!amount || Number(amount) <= 0) {
+    const numAmount = Number(amount);
+    if (!amount || isNaN(numAmount) || numAmount <= 0) {
       return res.status(400).json({ success: false, message: 'Valid amount is required' });
+    }
+
+    let parsedPaid = paidAmount !== undefined ? Number(paidAmount) : (status === 'settled' ? numAmount : 0);
+    if (isNaN(parsedPaid) || parsedPaid < 0) parsedPaid = 0;
+    parsedPaid = Math.min(numAmount, parsedPaid);
+
+    const balanceAmount = Math.max(0, numAmount - parsedPaid);
+    let finalStatus = 'pending';
+    if (parsedPaid >= numAmount || status === 'settled') {
+      finalStatus = 'settled';
+      parsedPaid = numAmount;
+    } else if (parsedPaid > 0) {
+      finalStatus = 'partially_paid';
+    } else {
+      finalStatus = 'pending';
+    }
+
+    const payments = [];
+    if (parsedPaid > 0) {
+      payments.push({
+        amount: parsedPaid,
+        paymentMethod: paymentMethod || 'Cash',
+        date: date ? new Date(date) : new Date(),
+        notes: description?.trim() || 'Initial payment',
+        recordedBy: req.user?._id,
+      });
     }
 
     const transaction = await SupplierTransaction.create({
       supplier,
       date: date ? new Date(date) : new Date(),
       type,
-      amount: Number(amount),
+      amount: numAmount,
+      paidAmount: parsedPaid,
+      balanceAmount: Math.max(0, numAmount - parsedPaid),
       paymentMethod: paymentMethod || 'Cash',
       billNumber: billNumber?.trim() || '',
       description: description?.trim() || '',
-      status: status && ['pending', 'settled'].includes(status) ? status : 'pending',
+      status: finalStatus,
+      payments,
       recordedBy: req.user?._id,
     });
 
@@ -305,24 +335,48 @@ export const createTransaction = async (req, res) => {
 export const updateTransaction = async (req, res) => {
   try {
     const { id } = req.params;
-    const { supplier, date, type, amount, paymentMethod, billNumber, description, status } = req.body;
+    const { supplier, date, type, amount, paidAmount, paymentMethod, billNumber, description, status } = req.body;
 
-    const updateData = {};
+    const existingTx = await SupplierTransaction.findById(id);
+    if (!existingTx) {
+      return res.status(404).json({ success: false, message: 'Transaction not found' });
+    }
+
+    const finalAmount = amount !== undefined ? Number(amount) : existingTx.amount;
+    let finalPaid = paidAmount !== undefined
+      ? Number(paidAmount)
+      : (existingTx.paidAmount !== undefined ? existingTx.paidAmount : (existingTx.status === 'settled' ? finalAmount : 0));
+
+    if (isNaN(finalPaid) || finalPaid < 0) finalPaid = 0;
+    finalPaid = Math.min(finalAmount, finalPaid);
+
+    let finalStatus = status;
+    if (status === 'settled') {
+      finalPaid = finalAmount;
+    } else if (finalPaid >= finalAmount) {
+      finalStatus = 'settled';
+    } else if (finalPaid > 0) {
+      finalStatus = 'partially_paid';
+    } else {
+      finalStatus = 'pending';
+    }
+
+    const updateData = {
+      amount: finalAmount,
+      paidAmount: finalPaid,
+      balanceAmount: Math.max(0, finalAmount - finalPaid),
+      status: finalStatus,
+    };
+
     if (supplier) updateData.supplier = supplier;
     if (date) updateData.date = new Date(date);
     if (type) updateData.type = type;
-    if (amount !== undefined) updateData.amount = Number(amount);
     if (paymentMethod) updateData.paymentMethod = paymentMethod;
     if (billNumber !== undefined) updateData.billNumber = billNumber.trim();
     if (description !== undefined) updateData.description = description.trim();
-    if (status && ['pending', 'settled'].includes(status)) updateData.status = status;
 
     const transaction = await SupplierTransaction.findByIdAndUpdate(id, updateData, { new: true, runValidators: true })
       .populate('supplier', 'name category phone contactPerson');
-
-    if (!transaction) {
-      return res.status(404).json({ success: false, message: 'Transaction not found' });
-    }
 
     res.status(200).json({
       success: true,
@@ -331,6 +385,64 @@ export const updateTransaction = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating transaction:', error);
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// RECORD PARTIAL OR FULL PAYMENT TO SUPPLIER
+export const recordTransactionPayment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { paymentAmount, paymentMethod, notes, date } = req.body;
+
+    const transaction = await SupplierTransaction.findById(id);
+    if (!transaction) {
+      return res.status(404).json({ success: false, message: 'Transaction not found' });
+    }
+
+    const payVal = Number(paymentAmount);
+    if (isNaN(payVal) || payVal <= 0) {
+      return res.status(400).json({ success: false, message: 'Please enter a valid payment amount greater than 0' });
+    }
+
+    const currentPaid = transaction.paidAmount !== undefined
+      ? transaction.paidAmount
+      : (transaction.status === 'settled' ? transaction.amount : 0);
+    const currentBalance = Math.max(0, transaction.amount - currentPaid);
+
+    if (currentBalance <= 0) {
+      return res.status(400).json({ success: false, message: 'This transaction is already fully paid and settled' });
+    }
+
+    const actualPayment = Math.min(currentBalance, payVal);
+    const newPaidAmount = currentPaid + actualPayment;
+    const newBalanceAmount = Math.max(0, transaction.amount - newPaidAmount);
+    const newStatus = newBalanceAmount === 0 ? 'settled' : 'partially_paid';
+
+    transaction.paidAmount = newPaidAmount;
+    transaction.balanceAmount = newBalanceAmount;
+    transaction.status = newStatus;
+    if (!transaction.payments) transaction.payments = [];
+    transaction.payments.push({
+      amount: actualPayment,
+      paymentMethod: paymentMethod || transaction.paymentMethod || 'Cash',
+      date: date ? new Date(date) : new Date(),
+      notes: notes?.trim() || `Partial payment of ₹${actualPayment}`,
+      recordedBy: req.user?._id,
+    });
+
+    await transaction.save();
+
+    const populated = await SupplierTransaction.findById(transaction._id)
+      .populate('supplier', 'name category phone contactPerson');
+
+    res.status(200).json({
+      success: true,
+      message: `Payment of ₹${actualPayment.toLocaleString()} recorded. Remaining balance: ₹${newBalanceAmount.toLocaleString()}`,
+      data: populated,
+    });
+  } catch (error) {
+    console.error('Error recording payment:', error);
     res.status(400).json({ success: false, message: error.message });
   }
 };
@@ -345,8 +457,16 @@ export const toggleSettlementStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Transaction not found' });
     }
 
-    const newStatus = transaction.status === 'settled' ? 'pending' : 'settled';
-    transaction.status = newStatus;
+    if (transaction.status === 'settled') {
+      transaction.status = 'pending';
+      transaction.paidAmount = 0;
+      transaction.balanceAmount = transaction.amount;
+    } else {
+      transaction.status = 'settled';
+      transaction.paidAmount = transaction.amount;
+      transaction.balanceAmount = 0;
+    }
+
     await transaction.save();
 
     const populated = await SupplierTransaction.findById(transaction._id)
@@ -354,7 +474,7 @@ export const toggleSettlementStatus = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Transaction marked as ${newStatus === 'settled' ? 'Settled' : 'Pending'}`,
+      message: `Transaction marked as ${transaction.status === 'settled' ? 'Settled' : 'Pending'}`,
       data: populated,
     });
   } catch (error) {
@@ -400,13 +520,13 @@ export const getSupplierSummary = async (req, res) => {
             pendingExpenses: {
               $sum: {
                 $cond: [
+                  { $eq: ['$type', 'expense'] },
                   {
-                    $and: [
-                      { $eq: ['$type', 'expense'] },
-                      { $ne: ['$status', 'settled'] }
+                    $ifNull: [
+                      '$balanceAmount',
+                      { $cond: [{ $eq: ['$status', 'settled'] }, 0, '$amount'] }
                     ]
                   },
-                  '$amount',
                   0
                 ]
               }
@@ -414,13 +534,13 @@ export const getSupplierSummary = async (req, res) => {
             settledExpenses: {
               $sum: {
                 $cond: [
+                  { $eq: ['$type', 'expense'] },
                   {
-                    $and: [
-                      { $eq: ['$type', 'expense'] },
-                      { $eq: ['$status', 'settled'] }
+                    $ifNull: [
+                      '$paidAmount',
+                      { $cond: [{ $eq: ['$status', 'settled'] }, '$amount', 0] }
                     ]
                   },
-                  '$amount',
                   0
                 ]
               }
@@ -443,13 +563,13 @@ export const getSupplierSummary = async (req, res) => {
             pendingExpenses: {
               $sum: {
                 $cond: [
+                  { $eq: ['$type', 'expense'] },
                   {
-                    $and: [
-                      { $eq: ['$type', 'expense'] },
-                      { $ne: ['$status', 'settled'] }
+                    $ifNull: [
+                      '$balanceAmount',
+                      { $cond: [{ $eq: ['$status', 'settled'] }, 0, '$amount'] }
                     ]
                   },
-                  '$amount',
                   0
                 ]
               }
@@ -457,13 +577,13 @@ export const getSupplierSummary = async (req, res) => {
             settledExpenses: {
               $sum: {
                 $cond: [
+                  { $eq: ['$type', 'expense'] },
                   {
-                    $and: [
-                      { $eq: ['$type', 'expense'] },
-                      { $eq: ['$status', 'settled'] }
+                    $ifNull: [
+                      '$paidAmount',
+                      { $cond: [{ $eq: ['$status', 'settled'] }, '$amount', 0] }
                     ]
                   },
-                  '$amount',
                   0
                 ]
               }

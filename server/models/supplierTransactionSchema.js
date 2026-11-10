@@ -24,6 +24,16 @@ const supplierTransactionSchema = new mongoose.Schema({
     required: [true, 'Amount is required'],
     min: [0, 'Amount must be positive'],
   },
+  paidAmount: {
+    type: Number,
+    default: 0,
+    min: [0, 'Paid amount cannot be negative'],
+  },
+  balanceAmount: {
+    type: Number,
+    default: 0,
+    min: [0, 'Balance amount cannot be negative'],
+  },
   paymentMethod: {
     type: String,
     enum: ['Cash', 'UPI', 'Bank Transfer', 'Cheque', 'Credit', 'Other'],
@@ -45,9 +55,17 @@ const supplierTransactionSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'settled'],
+    enum: ['pending', 'partially_paid', 'settled'],
     default: 'pending',
+    index: true,
   },
+  payments: [{
+    amount: { type: Number, required: true },
+    paymentMethod: { type: String, default: 'Cash' },
+    date: { type: Date, default: Date.now },
+    notes: { type: String, default: '' },
+    recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  }],
 }, {
   timestamps: true,
 });
