@@ -1358,6 +1358,63 @@ const SupplierSection = ({ onNavigateTab }) => {
                   </select>
                 </div>
 
+                {/* Pending Bills for selected supplier (only when creating expense, not editing) */}
+                {!isEditingTx && txFormData.type === 'expense' && txFormData.supplier && (() => {
+                  const pendingBills = transactions.filter(t => {
+                    const tSupId = t.supplier?._id || t.supplier;
+                    const bal = t.balanceAmount !== undefined ? t.balanceAmount : Math.max(0, t.amount - (t.paidAmount || 0));
+                    return tSupId === txFormData.supplier && t.type === 'expense' && t.status !== 'settled' && bal > 0;
+                  });
+                  if (pendingBills.length === 0) return null;
+                  const totalDue = pendingBills.reduce((sum, t) => {
+                    const bal = t.balanceAmount !== undefined ? t.balanceAmount : Math.max(0, t.amount - (t.paidAmount || 0));
+                    return sum + bal;
+                  }, 0);
+                  return (
+                    <div className="p-3 bg-amber-500/8 border border-amber-500/20 rounded-2xl space-y-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-black uppercase text-amber-600 tracking-wider flex items-center space-x-1">
+                          <AlertCircle size={11} />
+                          <span>Unpaid Bills ({pendingBills.length})</span>
+                        </span>
+                        <span className="text-[10px] text-amber-600 font-black">
+                          Total Due: ₹{totalDue.toLocaleString()}
+                        </span>
+                      </div>
+                      {pendingBills.map(bill => {
+                        const bal = bill.balanceAmount !== undefined ? bill.balanceAmount : Math.max(0, bill.amount - (bill.paidAmount || 0));
+                        const paid = bill.paidAmount !== undefined ? bill.paidAmount : 0;
+                        return (
+                          <div key={bill._id} className="flex items-center justify-between p-2.5 bg-background-card rounded-xl border border-border-light">
+                            <div className="flex flex-col">
+                              <span className="text-xs font-black text-text-primary">
+                                {bill.billNumber ? `#${bill.billNumber}` : new Date(bill.date).toLocaleDateString('en-IN')}
+                              </span>
+                              <span className="text-[10px] text-text-muted">
+                                Total: ₹{bill.amount?.toLocaleString()}
+                                {paid > 0 && <span className="text-emerald-600 ml-1">| Paid: ₹{paid.toLocaleString()}</span>}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-xs font-black text-amber-600">₹{bal.toLocaleString()} due</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsTxModalOpen(false);
+                                  handleOpenPayModal(bill);
+                                }}
+                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all active:scale-95"
+                              >
+                                Settle
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
                 {/* Show Pending Balance Alert & 1-Click Settle Button (Only when creating an advance / payment to supplier, not editing) */}
                 {!isEditingTx && txFormData.type === 'advance' && (() => {
                   const curSelectedSup = suppliers.find(s => s._id === txFormData.supplier);
