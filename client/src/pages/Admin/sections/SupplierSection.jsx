@@ -840,17 +840,16 @@ const SupplierSection = ({ onNavigateTab }) => {
                   <th className="px-4 py-4">Bill / Invoice</th>
                   <th className="px-4 py-4 text-right">Total</th>
                   <th className="px-4 py-4 text-right">Paid</th>
-                  <th className="px-4 py-4 text-right">Balance</th>
                   <th className="px-4 py-4">Status</th>
                   <th className="px-4 py-4 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light">
                 {isLoading ? (
-                  <tr><td colSpan="9" className="px-6 py-10"><TableSkeleton columns={9} rows={6} /></td></tr>
+                  <tr><td colSpan="8" className="px-6 py-10"><TableSkeleton columns={8} rows={6} /></td></tr>
                 ) : paginatedTransactions.length === 0 ? (
                   <tr>
-                    <td colSpan="9" className="px-6 py-16 text-center text-text-muted">
+                    <td colSpan="8" className="px-6 py-16 text-center text-text-muted">
                       <div className="flex flex-col items-center justify-center space-y-3">
                         <FileText size={36} className="text-text-muted/40" />
                         <p className="font-bold text-sm">No transactions found</p>
@@ -913,17 +912,6 @@ const SupplierSection = ({ onNavigateTab }) => {
                         {/* Paid */}
                         <td className="px-4 py-4 text-right font-black text-sm text-emerald-600 dark:text-emerald-400">
                           ₹{paidAmt.toLocaleString()}
-                        </td>
-
-                        {/* Balance */}
-                        <td className="px-4 py-4 text-right">
-                          {balAmt > 0 ? (
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-500/10 text-amber-600 border border-amber-500/20">
-                              ₹{balAmt.toLocaleString()}
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">₹0</span>
-                          )}
                         </td>
 
                         {/* Status */}
