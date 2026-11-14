@@ -11,6 +11,7 @@ import {
   recordWageAdvancePayment,
   deleteWageAdvance,
   getWageAdvanceSummary,
+  settleEmployeeWages,
 } from '../controllers/wageAdvanceController.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
 
@@ -25,6 +26,7 @@ router.get('/summary', getWageAdvanceSummary);
 // Employees directory CRUD
 router.get('/employees', getEmployees);
 router.post('/employees', createEmployee);
+router.post('/employees/:employeeId/settle', settleEmployeeWages);
 router.put('/employees/:id', updateEmployee);
 router.delete('/employees/:id', deleteEmployee);
 

@@ -3,7 +3,6 @@ import {
   HandCoins,
   Plus,
   Search,
-  Filter,
   Calendar,
   DollarSign,
   TrendingUp,
@@ -13,17 +12,16 @@ import {
   RotateCcw,
   XCircle,
   Phone,
-  User,
   Users,
   CheckCircle2,
   Clock,
   AlertCircle,
-  Building2,
   X,
-  Check,
   Briefcase,
   Receipt,
-  Zap
+  Zap,
+  Wallet,
+  ArrowDownCircle,
 } from 'lucide-react';
 import api from '../../../api/axiosInstance';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
@@ -44,71 +42,72 @@ const ROLES = [
   'Utility / Other'
 ];
 
-const REASON_PRESETS = [
-  'Daily Wage Advance',
-  'Medical Expense',
-  'Festival / Holiday Advance',
-  'Family Emergency',
-  'Travel / Fare Expense',
-  'Personal Loan / Advance',
-  'Other'
-];
-
 const PAYMENT_METHODS = ['Cash', 'UPI', 'Bank Transfer', 'Other'];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// WageAdvanceSection — redesigned with 3 clearly separated modals
+// ─────────────────────────────────────────────────────────────────────────────
 const WageAdvanceSection = ({ onNavigateTab }) => {
-  const [activeTab, setActiveTab] = useState('advances'); // 'advances' | 'employees'
+  // ── Tab state ──────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState('wages'); // 'wages' | 'employees'
+
+  // ── Data ───────────────────────────────────────────────────────────────────
   const [employees, setEmployees] = useState([]);
-  const [advances, setAdvances] = useState([]);
+  const [wages, setWages] = useState([]);
   const [summary, setSummary] = useState({
+    totalOutstanding: 0,
+    totalPaid: 0,
+    monthWages: 0,
+    totalEmployees: 0,
+    activeEmployees: 0,
+    // legacy-compat keys used in display
     totalAdvances: 0,
     pendingAdvances: 0,
     settledAdvances: 0,
     monthAdvances: 0,
-    monthPending: 0,
-    monthSettled: 0,
     todayAdvances: 0,
     todayPending: 0,
     todaySettled: 0,
-    totalEmployees: 0,
-    activeEmployees: 0
   });
 
+  // ── Loading ────────────────────────────────────────────────────────────────
   const [isLoading, setIsLoading] = useState(false);
+
+  // ── Filters ────────────────────────────────────────────────────────────────
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'pending' | 'settled'
+  const [statusFilter, setStatusFilter] = useState('all');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('all');
-  const [dateFilter, setDateFilter] = useState('all'); // 'all' | 'today' | 'thisWeek' | 'thisMonth' | 'custom'
+  const [dateFilter, setDateFilter] = useState('all');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
 
-  // Pagination for advances
+  // ── Pagination ─────────────────────────────────────────────────────────────
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
 
-  // Modals state
-  const [isAdvanceModalOpen, setIsAdvanceModalOpen] = useState(false);
-  const [isEditingAdvance, setIsEditingAdvance] = useState(false);
-  const [advanceFormData, setAdvanceFormData] = useState({
+  // ── MODAL 1: Record Wage ───────────────────────────────────────────────────
+  const [isWageModalOpen, setIsWageModalOpen] = useState(false);
+  const [isEditingWage, setIsEditingWage] = useState(false);
+  const [wageFormData, setWageFormData] = useState({
     _id: null,
     employee: '',
-    date: new Date().toISOString().split('T')[0],
     amount: '',
-    paidAmount: '',
-    paymentMethod: 'Cash',
-    reason: 'Daily Wage Advance',
-    status: 'pending'
+    date: new Date().toISOString().split('T')[0],
+    reason: '',
   });
 
-  // Dedicated Payment modal state (Partial / Full payment)
-  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
-  const [payModalAdv, setPayModalAdv] = useState(null);
-  const [payAmount, setPayAmount] = useState('');
-  const [payMethod, setPayMethod] = useState('Cash');
-  const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
-  const [payNotes, setPayNotes] = useState('');
-  const [isSubmittingPay, setIsSubmittingPay] = useState(false);
+  // ── MODAL 2: Settle Employee Wages ─────────────────────────────────────────
+  const [isSettleModalOpen, setIsSettleModalOpen] = useState(false);
+  const [settleForm, setSettleForm] = useState({
+    employeeId: '',
+    amount: '',
+    paymentMethod: 'Cash',
+    date: new Date().toISOString().split('T')[0],
+    notes: '',
+  });
+  const [isSubmittingSettle, setIsSubmittingSettle] = useState(false);
 
+  // ── MODAL 3: Employee CRUD ─────────────────────────────────────────────────
   const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
   const [isEditingEmployee, setIsEditingEmployee] = useState(false);
   const [employeeFormData, setEmployeeFormData] = useState({
@@ -119,261 +118,242 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
     monthlyWage: '',
     joiningDate: new Date().toISOString().split('T')[0],
     status: 'active',
-    notes: ''
+    notes: '',
   });
 
-  // Calculate Date Ranges
+  // ── Date range helpers ─────────────────────────────────────────────────────
   const getDateRange = useCallback((filter) => {
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
-
-    if (filter === 'today') {
-      return { start: todayStr, end: todayStr };
-    }
+    if (filter === 'today') return { start: todayStr, end: todayStr };
     if (filter === 'thisWeek') {
       const day = now.getDay();
       const diffToMonday = now.getDate() - day + (day === 0 ? -6 : 1);
       const monday = new Date(now.setDate(diffToMonday));
-      return {
-        start: monday.toISOString().split('T')[0],
-        end: new Date().toISOString().split('T')[0]
-      };
+      return { start: monday.toISOString().split('T')[0], end: new Date().toISOString().split('T')[0] };
     }
     if (filter === 'thisMonth') {
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-      return {
-        start: firstDay.toISOString().split('T')[0],
-        end: new Date().toISOString().split('T')[0]
-      };
+      return { start: firstDay.toISOString().split('T')[0], end: new Date().toISOString().split('T')[0] };
     }
-    if (filter === 'custom') {
-      return { start: customStartDate, end: customEndDate };
-    }
+    if (filter === 'custom') return { start: customStartDate, end: customEndDate };
     return { start: '', end: '' };
   }, [customStartDate, customEndDate]);
 
-  // Fetch summary
+  // ── API: Fetch summary ─────────────────────────────────────────────────────
   const fetchSummary = useCallback(async () => {
     try {
-      const res = await api.get('/api/wage-advances/summary');
-      if (res.data?.success) {
-        setSummary(res.data.data);
-      }
+      const res = await api.get('/api/wages/summary');
+      if (res.data?.success) setSummary(res.data.data);
     } catch (err) {
-      console.error('Error fetching wage advance summary:', err);
+      console.error('Error fetching wage summary:', err);
     }
   }, []);
 
-  // Fetch employees list
+  // ── API: Fetch employees ───────────────────────────────────────────────────
   const fetchEmployees = useCallback(async () => {
     try {
-      const res = await api.get('/api/wage-advances/employees');
-      if (res.data?.success) {
-        setEmployees(res.data.data || []);
-      }
+      const res = await api.get('/api/wages/employees');
+      if (res.data?.success) setEmployees(res.data.data || []);
     } catch (err) {
       console.error('Error fetching wage employees:', err);
       showToast('error', 'Failed to load employee list');
     }
   }, []);
 
-  // Fetch advances list
-  const fetchAdvances = useCallback(async (silent = false) => {
+  // ── API: Fetch wages ───────────────────────────────────────────────────────
+  const fetchWages = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
     try {
       const range = getDateRange(dateFilter);
-      const params = {
-        limit: 500,
-        page: 1
-      };
-      if (selectedEmployeeId && selectedEmployeeId !== 'all') {
-        params.employeeId = selectedEmployeeId;
-      }
-      if (statusFilter && statusFilter !== 'all') {
-        params.status = statusFilter;
-      }
+      const params = { limit: 500, page: 1 };
+      if (selectedEmployeeId && selectedEmployeeId !== 'all') params.employeeId = selectedEmployeeId;
+      if (statusFilter && statusFilter !== 'all') params.status = statusFilter;
       if (range.start) params.startDate = range.start;
       if (range.end) params.endDate = range.end;
       if (searchTerm) params.search = searchTerm;
 
-      const res = await api.get('/api/wage-advances', { params });
-      if (res.data?.success) {
-        setAdvances(res.data.data || []);
-      }
+      const res = await api.get('/api/wages', { params });
+      if (res.data?.success) setWages(res.data.data || []);
     } catch (err) {
-      console.error('Error fetching wage advances:', err);
-      showToast('error', 'Failed to load advance records');
+      console.error('Error fetching wages:', err);
+      showToast('error', 'Failed to load wage records');
     } finally {
       setIsLoading(false);
     }
   }, [dateFilter, getDateRange, selectedEmployeeId, statusFilter, searchTerm]);
 
-  // Initial load
+  // ── Initial load ───────────────────────────────────────────────────────────
   useEffect(() => {
     fetchSummary();
     fetchEmployees();
-    fetchAdvances();
-  }, [fetchSummary, fetchEmployees, fetchAdvances]);
+    fetchWages();
+  }, [fetchSummary, fetchEmployees, fetchWages]);
 
-  // Handle Quick Date Chips
+  // ── Refresh all data ───────────────────────────────────────────────────────
+  const refreshAll = () => {
+    fetchWages(true);
+    fetchEmployees();
+    fetchSummary();
+  };
+
+  // ── Date chip handler ──────────────────────────────────────────────────────
   const handleDateChip = (filter) => {
     setDateFilter(filter);
     setCurrentPage(1);
   };
 
-  // Open advance modal
-  const handleOpenAdvanceModal = (employeeId = null, existingAdv = null) => {
-    if (existingAdv) {
-      const existingPaid = existingAdv.paidAmount !== undefined
-        ? existingAdv.paidAmount
-        : (existingAdv.status === 'settled' ? existingAdv.amount : 0);
-      setAdvanceFormData({
-        _id: existingAdv._id,
-        employee: existingAdv.employee?._id || existingAdv.employee || '',
-        date: existingAdv.date ? new Date(existingAdv.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        amount: existingAdv.amount || '',
-        paidAmount: existingPaid !== undefined && existingPaid !== null ? existingPaid : '',
-        paymentMethod: existingAdv.paymentMethod || 'Cash',
-        reason: existingAdv.reason || 'Daily Wage Advance',
-        status: existingAdv.status || 'pending'
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MODAL 1: Record Wage handlers
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const handleOpenWageModal = (existingWage = null) => {
+    if (existingWage) {
+      setWageFormData({
+        _id: existingWage._id,
+        employee: existingWage.employee?._id || existingWage.employee || '',
+        amount: existingWage.amount || '',
+        date: existingWage.date ? new Date(existingWage.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        reason: existingWage.reason || '',
       });
-      setIsEditingAdvance(true);
+      setIsEditingWage(true);
     } else {
-      const targetEmpId = employeeId || (employees.length > 0 ? employees[0]._id : '');
-      const targetEmp = employees.find(e => e._id === targetEmpId);
-      const shouldPrefillPending = targetEmp?.pendingAdvances > 0;
-      setAdvanceFormData({
+      setWageFormData({
         _id: null,
-        employee: targetEmpId,
+        employee: employees.length > 0 ? employees[0]._id : '',
+        amount: '',
         date: new Date().toISOString().split('T')[0],
-        amount: shouldPrefillPending ? targetEmp.pendingAdvances : '',
-        paidAmount: shouldPrefillPending ? targetEmp.pendingAdvances : '',
-        paymentMethod: 'Cash',
-        reason: shouldPrefillPending ? `Settlement of pending advance for ${targetEmp.name}` : 'Daily Wage Advance',
-        status: shouldPrefillPending ? 'settled' : 'pending'
+        reason: '',
       });
-      setIsEditingAdvance(false);
+      setIsEditingWage(false);
     }
-    setIsAdvanceModalOpen(true);
+    setIsWageModalOpen(true);
   };
 
-  // Open Quick Pay Modal (Partial / Full payment)
-  const handleOpenPayModal = (adv) => {
-    const paid = adv.paidAmount !== undefined ? adv.paidAmount : (adv.status === 'settled' ? adv.amount : 0);
-    const balance = adv.balanceAmount !== undefined ? adv.balanceAmount : Math.max(0, adv.amount - paid);
-    setPayModalAdv(adv);
-    setPayAmount(balance > 0 ? balance : '');
-    setPayMethod(adv.paymentMethod || 'Cash');
-    setPayDate(new Date().toISOString().split('T')[0]);
-    setPayNotes('');
-    setIsPayModalOpen(true);
-  };
-
-  // Confirm Payment to Worker
-  const handleConfirmPayment = async (e) => {
+  const handleSaveWage = async (e) => {
     e.preventDefault();
-    if (!payModalAdv) return;
-    const num = Number(payAmount);
-    if (!num || num <= 0) {
-      showToast('warning', 'Please enter a valid payment amount');
-      return;
-    }
-
-    setIsSubmittingPay(true);
-    try {
-      const res = await api.post(`/api/wage-advances/${payModalAdv._id}/pay`, {
-        paymentAmount: num,
-        paymentMethod: payMethod,
-        notes: payNotes,
-        date: payDate,
-      });
-      if (res.data?.success) {
-        showToast('success', res.data.message || 'Wage payment recorded successfully');
-        setIsPayModalOpen(false);
-        fetchAdvances(true);
-        fetchEmployees();
-        fetchSummary();
-      }
-    } catch (err) {
-      console.error('Error submitting wage payment:', err);
-      showAlert({
-        icon: 'error',
-        title: 'Payment Failed',
-        text: err.response?.data?.message || 'Failed to record wage payment'
-      });
-    } finally {
-      setIsSubmittingPay(false);
-    }
-  };
-
-  // Save Advance
-  const handleSaveAdvance = async (e) => {
-    e.preventDefault();
-    if (!advanceFormData.employee) {
-      showToast('warning', 'Please select an employee');
-      return;
-    }
-    if (!advanceFormData.amount || Number(advanceFormData.amount) <= 0) {
-      showToast('warning', 'Please enter a valid advance amount');
-      return;
-    }
+    if (!wageFormData.employee) { showToast('warning', 'Please select an employee'); return; }
+    if (!wageFormData.amount || Number(wageFormData.amount) <= 0) { showToast('warning', 'Please enter a valid wage amount'); return; }
+    if (!wageFormData.date) { showToast('warning', 'Please select a date'); return; }
 
     try {
-      if (isEditingAdvance && advanceFormData._id) {
-        await api.put(`/api/wage-advances/${advanceFormData._id}`, advanceFormData);
-        showToast('success', 'Advance record updated');
+      if (isEditingWage && wageFormData._id) {
+        await api.put(`/api/wages/${wageFormData._id}`, {
+          employee: wageFormData.employee,
+          amount: Number(wageFormData.amount),
+          date: wageFormData.date,
+          reason: wageFormData.reason,
+        });
+        showToast('success', 'Wage record updated');
       } else {
-        await api.post('/api/wage-advances', advanceFormData);
-        showToast('success', 'Wage advance recorded successfully');
+        await api.post('/api/wages', {
+          employee: wageFormData.employee,
+          amount: Number(wageFormData.amount),
+          date: wageFormData.date,
+          reason: wageFormData.reason,
+          paidAmount: 0,
+          status: 'pending',
+        });
+        showToast('success', 'Wage recorded successfully');
       }
-      setIsAdvanceModalOpen(false);
-      fetchAdvances(true);
-      fetchEmployees();
-      fetchSummary();
+      setIsWageModalOpen(false);
+      refreshAll();
     } catch (err) {
-      console.error('Error saving advance:', err);
-      showAlert({
-        icon: 'error',
-        title: 'Save Failed',
-        text: err.response?.data?.message || 'Failed to save advance'
-      });
+      console.error('Error saving wage:', err);
+      showAlert({ icon: 'error', title: 'Save Failed', text: err.response?.data?.message || 'Failed to save wage record' });
     }
   };
 
-  // Toggle Settlement Status (1-click settle)
-  const handleToggleSettle = async (adv) => {
-    try {
-      const res = await api.patch(`/api/wage-advances/${adv._id}/toggle-settle`, {});
-      if (res.data?.success) {
-        showToast('success', res.data.message);
-        fetchAdvances(true);
-        fetchEmployees();
-        fetchSummary();
-      }
-    } catch (err) {
-      console.error('Error toggling settlement:', err);
-      showToast('error', 'Failed to update settlement status');
-    }
-  };
-
-  // Delete Advance
-  const handleDeleteAdvance = async (id) => {
-    const result = await showDeleteConfirmation('Delete this advance record?', 'This cannot be undone.');
+  const handleDeleteWage = async (id) => {
+    const result = await showDeleteConfirmation('Delete this wage record?', 'This cannot be undone.');
     if (result.isConfirmed) {
       try {
-        await api.delete(`/api/wage-advances/${id}`);
-        showToast('success', 'Advance record deleted');
-        fetchAdvances(true);
-        fetchEmployees();
-        fetchSummary();
+        await api.delete(`/api/wages/${id}`);
+        showToast('success', 'Wage record deleted');
+        refreshAll();
       } catch (err) {
-        console.error('Error deleting advance:', err);
-        showToast('error', 'Failed to delete advance');
+        console.error('Error deleting wage:', err);
+        showToast('error', 'Failed to delete wage record');
       }
     }
   };
 
-  // Open Employee Modal
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MODAL 2: Settle Wages handlers
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Compute total outstanding for a given employee ID from the loaded wages
+  const getEmployeeOutstanding = useCallback((empId) => {
+    return wages
+      .filter(w => {
+        const wEmpId = w.employee?._id || w.employee;
+        return wEmpId === empId && w.status !== 'settled';
+      })
+      .reduce((sum, w) => {
+        const bal = w.balanceAmount !== undefined ? w.balanceAmount : Math.max(0, (w.amount || 0) - (w.paidAmount || 0));
+        return sum + bal;
+      }, 0);
+  }, [wages]);
+
+  // Also get outstanding from employees list (more reliable — backend computed)
+  const getEmployeeOutstandingFromList = useCallback((empId) => {
+    const emp = employees.find(e => e._id === empId);
+    return emp?.pendingAdvances || emp?.outstandingBalance || getEmployeeOutstanding(empId);
+  }, [employees, getEmployeeOutstanding]);
+
+  const handleOpenSettleModal = (prefilledEmpId = '') => {
+    const empId = prefilledEmpId || (employees.length > 0 ? employees[0]._id : '');
+    const outstanding = empId ? getEmployeeOutstandingFromList(empId) : 0;
+    setSettleForm({
+      employeeId: empId,
+      amount: outstanding > 0 ? String(outstanding) : '',
+      paymentMethod: 'Cash',
+      date: new Date().toISOString().split('T')[0],
+      notes: '',
+    });
+    setIsSettleModalOpen(true);
+  };
+
+  const handleSettleEmployeeChange = (empId) => {
+    const outstanding = empId ? getEmployeeOutstandingFromList(empId) : 0;
+    setSettleForm(prev => ({
+      ...prev,
+      employeeId: empId,
+      amount: outstanding > 0 ? String(outstanding) : '',
+    }));
+  };
+
+  const handleSubmitSettle = async (e) => {
+    e.preventDefault();
+    if (!settleForm.employeeId) { showToast('warning', 'Please select an employee'); return; }
+    const amt = Number(settleForm.amount);
+    if (!amt || amt <= 0) { showToast('warning', 'Please enter a valid payment amount'); return; }
+
+    setIsSubmittingSettle(true);
+    try {
+      const res = await api.post(`/api/wages/employees/${settleForm.employeeId}/settle`, {
+        amount: amt,
+        paymentMethod: settleForm.paymentMethod,
+        date: settleForm.date,
+        notes: settleForm.notes,
+      });
+      if (res.data?.success) {
+        showToast('success', res.data.message || 'Wage payment settled successfully');
+        setIsSettleModalOpen(false);
+        refreshAll();
+      }
+    } catch (err) {
+      console.error('Error settling wages:', err);
+      showAlert({ icon: 'error', title: 'Settlement Failed', text: err.response?.data?.message || 'Failed to settle wages' });
+    } finally {
+      setIsSubmittingSettle(false);
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MODAL 3: Employee CRUD handlers
+  // ═══════════════════════════════════════════════════════════════════════════
+
   const handleOpenEmployeeModal = (emp = null) => {
     if (emp) {
       setEmployeeFormData({
@@ -384,7 +364,7 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
         monthlyWage: emp.monthlyWage || '',
         joiningDate: emp.joiningDate ? new Date(emp.joiningDate).toISOString().split('T')[0] : '',
         status: emp.status || 'active',
-        notes: emp.notes || ''
+        notes: emp.notes || '',
       });
       setIsEditingEmployee(true);
     } else {
@@ -396,57 +376,45 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
         monthlyWage: '',
         joiningDate: new Date().toISOString().split('T')[0],
         status: 'active',
-        notes: ''
+        notes: '',
       });
       setIsEditingEmployee(false);
     }
     setIsEmployeeModalOpen(true);
   };
 
-  // Save Employee
   const handleSaveEmployee = async (e) => {
     e.preventDefault();
-    if (!employeeFormData.name || !employeeFormData.name.trim()) {
-      showToast('warning', 'Employee name is required');
-      return;
-    }
+    if (!employeeFormData.name?.trim()) { showToast('warning', 'Employee name is required'); return; }
 
     try {
       if (isEditingEmployee && employeeFormData._id) {
-        await api.put(`/api/wage-advances/employees/${employeeFormData._id}`, employeeFormData);
+        await api.put(`/api/wages/employees/${employeeFormData._id}`, employeeFormData);
         showToast('success', 'Employee updated successfully');
       } else {
-        const res = await api.post('/api/wage-advances/employees', employeeFormData);
+        await api.post('/api/wages/employees', employeeFormData);
         showToast('success', 'Employee created successfully');
-        if (res.data?.data?._id) {
-          setAdvanceFormData(prev => ({ ...prev, employee: res.data.data._id }));
-        }
       }
       setIsEmployeeModalOpen(false);
       fetchEmployees();
       fetchSummary();
     } catch (err) {
       console.error('Error saving employee:', err);
-      showAlert({
-        icon: 'error',
-        title: 'Save Failed',
-        text: err.response?.data?.message || 'Failed to save employee profile'
-      });
+      showAlert({ icon: 'error', title: 'Save Failed', text: err.response?.data?.message || 'Failed to save employee profile' });
     }
   };
 
-  // Delete Employee
   const handleDeleteEmployee = async (emp) => {
     const result = await showDeleteConfirmation(
       `Delete ${emp.name}?`,
-      'This will also delete all advance records associated with this employee!'
+      'This will also delete all wage records associated with this employee!'
     );
     if (result.isConfirmed) {
       try {
-        await api.delete(`/api/wage-advances/employees/${emp._id}`);
+        await api.delete(`/api/wages/employees/${emp._id}`);
         showToast('success', 'Employee deleted');
         fetchEmployees();
-        fetchAdvances(true);
+        fetchWages(true);
         fetchSummary();
       } catch (err) {
         console.error('Error deleting employee:', err);
@@ -455,49 +423,44 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
     }
   };
 
-  // Filtered advances
-  const filteredAdvances = useMemo(() => {
-    return advances.filter(adv => {
-      const empName = adv.employee?.name || '';
-      const role = adv.employee?.role || '';
-      const reason = adv.reason || '';
+  // ── Derived / filtered data ────────────────────────────────────────────────
+  const filteredWages = useMemo(() => {
+    return wages.filter(w => {
+      const empName = w.employee?.name || '';
+      const role = w.employee?.role || '';
+      const reason = w.reason || '';
       const s = searchTerm.toLowerCase();
-      const matchesSearch = !s ||
-        empName.toLowerCase().includes(s) ||
-        role.toLowerCase().includes(s) ||
-        reason.toLowerCase().includes(s);
-      const matchesStatus = statusFilter === 'all' || adv.status === statusFilter;
-      const matchesEmployee = selectedEmployeeId === 'all' || (adv.employee?._id === selectedEmployeeId);
+      const matchesSearch = !s || empName.toLowerCase().includes(s) || role.toLowerCase().includes(s) || reason.toLowerCase().includes(s);
+      const matchesStatus = statusFilter === 'all' || w.status === statusFilter;
+      const matchesEmployee = selectedEmployeeId === 'all' || (w.employee?._id === selectedEmployeeId);
       return matchesSearch && matchesStatus && matchesEmployee;
     });
-  }, [advances, searchTerm, statusFilter, selectedEmployeeId]);
+  }, [wages, searchTerm, statusFilter, selectedEmployeeId]);
 
-  // Paginated advances
-  const totalPages = Math.ceil(filteredAdvances.length / itemsPerPage);
-  const paginatedAdvances = filteredAdvances.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const totalPages = Math.ceil(filteredWages.length / itemsPerPage);
+  const paginatedWages = filteredWages.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  // Filtered employees
   const filteredEmployees = useMemo(() => {
-    return employees.filter(emp => {
-      const q = searchTerm.toLowerCase();
-      return !q ||
-        emp.name.toLowerCase().includes(q) ||
-        (emp.phone && emp.phone.toLowerCase().includes(q)) ||
-        (emp.role && emp.role.toLowerCase().includes(q));
-    });
+    const q = searchTerm.toLowerCase();
+    return employees.filter(emp =>
+      !q || emp.name.toLowerCase().includes(q) || (emp.phone?.toLowerCase().includes(q)) || (emp.role?.toLowerCase().includes(q))
+    );
   }, [employees, searchTerm]);
 
-  // Selected employee helper
-  const selectedEmployeeObj = useMemo(() => {
-    return employees.find(e => e._id === selectedEmployeeId);
-  }, [employees, selectedEmployeeId]);
+  const selectedEmployeeObj = useMemo(() => employees.find(e => e._id === selectedEmployeeId), [employees, selectedEmployeeId]);
 
+  // ── Settle modal derived values ────────────────────────────────────────────
+  const settleOutstanding = settleForm.employeeId ? getEmployeeOutstandingFromList(settleForm.employeeId) : 0;
+  const settleAmount = Number(settleForm.amount) || 0;
+  const settleExcess = settleAmount > settleOutstanding ? settleAmount - settleOutstanding : 0;
+
+  // ══════════════════════════════════════════════════════════════════════════════
+  // RENDER
+  // ══════════════════════════════════════════════════════════════════════════════
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-12">
-      {/* Top Header */}
+
+      {/* ── Top Header ─────────────────────────────────────────────────────── */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
@@ -505,9 +468,9 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
               <HandCoins size={24} />
             </span>
             <div>
-              <h2 className="text-2xl font-black text-text-primary tracking-tight">Employee Wage Advances</h2>
+              <h2 className="text-2xl font-black text-text-primary tracking-tight">Employee Wage & Payment</h2>
               <p className="text-text-secondary text-xs">
-                Record employee salary advances, track pending deductions & manage worker advance balances
+                Record wages, track outstanding balances and settle employee payments
               </p>
             </div>
           </div>
@@ -515,20 +478,31 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* RECORD WAGE — rose/red */}
           <button
-            onClick={() => handleOpenAdvanceModal()}
-            className="flex items-center space-x-2 px-5 py-2.5 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-primary/20 hover:bg-primary-light transition-all"
+            onClick={() => handleOpenWageModal()}
+            className="flex items-center space-x-2 px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-rose-600/20 transition-all active:scale-95"
           >
             <Plus size={16} />
-            <span>Record Wage Advance</span>
+            <span>Record Wage</span>
           </button>
 
+          {/* SETTLE WAGES — emerald */}
+          <button
+            onClick={() => handleOpenSettleModal()}
+            className="flex items-center space-x-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
+          >
+            <Wallet size={16} />
+            <span>Settle Wages</span>
+          </button>
+
+          {/* NEW EMPLOYEE — outline */}
           <button
             onClick={() => handleOpenEmployeeModal()}
             className="flex items-center space-x-2 px-4 py-2.5 bg-background-card border border-border-main text-text-primary hover:border-primary rounded-xl text-xs font-black uppercase tracking-wider transition-all"
           >
             <Users size={16} />
-            <span>New Employee Profile</span>
+            <span>+ New Employee</span>
           </button>
 
           {onNavigateTab && (
@@ -544,107 +518,84 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
         </div>
       </div>
 
-      {/* Summary KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {/* Today's Advances & Settled */}
-        <div className="bg-background-card p-5 rounded-[1.8rem] border border-border-light shadow-sm relative overflow-hidden group hover:border-primary/40 transition-all">
+      {/* ── Stats Cards ──────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Outstanding Wages */}
+        <div className="bg-background-card p-5 rounded-[1.8rem] border border-border-light shadow-sm hover:border-amber-500/40 transition-all">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-black uppercase tracking-widest text-primary">Today Wage Outflow</span>
-            <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold">
-              <HandCoins size={18} />
+            <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">Outstanding Wages</span>
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+              <AlertCircle size={18} />
             </div>
           </div>
-          <div className="text-2xl font-black text-text-primary tracking-tight">
-            ₹{(summary.todayAdvances || 0).toLocaleString()}
+          <div className="text-2xl font-black text-amber-500 tracking-tight">
+            ₹{(summary.pendingAdvances || summary.totalOutstanding || 0).toLocaleString()}
           </div>
-          <div className="text-[10px] text-text-secondary mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-medium">
-            <span className="text-emerald-500 font-bold">₹{(summary.todaySettled || 0).toLocaleString()} Settled</span>
-            <span className="text-text-muted">•</span>
-            <span className="text-amber-500 font-bold">₹{(summary.todayPending || 0).toLocaleString()} Pending</span>
-          </div>
+          <p className="text-[10px] text-text-secondary mt-1">Total unpaid balance across all employees</p>
         </div>
 
-        {/* Total Advances This Month / Period */}
-        <div className="bg-background-card p-5 rounded-[1.8rem] border border-border-light shadow-sm relative overflow-hidden group hover:border-primary/40 transition-all">
+        {/* This Month Wages */}
+        <div className="bg-background-card p-5 rounded-[1.8rem] border border-border-light shadow-sm hover:border-primary/40 transition-all">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">This Month Advances</span>
-            <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+            <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">This Month Wages</span>
+            <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
               <DollarSign size={18} />
             </div>
           </div>
           <div className="text-2xl font-black text-text-primary tracking-tight">
-            ₹{summary.monthAdvances.toLocaleString()}
-          </div>
-          <p className="text-[10px] text-text-secondary mt-1 flex items-center gap-1 font-medium">
-            <span>All-time total:</span>
-            <span className="font-bold text-text-primary">₹{summary.totalAdvances.toLocaleString()}</span>
-          </p>
-        </div>
-
-        {/* Pending Deduction Balance */}
-        <div className="bg-background-card p-5 rounded-[1.8rem] border border-border-light shadow-sm relative overflow-hidden group hover:border-primary/40 transition-all">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">Pending Deduction</span>
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold">
-              <Clock size={18} />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-amber-500 tracking-tight">
-            ₹{summary.pendingAdvances.toLocaleString()}
+            ₹{(summary.monthAdvances || summary.monthWages || 0).toLocaleString()}
           </div>
           <p className="text-[10px] text-text-secondary mt-1">
-            To be deducted from wages
+            All-time total: <span className="font-bold text-text-primary">₹{(summary.totalAdvances || 0).toLocaleString()}</span>
           </p>
         </div>
 
-        {/* Settled / Deducted Advances */}
-        <div className="bg-background-card p-5 rounded-[1.8rem] border border-border-light shadow-sm relative overflow-hidden group hover:border-primary/40 transition-all">
+        {/* Total Paid */}
+        <div className="bg-background-card p-5 rounded-[1.8rem] border border-border-light shadow-sm hover:border-emerald-500/40 transition-all">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">Settled / Deducted</span>
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold">
+            <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">Total Paid</span>
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
               <CheckCircle2 size={18} />
             </div>
           </div>
-          <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
-            ₹{summary.settledAdvances.toLocaleString()}
+          <div className="text-2xl font-black text-emerald-500 tracking-tight">
+            ₹{(summary.settledAdvances || summary.totalPaid || 0).toLocaleString()}
           </div>
-          <p className="text-[10px] text-text-secondary mt-1">
-            Cleared from wages
-          </p>
+          <p className="text-[10px] text-text-secondary mt-1">Cleared & settled payments</p>
         </div>
 
         {/* Active Employees */}
-        <div className="bg-background-card p-5 rounded-[1.8rem] border border-border-light shadow-sm relative overflow-hidden group hover:border-primary/40 transition-all">
+        <div className="bg-background-card p-5 rounded-[1.8rem] border border-border-light shadow-sm hover:border-blue-500/40 transition-all">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">Active Workers</span>
-            <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold">
+            <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">Active Employees</span>
+            <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
               <Users size={18} />
             </div>
           </div>
           <div className="text-2xl font-black text-text-primary tracking-tight">
-            {summary.activeEmployees} <span className="text-xs font-normal text-text-muted">/ {summary.totalEmployees} registered</span>
+            {summary.activeEmployees || 0}{' '}
+            <span className="text-xs font-normal text-text-muted">/ {summary.totalEmployees || employees.length} registered</span>
           </div>
-          <p className="text-[10px] text-text-secondary mt-1">
-            Kitchen & floor workforce
-          </p>
+          <p className="text-[10px] text-text-secondary mt-1">Kitchen & floor workforce</p>
         </div>
       </div>
 
-      {/* Main Card */}
+      {/* ── Main Card ─────────────────────────────────────────────────────────── */}
       <div className="bg-background-card rounded-[2rem] border border-border-light shadow-sm overflow-hidden">
-        {/* Navigation Tabs Header */}
+
+        {/* Tab Header */}
         <div className="border-b border-border-light bg-background-muted/20 px-6 pt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center space-x-2">
             <button
-              onClick={() => setActiveTab('advances')}
+              onClick={() => setActiveTab('wages')}
               className={`flex items-center space-x-2 px-5 py-3 rounded-t-2xl font-black text-xs uppercase tracking-wider border-b-2 transition-all ${
-                activeTab === 'advances'
+                activeTab === 'wages'
                   ? 'border-primary text-primary bg-background-card'
                   : 'border-transparent text-text-secondary hover:text-text-primary'
               }`}
             >
               <HandCoins size={16} />
-              <span>Advance Records ({advances.length})</span>
+              <span>Wage Records ({wages.length})</span>
             </button>
 
             <button
@@ -660,15 +611,15 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
             </button>
           </div>
 
-          {/* Quick Date Chips (shown in Advances tab) */}
-          {activeTab === 'advances' && (
+          {/* Quick Date Chips */}
+          {activeTab === 'wages' && (
             <div className="flex flex-wrap items-center gap-1.5 pb-3">
               {[
                 { label: 'All', value: 'all' },
                 { label: 'Today', value: 'today' },
                 { label: 'This Week', value: 'thisWeek' },
                 { label: 'This Month', value: 'thisMonth' },
-                { label: 'Custom', value: 'custom' }
+                { label: 'Custom', value: 'custom' },
               ].map((chip) => (
                 <button
                   key={chip.value}
@@ -686,8 +637,8 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
           )}
         </div>
 
-        {/* Custom Date Range Picker */}
-        {activeTab === 'advances' && dateFilter === 'custom' && (
+        {/* Custom Date Range */}
+        {activeTab === 'wages' && dateFilter === 'custom' && (
           <div className="p-4 bg-background-muted/40 border-b border-border-light flex flex-wrap items-center gap-3">
             <span className="text-[11px] font-bold text-text-secondary flex items-center gap-1.5">
               <Calendar size={14} /> Custom Range:
@@ -706,7 +657,7 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
               className="px-3 py-1.5 bg-background-card text-text-primary border border-border-main rounded-xl text-xs font-bold outline-none"
             />
             <button
-              onClick={() => fetchAdvances(true)}
+              onClick={() => fetchWages(true)}
               className="px-4 py-1.5 bg-primary text-white text-[10px] font-black uppercase tracking-wider rounded-xl"
             >
               Apply Range
@@ -714,51 +665,36 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
           </div>
         )}
 
-        {/* Filters and Search Bar */}
+        {/* Filter Bar */}
         <div className="p-4 border-b border-border-light bg-background-card flex flex-col md:flex-row md:items-center justify-between gap-3">
-          {/* Search Input */}
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" size={16} />
             <input
               type="text"
-              placeholder={
-                activeTab === 'advances'
-                  ? 'Search by worker name, role, reason...'
-                  : 'Search by worker name, phone, role...'
-              }
+              placeholder={activeTab === 'wages' ? 'Search by worker name, role, reason...' : 'Search by name, phone, role...'}
               value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               className="w-full pl-10 pr-4 py-2.5 bg-background-muted/40 rounded-xl border border-border-main focus:border-primary transition-all outline-none text-xs font-medium"
             />
           </div>
 
-          {/* Filter Dropdowns */}
           <div className="flex flex-wrap items-center gap-2">
-            {activeTab === 'advances' && (
+            {activeTab === 'wages' && (
               <>
                 <select
                   value={statusFilter}
-                  onChange={(e) => {
-                    setStatusFilter(e.target.value);
-                    setCurrentPage(1);
-                  }}
+                  onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
                   className="bg-background-muted/40 text-text-primary border border-border-main rounded-xl px-3 py-2 text-xs font-bold outline-none cursor-pointer"
                 >
                   <option value="all">All Status</option>
                   <option value="pending">Pending</option>
-                  <option value="partially_paid">Partially Paid</option>
-                  <option value="settled">Settled / Deducted</option>
+                  <option value="partially_paid">Partial</option>
+                  <option value="settled">Settled</option>
                 </select>
 
                 <select
                   value={selectedEmployeeId}
-                  onChange={(e) => {
-                    setSelectedEmployeeId(e.target.value);
-                    setCurrentPage(1);
-                  }}
+                  onChange={(e) => { setSelectedEmployeeId(e.target.value); setCurrentPage(1); }}
                   className="bg-background-muted/40 text-text-primary border border-border-main rounded-xl px-3 py-2 text-xs font-bold outline-none cursor-pointer max-w-[180px] truncate"
                 >
                   <option value="all">All Workers</option>
@@ -769,20 +705,13 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
               </>
             )}
 
-            {/* Clear Filters */}
             {(searchTerm || statusFilter !== 'all' || selectedEmployeeId !== 'all' || dateFilter !== 'all') && (
               <button
                 onClick={() => {
-                  setSearchTerm('');
-                  setStatusFilter('all');
-                  setSelectedEmployeeId('all');
-                  setDateFilter('all');
-                  setCustomStartDate('');
-                  setCustomEndDate('');
-                  setCurrentPage(1);
+                  setSearchTerm(''); setStatusFilter('all'); setSelectedEmployeeId('all');
+                  setDateFilter('all'); setCustomStartDate(''); setCustomEndDate(''); setCurrentPage(1);
                 }}
                 className="flex items-center space-x-1 px-3 py-2 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
-                title="Reset all filters"
               >
                 <RotateCcw size={12} />
                 <span>Reset</span>
@@ -791,98 +720,87 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
           </div>
         </div>
 
-        {/* Indicator if filtering by worker */}
+        {/* Employee filter pill */}
         {selectedEmployeeId !== 'all' && selectedEmployeeObj && (
           <div className="px-6 py-2.5 bg-primary/5 border-b border-border-light flex items-center justify-between">
             <span className="text-xs font-bold text-primary flex items-center gap-2">
               <Users size={14} />
-              Filtering Advances for: <strong className="underline">{selectedEmployeeObj.name}</strong> ({selectedEmployeeObj.role})
+              Filtering wages for: <strong className="underline">{selectedEmployeeObj.name}</strong> ({selectedEmployeeObj.role})
               <span className="text-[10px] text-text-secondary">
-                (Pending Balance: ₹{selectedEmployeeObj.pendingAdvances?.toLocaleString() || 0})
+                (Outstanding: ₹{(selectedEmployeeObj.pendingAdvances || 0).toLocaleString()})
               </span>
             </span>
             <button
               onClick={() => setSelectedEmployeeId('all')}
               className="p-1 hover:bg-primary/10 rounded-full text-primary transition-all"
-              title="Clear Worker Filter"
             >
               <X size={16} />
             </button>
           </div>
         )}
 
-        {/* Tab 1: Advance Records */}
-        {activeTab === 'advances' && (
+        {/* ── Tab: Wage Records ─────────────────────────────────────────────── */}
+        {activeTab === 'wages' && (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs whitespace-nowrap">
               <thead className="bg-background-muted/50 text-text-secondary uppercase text-[10px] font-black tracking-widest border-b border-border-light">
                 <tr>
                   <th className="px-4 py-4">Date</th>
-                  <th className="px-4 py-4">Worker / Employee</th>
+                  <th className="px-4 py-4">Employee</th>
                   <th className="px-4 py-4">Role</th>
+                  <th className="px-4 py-4">Wage Amount</th>
+                  <th className="px-4 py-4">Paid</th>
+                  <th className="px-4 py-4">Balance</th>
                   <th className="px-4 py-4">Status</th>
-                  <th className="px-4 py-4">Reason / Notes</th>
-                  <th className="px-4 py-4">Mode</th>
-                  <th className="px-4 py-4 text-right">Total Amount</th>
-                  <th className="px-4 py-4 text-right">Paid Amount</th>
-                  <th className="px-4 py-4 text-right">Balance Due</th>
                   <th className="px-4 py-4 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light">
                 {isLoading ? (
+                  <tr><td colSpan="8" className="px-6 py-10"><TableSkeleton columns={8} rows={6} /></td></tr>
+                ) : paginatedWages.length === 0 ? (
                   <tr>
-                    <td colSpan="10" className="px-6 py-10">
-                      <TableSkeleton columns={10} rows={6} />
-                    </td>
-                  </tr>
-                ) : paginatedAdvances.length === 0 ? (
-                  <tr>
-                    <td colSpan="10" className="px-6 py-16 text-center text-text-muted">
+                    <td colSpan="8" className="px-6 py-16 text-center text-text-muted">
                       <div className="flex flex-col items-center justify-center space-y-3">
                         <HandCoins size={36} className="text-text-muted/40" />
-                        <p className="font-bold text-sm">No advance records found</p>
-                        <p className="text-xs text-text-muted">Record wage advances taken by workers or kitchen staff</p>
+                        <p className="font-bold text-sm">No wage records found</p>
+                        <p className="text-xs text-text-muted">Record wages given to workers or kitchen staff</p>
                         <button
-                          onClick={() => handleOpenAdvanceModal()}
-                          className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold mt-2"
+                          onClick={() => handleOpenWageModal()}
+                          className="px-4 py-2 bg-rose-600 text-white rounded-xl text-xs font-bold mt-2 hover:bg-rose-700 transition-all"
                         >
-                          + Record First Wage Advance
+                          + Record First Wage
                         </button>
                       </div>
                     </td>
                   </tr>
                 ) : (
-                  paginatedAdvances.map((adv) => {
-                    const paidAmt = adv.paidAmount !== undefined
-                      ? adv.paidAmount
-                      : (adv.status === 'settled' ? adv.amount : 0);
-                    const balAmt = adv.balanceAmount !== undefined
-                      ? adv.balanceAmount
-                      : Math.max(0, adv.amount - paidAmt);
+                  paginatedWages.map((w) => {
+                    const paidAmt = w.paidAmount !== undefined ? w.paidAmount : (w.status === 'settled' ? w.amount : 0);
+                    const balAmt = w.balanceAmount !== undefined ? w.balanceAmount : Math.max(0, (w.amount || 0) - paidAmt);
 
                     return (
-                      <tr key={adv._id} className="hover:bg-background-muted/30 transition-colors group">
+                      <tr key={w._id} className="hover:bg-background-muted/30 transition-colors group">
                         {/* Date */}
                         <td className="px-4 py-4 font-bold text-text-primary">
-                          {adv.date ? new Date(adv.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
+                          {w.date ? new Date(w.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
                         </td>
 
-                        {/* Employee Name */}
+                        {/* Employee */}
                         <td className="px-4 py-4">
                           <div className="flex items-center space-x-2.5">
                             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-xs">
-                              {adv.employee?.name ? adv.employee.name.charAt(0).toUpperCase() : '?'}
+                              {w.employee?.name ? w.employee.name.charAt(0).toUpperCase() : '?'}
                             </div>
                             <div className="flex flex-col">
                               <span
-                                onClick={() => setSelectedEmployeeId(adv.employee?._id || 'all')}
+                                onClick={() => setSelectedEmployeeId(w.employee?._id || 'all')}
                                 className="font-bold text-text-primary hover:text-primary cursor-pointer transition-colors"
                               >
-                                {adv.employee?.name || 'Unknown Employee'}
+                                {w.employee?.name || 'Unknown'}
                               </span>
-                              {adv.employee?.phone && (
-                                <span className="text-[10px] text-text-muted font-mono">{adv.employee.phone}</span>
+                              {w.employee?.phone && (
+                                <span className="text-[10px] text-text-muted font-mono">{w.employee.phone}</span>
                               )}
                             </div>
                           </div>
@@ -891,104 +809,74 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
                         {/* Role */}
                         <td className="px-4 py-4">
                           <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-background-muted text-text-secondary border border-border-light">
-                            {adv.employee?.role || 'Worker'}
+                            {w.employee?.role || 'Worker'}
                           </span>
                         </td>
 
-                        {/* Status */}
-                        <td className="px-4 py-4">
-                          {balAmt === 0 ? (
-                            <button
-                              type="button"
-                              onClick={() => handleToggleSettle(adv)}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 transition-all"
-                              title="Fully Settled! Click to mark as Pending"
-                            >
-                              <CheckCircle2 size={10} />
-                              <span>Settled</span>
-                            </button>
-                          ) : paidAmt > 0 ? (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenPayModal(adv)}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 hover:bg-blue-500/20 transition-all"
-                              title="Partially Paid. Click to record payment"
-                            >
-                              <Clock size={10} />
-                              <span>Partial</span>
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenPayModal(adv)}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20 transition-all cursor-pointer"
-                              title={`Pending Payment. Click to settle balance of ₹${balAmt.toLocaleString()}`}
-                            >
-                              <Clock size={10} />
-                              <span>Pending</span>
-                            </button>
-                          )}
+                        {/* Wage Amount */}
+                        <td className="px-4 py-4 font-black text-sm text-text-primary">
+                          ₹{(w.amount || 0).toLocaleString()}
                         </td>
 
-                        {/* Reason / Notes */}
-                        <td className="px-4 py-4 text-text-secondary max-w-xs truncate" title={adv.reason}>
-                          {adv.reason || '-'}
-                        </td>
-
-                        {/* Payment Mode */}
-                        <td className="px-4 py-4">
-                          <span className="px-2.5 py-1 bg-background-muted rounded-lg text-[10px] font-bold text-text-secondary">
-                            {adv.paymentMethod || 'Cash'}
-                          </span>
-                        </td>
-
-                        {/* Total Advance Amount */}
-                        <td className="px-4 py-4 text-right font-black text-sm text-text-primary">
-                          ₹{adv.amount?.toLocaleString()}
-                        </td>
-
-                        {/* Paid Amount */}
-                        <td className="px-4 py-4 text-right font-black text-sm text-emerald-600 dark:text-emerald-400">
+                        {/* Paid */}
+                        <td className="px-4 py-4 font-black text-sm text-emerald-500">
                           ₹{paidAmt.toLocaleString()}
                         </td>
 
-                        {/* Balance Amount Due */}
-                        <td className="px-4 py-4 text-right">
+                        {/* Balance */}
+                        <td className="px-4 py-4">
                           {balAmt > 0 ? (
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-500/10 text-amber-600 border border-amber-500/20 shadow-sm">
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-500/10 text-amber-600 border border-amber-500/20">
                               ₹{balAmt.toLocaleString()}
                             </span>
                           ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20">
                               ₹0 (Cleared)
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Status Badge */}
+                        <td className="px-4 py-4">
+                          {w.status === 'settled' || balAmt === 0 ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                              <CheckCircle2 size={10} /> Settled
+                            </span>
+                          ) : w.status === 'partially_paid' || paidAmt > 0 ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider bg-orange-500/10 text-orange-500 border border-orange-500/20">
+                              <Clock size={10} /> Partial
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                              <Clock size={10} /> Pending
                             </span>
                           )}
                         </td>
 
                         {/* Actions */}
                         <td className="px-4 py-4 text-center">
-                          <div className="flex items-center justify-center space-x-1.5 opacity-85 group-hover:opacity-100 transition-opacity">
+                          <div className="flex items-center justify-center space-x-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
                             {balAmt > 0 && (
                               <button
-                                onClick={() => handleOpenPayModal(adv)}
+                                onClick={() => handleOpenSettleModal(w.employee?._id)}
                                 className="flex items-center space-x-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all shadow-sm shadow-emerald-600/25 active:scale-95"
-                                title={`Settle pending balance of ₹${balAmt.toLocaleString()}`}
+                                title={`Settle balance of ₹${balAmt.toLocaleString()}`}
                               >
                                 <CreditCard size={11} />
-                                <span>Settle ₹{balAmt.toLocaleString()}</span>
+                                <span>Pay</span>
                               </button>
                             )}
                             <button
-                              onClick={() => handleOpenAdvanceModal(adv.employee?._id, adv)}
+                              onClick={() => handleOpenWageModal(w)}
                               className="p-1.5 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all"
-                              title="Edit Advance"
+                              title="Edit Wage Record"
                             >
                               <Edit2 size={16} />
                             </button>
                             <button
-                              onClick={() => handleDeleteAdvance(adv._id)}
+                              onClick={() => handleDeleteWage(w._id)}
                               className="p-1.5 hover:bg-rose-500/10 text-text-secondary hover:text-rose-500 rounded-lg transition-all"
-                              title="Delete Advance"
+                              title="Delete Wage Record"
                             >
                               <Trash2 size={16} />
                             </button>
@@ -1001,8 +889,7 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
               </tbody>
             </table>
 
-            {/* Pagination */}
-            {filteredAdvances.length > itemsPerPage && (
+            {filteredWages.length > itemsPerPage && (
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
@@ -1012,19 +899,19 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
           </div>
         )}
 
-        {/* Tab 2: Workers Directory View */}
+        {/* ── Tab: Workers Directory ─────────────────────────────────────────── */}
         {activeTab === 'employees' && (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs whitespace-nowrap">
               <thead className="bg-background-muted/50 text-text-secondary uppercase text-[10px] font-black tracking-widest border-b border-border-light">
                 <tr>
                   <th className="px-5 py-4">Worker Name</th>
-                  <th className="px-5 py-4">Role / Designation</th>
+                  <th className="px-5 py-4">Role</th>
                   <th className="px-5 py-4">Phone</th>
-                  <th className="px-5 py-4 text-right">Daily / Base Wage</th>
-                  <th className="px-5 py-4 text-right">Total Advance</th>
-                  <th className="px-5 py-4 text-right">Paid / Settled</th>
-                  <th className="px-5 py-4 text-right">Balance Due</th>
+                  <th className="px-5 py-4 text-right">Base Wage</th>
+                  <th className="px-5 py-4 text-right">Total Wages</th>
+                  <th className="px-5 py-4 text-right">Paid</th>
+                  <th className="px-5 py-4 text-right">Outstanding</th>
                   <th className="px-5 py-4 text-center">Quick Actions</th>
                   <th className="px-5 py-4 text-center">Actions</th>
                 </tr>
@@ -1036,7 +923,7 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
                       <div className="flex flex-col items-center justify-center space-y-3">
                         <Users size={36} className="text-text-muted/40" />
                         <p className="font-bold text-sm">No workers added yet</p>
-                        <p className="text-xs text-text-muted">Add worker profiles to track wage advances independently of login accounts</p>
+                        <p className="text-xs text-text-muted">Add worker profiles to track wages independently</p>
                         <button
                           onClick={() => handleOpenEmployeeModal()}
                           className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold mt-2"
@@ -1049,7 +936,6 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
                 ) : (
                   filteredEmployees.map((emp) => (
                     <tr key={emp._id} className="hover:bg-background-muted/30 transition-colors group">
-                      {/* Name */}
                       <td className="px-5 py-4">
                         <div className="flex items-center space-x-3">
                           <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-sm">
@@ -1063,15 +949,11 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
                           </div>
                         </div>
                       </td>
-
-                      {/* Role */}
                       <td className="px-5 py-4">
                         <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-background-muted text-text-secondary border border-border-light">
                           {emp.role || 'Worker'}
                         </span>
                       </td>
-
-                      {/* Phone */}
                       <td className="px-5 py-4 text-text-secondary">
                         {emp.phone ? (
                           <span className="flex items-center space-x-1 font-mono text-[11px]">
@@ -1082,85 +964,57 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
                           <span className="text-text-muted italic text-[11px]">No phone</span>
                         )}
                       </td>
-
-                      {/* Monthly Wage */}
                       <td className="px-5 py-4 text-right font-medium text-text-secondary">
                         {emp.monthlyWage ? `₹${emp.monthlyWage.toLocaleString()}` : '-'}
                       </td>
-
-                      {/* Total Advance */}
                       <td className="px-5 py-4 text-right font-bold text-text-primary">
                         ₹{(emp.totalAdvances || 0).toLocaleString()}
                       </td>
-
-                      {/* Settled */}
-                      <td className="px-5 py-4 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                      <td className="px-5 py-4 text-right font-bold text-emerald-500">
                         ₹{(emp.settledAdvances || 0).toLocaleString()}
                       </td>
-
-                      {/* Pending Deduction */}
                       <td className="px-5 py-4 text-right">
-                        <span className={`font-black text-sm ${
-                          (emp.pendingAdvances || 0) > 0 ? 'text-amber-500' : 'text-text-muted'
-                        }`}>
+                        <span className={`font-black text-sm ${(emp.pendingAdvances || 0) > 0 ? 'text-amber-500' : 'text-text-muted'}`}>
                           ₹{(emp.pendingAdvances || 0).toLocaleString()}
                         </span>
                       </td>
-
-                      {/* Quick Actions */}
                       <td className="px-5 py-4 text-center">
                         <div className="flex items-center justify-center space-x-1.5">
                           <button
-                            onClick={() => {
-                              setSelectedEmployeeId(emp._id);
-                              setActiveTab('advances');
-                            }}
+                            onClick={() => { setSelectedEmployeeId(emp._id); setActiveTab('wages'); }}
                             className="px-2.5 py-1 bg-background-muted hover:bg-primary hover:text-white rounded-lg text-[10px] font-black uppercase tracking-wider text-text-secondary transition-all"
-                            title="Filter advances for this worker"
                           >
                             History
                           </button>
-                          {emp.pendingAdvances > 0 && (
+                          {(emp.pendingAdvances || 0) > 0 && (
                             <button
-                              onClick={() => {
-                                const empAdv = advances.find(a => (a.employee?._id === emp._id || a.employee === emp._id) && (a.balanceAmount > 0 || (a.status !== 'settled' && a.amount > 0)));
-                                if (empAdv) {
-                                  handleOpenPayModal(empAdv);
-                                } else {
-                                  handleOpenAdvanceModal(emp._id);
-                                }
-                              }}
+                              onClick={() => handleOpenSettleModal(emp._id)}
                               className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all shadow-sm flex items-center space-x-1"
-                              title={`Settle pending advance of ₹${(emp.pendingAdvances || 0).toLocaleString()}`}
+                              title={`Settle ₹${(emp.pendingAdvances || 0).toLocaleString()} outstanding`}
                             >
                               <CreditCard size={10} />
                               <span>Settle ₹{(emp.pendingAdvances || 0).toLocaleString()}</span>
                             </button>
                           )}
                           <button
-                            onClick={() => handleOpenAdvanceModal(emp._id)}
-                            className="px-2 py-1 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all"
-                            title="Give advance to this worker"
+                            onClick={() => handleOpenWageModal()}
+                            className="px-2 py-1 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all"
                           >
-                            + Give Advance
+                            + Wage
                           </button>
                         </div>
                       </td>
-
-                      {/* Edit / Delete */}
                       <td className="px-5 py-4 text-center">
                         <div className="flex items-center justify-center space-x-1">
                           <button
                             onClick={() => handleOpenEmployeeModal(emp)}
                             className="p-1.5 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all"
-                            title="Edit Worker Profile"
                           >
                             <Edit2 size={16} />
                           </button>
                           <button
                             onClick={() => handleDeleteEmployee(emp)}
                             className="p-1.5 hover:bg-rose-500/10 text-text-secondary hover:text-rose-500 rounded-lg transition-all"
-                            title="Delete Worker Profile"
                           >
                             <Trash2 size={16} />
                           </button>
@@ -1175,765 +1029,450 @@ const WageAdvanceSection = ({ onNavigateTab }) => {
         )}
       </div>
 
-      {/* MODAL 1: Record Wage Advance */}
-      <Modal
-        isOpen={isAdvanceModalOpen}
-        onClose={() => setIsAdvanceModalOpen(false)}
-        zIndex="z-[100]"
-      >
+      {/* ════════════════════════════════════════════════════════════════════════
+          MODAL 1: Record Employee Wage
+      ════════════════════════════════════════════════════════════════════════ */}
+      <Modal isOpen={isWageModalOpen} onClose={() => setIsWageModalOpen(false)} zIndex="z-[100]">
         <div className="bg-background-card w-full max-w-lg max-h-[90vh] rounded-[2rem] sm:rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden flex flex-col my-auto animate-in zoom-in-95 duration-200">
-            {/* Header */}
-            <div className="p-5 sm:p-6 border-b border-border-light flex items-center justify-between shrink-0 bg-background-card">
-              <div className="flex items-center space-x-3">
-                <span className="p-2 rounded-xl bg-primary/10 text-primary">
-                  <HandCoins size={20} />
-                </span>
-                <h3 className="text-lg font-black text-text-primary">
-                  {isEditingAdvance ? 'Edit Wage Advance' : 'Record Employee Wage Advance'}
-                </h3>
-              </div>
-              <button
-                onClick={() => setIsAdvanceModalOpen(false)}
-                className="text-text-muted hover:text-text-primary transition-all"
-              >
-                <XCircle size={24} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveAdvance} className="flex flex-col min-h-0 flex-1 overflow-hidden">
-              <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 overscroll-contain">
-                {/* Employee Dropdown */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                      Worker / Employee *
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenEmployeeModal()}
-                      className="text-[10px] font-bold text-primary hover:underline"
-                    >
-                      + Add New Worker
-                    </button>
-                  </div>
-                  <select
-                    value={advanceFormData.employee}
-                    onChange={(e) => {
-                      const empId = e.target.value;
-                      const foundEmp = employees.find(em => em._id === empId);
-                      setAdvanceFormData(prev => ({
-                        ...prev,
-                        employee: empId,
-                        amount: !isEditingAdvance && foundEmp?.pendingAdvances > 0 && !prev.amount ? foundEmp.pendingAdvances : prev.amount,
-                        paidAmount: !isEditingAdvance && foundEmp?.pendingAdvances > 0 && !prev.paidAmount ? foundEmp.pendingAdvances : prev.paidAmount,
-                        status: !isEditingAdvance && foundEmp?.pendingAdvances > 0 && !prev.amount ? 'settled' : prev.status
-                      }));
-                    }}
-                    required
-                    className="w-full px-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-bold outline-none"
-                  >
-                    <option value="">Select a worker...</option>
-                    {employees.map(e => (
-                      <option key={e._id} value={e._id}>
-                        {e.name} — {e.role}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Show Pending Advance Alert & 1-Click Settle Button (Only when creating a new record, not editing) */}
-                {!isEditingAdvance && (() => {
-                  const curSelectedEmp = employees.find(e => e._id === advanceFormData.employee);
-                  if (curSelectedEmp && curSelectedEmp.pendingAdvances > 0) {
-                    return (
-                      <div className="p-3 bg-amber-500/10 border border-amber-500/25 rounded-2xl flex items-center justify-between animate-in fade-in duration-200">
-                        <div>
-                          <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block">
-                            Worker Outstanding Advances
-                          </span>
-                          <span className="text-sm font-black text-amber-600">
-                            ₹{curSelectedEmp.pendingAdvances.toLocaleString()} Pending
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAdvanceFormData(prev => ({
-                              ...prev,
-                              amount: curSelectedEmp.pendingAdvances,
-                              paidAmount: curSelectedEmp.pendingAdvances,
-                              status: 'settled',
-                              reason: prev.reason || `Settlement of pending advance for ${curSelectedEmp.name}`
-                            }));
-                          }}
-                          className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm flex items-center space-x-1 active:scale-95"
-                        >
-                          <Zap size={12} />
-                          <span>Settle Outstanding (₹{curSelectedEmp.pendingAdvances.toLocaleString()})</span>
-                        </button>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-
-                {/* If Editing and remaining balance exists */}
-                {isEditingAdvance && (() => {
-                  const tAmt = Number(advanceFormData.amount) || 0;
-                  const pAmt = Number(advanceFormData.paidAmount) || 0;
-                  const remBal = Math.max(0, tAmt - pAmt);
-                  if (remBal <= 0) return null;
-                  return (
-                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/25 rounded-2xl flex items-center justify-between animate-in fade-in duration-200">
-                      <div>
-                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">
-                          Remaining Pending Balance
-                        </span>
-                        <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
-                          ₹{remBal.toLocaleString()}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAdvanceFormData(prev => ({
-                            ...prev,
-                            paidAmount: prev.amount,
-                            status: 'settled'
-                          }));
-                        }}
-                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm flex items-center space-x-1 active:scale-95"
-                      >
-                        <CheckCircle2 size={13} />
-                        <span>Settle Full (₹{remBal.toLocaleString()})</span>
-                      </button>
-                    </div>
-                  );
-                })()}
-
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Amount */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                        Total Advance / Wage Amount (₹) *
-                      </label>
-                      {!isEditingAdvance && (() => {
-                        const curSelectedEmp = employees.find(e => e._id === advanceFormData.employee);
-                        if (curSelectedEmp && curSelectedEmp.pendingAdvances > 0) {
-                          return (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const bal = curSelectedEmp.pendingAdvances;
-                                setAdvanceFormData(prev => ({
-                                  ...prev,
-                                  amount: bal,
-                                  paidAmount: bal,
-                                  status: 'settled'
-                                }));
-                              }}
-                              className="text-[9px] font-black text-amber-500 hover:underline uppercase"
-                            >
-                              Fill Outstanding: ₹{curSelectedEmp.pendingAdvances.toLocaleString()}
-                            </button>
-                          );
-                        }
-                        return null;
-                      })()}
-                    </div>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted font-bold text-xs">₹</span>
-                      <input
-                        type="number"
-                        min="1"
-                        step="any"
-                        required
-                        value={advanceFormData.amount}
-                        onChange={(e) => {
-                          const newAmt = e.target.value;
-                          setAdvanceFormData(prev => {
-                            const curPaid = Number(prev.paidAmount) || 0;
-                            const totalVal = Number(newAmt) || 0;
-                            let newStat = prev.status;
-                            if (curPaid >= totalVal && totalVal > 0) newStat = 'settled';
-                            else if (curPaid > 0) newStat = 'partially_paid';
-                            else newStat = 'pending';
-                            return { ...prev, amount: newAmt, status: newStat };
-                          });
-                        }}
-                        placeholder="0.00"
-                        className="w-full pl-8 pr-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-sm font-black outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Date */}
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                      Date Given *
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={advanceFormData.date}
-                      onChange={(e) => setAdvanceFormData({ ...advanceFormData, date: e.target.value })}
-                      className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-bold outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Paid Amount & Live Balance Section */}
-                <div className="p-4 bg-background-muted/40 rounded-2xl border border-border-light space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                      Amount Paid Now (₹)
-                    </label>
-                    <div className="flex items-center space-x-1.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAdvanceFormData(prev => ({
-                            ...prev,
-                            paidAmount: 0,
-                            status: 'pending'
-                          }));
-                        }}
-                        className="text-[9px] font-black uppercase px-2 py-0.5 rounded-lg bg-background-card border border-border-main text-text-secondary hover:text-text-primary transition-all"
-                      >
-                        Unpaid (₹0)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const full = Number(advanceFormData.amount) || 0;
-                          setAdvanceFormData(prev => ({
-                            ...prev,
-                            paidAmount: full,
-                            status: full > 0 ? 'settled' : 'pending'
-                          }));
-                        }}
-                        className="text-[9px] font-black uppercase px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-all font-bold"
-                      >
-                        Paid Full
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-emerald-400 font-bold text-xs">₹</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max={advanceFormData.amount || undefined}
-                      step="any"
-                      value={advanceFormData.paidAmount}
-                      onChange={(e) => {
-                        const paidVal = e.target.value;
-                        setAdvanceFormData(prev => {
-                          const pNum = Number(paidVal) || 0;
-                          const tNum = Number(prev.amount) || 0;
-                          let s = 'pending';
-                          if (pNum >= tNum && tNum > 0) s = 'settled';
-                          else if (pNum > 0) s = 'partially_paid';
-                          return { ...prev, paidAmount: paidVal, status: s };
-                        });
-                      }}
-                      placeholder="0.00 (leave empty if unpaid)"
-                      className="w-full pl-8 pr-4 py-2.5 bg-background-card rounded-xl border border-border-main focus:border-emerald-500 text-emerald-600 dark:text-emerald-400 text-sm font-black outline-none"
-                    />
-                  </div>
-
-                  {/* Calculated Balance Preview */}
-                  {(() => {
-                    const t = Number(advanceFormData.amount) || 0;
-                    const p = Number(advanceFormData.paidAmount) || 0;
-                    const bal = Math.max(0, t - p);
-
-                    return (
-                      <div className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between ${
-                        bal === 0
-                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
-                          : 'bg-amber-500/10 border-amber-500/30 text-amber-600'
-                      }`}>
-                        <span>Remaining Balance to Pay / Deduct:</span>
-                        <span className="font-black text-sm">
-                          ₹{bal.toLocaleString()} {bal === 0 && t > 0 ? '(Fully Cleared)' : ''}
-                        </span>
-                      </div>
-                    );
-                  })()}
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Payment Mode */}
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                      Payment Mode
-                    </label>
-                    <select
-                      value={advanceFormData.paymentMethod}
-                      onChange={(e) => setAdvanceFormData({ ...advanceFormData, paymentMethod: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-bold outline-none"
-                    >
-                      {PAYMENT_METHODS.map(m => (
-                        <option key={m} value={m}>{m}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Initial Status */}
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                      Status
-                    </label>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setAdvanceFormData(prev => ({ ...prev, status: 'pending', paidAmount: 0 }))}
-                        className={`py-2 text-[10px] font-black uppercase rounded-xl border transition-all ${
-                          advanceFormData.status === 'pending'
-                            ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
-                            : 'bg-background-muted/40 text-text-secondary border-border-main'
-                        }`}
-                      >
-                        Pending
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAdvanceFormData(prev => ({
-                          ...prev,
-                          status: 'partially_paid',
-                          paidAmount: prev.paidAmount && Number(prev.paidAmount) > 0 ? prev.paidAmount : Math.round((Number(prev.amount) || 0) / 2)
-                        }))}
-                        className={`py-2 text-[10px] font-black uppercase rounded-xl border transition-all ${
-                          advanceFormData.status === 'partially_paid'
-                            ? 'bg-blue-500 text-white border-blue-500 shadow-sm'
-                            : 'bg-background-muted/40 text-text-secondary border-border-main'
-                        }`}
-                      >
-                        Partial
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAdvanceFormData(prev => ({
-                          ...prev,
-                          status: 'settled',
-                          paidAmount: Number(prev.amount) || 0
-                        }))}
-                        className={`py-2 text-[10px] font-black uppercase rounded-xl border transition-all ${
-                          advanceFormData.status === 'settled'
-                            ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm'
-                            : 'bg-background-muted/40 text-text-secondary border-border-main'
-                        }`}
-                      >
-                        Settled
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Reason / Purpose Preset */}
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                    Reason / Purpose
-                  </label>
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    {REASON_PRESETS.slice(0, 4).map((preset) => (
-                      <button
-                        key={preset}
-                        type="button"
-                        onClick={() => setAdvanceFormData({ ...advanceFormData, reason: preset })}
-                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                          advanceFormData.reason === preset
-                            ? 'bg-primary text-white'
-                            : 'bg-background-muted text-text-secondary hover:text-text-primary'
-                        }`}
-                      >
-                        {preset}
-                      </button>
-                    ))}
-                  </div>
-                  <input
-                    type="text"
-                    value={advanceFormData.reason}
-                    onChange={(e) => setAdvanceFormData({ ...advanceFormData, reason: e.target.value })}
-                    placeholder="Enter reason or notes..."
-                    className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-medium outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Modal Footer */}
-              <div className="p-4 sm:p-6 bg-background-muted/30 border-t border-border-light flex space-x-3 shrink-0 bg-background-card">
-                <button
-                  type="button"
-                  onClick={() => setIsAdvanceModalOpen(false)}
-                  className="flex-1 px-5 py-2.5 border border-border-main text-text-primary rounded-xl font-black text-xs uppercase tracking-widest hover:bg-background-card transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-5 py-2.5 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
-                >
-                  {isEditingAdvance ? 'Update Advance' : 'Save Advance'}
-                </button>
-              </div>
-            </form>
-          </div>
-      </Modal>
-
-      {/* QUICK PAYMENT MODAL (Pay Partial or Full Balance to Worker) */}
-      <Modal
-        isOpen={isPayModalOpen}
-        onClose={() => setIsPayModalOpen(false)}
-        zIndex="z-[105]"
-      >
-        <div className="bg-background-card w-full max-w-md max-h-[90vh] rounded-[2rem] sm:rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden flex flex-col my-auto animate-in zoom-in-95 duration-200">
+          {/* Header */}
           <div className="p-5 sm:p-6 border-b border-border-light flex items-center justify-between shrink-0 bg-background-card">
             <div className="flex items-center space-x-3">
-              <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                <CreditCard size={20} />
+              <span className="p-2 rounded-xl bg-rose-500/10 text-rose-500">
+                <HandCoins size={20} />
               </span>
               <div>
                 <h3 className="text-lg font-black text-text-primary">
-                  Settle Worker Advance / Wage
+                  {isEditingWage ? 'Edit Wage Record' : 'Record Employee Wage'}
                 </h3>
-                <p className="text-[10px] text-text-secondary">
-                  Pending amount is automatically shown to settle
-                </p>
+                {!isEditingWage && (
+                  <p className="text-[10px] text-text-secondary">Records wages as pending payment (paidAmount = 0)</p>
+                )}
               </div>
             </div>
-            <button
-              onClick={() => setIsPayModalOpen(false)}
-              className="text-text-muted hover:text-text-primary transition-all"
-            >
+            <button onClick={() => setIsWageModalOpen(false)} className="text-text-muted hover:text-text-primary transition-all">
               <XCircle size={24} />
             </button>
           </div>
 
-          {payModalAdv && (() => {
-            const paidNow = payModalAdv.paidAmount !== undefined
-              ? payModalAdv.paidAmount
-              : (payModalAdv.status === 'settled' ? payModalAdv.amount : 0);
-            const currentBal = payModalAdv.balanceAmount !== undefined
-              ? payModalAdv.balanceAmount
-              : Math.max(0, payModalAdv.amount - paidNow);
-            const enterVal = Number(payAmount) || 0;
-            const newBal = Math.max(0, currentBal - enterVal);
+          <form onSubmit={handleSaveWage} className="flex flex-col min-h-0 flex-1 overflow-hidden">
+            <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 overscroll-contain">
 
-            return (
-              <form onSubmit={handleConfirmPayment} className="flex flex-col min-h-0 flex-1 overflow-hidden">
-                <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 overscroll-contain">
-                  {/* Pending Balance Banner */}
-                  <div className="p-3.5 bg-amber-500/10 border border-amber-500/25 rounded-2xl flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block">
-                        Pending Advance to Settle
-                      </span>
-                      <span className="text-base font-black text-amber-600">
-                        ₹{currentBal.toLocaleString()}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setPayAmount(currentBal)}
-                      className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm"
-                    >
-                      Pay Full (₹{currentBal.toLocaleString()})
-                    </button>
-                  </div>
+              {/* Employee Dropdown */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                    Employee *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => { setIsWageModalOpen(false); handleOpenEmployeeModal(); }}
+                    className="text-[10px] font-bold text-primary hover:underline"
+                  >
+                    + Add New Worker
+                  </button>
+                </div>
+                <select
+                  value={wageFormData.employee}
+                  onChange={(e) => setWageFormData(prev => ({ ...prev, employee: e.target.value }))}
+                  required
+                  className="w-full px-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-bold outline-none"
+                >
+                  <option value="">Select an employee...</option>
+                  {employees.map(e => (
+                    <option key={e._id} value={e._id}>{e.name} — {e.role}</option>
+                  ))}
+                </select>
 
-                  {/* Worker Info Pill */}
-                  <div className="p-3 bg-background-muted/40 rounded-2xl border border-border-light flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] font-black uppercase text-text-muted block">Worker</span>
-                      <span className="font-black text-sm text-text-primary">
-                        {payModalAdv.employee?.name || 'Worker'}
-                      </span>
-                      <span className="text-[10px] text-text-secondary block font-mono">
-                        {payModalAdv.employee?.role || 'Staff'} {payModalAdv.reason ? `• ${payModalAdv.reason}` : ''}
-                      </span>
+                {/* Outstanding balance of selected employee */}
+                {wageFormData.employee && (() => {
+                  const emp = employees.find(e => e._id === wageFormData.employee);
+                  const outstanding = emp?.pendingAdvances || 0;
+                  if (outstanding <= 0) return null;
+                  return (
+                    <div className="mt-1.5 p-2.5 bg-amber-500/10 border border-amber-500/25 rounded-xl flex items-center justify-between animate-in fade-in duration-200">
+                      <div>
+                        <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block">Current Outstanding</span>
+                        <span className="text-sm font-black text-amber-600">₹{outstanding.toLocaleString()} pending</span>
+                      </div>
+                      <span className="text-[10px] text-amber-500 font-bold">Adding more wage</span>
                     </div>
-                    <span className="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-bold">
-                      Wage Advance
-                    </span>
-                  </div>
+                  );
+                })()}
+              </div>
 
-                  {/* Financial Breakdown Cards */}
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="p-3 bg-background-muted/30 rounded-xl border border-border-light text-center">
-                      <span className="text-[9px] font-bold text-text-muted uppercase block">Total Amount</span>
-                      <span className="font-black text-xs text-text-primary block mt-0.5">
-                        ₹{payModalAdv.amount?.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="p-3 bg-emerald-500/5 rounded-xl border border-emerald-500/20 text-center">
-                      <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase block">Already Paid</span>
-                      <span className="font-black text-xs text-emerald-600 dark:text-emerald-400 block mt-0.5">
-                        ₹{paidNow.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="p-3 bg-amber-500/5 rounded-xl border border-amber-500/20 text-center">
-                      <span className="text-[9px] font-bold text-amber-500 uppercase block">Balance Due</span>
-                      <span className="font-black text-xs text-amber-500 block mt-0.5">
-                        ₹{currentBal.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Payment Amount Input */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                        Pending Amount to Settle (₹) *
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setPayAmount(currentBal)}
-                        className="text-[10px] font-black text-primary hover:underline uppercase"
-                      >
-                        Settle Full Balance (₹{currentBal.toLocaleString()})
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted font-bold text-xs">₹</span>
-                      <input
-                        type="number"
-                        min="1"
-                        max={currentBal}
-                        step="any"
-                        required
-                        value={payAmount}
-                        onChange={(e) => setPayAmount(e.target.value)}
-                        placeholder="Enter amount to pay..."
-                        className="w-full pl-8 pr-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-emerald-500 text-text-primary text-base font-black outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Live Balance Preview */}
-                  <div className={`p-3 rounded-xl border text-xs font-bold flex items-center justify-between ${
-                    newBal === 0
-                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
-                      : 'bg-amber-500/10 border-amber-500/30 text-amber-600'
-                  }`}>
-                    <span>Balance After This Payment:</span>
-                    <span className="font-black text-sm">
-                      ₹{newBal.toLocaleString()} {newBal === 0 ? '(Fully Cleared!)' : ''}
-                    </span>
-                  </div>
-
-                  {/* Payment Method & Date */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                        Payment Mode
-                      </label>
-                      <select
-                        value={payMethod}
-                        onChange={(e) => setPayMethod(e.target.value)}
-                        className="w-full px-3 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-emerald-500 text-text-primary text-xs font-bold outline-none"
-                      >
-                        {PAYMENT_METHODS.map(m => (
-                          <option key={m} value={m}>{m}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                        Payment Date
-                      </label>
-                      <input
-                        type="date"
-                        value={payDate}
-                        onChange={(e) => setPayDate(e.target.value)}
-                        className="w-full px-3 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-emerald-500 text-text-primary text-xs font-bold outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Payment Notes */}
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                      Payment Notes
-                    </label>
+              {/* Amount & Date */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                    Wage Amount (₹) *
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted font-bold text-xs">₹</span>
                     <input
-                      type="text"
-                      value={payNotes}
-                      onChange={(e) => setPayNotes(e.target.value)}
-                      placeholder="e.g. Paid in Cash / GPay to worker"
-                      className="w-full px-3 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-emerald-500 text-text-primary text-xs font-medium outline-none"
+                      type="number"
+                      min="1"
+                      step="any"
+                      required
+                      value={wageFormData.amount}
+                      onChange={(e) => setWageFormData(prev => ({ ...prev, amount: e.target.value }))}
+                      placeholder="0.00"
+                      className="w-full pl-8 pr-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-rose-500 text-text-primary text-sm font-black outline-none"
                     />
                   </div>
                 </div>
 
-                {/* Modal Footer */}
-                <div className="p-4 sm:p-6 bg-background-muted/30 border-t border-border-light flex space-x-3 shrink-0 bg-background-card">
-                  <button
-                    type="button"
-                    onClick={() => setIsPayModalOpen(false)}
-                    className="flex-1 px-5 py-2.5 border border-border-main text-text-primary rounded-xl font-black text-xs uppercase tracking-widest hover:bg-background-card transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmittingPay}
-                    className="flex-1 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-600/20 transition-all flex items-center justify-center space-x-2"
-                  >
-                    <span>{isSubmittingPay ? 'Recording...' : `Settle ₹${(Number(payAmount) || currentBal).toLocaleString()}`}</span>
-                  </button>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                    Date *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={wageFormData.date}
+                    onChange={(e) => setWageFormData(prev => ({ ...prev, date: e.target.value }))}
+                    className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-rose-500 text-text-primary text-xs font-bold outline-none"
+                  />
                 </div>
-              </form>
-            );
-          })()}
+              </div>
+
+              {/* Status info banner */}
+              {!isEditingWage && (
+                <div className="p-3 bg-background-muted/50 border border-border-light rounded-xl flex items-center gap-2">
+                  <AlertCircle size={14} className="text-text-muted shrink-0" />
+                  <p className="text-[10px] text-text-secondary">
+                    This records a <span className="font-bold text-amber-500">pending</span> wage. Use <span className="font-bold">Settle Wages</span> to record actual payment.
+                  </p>
+                </div>
+              )}
+
+              {/* Remarks */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                  Remarks / Description (Optional)
+                </label>
+                <textarea
+                  rows={3}
+                  value={wageFormData.reason}
+                  onChange={(e) => setWageFormData(prev => ({ ...prev, reason: e.target.value }))}
+                  placeholder="e.g. Daily wage for 10 Nov, Weekly salary, Overtime pay..."
+                  className="w-full px-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-rose-500 text-text-primary text-xs font-medium outline-none resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 sm:p-6 bg-background-card border-t border-border-light flex space-x-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsWageModalOpen(false)}
+                className="flex-1 px-5 py-2.5 border border-border-main text-text-primary rounded-xl font-black text-xs uppercase tracking-widest hover:bg-background-muted/40 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-rose-600/20 transition-all active:scale-95"
+              >
+                {isEditingWage ? 'Update Wage' : 'Save Wage'}
+              </button>
+            </div>
+          </form>
         </div>
       </Modal>
 
-      {/* MODAL 2: Add / Edit Employee Profile */}
-      <Modal
-        isOpen={isEmployeeModalOpen}
-        onClose={() => setIsEmployeeModalOpen(false)}
-        zIndex="z-[105]"
-      >
+      {/* ════════════════════════════════════════════════════════════════════════
+          MODAL 2: Settle Employee Wage Payment
+      ════════════════════════════════════════════════════════════════════════ */}
+      <Modal isOpen={isSettleModalOpen} onClose={() => setIsSettleModalOpen(false)} zIndex="z-[100]">
         <div className="bg-background-card w-full max-w-lg max-h-[90vh] rounded-[2rem] sm:rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden flex flex-col my-auto animate-in zoom-in-95 duration-200">
-            {/* Header */}
-            <div className="p-5 sm:p-6 border-b border-border-light flex items-center justify-between shrink-0 bg-background-card">
-              <div className="flex items-center space-x-3">
-                <span className="p-2 rounded-xl bg-primary/10 text-primary">
-                  <Users size={20} />
-                </span>
-                <h3 className="text-lg font-black text-text-primary">
-                  {isEditingEmployee ? 'Edit Worker Profile' : 'Add New Worker Profile'}
-                </h3>
+          {/* Header */}
+          <div className="p-5 sm:p-6 border-b border-border-light flex items-center justify-between shrink-0 bg-background-card">
+            <div className="flex items-center space-x-3">
+              <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500">
+                <Wallet size={20} />
+              </span>
+              <div>
+                <h3 className="text-lg font-black text-text-primary">Settle Employee Wages</h3>
+                <p className="text-[10px] text-text-secondary">Pay outstanding wages to employee</p>
               </div>
-              <button
-                onClick={() => setIsEmployeeModalOpen(false)}
-                className="text-text-muted hover:text-text-primary transition-all"
-              >
-                <XCircle size={24} />
-              </button>
             </div>
+            <button onClick={() => setIsSettleModalOpen(false)} className="text-text-muted hover:text-text-primary transition-all">
+              <XCircle size={24} />
+            </button>
+          </div>
 
-            <form onSubmit={handleSaveEmployee} className="flex flex-col min-h-0 flex-1 overflow-hidden">
-              <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 overscroll-contain">
-                {/* Employee Name */}
+          <form onSubmit={handleSubmitSettle} className="flex flex-col min-h-0 flex-1 overflow-hidden">
+            <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 overscroll-contain">
+
+              {/* Employee Dropdown */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                  Employee *
+                </label>
+                <select
+                  value={settleForm.employeeId}
+                  onChange={(e) => handleSettleEmployeeChange(e.target.value)}
+                  required
+                  className="w-full px-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-emerald-500 text-text-primary text-xs font-bold outline-none"
+                >
+                  <option value="">Select an employee...</option>
+                  {employees.map(e => (
+                    <option key={e._id} value={e._id}>{e.name} — {e.role}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Outstanding Balance — big prominent display */}
+              {settleForm.employeeId && (
+                <div className="p-5 bg-amber-500/10 border-2 border-amber-500/30 rounded-2xl text-center animate-in fade-in duration-200">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 block mb-1">
+                    Total Outstanding Wages
+                  </span>
+                  <span className="text-4xl font-black text-amber-500 tracking-tight">
+                    ₹{settleOutstanding.toLocaleString()}
+                  </span>
+                  {settleOutstanding === 0 && (
+                    <p className="text-xs text-emerald-500 font-bold mt-1">✓ No outstanding wages</p>
+                  )}
+                </div>
+              )}
+
+              {/* Amount to Pay */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                    Amount to Pay Now (₹) *
+                  </label>
+                  {settleOutstanding > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSettleForm(prev => ({ ...prev, amount: String(settleOutstanding) }))}
+                      className="text-[10px] font-black text-emerald-500 hover:underline uppercase"
+                    >
+                      Pay Full ₹{settleOutstanding.toLocaleString()}
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted font-bold text-xs">₹</span>
+                  <input
+                    type="number"
+                    min="1"
+                    step="any"
+                    required
+                    value={settleForm.amount}
+                    onChange={(e) => setSettleForm(prev => ({ ...prev, amount: e.target.value }))}
+                    placeholder="Enter payment amount..."
+                    className="w-full pl-8 pr-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-emerald-500 text-text-primary text-base font-black outline-none"
+                  />
+                </div>
+
+                {/* Excess / advance info */}
+                {settleExcess > 0 && (
+                  <div className="p-2.5 bg-blue-500/10 border border-blue-500/25 rounded-xl flex items-center gap-2 animate-in fade-in duration-200">
+                    <AlertCircle size={14} className="text-blue-400 shrink-0" />
+                    <p className="text-[10px] text-blue-400 font-bold">
+                      Excess ₹{settleExcess.toLocaleString()} will be recorded as advance
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Payment Date & Method */}
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                    Full Name *
+                    Payment Date
                   </label>
                   <input
-                    type="text"
-                    required
-                    value={employeeFormData.name}
-                    onChange={(e) => setEmployeeFormData({ ...employeeFormData, name: e.target.value })}
-                    placeholder="e.g. Ramesh Kumar, Mohammad Ali..."
-                    className="w-full px-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-sm font-bold outline-none"
+                    type="date"
+                    value={settleForm.date}
+                    onChange={(e) => setSettleForm(prev => ({ ...prev, date: e.target.value }))}
+                    className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-emerald-500 text-text-primary text-xs font-bold outline-none"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Role / Designation */}
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                      Role / Designation
-                    </label>
-                    <select
-                      value={employeeFormData.role}
-                      onChange={(e) => setEmployeeFormData({ ...employeeFormData, role: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-bold outline-none"
-                    >
-                      {ROLES.map(r => (
-                        <option key={r} value={r}>{r}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Phone */}
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                      Phone Number
-                    </label>
-                    <input
-                      type="tel"
-                      value={employeeFormData.phone}
-                      onChange={(e) => setEmployeeFormData({ ...employeeFormData, phone: e.target.value })}
-                      placeholder="10-digit number"
-                      className="w-full px-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-medium outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Daily Base Wage */}
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                      Daily / Base Wage (₹) (Optional)
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted font-bold text-xs">₹</span>
-                      <input
-                        type="number"
-                        min="0"
-                        value={employeeFormData.monthlyWage}
-                        onChange={(e) => setEmployeeFormData({ ...employeeFormData, monthlyWage: e.target.value })}
-                        placeholder="e.g. 500"
-                        className="w-full pl-8 pr-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-bold outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Joining Date */}
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                      Joining Date
-                    </label>
-                    <input
-                      type="date"
-                      value={employeeFormData.joiningDate}
-                      onChange={(e) => setEmployeeFormData({ ...employeeFormData, joiningDate: e.target.value })}
-                      className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-bold outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Notes */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                    Notes
+                    Payment Mode
                   </label>
-                  <textarea
-                    rows={2}
-                    value={employeeFormData.notes}
-                    onChange={(e) => setEmployeeFormData({ ...employeeFormData, notes: e.target.value })}
-                    placeholder="e.g. Works evening kitchen shift, full-time helper..."
-                    className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-medium outline-none resize-none"
+                  <select
+                    value={settleForm.paymentMethod}
+                    onChange={(e) => setSettleForm(prev => ({ ...prev, paymentMethod: e.target.value }))}
+                    className="w-full px-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-emerald-500 text-text-primary text-xs font-bold outline-none"
+                  >
+                    {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Remarks */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                  Remarks (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={settleForm.notes}
+                  onChange={(e) => setSettleForm(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="e.g. November salary settlement..."
+                  className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-emerald-500 text-text-primary text-xs font-medium outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 sm:p-6 bg-background-card border-t border-border-light flex space-x-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsSettleModalOpen(false)}
+                className="flex-1 px-5 py-2.5 border border-border-main text-text-primary rounded-xl font-black text-xs uppercase tracking-widest hover:bg-background-muted/40 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmittingSettle}
+                className="flex-1 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-600/20 transition-all active:scale-95 flex items-center justify-center space-x-2"
+              >
+                {isSubmittingSettle ? (
+                  <span>Processing...</span>
+                ) : (
+                  <>
+                    <CreditCard size={14} />
+                    <span>Settle ₹{(Number(settleForm.amount) || 0).toLocaleString()}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </Modal>
+
+      {/* ════════════════════════════════════════════════════════════════════════
+          MODAL 3: Manage Employees (Add / Edit Employee Profile)
+      ════════════════════════════════════════════════════════════════════════ */}
+      <Modal isOpen={isEmployeeModalOpen} onClose={() => setIsEmployeeModalOpen(false)} zIndex="z-[105]">
+        <div className="bg-background-card w-full max-w-lg max-h-[90vh] rounded-[2rem] sm:rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden flex flex-col my-auto animate-in zoom-in-95 duration-200">
+          {/* Header */}
+          <div className="p-5 sm:p-6 border-b border-border-light flex items-center justify-between shrink-0 bg-background-card">
+            <div className="flex items-center space-x-3">
+              <span className="p-2 rounded-xl bg-primary/10 text-primary">
+                <Users size={20} />
+              </span>
+              <h3 className="text-lg font-black text-text-primary">
+                {isEditingEmployee ? 'Edit Worker Profile' : 'Add New Worker Profile'}
+              </h3>
+            </div>
+            <button onClick={() => setIsEmployeeModalOpen(false)} className="text-text-muted hover:text-text-primary transition-all">
+              <XCircle size={24} />
+            </button>
+          </div>
+
+          <form onSubmit={handleSaveEmployee} className="flex flex-col min-h-0 flex-1 overflow-hidden">
+            <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 overscroll-contain">
+
+              {/* Full Name */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={employeeFormData.name}
+                  onChange={(e) => setEmployeeFormData({ ...employeeFormData, name: e.target.value })}
+                  placeholder="e.g. Ramesh Kumar, Mohammad Ali..."
+                  className="w-full px-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-sm font-bold outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Role */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Role / Designation</label>
+                  <select
+                    value={employeeFormData.role}
+                    onChange={(e) => setEmployeeFormData({ ...employeeFormData, role: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-bold outline-none"
+                  >
+                    {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
+
+                {/* Phone */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Phone Number</label>
+                  <input
+                    type="tel"
+                    value={employeeFormData.phone}
+                    onChange={(e) => setEmployeeFormData({ ...employeeFormData, phone: e.target.value })}
+                    placeholder="10-digit number"
+                    className="w-full px-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-medium outline-none"
                   />
                 </div>
               </div>
 
-              {/* Modal Footer */}
-              <div className="p-4 sm:p-6 bg-background-muted/30 border-t border-border-light flex space-x-3 shrink-0 bg-background-card">
-                <button
-                  type="button"
-                  onClick={() => setIsEmployeeModalOpen(false)}
-                  className="flex-1 px-5 py-2.5 border border-border-main text-text-primary rounded-xl font-black text-xs uppercase tracking-widest hover:bg-background-card transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-5 py-2.5 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
-                >
-                  {isEditingEmployee ? 'Update Worker' : 'Save Worker'}
-                </button>
+              <div className="grid grid-cols-2 gap-4">
+                {/* Daily Base Wage */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Daily / Base Wage (₹) (Optional)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted font-bold text-xs">₹</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={employeeFormData.monthlyWage}
+                      onChange={(e) => setEmployeeFormData({ ...employeeFormData, monthlyWage: e.target.value })}
+                      placeholder="e.g. 500"
+                      className="w-full pl-8 pr-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-bold outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Joining Date */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Joining Date</label>
+                  <input
+                    type="date"
+                    value={employeeFormData.joiningDate}
+                    onChange={(e) => setEmployeeFormData({ ...employeeFormData, joiningDate: e.target.value })}
+                    className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-bold outline-none"
+                  />
+                </div>
               </div>
-            </form>
-          </div>
+
+              {/* Notes */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Notes</label>
+                <textarea
+                  rows={2}
+                  value={employeeFormData.notes}
+                  onChange={(e) => setEmployeeFormData({ ...employeeFormData, notes: e.target.value })}
+                  placeholder="e.g. Works evening kitchen shift, full-time helper..."
+                  className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-medium outline-none resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 sm:p-6 bg-background-card border-t border-border-light flex space-x-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsEmployeeModalOpen(false)}
+                className="flex-1 px-5 py-2.5 border border-border-main text-text-primary rounded-xl font-black text-xs uppercase tracking-widest hover:bg-background-muted/40 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 px-5 py-2.5 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
+              >
+                {isEditingEmployee ? 'Update Worker' : 'Save Worker'}
+              </button>
+            </div>
+          </form>
+        </div>
       </Modal>
+
     </div>
   );
 };

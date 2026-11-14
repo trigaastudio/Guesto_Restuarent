@@ -11,6 +11,7 @@ import {
   toggleSettlementStatus,
   recordTransactionPayment,
   getSupplierSummary,
+  settleSupplierPayment,
 } from '../controllers/supplierController.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
 
@@ -25,6 +26,7 @@ router.get('/summary', getSupplierSummary);
 // Supplier CRUD
 router.get('/', getSuppliers);
 router.post('/', createSupplier);
+router.post('/:supplierId/settle', settleSupplierPayment);
 router.put('/:id', updateSupplier);
 router.delete('/:id', deleteSupplier);
 

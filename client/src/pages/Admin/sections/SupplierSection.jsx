@@ -3,7 +3,6 @@ import {
   Truck,
   Plus,
   Search,
-  Filter,
   Calendar,
   DollarSign,
   TrendingUp,
@@ -13,25 +12,26 @@ import {
   RotateCcw,
   XCircle,
   Phone,
-  User,
   Building2,
   FileText,
   Clock,
   CheckCircle2,
   AlertCircle,
-  ChevronRight,
   ArrowUpRight,
   ArrowDownLeft,
   Receipt,
-  Layers,
   Zap,
-  X
+  X,
+  Wallet,
+  Info
 } from 'lucide-react';
 import api from '../../../api/axiosInstance';
 import { showAlert, showToast, showDeleteConfirmation } from '../../../utils/sweetAlert';
 import TableSkeleton from '../../../components/Skeleton/TableSkeleton';
 import Pagination from '../../../components/Pagination/Pagination';
 import Modal from '../../../components/Modal/Modal';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const CATEGORIES = [
   'Vegetables & Fruits',
@@ -47,10 +47,21 @@ const CATEGORIES = [
   'Other'
 ];
 
-const PAYMENT_METHODS = ['Cash', 'UPI', 'Bank Transfer', 'Cheque', 'Credit', 'Other'];
+const PAYMENT_METHODS = ['Cash', 'UPI', 'Bank Transfer', 'Cheque', 'Other'];
+
+const TODAY = new Date().toISOString().split('T')[0];
+
+// ─── Helper: label class for text fields ──────────────────────────────────────
+const LBL = 'text-[10px] font-black uppercase tracking-widest text-text-muted';
+const INPUT = 'w-full px-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-bold outline-none';
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 const SupplierSection = ({ onNavigateTab }) => {
+  // ── Tab ──────────────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('ledger'); // 'ledger' | 'directory'
+
+  // ── Data ──────────────────────────────────────────────────────────────────────
   const [suppliers, setSuppliers] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [summary, setSummary] = useState({
@@ -66,45 +77,43 @@ const SupplierSection = ({ onNavigateTab }) => {
     totalSuppliers: 0,
     activeSuppliers: 0
   });
-
   const [isLoading, setIsLoading] = useState(false);
+
+  // ── Filters ───────────────────────────────────────────────────────────────────
   const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState('all'); // 'all' | 'expense' | 'advance'
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'pending' | 'settled'
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [selectedSupplierId, setSelectedSupplierId] = useState('all');
-  const [dateFilter, setDateFilter] = useState('all'); // 'all' | 'today' | 'thisWeek' | 'thisMonth' | 'custom'
+  const [dateFilter, setDateFilter] = useState('all');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
 
-  // Pagination for transactions
+  // ── Pagination ────────────────────────────────────────────────────────────────
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
 
-  // Modals state
-  const [isTxModalOpen, setIsTxModalOpen] = useState(false);
-  const [isEditingTx, setIsEditingTx] = useState(false);
-  const [txFormData, setTxFormData] = useState({
-    _id: null,
+  // ── Modal 1: Record Supplier Bill ─────────────────────────────────────────────
+  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [expenseForm, setExpenseForm] = useState({
     supplier: '',
-    date: new Date().toISOString().split('T')[0],
-    type: 'expense',
+    date: TODAY,
     amount: '',
-    paidAmount: '',
-    paymentMethod: 'Cash',
     billNumber: '',
-    description: '',
-    status: 'pending'
+    description: ''
   });
 
-  // Dedicated Payment modal state (Partial / Full payment)
-  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
-  const [payModalTx, setPayModalTx] = useState(null);
-  const [payAmount, setPayAmount] = useState('');
-  const [payMethod, setPayMethod] = useState('Cash');
-  const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
-  const [payNotes, setPayNotes] = useState('');
-  const [isSubmittingPay, setIsSubmittingPay] = useState(false);
+  // ── Modal 2: Settle Supplier Payment ──────────────────────────────────────────
+  const [isSettleModalOpen, setIsSettleModalOpen] = useState(false);
+  const [settleForm, setSettleForm] = useState({
+    supplier: '',
+    amount: '',
+    paymentMethod: 'Cash',
+    date: TODAY,
+    notes: ''
+  });
+  const [isSubmittingSettle, setIsSubmittingSettle] = useState(false);
 
+  // ── Modal 3: Edit/Add Supplier ────────────────────────────────────────────────
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
   const [isEditingSupplier, setIsEditingSupplier] = useState(false);
   const [supplierFormData, setSupplierFormData] = useState({
@@ -119,84 +128,81 @@ const SupplierSection = ({ onNavigateTab }) => {
     status: 'active'
   });
 
-  // Calculate Date Ranges
+  // ── Modal 4: Edit Expense (drawer) ────────────────────────────────────────────
+  const [isEditExpenseOpen, setIsEditExpenseOpen] = useState(false);
+  const [editingTx, setEditingTx] = useState(null);
+  const [editTxForm, setEditTxForm] = useState({
+    billNumber: '',
+    date: TODAY,
+    description: '',
+    amount: '',
+    paidAmount: '',
+    paymentMethod: 'Cash',
+    status: 'pending'
+  });
+
+  // ── Quick Pay Modal (per-bill settle, kept for row actions) ───────────────────
+  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
+  const [payModalTx, setPayModalTx] = useState(null);
+  const [payAmount, setPayAmount] = useState('');
+  const [payMethod, setPayMethod] = useState('Cash');
+  const [payDate, setPayDate] = useState(TODAY);
+  const [payNotes, setPayNotes] = useState('');
+  const [isSubmittingPay, setIsSubmittingPay] = useState(false);
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Data fetching
+  // ─────────────────────────────────────────────────────────────────────────────
+
   const getDateRange = useCallback((filter) => {
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
-
-    if (filter === 'today') {
-      return { start: todayStr, end: todayStr };
-    }
+    if (filter === 'today') return { start: todayStr, end: todayStr };
     if (filter === 'thisWeek') {
       const day = now.getDay();
       const diffToMonday = now.getDate() - day + (day === 0 ? -6 : 1);
       const monday = new Date(now.setDate(diffToMonday));
-      return {
-        start: monday.toISOString().split('T')[0],
-        end: new Date().toISOString().split('T')[0]
-      };
+      return { start: monday.toISOString().split('T')[0], end: new Date().toISOString().split('T')[0] };
     }
     if (filter === 'thisMonth') {
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-      return {
-        start: firstDay.toISOString().split('T')[0],
-        end: new Date().toISOString().split('T')[0]
-      };
+      return { start: firstDay.toISOString().split('T')[0], end: new Date().toISOString().split('T')[0] };
     }
-    if (filter === 'custom') {
-      return { start: customStartDate, end: customEndDate };
-    }
+    if (filter === 'custom') return { start: customStartDate, end: customEndDate };
     return { start: '', end: '' };
   }, [customStartDate, customEndDate]);
 
-  // Fetch summary
   const fetchSummary = useCallback(async () => {
     try {
       const res = await api.get('/api/suppliers/summary');
-      if (res.data?.success) {
-        setSummary(res.data.data);
-      }
+      if (res.data?.success) setSummary(res.data.data);
     } catch (err) {
       console.error('Error fetching supplier summary:', err);
     }
   }, []);
 
-  // Fetch suppliers list
   const fetchSuppliers = useCallback(async () => {
     try {
       const res = await api.get('/api/suppliers');
-      if (res.data?.success) {
-        setSuppliers(res.data.data || []);
-      }
+      if (res.data?.success) setSuppliers(res.data.data || []);
     } catch (err) {
       console.error('Error fetching suppliers:', err);
       showToast('error', 'Failed to load suppliers');
     }
   }, []);
 
-  // Fetch transactions list
   const fetchTransactions = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
     try {
       const range = getDateRange(dateFilter);
-      const params = {
-        limit: 500,
-        page: 1
-      };
-      if (selectedSupplierId && selectedSupplierId !== 'all') {
-        params.supplierId = selectedSupplierId;
-      }
-      if (typeFilter && typeFilter !== 'all') {
-        params.type = typeFilter;
-      }
+      const params = { limit: 500, page: 1 };
+      if (selectedSupplierId && selectedSupplierId !== 'all') params.supplierId = selectedSupplierId;
+      if (typeFilter && typeFilter !== 'all') params.type = typeFilter;
       if (range.start) params.startDate = range.start;
       if (range.end) params.endDate = range.end;
       if (searchTerm) params.search = searchTerm;
-
       const res = await api.get('/api/suppliers/transactions/all', { params });
-      if (res.data?.success) {
-        setTransactions(res.data.data || []);
-      }
+      if (res.data?.success) setTransactions(res.data.data || []);
     } catch (err) {
       console.error('Error fetching transactions:', err);
       showToast('error', 'Failed to load transactions');
@@ -205,184 +211,113 @@ const SupplierSection = ({ onNavigateTab }) => {
     }
   }, [dateFilter, getDateRange, selectedSupplierId, typeFilter, searchTerm]);
 
-  // Initial load
+  const refreshAll = useCallback((silent = true) => {
+    fetchTransactions(silent);
+    fetchSuppliers();
+    fetchSummary();
+  }, [fetchTransactions, fetchSuppliers, fetchSummary]);
+
   useEffect(() => {
     fetchSummary();
     fetchSuppliers();
     fetchTransactions();
   }, [fetchSummary, fetchSuppliers, fetchTransactions]);
 
-  // Handle Quick Date Chips
-  const handleDateChip = (filter) => {
-    setDateFilter(filter);
-    setCurrentPage(1);
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Modal 1: Record Supplier Bill
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const handleOpenExpenseModal = (preSupplier = null) => {
+    setExpenseForm({
+      supplier: preSupplier || (suppliers.length > 0 ? suppliers[0]._id : ''),
+      date: TODAY,
+      amount: '',
+      billNumber: '',
+      description: ''
+    });
+    setIsExpenseModalOpen(true);
   };
 
-  // Open transaction modal
-  const handleOpenTxModal = (type = 'expense', supplierId = null, existingTx = null) => {
-    if (existingTx) {
-      const existingPaid = existingTx.paidAmount !== undefined
-        ? existingTx.paidAmount
-        : (existingTx.status === 'settled' ? existingTx.amount : 0);
-      setTxFormData({
-        _id: existingTx._id,
-        supplier: existingTx.supplier?._id || existingTx.supplier || '',
-        date: existingTx.date ? new Date(existingTx.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        type: existingTx.type || 'expense',
-        amount: existingTx.amount || '',
-        paidAmount: existingPaid !== undefined && existingPaid !== null ? existingPaid : '',
-        paymentMethod: existingTx.paymentMethod || 'Cash',
-        billNumber: existingTx.billNumber || '',
-        description: existingTx.description || '',
-        status: existingTx.status || 'pending'
-      });
-      setIsEditingTx(true);
-    } else {
-      const targetSupId = supplierId || (suppliers.length > 0 ? suppliers[0]._id : '');
-      const targetSup = suppliers.find(s => s._id === targetSupId);
-      const shouldPrefillPending = type === 'advance' && targetSup?.balance > 0;
-      setTxFormData({
-        _id: null,
-        supplier: targetSupId,
-        date: new Date().toISOString().split('T')[0],
-        type: type,
-        amount: shouldPrefillPending ? targetSup.balance : '',
-        paidAmount: shouldPrefillPending ? targetSup.balance : '',
-        paymentMethod: 'Cash',
-        billNumber: '',
-        description: shouldPrefillPending ? `Settlement of pending balance for ${targetSup.name}` : '',
-        status: shouldPrefillPending ? 'settled' : 'pending'
-      });
-      setIsEditingTx(false);
-    }
-    setIsTxModalOpen(true);
-  };
-
-  // Open Quick Pay Modal (Partial / Full payment)
-  const handleOpenPayModal = (tx) => {
-    const paid = tx.paidAmount !== undefined ? tx.paidAmount : (tx.status === 'settled' ? tx.amount : 0);
-    const balance = tx.balanceAmount !== undefined ? tx.balanceAmount : Math.max(0, tx.amount - paid);
-    setPayModalTx(tx);
-    setPayAmount(balance > 0 ? balance : '');
-    setPayMethod(tx.paymentMethod || 'Cash');
-    setPayDate(new Date().toISOString().split('T')[0]);
-    setPayNotes('');
-    setIsPayModalOpen(true);
-  };
-
-  // Confirm Payment to Supplier
-  const handleConfirmPayment = async (e) => {
+  const handleSaveBill = async (e) => {
     e.preventDefault();
-    if (!payModalTx) return;
-    const num = Number(payAmount);
-    if (!num || num <= 0) {
-      showToast('warning', 'Please enter a valid payment amount');
-      return;
-    }
-
-    setIsSubmittingPay(true);
+    if (!expenseForm.supplier) { showToast('warning', 'Please select a supplier'); return; }
+    if (!expenseForm.amount || Number(expenseForm.amount) <= 0) { showToast('warning', 'Please enter a valid bill amount'); return; }
+    if (!expenseForm.date) { showToast('warning', 'Please enter a date'); return; }
     try {
-      const res = await api.post(`/api/suppliers/transactions/${payModalTx._id}/pay`, {
-        paymentAmount: num,
-        paymentMethod: payMethod,
-        notes: payNotes,
-        date: payDate,
+      await api.post('/api/suppliers/transactions', {
+        supplier: expenseForm.supplier,
+        type: 'expense',
+        amount: Number(expenseForm.amount),
+        date: expenseForm.date,
+        billNumber: expenseForm.billNumber || '',
+        description: expenseForm.description || '',
+        paidAmount: 0,
+        status: 'pending'
+      });
+      showToast('success', 'Bill recorded successfully');
+      setIsExpenseModalOpen(false);
+      refreshAll();
+    } catch (err) {
+      console.error('Error saving bill:', err);
+      showAlert({ icon: 'error', title: 'Save Failed', text: err.response?.data?.message || 'Failed to record bill' });
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Modal 2: Settle Supplier Payment
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const getSupplierOutstanding = useCallback((supplierId) => {
+    if (!supplierId) return 0;
+    const sup = suppliers.find(s => s._id === supplierId);
+    return sup ? Math.max(0, sup.balance || 0) : 0;
+  }, [suppliers]);
+
+  const handleOpenSettleModal = (preSupplier = null) => {
+    const supId = preSupplier || (suppliers.length > 0 ? suppliers[0]._id : '');
+    const outstanding = getSupplierOutstanding(supId);
+    setSettleForm({
+      supplier: supId,
+      amount: outstanding > 0 ? String(outstanding) : '',
+      paymentMethod: 'Cash',
+      date: TODAY,
+      notes: ''
+    });
+    setIsSubmittingSettle(false);
+    setIsSettleModalOpen(true);
+  };
+
+  const handleSettleSupplier = async (e) => {
+    e.preventDefault();
+    if (!settleForm.supplier) { showToast('warning', 'Please select a supplier'); return; }
+    const amt = Number(settleForm.amount);
+    if (!amt || amt <= 0) { showToast('warning', 'Please enter a valid payment amount'); return; }
+
+    setIsSubmittingSettle(true);
+    try {
+      const res = await api.post(`/api/suppliers/${settleForm.supplier}/settle`, {
+        amount: amt,
+        paymentMethod: settleForm.paymentMethod,
+        date: settleForm.date,
+        notes: settleForm.notes
       });
       if (res.data?.success) {
         showToast('success', res.data.message || 'Payment recorded successfully');
-        setIsPayModalOpen(false);
-        fetchTransactions(true);
-        fetchSuppliers();
-        fetchSummary();
+        setIsSettleModalOpen(false);
+        refreshAll();
       }
     } catch (err) {
-      console.error('Error submitting payment:', err);
-      showAlert({
-        icon: 'error',
-        title: 'Payment Failed',
-        text: err.response?.data?.message || 'Failed to record payment'
-      });
+      console.error('Error settling payment:', err);
+      showAlert({ icon: 'error', title: 'Payment Failed', text: err.response?.data?.message || 'Failed to record payment' });
     } finally {
-      setIsSubmittingPay(false);
+      setIsSubmittingSettle(false);
     }
   };
 
-  // Save Transaction
-  const handleSaveTransaction = async (e) => {
-    e.preventDefault();
-    if (!txFormData.supplier) {
-      showToast('warning', 'Please select a supplier');
-      return;
-    }
-    // If no total bill amount entered, default to paidAmount (partial payment without bill)
-    const paidNum = Number(txFormData.paidAmount) || 0;
-    if (!txFormData.amount || Number(txFormData.amount) <= 0) {
-      if (paidNum <= 0) {
-        showToast('warning', 'Please enter at least the amount being paid');
-        return;
-      }
-      // Auto-set total = paidAmount so it saves cleanly as partial/full payment
-      setTxFormData(prev => ({ ...prev, amount: paidNum, status: 'settled' }));
-      txFormData.amount = paidNum;
-      txFormData.status = 'settled';
-    }
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Modal 3: Supplier CRUD
+  // ─────────────────────────────────────────────────────────────────────────────
 
-    try {
-      if (isEditingTx && txFormData._id) {
-        await api.put(`/api/suppliers/transactions/${txFormData._id}`, txFormData);
-        showToast('success', 'Transaction updated successfully');
-      } else {
-        await api.post('/api/suppliers/transactions', txFormData);
-        showToast('success', `${txFormData.type === 'expense' ? 'Expense' : 'Advance'} recorded successfully`);
-      }
-      setIsTxModalOpen(false);
-      fetchTransactions(true);
-      fetchSuppliers();
-      fetchSummary();
-    } catch (err) {
-      console.error('Error saving transaction:', err);
-      showAlert({
-        icon: 'error',
-        title: 'Save Failed',
-        text: err.response?.data?.message || 'Failed to record transaction'
-      });
-    }
-  };
-
-  // Delete Transaction
-  const handleDeleteTransaction = async (id) => {
-    const result = await showDeleteConfirmation('Delete this transaction?', 'This cannot be undone.');
-    if (result.isConfirmed) {
-      try {
-        await api.delete(`/api/suppliers/transactions/${id}`);
-        showToast('success', 'Transaction deleted');
-        fetchTransactions(true);
-        fetchSuppliers();
-        fetchSummary();
-      } catch (err) {
-        console.error('Error deleting transaction:', err);
-        showToast('error', 'Failed to delete transaction');
-      }
-    }
-  };
-
-  // Toggle Settlement Status (1-click settle)
-  const handleToggleSettle = async (tx) => {
-    try {
-      const res = await api.patch(`/api/suppliers/transactions/${tx._id}/toggle-settle`, {});
-      if (res.data?.success) {
-        showToast('success', res.data.message);
-        fetchTransactions(true);
-        fetchSuppliers();
-        fetchSummary();
-      }
-    } catch (err) {
-      console.error('Error toggling settlement:', err);
-      showToast('error', 'Failed to update settlement status');
-    }
-  };
-
-  // Open Supplier Modal
   const handleOpenSupplierModal = (sup = null) => {
     if (sup) {
       setSupplierFormData({
@@ -399,55 +334,34 @@ const SupplierSection = ({ onNavigateTab }) => {
       setIsEditingSupplier(true);
     } else {
       setSupplierFormData({
-        _id: null,
-        name: '',
-        contactPerson: '',
-        phone: '',
-        email: '',
-        category: 'Vegetables & Fruits',
-        address: '',
-        notes: '',
-        status: 'active'
+        _id: null, name: '', contactPerson: '', phone: '', email: '',
+        category: 'Vegetables & Fruits', address: '', notes: '', status: 'active'
       });
       setIsEditingSupplier(false);
     }
     setIsSupplierModalOpen(true);
   };
 
-  // Save Supplier
   const handleSaveSupplier = async (e) => {
     e.preventDefault();
-    if (!supplierFormData.name || !supplierFormData.name.trim()) {
-      showToast('warning', 'Supplier name is required');
-      return;
-    }
-
+    if (!supplierFormData.name?.trim()) { showToast('warning', 'Supplier name is required'); return; }
     try {
       if (isEditingSupplier && supplierFormData._id) {
         await api.put(`/api/suppliers/${supplierFormData._id}`, supplierFormData);
         showToast('success', 'Supplier updated successfully');
       } else {
-        const res = await api.post('/api/suppliers', supplierFormData);
+        await api.post('/api/suppliers', supplierFormData);
         showToast('success', 'Supplier added successfully');
-        // If modal was triggered from empty list or tx modal, auto-select
-        if (res.data?.data?._id) {
-          setTxFormData(prev => ({ ...prev, supplier: res.data.data._id }));
-        }
       }
       setIsSupplierModalOpen(false);
       fetchSuppliers();
       fetchSummary();
     } catch (err) {
       console.error('Error saving supplier:', err);
-      showAlert({
-        icon: 'error',
-        title: 'Save Failed',
-        text: err.response?.data?.message || 'Failed to save supplier details'
-      });
+      showAlert({ icon: 'error', title: 'Save Failed', text: err.response?.data?.message || 'Failed to save supplier' });
     }
   };
 
-  // Delete Supplier
   const handleDeleteSupplier = async (sup) => {
     const result = await showDeleteConfirmation(
       `Delete ${sup.name}?`,
@@ -457,9 +371,7 @@ const SupplierSection = ({ onNavigateTab }) => {
       try {
         await api.delete(`/api/suppliers/${sup._id}`);
         showToast('success', 'Supplier deleted');
-        fetchSuppliers();
-        fetchTransactions(true);
-        fetchSummary();
+        refreshAll();
       } catch (err) {
         console.error('Error deleting supplier:', err);
         showToast('error', 'Failed to delete supplier');
@@ -467,51 +379,185 @@ const SupplierSection = ({ onNavigateTab }) => {
     }
   };
 
-  // Filtered transactions in view
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Modal 4: Edit Expense
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const handleOpenEditExpense = (tx) => {
+    setEditingTx(tx);
+    const paidAmt = tx.paidAmount !== undefined ? tx.paidAmount : (tx.status === 'settled' ? tx.amount : 0);
+    setEditTxForm({
+      billNumber: tx.billNumber || '',
+      date: tx.date ? new Date(tx.date).toISOString().split('T')[0] : TODAY,
+      description: tx.description || '',
+      amount: tx.amount || '',
+      paidAmount: paidAmt,
+      paymentMethod: tx.paymentMethod || 'Cash',
+      status: tx.status || 'pending'
+    });
+    setIsEditExpenseOpen(true);
+  };
+
+  const handleSaveEditExpense = async (e) => {
+    e.preventDefault();
+    if (!editingTx) return;
+    try {
+      const payload = {
+        billNumber: editTxForm.billNumber,
+        date: editTxForm.date,
+        description: editTxForm.description,
+        amount: Number(editTxForm.amount) || editingTx.amount,
+        paidAmount: Number(editTxForm.paidAmount) || 0,
+        paymentMethod: editTxForm.paymentMethod,
+        status: editTxForm.status
+      };
+      await api.put(`/api/suppliers/transactions/${editingTx._id}`, payload);
+      showToast('success', 'Transaction updated successfully');
+      setIsEditExpenseOpen(false);
+      refreshAll();
+    } catch (err) {
+      console.error('Error updating transaction:', err);
+      showAlert({ icon: 'error', title: 'Update Failed', text: err.response?.data?.message || 'Failed to update transaction' });
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Quick Pay Modal (per-bill, existing flow)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const handleOpenPayModal = (tx) => {
+    const paid = tx.paidAmount !== undefined ? tx.paidAmount : (tx.status === 'settled' ? tx.amount : 0);
+    const balance = tx.balanceAmount !== undefined ? tx.balanceAmount : Math.max(0, tx.amount - paid);
+    setPayModalTx(tx);
+    setPayAmount(balance > 0 ? balance : '');
+    setPayMethod(tx.paymentMethod || 'Cash');
+    setPayDate(TODAY);
+    setPayNotes('');
+    setIsPayModalOpen(true);
+  };
+
+  const handleConfirmPayment = async (e) => {
+    e.preventDefault();
+    if (!payModalTx) return;
+    const num = Number(payAmount);
+    if (!num || num <= 0) { showToast('warning', 'Please enter a valid payment amount'); return; }
+    setIsSubmittingPay(true);
+    try {
+      const res = await api.post(`/api/suppliers/transactions/${payModalTx._id}/pay`, {
+        paymentAmount: num,
+        paymentMethod: payMethod,
+        notes: payNotes,
+        date: payDate
+      });
+      if (res.data?.success) {
+        showToast('success', res.data.message || 'Payment recorded successfully');
+        setIsPayModalOpen(false);
+        refreshAll();
+      }
+    } catch (err) {
+      console.error('Error submitting payment:', err);
+      showAlert({ icon: 'error', title: 'Payment Failed', text: err.response?.data?.message || 'Failed to record payment' });
+    } finally {
+      setIsSubmittingPay(false);
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Delete transaction
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const handleDeleteTransaction = async (id) => {
+    const result = await showDeleteConfirmation('Delete this transaction?', 'This cannot be undone.');
+    if (result.isConfirmed) {
+      try {
+        await api.delete(`/api/suppliers/transactions/${id}`);
+        showToast('success', 'Transaction deleted');
+        refreshAll();
+      } catch (err) {
+        console.error('Error deleting transaction:', err);
+        showToast('error', 'Failed to delete transaction');
+      }
+    }
+  };
+
+  // Toggle settle status (1-click)
+  const handleToggleSettle = async (tx) => {
+    try {
+      const res = await api.patch(`/api/suppliers/transactions/${tx._id}/toggle-settle`, {});
+      if (res.data?.success) {
+        showToast('success', res.data.message);
+        refreshAll();
+      }
+    } catch (err) {
+      console.error('Error toggling settlement:', err);
+      showToast('error', 'Failed to update settlement status');
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Filtering / Pagination
+  // ─────────────────────────────────────────────────────────────────────────────
+
   const filteredTransactions = useMemo(() => {
     return transactions.filter(tx => {
       const supName = tx.supplier?.name || '';
       const billNo = tx.billNumber || '';
       const desc = tx.description || '';
       const s = searchTerm.toLowerCase();
-      const matchesSearch = !s ||
-        supName.toLowerCase().includes(s) ||
-        billNo.toLowerCase().includes(s) ||
-        desc.toLowerCase().includes(s);
+      const matchesSearch = !s || supName.toLowerCase().includes(s) || billNo.toLowerCase().includes(s) || desc.toLowerCase().includes(s);
       const matchesType = typeFilter === 'all' || tx.type === typeFilter;
-      const matchesSupplier = selectedSupplierId === 'all' || (tx.supplier?._id === selectedSupplierId);
+      const matchesSupplier = selectedSupplierId === 'all' || tx.supplier?._id === selectedSupplierId;
       const matchesStatus = statusFilter === 'all' || (tx.status || 'pending') === statusFilter;
       return matchesSearch && matchesType && matchesSupplier && matchesStatus;
     });
   }, [transactions, searchTerm, typeFilter, selectedSupplierId, statusFilter]);
 
-  // Paginated transactions
   const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
   const paginatedTransactions = filteredTransactions.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
-  // Filtered suppliers in directory view
   const filteredSuppliers = useMemo(() => {
     return suppliers.filter(s => {
       const q = searchTerm.toLowerCase();
-      return !q ||
-        s.name.toLowerCase().includes(q) ||
+      return !q || s.name.toLowerCase().includes(q) ||
         (s.phone && s.phone.toLowerCase().includes(q)) ||
         (s.category && s.category.toLowerCase().includes(q)) ||
         (s.contactPerson && s.contactPerson.toLowerCase().includes(q));
     });
   }, [suppliers, searchTerm]);
 
-  // Selected supplier name helper
-  const selectedSupplierObj = useMemo(() => {
-    return suppliers.find(s => s._id === selectedSupplierId);
-  }, [suppliers, selectedSupplierId]);
+  const selectedSupplierObj = useMemo(() => suppliers.find(s => s._id === selectedSupplierId), [suppliers, selectedSupplierId]);
+
+  const clearFilters = () => {
+    setSearchTerm(''); setTypeFilter('all'); setStatusFilter('all');
+    setSelectedSupplierId('all'); setDateFilter('all');
+    setCustomStartDate(''); setCustomEndDate(''); setCurrentPage(1);
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Settle modal derived values
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const settleOutstanding = useMemo(() => getSupplierOutstanding(settleForm.supplier), [settleForm.supplier, getSupplierOutstanding]);
+  const settleAmtNum = Number(settleForm.amount) || 0;
+  const settleExcess = settleAmtNum > settleOutstanding ? settleAmtNum - settleOutstanding : 0;
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Expense modal derived: show outstanding balance when supplier selected
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const expenseSupplierObj = useMemo(() => suppliers.find(s => s._id === expenseForm.supplier), [suppliers, expenseForm.supplier]);
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-12">
-      {/* Top Header */}
+
+      {/* ── Page Header ─────────────────────────────────────────────────────── */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
@@ -520,34 +566,35 @@ const SupplierSection = ({ onNavigateTab }) => {
             </span>
             <div>
               <h2 className="text-2xl font-black text-text-primary tracking-tight">Suppliers & Expenses</h2>
-              <p className="text-text-secondary text-xs">
-                Track vendor details, purchase expenses, advance payments & account balances
-              </p>
+              <p className="text-text-secondary text-xs">Track vendor bills, payments and outstanding balances</p>
             </div>
           </div>
         </div>
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* NEW BILL */}
           <button
-            onClick={() => handleOpenTxModal('expense')}
+            onClick={() => handleOpenExpenseModal()}
             className="flex items-center space-x-2 px-4 py-2.5 bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 hover:bg-rose-500 hover:text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm"
           >
             <ArrowUpRight size={16} />
-            <span>Record Expense</span>
+            <span>+ New Bill</span>
           </button>
 
+          {/* SETTLE PAYMENT */}
           <button
-            onClick={() => handleOpenTxModal('advance')}
+            onClick={() => handleOpenSettleModal()}
             className="flex items-center space-x-2 px-4 py-2.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm"
           >
-            <ArrowDownLeft size={16} />
-            <span>Pay Advance</span>
+            <Wallet size={16} />
+            <span>Settle Payment</span>
           </button>
 
+          {/* NEW SUPPLIER */}
           <button
             onClick={() => handleOpenSupplierModal()}
-            className="flex items-center space-x-2 px-5 py-2.5 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-primary/20 hover:bg-primary-light transition-all"
+            className="flex items-center space-x-2 px-5 py-2.5 border border-border-main bg-background-card text-text-primary hover:border-primary hover:text-primary rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm"
           >
             <Plus size={16} />
             <span>New Supplier</span>
@@ -557,7 +604,6 @@ const SupplierSection = ({ onNavigateTab }) => {
             <button
               onClick={() => onNavigateTab('Daily Expenses')}
               className="flex items-center space-x-2 px-4 py-2.5 bg-background-card border border-border-main hover:border-primary text-text-primary rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm"
-              title="View Day-by-Day Expenses Sheet"
             >
               <Receipt size={16} />
               <span>Daily Expenses</span>
@@ -566,108 +612,81 @@ const SupplierSection = ({ onNavigateTab }) => {
         </div>
       </div>
 
-      {/* Summary KPI Cards */}
+      {/* ── Stats Cards ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {/* Total Expenses */}
-        <div className="bg-background-card p-5 rounded-[1.8rem] border border-border-light shadow-sm relative overflow-hidden group hover:border-primary/40 transition-all">
+        {/* Total Outstanding */}
+        <div className="bg-background-card p-5 rounded-[1.8rem] border border-border-light shadow-sm hover:border-amber-500/40 transition-all">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">Total Expenses</span>
-            <div className="w-10 h-10 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center font-bold">
+            <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">Outstanding</span>
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+              <AlertCircle size={18} />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-amber-500 tracking-tight">₹{(summary.pendingExpenses || 0).toLocaleString()}</div>
+          <p className="text-[10px] text-text-secondary mt-1 font-medium">Total pending across all suppliers</p>
+        </div>
+
+        {/* This Month Bills */}
+        <div className="bg-background-card p-5 rounded-[1.8rem] border border-border-light shadow-sm hover:border-rose-500/40 transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">This Month Bills</span>
+            <div className="w-10 h-10 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center">
               <Receipt size={18} />
             </div>
           </div>
-          <div className="text-2xl font-black text-text-primary tracking-tight">
-            ₹{summary.totalExpenses.toLocaleString()}
-          </div>
-          <div className="text-[10px] text-text-secondary mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-medium">
-            <span className="text-amber-500 font-bold">₹{(summary.pendingExpenses || 0).toLocaleString()} Pending</span>
-            <span className="text-text-muted">•</span>
-            <span className="text-emerald-500 font-bold">₹{(summary.settledExpenses || 0).toLocaleString()} Settled</span>
-          </div>
+          <div className="text-2xl font-black text-text-primary tracking-tight">₹{(summary.monthExpenses || 0).toLocaleString()}</div>
+          <p className="text-[10px] text-text-secondary mt-1 font-medium">
+            <span className="text-amber-500 font-bold">₹{(summary.monthPending || 0).toLocaleString()} pending</span>
+          </p>
         </div>
 
-        {/* Total Settled Expenses */}
-        <div className="bg-background-card p-5 rounded-[1.8rem] border border-border-light shadow-sm relative overflow-hidden group hover:border-emerald-500/40 transition-all">
+        {/* Total Paid */}
+        <div className="bg-background-card p-5 rounded-[1.8rem] border border-border-light shadow-sm hover:border-emerald-500/40 transition-all">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">Total Settled Amount</span>
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold">
+            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">Total Paid</span>
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
               <CheckCircle2 size={18} />
             </div>
           </div>
-          <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
-            ₹{(summary.settledExpenses || 0).toLocaleString()}
-          </div>
-          <p className="text-[10px] text-text-secondary mt-1 flex items-center gap-1 font-medium">
-            <span>This Month Settled:</span>
-            <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{(summary.monthSettled || 0).toLocaleString()}</span>
+          <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">₹{(summary.settledExpenses || 0).toLocaleString()}</div>
+          <p className="text-[10px] text-text-secondary mt-1 font-medium">
+            This month: <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{(summary.monthSettled || 0).toLocaleString()}</span>
           </p>
         </div>
 
         {/* Total Advances */}
-        <div className="bg-background-card p-5 rounded-[1.8rem] border border-border-light shadow-sm relative overflow-hidden group hover:border-primary/40 transition-all">
+        <div className="bg-background-card p-5 rounded-[1.8rem] border border-border-light shadow-sm hover:border-blue-500/40 transition-all">
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">Advances Paid</span>
-            <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold">
-              <DollarSign size={18} />
+            <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+              <ArrowDownLeft size={18} />
             </div>
           </div>
-          <div className="text-2xl font-black text-blue-600 dark:text-blue-400 tracking-tight">
-            ₹{summary.totalAdvances.toLocaleString()}
-          </div>
-          <p className="text-[10px] text-text-secondary mt-1 flex items-center gap-1 font-medium">
-            <span>This Month:</span>
-            <span className="font-bold text-blue-600 dark:text-blue-400">₹{summary.monthAdvances.toLocaleString()}</span>
+          <div className="text-2xl font-black text-blue-600 dark:text-blue-400 tracking-tight">₹{(summary.totalAdvances || 0).toLocaleString()}</div>
+          <p className="text-[10px] text-text-secondary mt-1 font-medium">
+            This month: <span className="font-bold text-blue-500">₹{(summary.monthAdvances || 0).toLocaleString()}</span>
           </p>
         </div>
 
-        {/* Net Outstanding Balance */}
-        <div className="bg-background-card p-5 rounded-[1.8rem] border border-border-light shadow-sm relative overflow-hidden group hover:border-primary/40 transition-all">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">Net Balance</span>
-            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold ${
-              summary.netBalance > 0
-                ? 'bg-amber-500/10 text-amber-500'
-                : summary.netBalance < 0
-                ? 'bg-blue-500/10 text-blue-500'
-                : 'bg-primary/10 text-primary'
-            }`}>
-              <CreditCard size={18} />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-text-primary tracking-tight">
-            ₹{Math.abs(summary.netBalance).toLocaleString()}
-          </div>
-          <p className="text-[10px] font-bold mt-1">
-            {summary.netBalance > 0 ? (
-              <span className="text-amber-500">Pending Amount to Pay</span>
-            ) : summary.netBalance < 0 ? (
-              <span className="text-blue-500">Advance Paid in Excess</span>
-            ) : (
-              <span className="text-text-muted">All Accounts Cleared</span>
-            )}
-          </p>
-        </div>
-
-        {/* Suppliers Count */}
-        <div className="bg-background-card p-5 rounded-[1.8rem] border border-border-light shadow-sm relative overflow-hidden group hover:border-primary/40 transition-all">
+        {/* Active Suppliers */}
+        <div className="bg-background-card p-5 rounded-[1.8rem] border border-border-light shadow-sm hover:border-primary/40 transition-all">
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">Active Suppliers</span>
-            <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
               <Building2 size={18} />
             </div>
           </div>
           <div className="text-2xl font-black text-text-primary tracking-tight">
             {summary.activeSuppliers} <span className="text-xs font-normal text-text-muted">/ {summary.totalSuppliers} total</span>
           </div>
-          <p className="text-[10px] text-text-secondary mt-1">
-            Registered vendors & partners
-          </p>
+          <p className="text-[10px] text-text-secondary mt-1">Registered vendors & partners</p>
         </div>
       </div>
 
-      {/* Main Card with Sub-tabs and Content */}
+      {/* ── Main Card ───────────────────────────────────────────────────────── */}
       <div className="bg-background-card rounded-[2rem] border border-border-light shadow-sm overflow-hidden">
-        {/* Navigation Tabs Header */}
+
+        {/* Tab Header */}
         <div className="border-b border-border-light bg-background-muted/20 px-6 pt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center space-x-2">
             <button
@@ -681,7 +700,6 @@ const SupplierSection = ({ onNavigateTab }) => {
               <FileText size={16} />
               <span>Transactions & Ledger ({transactions.length})</span>
             </button>
-
             <button
               onClick={() => setActiveTab('directory')}
               className={`flex items-center space-x-2 px-5 py-3 rounded-t-2xl font-black text-xs uppercase tracking-wider border-b-2 transition-all ${
@@ -695,7 +713,7 @@ const SupplierSection = ({ onNavigateTab }) => {
             </button>
           </div>
 
-          {/* Quick Date Chips (shown in Ledger tab) */}
+          {/* Date chips (ledger tab) */}
           {activeTab === 'ledger' && (
             <div className="flex flex-wrap items-center gap-1.5 pb-3">
               {[
@@ -704,10 +722,10 @@ const SupplierSection = ({ onNavigateTab }) => {
                 { label: 'This Week', value: 'thisWeek' },
                 { label: 'This Month', value: 'thisMonth' },
                 { label: 'Custom', value: 'custom' }
-              ].map((chip) => (
+              ].map(chip => (
                 <button
                   key={chip.value}
-                  onClick={() => handleDateChip(chip.value)}
+                  onClick={() => { setDateFilter(chip.value); setCurrentPage(1); }}
                   className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
                     dateFilter === chip.value
                       ? 'bg-primary text-white shadow-md shadow-primary/25'
@@ -721,119 +739,66 @@ const SupplierSection = ({ onNavigateTab }) => {
           )}
         </div>
 
-        {/* Custom Date Range Picker (if 'custom' selected) */}
+        {/* Custom Date Range */}
         {activeTab === 'ledger' && dateFilter === 'custom' && (
           <div className="p-4 bg-background-muted/40 border-b border-border-light flex flex-wrap items-center gap-3">
             <span className="text-[11px] font-bold text-text-secondary flex items-center gap-1.5">
               <Calendar size={14} /> Custom Range:
             </span>
-            <input
-              type="date"
-              value={customStartDate}
-              onChange={(e) => setCustomStartDate(e.target.value)}
-              className="px-3 py-1.5 bg-background-card text-text-primary border border-border-main rounded-xl text-xs font-bold outline-none"
-            />
+            <input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)}
+              className="px-3 py-1.5 bg-background-card text-text-primary border border-border-main rounded-xl text-xs font-bold outline-none" />
             <span className="text-text-muted text-xs">to</span>
-            <input
-              type="date"
-              value={customEndDate}
-              onChange={(e) => setCustomEndDate(e.target.value)}
-              className="px-3 py-1.5 bg-background-card text-text-primary border border-border-main rounded-xl text-xs font-bold outline-none"
-            />
-            <button
-              onClick={() => fetchTransactions(true)}
-              className="px-4 py-1.5 bg-primary text-white text-[10px] font-black uppercase tracking-wider rounded-xl"
-            >
+            <input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)}
+              className="px-3 py-1.5 bg-background-card text-text-primary border border-border-main rounded-xl text-xs font-bold outline-none" />
+            <button onClick={() => fetchTransactions(true)}
+              className="px-4 py-1.5 bg-primary text-white text-[10px] font-black uppercase tracking-wider rounded-xl">
               Apply Range
             </button>
           </div>
         )}
 
-        {/* Filters and Search Bar */}
+        {/* Filter Bar */}
         <div className="p-4 border-b border-border-light bg-background-card flex flex-col md:flex-row md:items-center justify-between gap-3">
-          {/* Search Input */}
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" size={16} />
             <input
               type="text"
-              placeholder={
-                activeTab === 'ledger'
-                  ? 'Search by supplier, bill no, or item...'
-                  : 'Search by supplier name, phone, category...'
-              }
+              placeholder={activeTab === 'ledger' ? 'Search by supplier, bill no, description...' : 'Search suppliers...'}
               value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               className="w-full pl-10 pr-4 py-2.5 bg-background-muted/40 rounded-xl border border-border-main focus:border-primary transition-all outline-none text-xs font-medium"
             />
           </div>
 
-          {/* Filter Dropdowns */}
           <div className="flex flex-wrap items-center gap-2">
-            {/* If in Ledger tab: Type Filter */}
             {activeTab === 'ledger' && (
               <>
-                <select
-                  value={typeFilter}
-                  onChange={(e) => {
-                    setTypeFilter(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="bg-background-muted/40 text-text-primary border border-border-main rounded-xl px-3 py-2 text-xs font-bold outline-none cursor-pointer"
-                >
+                <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setCurrentPage(1); }}
+                  className="bg-background-muted/40 text-text-primary border border-border-main rounded-xl px-3 py-2 text-xs font-bold outline-none cursor-pointer">
                   <option value="all">All Types</option>
-                  <option value="expense">Expenses / Bills Only</option>
-                  <option value="advance">Advances Only</option>
+                  <option value="expense">Bills / Expenses</option>
+                  <option value="advance">Advances</option>
                 </select>
 
-                <select
-                  value={statusFilter}
-                  onChange={(e) => {
-                    setStatusFilter(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="bg-background-muted/40 text-text-primary border border-border-main rounded-xl px-3 py-2 text-xs font-bold outline-none cursor-pointer"
-                >
+                <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+                  className="bg-background-muted/40 text-text-primary border border-border-main rounded-xl px-3 py-2 text-xs font-bold outline-none cursor-pointer">
                   <option value="all">All Status</option>
                   <option value="pending">Pending</option>
                   <option value="partially_paid">Partially Paid</option>
                   <option value="settled">Settled</option>
                 </select>
 
-                <select
-                  value={selectedSupplierId}
-                  onChange={(e) => {
-                    setSelectedSupplierId(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="bg-background-muted/40 text-text-primary border border-border-main rounded-xl px-3 py-2 text-xs font-bold outline-none cursor-pointer max-w-[180px] truncate"
-                >
+                <select value={selectedSupplierId} onChange={e => { setSelectedSupplierId(e.target.value); setCurrentPage(1); }}
+                  className="bg-background-muted/40 text-text-primary border border-border-main rounded-xl px-3 py-2 text-xs font-bold outline-none cursor-pointer max-w-[180px] truncate">
                   <option value="all">All Suppliers</option>
-                  {suppliers.map(s => (
-                    <option key={s._id} value={s._id}>{s.name}</option>
-                  ))}
+                  {suppliers.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
                 </select>
               </>
             )}
 
-            {/* Clear Filters */}
             {(searchTerm || typeFilter !== 'all' || statusFilter !== 'all' || selectedSupplierId !== 'all' || dateFilter !== 'all') && (
-              <button
-                onClick={() => {
-                  setSearchTerm('');
-                  setTypeFilter('all');
-                  setStatusFilter('all');
-                  setSelectedSupplierId('all');
-                  setDateFilter('all');
-                  setCustomStartDate('');
-                  setCustomEndDate('');
-                  setCurrentPage(1);
-                }}
-                className="flex items-center space-x-1 px-3 py-2 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
-                title="Reset all filters"
-              >
+              <button onClick={clearFilters}
+                className="flex items-center space-x-1 px-3 py-2 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all">
                 <RotateCcw size={12} />
                 <span>Reset</span>
               </button>
@@ -841,27 +806,21 @@ const SupplierSection = ({ onNavigateTab }) => {
           </div>
         </div>
 
-        {/* Filter Chip Indicator if supplier is selected */}
+        {/* Supplier filter chip */}
         {selectedSupplierId !== 'all' && selectedSupplierObj && (
           <div className="px-6 py-2.5 bg-primary/5 border-b border-border-light flex items-center justify-between">
             <span className="text-xs font-bold text-primary flex items-center gap-2">
               <Building2 size={14} />
-              Filtering Ledger for: <strong className="underline">{selectedSupplierObj.name}</strong>
-              <span className="text-[10px] text-text-secondary">
-                (Balance: ₹{selectedSupplierObj.balance?.toLocaleString() || 0})
-              </span>
+              Filtering for: <strong className="underline">{selectedSupplierObj.name}</strong>
+              <span className="text-[10px] text-text-secondary">(Balance: ₹{selectedSupplierObj.balance?.toLocaleString() || 0})</span>
             </span>
-            <button
-              onClick={() => setSelectedSupplierId('all')}
-              className="p-1 hover:bg-primary/10 rounded-full text-primary transition-all"
-              title="Clear Supplier Filter"
-            >
+            <button onClick={() => setSelectedSupplierId('all')} className="p-1 hover:bg-primary/10 rounded-full text-primary transition-all">
               <X size={16} />
             </button>
           </div>
         )}
 
-        {/* Tab 1: Ledger & Transactions View */}
+        {/* ── Ledger Tab ────────────────────────────────────────────────────── */}
         {activeTab === 'ledger' && (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs whitespace-nowrap">
@@ -870,49 +829,35 @@ const SupplierSection = ({ onNavigateTab }) => {
                   <th className="px-4 py-4">Date</th>
                   <th className="px-4 py-4">Supplier</th>
                   <th className="px-4 py-4">Type</th>
+                  <th className="px-4 py-4">Bill / Invoice</th>
+                  <th className="px-4 py-4 text-right">Total</th>
+                  <th className="px-4 py-4 text-right">Paid</th>
+                  <th className="px-4 py-4 text-right">Balance</th>
                   <th className="px-4 py-4">Status</th>
-                  <th className="px-4 py-4">Bill No</th>
-                  <th className="px-4 py-4">Description / Items</th>
-                  <th className="px-4 py-4">Payment Mode</th>
-                  <th className="px-4 py-4 text-right">Total Bill</th>
-                  <th className="px-4 py-4 text-right">Paid Amount</th>
-                  <th className="px-4 py-4 text-right">Balance Due</th>
                   <th className="px-4 py-4 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light">
                 {isLoading ? (
-                  <tr>
-                    <td colSpan="11" className="px-6 py-10">
-                      <TableSkeleton columns={11} rows={6} />
-                    </td>
-                  </tr>
+                  <tr><td colSpan="9" className="px-6 py-10"><TableSkeleton columns={9} rows={6} /></td></tr>
                 ) : paginatedTransactions.length === 0 ? (
                   <tr>
-                    <td colSpan="11" className="px-6 py-16 text-center text-text-muted">
+                    <td colSpan="9" className="px-6 py-16 text-center text-text-muted">
                       <div className="flex flex-col items-center justify-center space-y-3">
                         <FileText size={36} className="text-text-muted/40" />
                         <p className="font-bold text-sm">No transactions found</p>
-                        <p className="text-xs text-text-muted">Record an expense or advance payment to get started</p>
-                        <div className="flex items-center gap-2 pt-2">
-                          <button
-                            onClick={() => handleOpenTxModal('expense')}
-                            className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold"
-                          >
-                            + Record Expense
-                          </button>
-                        </div>
+                        <p className="text-xs text-text-muted">Record a bill to get started</p>
+                        <button onClick={() => handleOpenExpenseModal()}
+                          className="px-4 py-2 bg-rose-500 text-white rounded-xl text-xs font-bold">
+                          + New Bill
+                        </button>
                       </div>
                     </td>
                   </tr>
                 ) : (
-                  paginatedTransactions.map((tx) => {
-                    const paidAmt = tx.paidAmount !== undefined
-                      ? tx.paidAmount
-                      : (tx.status === 'settled' ? tx.amount : 0);
-                    const balAmt = tx.balanceAmount !== undefined
-                      ? tx.balanceAmount
-                      : Math.max(0, tx.amount - paidAmt);
+                  paginatedTransactions.map(tx => {
+                    const paidAmt = tx.paidAmount !== undefined ? tx.paidAmount : (tx.status === 'settled' ? tx.amount : 0);
+                    const balAmt = tx.balanceAmount !== undefined ? tx.balanceAmount : Math.max(0, tx.amount - paidAmt);
 
                     return (
                       <tr key={tx._id} className="hover:bg-background-muted/30 transition-colors group">
@@ -930,113 +875,83 @@ const SupplierSection = ({ onNavigateTab }) => {
                             >
                               {tx.supplier?.name || 'Unknown Supplier'}
                             </span>
-                            <span className="text-[10px] text-text-muted">
-                              {tx.supplier?.category || 'General'}
-                            </span>
+                            <span className="text-[10px] text-text-muted">{tx.supplier?.category || 'General'}</span>
                           </div>
                         </td>
 
-                        {/* Type Badge */}
+                        {/* Type */}
                         <td className="px-4 py-4">
                           <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
                             tx.type === 'expense'
                               ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
-                              : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                              : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
                           }`}>
-                            {tx.type === 'expense' ? 'Expense / Bill' : 'Advance Paid'}
+                            {tx.type === 'expense' ? 'Bill' : 'Advance'}
                           </span>
-                        </td>
-
-                        {/* Status Badge */}
-                        <td className="px-4 py-4">
-                          {balAmt === 0 ? (
-                            <button
-                              type="button"
-                              onClick={() => handleToggleSettle(tx)}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 transition-all"
-                              title="Fully Settled! Click to mark as Pending"
-                            >
-                              <CheckCircle2 size={10} />
-                              <span>Settled</span>
-                            </button>
-                          ) : paidAmt > 0 ? (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenPayModal(tx)}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 hover:bg-blue-500/20 transition-all"
-                              title="Partially Paid. Click to record payment"
-                            >
-                              <Clock size={10} />
-                              <span>Partial</span>
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenPayModal(tx)}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20 transition-all cursor-pointer"
-                              title={`Pending Payment. Click to settle balance of ₹${balAmt.toLocaleString()}`}
-                            >
-                              <Clock size={10} />
-                              <span>Pending</span>
-                            </button>
-                          )}
                         </td>
 
                         {/* Bill No */}
                         <td className="px-4 py-4 font-mono font-bold text-text-secondary">
-                          {tx.billNumber ? `#${tx.billNumber}` : '-'}
+                          {tx.billNumber ? `#${tx.billNumber}` : (tx.description ? <span className="font-sans text-text-muted truncate max-w-[100px] block" title={tx.description}>{tx.description}</span> : '-')}
                         </td>
 
-                        {/* Description */}
-                        <td className="px-4 py-4 text-text-secondary max-w-xs truncate" title={tx.description}>
-                          {tx.description || '-'}
-                        </td>
-
-                        {/* Payment Mode */}
-                        <td className="px-4 py-4">
-                          <span className="px-2.5 py-1 bg-background-muted rounded-lg text-[10px] font-bold text-text-secondary">
-                            {tx.paymentMethod || 'Cash'}
-                          </span>
-                        </td>
-
-                        {/* Total Bill Amount */}
+                        {/* Total */}
                         <td className="px-4 py-4 text-right font-black text-sm text-text-primary">
-                          ₹{tx.amount?.toLocaleString()}
+                          ₹{(tx.amount || 0).toLocaleString()}
                         </td>
 
-                        {/* Paid Amount */}
+                        {/* Paid */}
                         <td className="px-4 py-4 text-right font-black text-sm text-emerald-600 dark:text-emerald-400">
                           ₹{paidAmt.toLocaleString()}
                         </td>
 
-                        {/* Balance Amount Due */}
+                        {/* Balance */}
                         <td className="px-4 py-4 text-right">
                           {balAmt > 0 ? (
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-500/10 text-amber-600 border border-amber-500/20 shadow-sm">
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-500/10 text-amber-600 border border-amber-500/20">
                               ₹{balAmt.toLocaleString()}
                             </span>
                           ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
-                              ₹0 (Cleared)
-                            </span>
+                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">₹0</span>
+                          )}
+                        </td>
+
+                        {/* Status */}
+                        <td className="px-4 py-4">
+                          {balAmt === 0 ? (
+                            <button type="button" onClick={() => handleToggleSettle(tx)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 transition-all"
+                              title="Fully Settled — click to reopen">
+                              <CheckCircle2 size={10} /><span>Settled</span>
+                            </button>
+                          ) : paidAmt > 0 ? (
+                            <button type="button" onClick={() => handleOpenPayModal(tx)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border bg-orange-500/10 text-orange-600 border-orange-500/20 hover:bg-orange-500/20 transition-all">
+                              <Clock size={10} /><span>Partial</span>
+                            </button>
+                          ) : (
+                            <button type="button" onClick={() => handleOpenPayModal(tx)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20 transition-all">
+                              <Clock size={10} /><span>Pending</span>
+                            </button>
                           )}
                         </td>
 
                         {/* Actions */}
                         <td className="px-4 py-4 text-center">
-                          <div className="flex items-center justify-center space-x-1.5 opacity-85 group-hover:opacity-100 transition-opacity">
-                            {balAmt > 0 && (
+                          <div className="flex items-center justify-center space-x-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
+                            {balAmt > 0 && tx.type === 'expense' && (
                               <button
                                 onClick={() => handleOpenPayModal(tx)}
-                                className="flex items-center space-x-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all shadow-sm shadow-emerald-600/25 active:scale-95"
-                                title={`Settle pending balance of ₹${balAmt.toLocaleString()}`}
+                                className="flex items-center space-x-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all shadow-sm active:scale-95"
+                                title={`Pay ₹${balAmt.toLocaleString()} balance`}
                               >
                                 <CreditCard size={11} />
-                                <span>Settle ₹{balAmt.toLocaleString()}</span>
+                                <span>Pay</span>
                               </button>
                             )}
                             <button
-                              onClick={() => handleOpenTxModal(tx.type, tx.supplier?._id, tx)}
+                              onClick={() => handleOpenEditExpense(tx)}
                               className="p-1.5 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all"
                               title="Edit Transaction"
                             >
@@ -1058,18 +973,13 @@ const SupplierSection = ({ onNavigateTab }) => {
               </tbody>
             </table>
 
-            {/* Pagination */}
             {filteredTransactions.length > itemsPerPage && (
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
-              />
+              <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
             )}
           </div>
         )}
 
-        {/* Tab 2: Suppliers Directory View */}
+        {/* ── Directory Tab ─────────────────────────────────────────────────── */}
         {activeTab === 'directory' && (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs whitespace-nowrap">
@@ -1079,8 +989,8 @@ const SupplierSection = ({ onNavigateTab }) => {
                   <th className="px-5 py-4">Category</th>
                   <th className="px-5 py-4">Contact</th>
                   <th className="px-5 py-4 text-right">Total Bills</th>
-                  <th className="px-5 py-4 text-right">Settled Amount</th>
-                  <th className="px-5 py-4 text-right">Total Advances</th>
+                  <th className="px-5 py-4 text-right">Settled</th>
+                  <th className="px-5 py-4 text-right">Advances</th>
                   <th className="px-5 py-4 text-right">Net Balance</th>
                   <th className="px-5 py-4 text-center">Quick Actions</th>
                   <th className="px-5 py-4 text-center">Actions</th>
@@ -1094,19 +1004,16 @@ const SupplierSection = ({ onNavigateTab }) => {
                         <Building2 size={36} className="text-text-muted/40" />
                         <p className="font-bold text-sm">No suppliers registered yet</p>
                         <p className="text-xs text-text-muted">Add suppliers to track their purchases and advances</p>
-                        <button
-                          onClick={() => handleOpenSupplierModal()}
-                          className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold mt-2"
-                        >
+                        <button onClick={() => handleOpenSupplierModal()}
+                          className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold mt-2">
                           + Add First Supplier
                         </button>
                       </div>
                     </td>
                   </tr>
                 ) : (
-                  filteredSuppliers.map((sup) => (
+                  filteredSuppliers.map(sup => (
                     <tr key={sup._id} className="hover:bg-background-muted/30 transition-colors group">
-                      {/* Name & Contact Person */}
                       <td className="px-5 py-4">
                         <div className="flex items-center space-x-3">
                           <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black text-sm">
@@ -1114,147 +1021,91 @@ const SupplierSection = ({ onNavigateTab }) => {
                           </div>
                           <div className="flex flex-col">
                             <span className="font-bold text-text-primary text-sm">{sup.name}</span>
-                            {sup.contactPerson && (
-                              <span className="text-[10px] text-text-muted">Contact: {sup.contactPerson}</span>
-                            )}
+                            {sup.contactPerson && <span className="text-[10px] text-text-muted">Contact: {sup.contactPerson}</span>}
                           </div>
                         </div>
                       </td>
 
-                      {/* Category */}
                       <td className="px-5 py-4">
                         <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-background-muted text-text-secondary border border-border-light">
                           {sup.category || 'General'}
                         </span>
                       </td>
 
-                      {/* Contact Info */}
                       <td className="px-5 py-4 text-text-secondary">
                         <div className="flex flex-col text-[11px]">
                           {sup.phone ? (
                             <span className="flex items-center space-x-1 font-mono font-medium">
-                              <Phone size={11} className="text-text-muted" />
-                              <span>{sup.phone}</span>
+                              <Phone size={11} className="text-text-muted" /><span>{sup.phone}</span>
                             </span>
-                          ) : (
-                            <span className="text-text-muted italic">No phone</span>
-                          )}
-                          {sup.address && (
-                            <span className="text-[10px] text-text-muted truncate max-w-[150px]" title={sup.address}>
-                              {sup.address}
-                            </span>
-                          )}
+                          ) : <span className="text-text-muted italic">No phone</span>}
+                          {sup.address && <span className="text-[10px] text-text-muted truncate max-w-[150px]" title={sup.address}>{sup.address}</span>}
                         </div>
                       </td>
 
-                      {/* Total Expenses */}
                       <td className="px-5 py-4 text-right">
                         <div className="flex flex-col items-end">
-                          <span className="font-bold text-text-primary">
-                            ₹{(sup.totalExpenses || 0).toLocaleString()}
-                          </span>
-                          <span className="text-[9px] font-semibold text-amber-500">
-                            ₹{(sup.pendingExpenses || 0).toLocaleString()} pending
-                          </span>
+                          <span className="font-bold text-text-primary">₹{(sup.totalExpenses || 0).toLocaleString()}</span>
+                          <span className="text-[9px] font-semibold text-amber-500">₹{(sup.pendingExpenses || 0).toLocaleString()} pending</span>
                         </div>
                       </td>
 
-                      {/* Settled Expenses */}
                       <td className="px-5 py-4 text-right font-bold text-emerald-600 dark:text-emerald-400">
                         ₹{(sup.settledExpenses || 0).toLocaleString()}
                       </td>
 
-                      {/* Total Advances */}
                       <td className="px-5 py-4 text-right font-bold text-blue-600 dark:text-blue-400">
                         ₹{(sup.totalAdvances || 0).toLocaleString()}
                       </td>
 
-                      {/* Net Balance */}
                       <td className="px-5 py-4 text-right">
                         <div className="flex flex-col items-end">
                           <span className={`font-black text-sm ${
-                            sup.balance > 0
-                              ? 'text-amber-500'
-                              : sup.balance < 0
-                              ? 'text-blue-500'
-                              : 'text-text-muted'
-                          }`}>
-                            ₹{Math.abs(sup.balance || 0).toLocaleString()}
-                          </span>
+                            sup.balance > 0 ? 'text-amber-500' : sup.balance < 0 ? 'text-blue-500' : 'text-text-muted'
+                          }`}>₹{Math.abs(sup.balance || 0).toLocaleString()}</span>
                           <span className="text-[9px] font-bold uppercase tracking-wider">
-                            {sup.balance > 0 ? (
-                              <span className="text-amber-500">Payable</span>
-                            ) : sup.balance < 0 ? (
-                              <span className="text-blue-500">In Advance</span>
-                            ) : (
-                              <span className="text-text-muted">Cleared</span>
-                            )}
+                            {sup.balance > 0 ? <span className="text-amber-500">Payable</span>
+                              : sup.balance < 0 ? <span className="text-blue-500">In Advance</span>
+                              : <span className="text-text-muted">Cleared</span>}
                           </span>
                         </div>
                       </td>
 
-                      {/* Quick Record Actions */}
                       <td className="px-5 py-4 text-center">
                         <div className="flex items-center justify-center space-x-1.5">
                           <button
-                            onClick={() => {
-                              setSelectedSupplierId(sup._id);
-                              setActiveTab('ledger');
-                            }}
+                            onClick={() => { setSelectedSupplierId(sup._id); setActiveTab('ledger'); }}
                             className="px-2.5 py-1 bg-background-muted hover:bg-primary hover:text-white rounded-lg text-[10px] font-black uppercase tracking-wider text-text-secondary transition-all"
-                            title="Filter ledger for this supplier"
                           >
                             Ledger
                           </button>
                           {sup.balance > 0 && (
                             <button
-                              onClick={() => {
-                                const supTx = transactions.find(t => (t.supplier?._id === sup._id || t.supplier === sup._id) && (t.balanceAmount > 0 || (t.status !== 'settled' && t.amount > 0)));
-                                if (supTx) {
-                                  handleOpenPayModal(supTx);
-                                } else {
-                                  handleOpenTxModal('advance', sup._id);
-                                }
-                              }}
+                              onClick={() => handleOpenSettleModal(sup._id)}
                               className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all shadow-sm flex items-center space-x-1"
-                              title={`Settle pending balance of ₹${(sup.balance || 0).toLocaleString()}`}
+                              title={`Settle ₹${(sup.balance || 0).toLocaleString()}`}
                             >
-                              <CreditCard size={10} />
-                              <span>Settle ₹{(sup.balance || 0).toLocaleString()}</span>
+                              <Wallet size={10} />
+                              <span>Settle</span>
                             </button>
                           )}
                           <button
-                            onClick={() => handleOpenTxModal('expense', sup._id)}
+                            onClick={() => handleOpenExpenseModal(sup._id)}
                             className="px-2 py-1 bg-rose-500/10 text-rose-600 hover:bg-rose-500 hover:text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all"
-                            title="Add purchase bill / expense"
                           >
                             + Bill
-                          </button>
-                          <button
-                            onClick={() => handleOpenTxModal('advance', sup._id)}
-                            className="px-2 py-1 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all"
-                            title="Pay advance to supplier"
-                          >
-                            + Advance
                           </button>
                         </div>
                       </td>
 
-                      {/* Edit / Delete */}
                       <td className="px-5 py-4 text-center">
                         <div className="flex items-center justify-center space-x-1">
-                          <button
-                            onClick={() => handleOpenSupplierModal(sup)}
-                            className="p-1.5 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all"
-                            title="Edit Supplier"
-                          >
+                          <button onClick={() => handleOpenSupplierModal(sup)}
+                            className="p-1.5 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-lg transition-all">
                             <Edit2 size={16} />
                           </button>
-                          <button
-                            onClick={() => handleDeleteSupplier(sup)}
-                            className="p-1.5 hover:bg-rose-500/10 text-text-secondary hover:text-rose-500 rounded-lg transition-all"
-                            title="Delete Supplier"
-                          >
+                          <button onClick={() => handleDeleteSupplier(sup)}
+                            className="p-1.5 hover:bg-rose-500/10 text-text-secondary hover:text-rose-500 rounded-lg transition-all">
                             <Trash2 size={16} />
                           </button>
                         </div>
@@ -1268,544 +1119,556 @@ const SupplierSection = ({ onNavigateTab }) => {
         )}
       </div>
 
-      {/* MODAL 1: Record Transaction (Expense or Advance) */}
-      <Modal
-        isOpen={isTxModalOpen}
-        onClose={() => setIsTxModalOpen(false)}
-        zIndex="z-[100]"
-      >
+      {/* ═══════════════════════════════════════════════════════════════════════
+          MODAL 1: Record Supplier Bill
+      ═══════════════════════════════════════════════════════════════════════ */}
+      <Modal isOpen={isExpenseModalOpen} onClose={() => setIsExpenseModalOpen(false)} zIndex="z-[100]">
         <div className="bg-background-card w-full max-w-lg max-h-[90vh] rounded-[2rem] sm:rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden flex flex-col my-auto animate-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="p-5 sm:p-6 border-b border-border-light flex items-center justify-between shrink-0 bg-background-card">
-              <div className="flex items-center space-x-3">
-                <span className={`p-2 rounded-xl ${txFormData.type === 'expense' ? 'bg-rose-500/10 text-rose-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
-                  {txFormData.type === 'expense' ? <ArrowUpRight size={20} /> : <ArrowDownLeft size={20} />}
-                </span>
-                <h3 className="text-lg font-black text-text-primary">
-                  {isEditingTx
-                    ? 'Edit Transaction'
-                    : txFormData.type === 'expense'
-                    ? 'Record Supplier Expense / Bill'
-                    : 'Record Supplier Advance Payment'}
-                </h3>
+          {/* Header */}
+          <div className="p-5 sm:p-6 border-b border-border-light flex items-center justify-between shrink-0 bg-background-card">
+            <div className="flex items-center space-x-3">
+              <span className="p-2 rounded-xl bg-rose-500/10 text-rose-500"><ArrowUpRight size={20} /></span>
+              <div>
+                <h3 className="text-lg font-black text-text-primary">Record Supplier Bill</h3>
+                <p className="text-[10px] text-text-secondary">New purchase bill or expense entry</p>
               </div>
-              <button
-                onClick={() => setIsTxModalOpen(false)}
-                className="text-text-muted hover:text-text-primary transition-all"
-              >
-                <XCircle size={24} />
-              </button>
             </div>
+            <button onClick={() => setIsExpenseModalOpen(false)} className="text-text-muted hover:text-text-primary transition-all">
+              <XCircle size={24} />
+            </button>
+          </div>
 
-            <form onSubmit={handleSaveTransaction} className="flex flex-col min-h-0 flex-1 overflow-hidden">
-              <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 overscroll-contain">
-                {/* Type Switcher (only when creating new) */}
-                {!isEditingTx && (
-                  <div className="grid grid-cols-2 gap-2 p-1.5 bg-background-muted/60 rounded-2xl">
-                    <button
-                      type="button"
-                      onClick={() => setTxFormData({ ...txFormData, type: 'expense' })}
-                      className={`py-2 text-xs font-black uppercase tracking-wider rounded-xl transition-all ${
-                        txFormData.type === 'expense'
-                          ? 'bg-rose-500 text-white shadow-md'
-                          : 'text-text-secondary hover:text-text-primary'
-                      }`}
-                    >
-                      Expense / Purchase Bill
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTxFormData({ ...txFormData, type: 'advance' })}
-                      className={`py-2 text-xs font-black uppercase tracking-wider rounded-xl transition-all ${
-                        txFormData.type === 'advance'
-                          ? 'bg-emerald-500 text-white shadow-md'
-                          : 'text-text-secondary hover:text-text-primary'
-                      }`}
-                    >
-                      Advance Payment
-                    </button>
+          <form onSubmit={handleSaveBill} className="flex flex-col min-h-0 flex-1 overflow-hidden">
+            <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 overscroll-contain">
+
+              {/* Supplier Dropdown */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className={LBL}>Supplier *</label>
+                  <button type="button" onClick={() => handleOpenSupplierModal()}
+                    className="text-[10px] font-bold text-primary hover:underline">
+                    + Add New Supplier
+                  </button>
+                </div>
+                <select
+                  value={expenseForm.supplier}
+                  onChange={e => setExpenseForm(prev => ({ ...prev, supplier: e.target.value }))}
+                  required
+                  className={INPUT}
+                >
+                  <option value="">Select a supplier...</option>
+                  {suppliers.map(s => (
+                    <option key={s._id} value={s._id}>{s.name} ({s.category || 'General'})</option>
+                  ))}
+                </select>
+
+                {/* Outstanding balance of selected supplier */}
+                {expenseSupplierObj && (expenseSupplierObj.balance || 0) > 0 && (
+                  <div className="mt-1.5 flex items-center gap-2 px-3 py-2 bg-amber-500/8 border border-amber-500/20 rounded-xl">
+                    <AlertCircle size={13} className="text-amber-500 shrink-0" />
+                    <span className="text-[11px] text-amber-600 font-bold">
+                      Current outstanding balance: <span className="text-sm font-black">₹{(expenseSupplierObj.balance || 0).toLocaleString()}</span>
+                    </span>
                   </div>
                 )}
+              </div>
 
-                {/* Supplier Dropdown */}
+              {/* Amount & Date */}
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                      Supplier *
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenSupplierModal()}
-                      className="text-[10px] font-bold text-primary hover:underline"
-                    >
-                      + Add New Supplier
-                    </button>
+                  <label className={LBL}>Total Bill Amount (₹) *</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted font-bold text-xs">₹</span>
+                    <input
+                      type="number" min="1" step="any" required
+                      value={expenseForm.amount}
+                      onChange={e => setExpenseForm(prev => ({ ...prev, amount: e.target.value }))}
+                      placeholder="0.00"
+                      className="w-full pl-8 pr-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-rose-500 text-text-primary text-sm font-black outline-none"
+                    />
                   </div>
-                  <select
-                    value={txFormData.supplier}
-                    onChange={(e) => {
-                      const supId = e.target.value;
-                      const foundSup = suppliers.find(s => s._id === supId);
-                      setTxFormData(prev => ({
-                        ...prev,
-                        supplier: supId,
-                        amount: !isEditingTx && prev.type === 'advance' && foundSup?.balance > 0 && !prev.amount ? foundSup.balance : prev.amount,
-                        paidAmount: !isEditingTx && prev.type === 'advance' && foundSup?.balance > 0 && !prev.paidAmount ? foundSup.balance : prev.paidAmount,
-                        status: !isEditingTx && prev.type === 'advance' && foundSup?.balance > 0 && !prev.amount ? 'settled' : prev.status
-                      }));
-                    }}
-                    required
-                    className="w-full px-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-bold outline-none"
-                  >
-                    <option value="">Select a supplier...</option>
-                    {suppliers.map(s => (
-                      <option key={s._id} value={s._id}>
-                        {s.name} ({s.category || 'General'})
-                      </option>
-                    ))}
-                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className={LBL}>Date *</label>
+                  <input
+                    type="date" required
+                    value={expenseForm.date}
+                    onChange={e => setExpenseForm(prev => ({ ...prev, date: e.target.value }))}
+                    className={INPUT}
+                  />
+                </div>
+              </div>
+
+              {/* Bill Number */}
+              <div className="space-y-1.5">
+                <label className={LBL}>Invoice / Bill Number (Optional)</label>
+                <input
+                  type="text"
+                  value={expenseForm.billNumber}
+                  onChange={e => setExpenseForm(prev => ({ ...prev, billNumber: e.target.value }))}
+                  placeholder="e.g. INV-2026-01"
+                  className={INPUT}
+                />
+              </div>
+
+              {/* Description */}
+              <div className="space-y-1.5">
+                <label className={LBL}>Remarks / Description (Optional)</label>
+                <textarea
+                  rows={2}
+                  value={expenseForm.description}
+                  onChange={e => setExpenseForm(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="e.g. 50kg Onions, weekly supply, etc."
+                  className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-medium outline-none resize-none"
+                />
+              </div>
+
+              {/* Info callout */}
+              <div className="flex items-start gap-2 px-3 py-2.5 bg-blue-500/5 border border-blue-500/15 rounded-xl">
+                <Info size={13} className="text-blue-500 shrink-0 mt-0.5" />
+                <p className="text-[10px] text-text-secondary font-medium">
+                  Bill will be recorded as <strong>PENDING</strong>. Use <em>Settle Payment</em> to mark it as paid.
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 sm:p-6 border-t border-border-light flex space-x-3 shrink-0 bg-background-card">
+              <button type="button" onClick={() => setIsExpenseModalOpen(false)}
+                className="flex-1 px-5 py-2.5 border border-border-main text-text-primary rounded-xl font-black text-xs uppercase tracking-widest hover:bg-background-muted/30 transition-all">
+                Cancel
+              </button>
+              <button type="submit"
+                className="flex-1 px-5 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-rose-500/20 transition-all">
+                Save Bill
+              </button>
+            </div>
+          </form>
+        </div>
+      </Modal>
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          MODAL 2: Settle Supplier Payment
+      ═══════════════════════════════════════════════════════════════════════ */}
+      <Modal isOpen={isSettleModalOpen} onClose={() => setIsSettleModalOpen(false)} zIndex="z-[100]">
+        <div className="bg-background-card w-full max-w-lg max-h-[90vh] rounded-[2rem] sm:rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden flex flex-col my-auto animate-in zoom-in-95 duration-200">
+          {/* Header */}
+          <div className="p-5 sm:p-6 border-b border-border-light flex items-center justify-between shrink-0 bg-background-card">
+            <div className="flex items-center space-x-3">
+              <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500"><Wallet size={20} /></span>
+              <div>
+                <h3 className="text-lg font-black text-text-primary">Settle Supplier Payment</h3>
+                <p className="text-[10px] text-text-secondary">Pay outstanding dues across all pending bills</p>
+              </div>
+            </div>
+            <button onClick={() => setIsSettleModalOpen(false)} className="text-text-muted hover:text-text-primary transition-all">
+              <XCircle size={24} />
+            </button>
+          </div>
+
+          <form onSubmit={handleSettleSupplier} className="flex flex-col min-h-0 flex-1 overflow-hidden">
+            <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 overscroll-contain">
+
+              {/* Supplier Dropdown */}
+              <div className="space-y-1.5">
+                <label className={LBL}>Supplier *</label>
+                <select
+                  value={settleForm.supplier}
+                  onChange={e => {
+                    const supId = e.target.value;
+                    const outstanding = getSupplierOutstanding(supId);
+                    setSettleForm(prev => ({
+                      ...prev,
+                      supplier: supId,
+                      amount: outstanding > 0 ? String(outstanding) : prev.amount
+                    }));
+                  }}
+                  required
+                  className={INPUT}
+                >
+                  <option value="">Select a supplier...</option>
+                  {suppliers.map(s => (
+                    <option key={s._id} value={s._id}>{s.name} ({s.category || 'General'})</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Outstanding Amount Display */}
+              {settleForm.supplier && (
+                <div className={`p-4 rounded-2xl border flex items-center justify-between ${
+                  settleOutstanding > 0
+                    ? 'bg-amber-500/10 border-amber-500/30'
+                    : 'bg-emerald-500/10 border-emerald-500/30'
+                }`}>
+                  <div>
+                    <span className={`text-[10px] font-black uppercase tracking-wider block ${settleOutstanding > 0 ? 'text-amber-600' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      Total Outstanding Debt
+                    </span>
+                    <span className={`text-3xl font-black tracking-tight ${settleOutstanding > 0 ? 'text-amber-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      ₹{settleOutstanding.toLocaleString()}
+                    </span>
+                    {settleOutstanding === 0 && (
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold block">All bills cleared!</span>
+                    )}
+                  </div>
+                  {settleOutstanding > 0 && (
+                    <button type="button"
+                      onClick={() => setSettleForm(prev => ({ ...prev, amount: String(settleOutstanding) }))}
+                      className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm flex items-center gap-1">
+                      <Zap size={12} />
+                      Pay Full
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Amount to Pay */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className={LBL}>Amount to Pay Now (₹) *</label>
+                  {settleOutstanding > 0 && (
+                    <button type="button"
+                      onClick={() => setSettleForm(prev => ({ ...prev, amount: String(settleOutstanding) }))}
+                      className="text-[10px] font-black text-primary hover:underline uppercase">
+                      Fill Outstanding
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted font-bold text-xs">₹</span>
+                  <input
+                    type="number" min="1" step="any" required
+                    value={settleForm.amount}
+                    onChange={e => setSettleForm(prev => ({ ...prev, amount: e.target.value }))}
+                    placeholder="0.00"
+                    className="w-full pl-8 pr-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-emerald-500 text-text-primary text-base font-black outline-none"
+                  />
                 </div>
 
-                {/* Pending Bills for selected supplier (only when creating expense, not editing) */}
-                {!isEditingTx && txFormData.type === 'expense' && txFormData.supplier && (() => {
-                  const pendingBills = transactions.filter(t => {
-                    const tSupId = t.supplier?._id || t.supplier;
-                    const bal = t.balanceAmount !== undefined ? t.balanceAmount : Math.max(0, t.amount - (t.paidAmount || 0));
-                    return tSupId === txFormData.supplier && t.type === 'expense' && t.status !== 'settled' && bal > 0;
-                  });
-                  if (pendingBills.length === 0) return null;
-                  const totalDue = pendingBills.reduce((sum, t) => {
-                    const bal = t.balanceAmount !== undefined ? t.balanceAmount : Math.max(0, t.amount - (t.paidAmount || 0));
-                    return sum + bal;
-                  }, 0);
-                  return (
-                    <div className="p-3 bg-amber-500/8 border border-amber-500/20 rounded-2xl space-y-2">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-black uppercase text-amber-600 tracking-wider flex items-center space-x-1">
-                          <AlertCircle size={11} />
-                          <span>Unpaid Bills ({pendingBills.length})</span>
-                        </span>
-                        <span className="text-[10px] text-amber-600 font-black">
-                          Total Due: ₹{totalDue.toLocaleString()}
-                        </span>
-                      </div>
-                      {pendingBills.map(bill => {
-                        const bal = bill.balanceAmount !== undefined ? bill.balanceAmount : Math.max(0, bill.amount - (bill.paidAmount || 0));
-                        const paid = bill.paidAmount !== undefined ? bill.paidAmount : 0;
-                        return (
-                          <div key={bill._id} className="flex items-center justify-between p-2.5 bg-background-card rounded-xl border border-border-light">
-                            <div className="flex flex-col">
-                              <span className="text-xs font-black text-text-primary">
-                                {bill.billNumber ? `#${bill.billNumber}` : new Date(bill.date).toLocaleDateString('en-IN')}
-                              </span>
-                              <span className="text-[10px] text-text-muted">
-                                Total: ₹{bill.amount?.toLocaleString()}
-                                {paid > 0 && <span className="text-emerald-600 ml-1">| Paid: ₹{paid.toLocaleString()}</span>}
-                              </span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <span className="text-xs font-black text-amber-600">₹{bal.toLocaleString()} due</span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setIsTxModalOpen(false);
-                                  handleOpenPayModal(bill);
-                                }}
-                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all active:scale-95"
-                              >
-                                Settle
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
+                {/* Excess / Advance notice */}
+                {settleExcess > 0 && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/8 border border-blue-500/20 rounded-xl">
+                    <Info size={13} className="text-blue-500 shrink-0" />
+                    <span className="text-[11px] text-blue-600 font-bold">
+                      Excess ₹{settleExcess.toLocaleString()} will be recorded as advance payment
+                    </span>
+                  </div>
+                )}
+              </div>
 
-                {/* Show Pending Balance Alert & 1-Click Settle Button (Only when creating an advance / payment to supplier, not editing) */}
-                {!isEditingTx && txFormData.type === 'advance' && (() => {
-                  const curSelectedSup = suppliers.find(s => s._id === txFormData.supplier);
-                  if (curSelectedSup && curSelectedSup.balance > 0) {
-                    return (
-                      <div className="p-3 bg-amber-500/10 border border-amber-500/25 rounded-2xl flex items-center justify-between animate-in fade-in duration-200">
-                        <div>
-                          <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block">
-                            Supplier Outstanding Balance
-                          </span>
-                          <span className="text-sm font-black text-amber-600">
-                            ₹{curSelectedSup.balance.toLocaleString()} Payable
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setTxFormData(prev => ({
-                              ...prev,
-                              amount: curSelectedSup.balance,
-                              paidAmount: curSelectedSup.balance,
-                              status: 'settled',
-                              description: prev.description || `Settlement of pending balance for ${curSelectedSup.name}`
-                            }));
-                          }}
-                          className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm flex items-center space-x-1 active:scale-95"
-                        >
-                          <Zap size={12} />
-                          <span>Settle Outstanding (₹{curSelectedSup.balance.toLocaleString()})</span>
-                        </button>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
+              {/* Payment Date & Method */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className={LBL}>Payment Date *</label>
+                  <input
+                    type="date" required
+                    value={settleForm.date}
+                    onChange={e => setSettleForm(prev => ({ ...prev, date: e.target.value }))}
+                    className={INPUT}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={LBL}>Payment Mode</label>
+                  <select
+                    value={settleForm.paymentMethod}
+                    onChange={e => setSettleForm(prev => ({ ...prev, paymentMethod: e.target.value }))}
+                    className={INPUT}
+                  >
+                    {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+              </div>
 
-                {/* If Editing and remaining balance exists */}
-                {isEditingTx && (() => {
-                  const tAmt = Number(txFormData.amount) || 0;
-                  const pAmt = Number(txFormData.paidAmount) || 0;
-                  const remBal = Math.max(0, tAmt - pAmt);
-                  if (remBal <= 0) return null;
-                  return (
-                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/25 rounded-2xl flex items-center justify-between animate-in fade-in duration-200">
-                      <div>
-                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">
-                          Remaining Pending Balance
-                        </span>
-                        <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
-                          ₹{remBal.toLocaleString()}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTxFormData(prev => ({
-                            ...prev,
-                            paidAmount: prev.amount,
-                            status: 'settled'
-                          }));
-                        }}
-                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm flex items-center space-x-1 active:scale-95"
-                      >
-                        <CheckCircle2 size={13} />
-                        <span>Settle Full (₹{remBal.toLocaleString()})</span>
-                      </button>
-                    </div>
-                  );
-                })()}
+              {/* Remarks */}
+              <div className="space-y-1.5">
+                <label className={LBL}>Remarks (Optional)</label>
+                <input
+                  type="text"
+                  value={settleForm.notes}
+                  onChange={e => setSettleForm(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="e.g. Paid via GPay / UPI ref #12345"
+                  className={INPUT}
+                />
+              </div>
+            </div>
 
+            {/* Footer */}
+            <div className="p-4 sm:p-6 border-t border-border-light flex space-x-3 shrink-0 bg-background-card">
+              <button type="button" onClick={() => setIsSettleModalOpen(false)}
+                className="flex-1 px-5 py-2.5 border border-border-main text-text-primary rounded-xl font-black text-xs uppercase tracking-widest hover:bg-background-muted/30 transition-all">
+                Cancel
+              </button>
+              <button type="submit" disabled={isSubmittingSettle}
+                className="flex-1 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-600/20 transition-all flex items-center justify-center gap-2">
+                {isSubmittingSettle ? 'Processing...' : `Settle ₹${(Number(settleForm.amount) || 0).toLocaleString()}`}
+              </button>
+            </div>
+          </form>
+        </div>
+      </Modal>
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          MODAL 3: Add / Edit Supplier
+      ═══════════════════════════════════════════════════════════════════════ */}
+      <Modal isOpen={isSupplierModalOpen} onClose={() => setIsSupplierModalOpen(false)} zIndex="z-[105]">
+        <div className="bg-background-card w-full max-w-lg max-h-[90vh] rounded-[2rem] sm:rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden flex flex-col my-auto animate-in zoom-in-95 duration-200">
+          <div className="p-5 sm:p-6 border-b border-border-light flex items-center justify-between shrink-0 bg-background-card">
+            <div className="flex items-center space-x-3">
+              <span className="p-2 rounded-xl bg-primary/10 text-primary"><Building2 size={20} /></span>
+              <h3 className="text-lg font-black text-text-primary">
+                {isEditingSupplier ? 'Edit Supplier' : 'Add New Supplier'}
+              </h3>
+            </div>
+            <button onClick={() => setIsSupplierModalOpen(false)} className="text-text-muted hover:text-text-primary transition-all">
+              <XCircle size={24} />
+            </button>
+          </div>
+
+          <form onSubmit={handleSaveSupplier} className="flex flex-col min-h-0 flex-1 overflow-hidden">
+            <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 overscroll-contain">
+              {/* Name */}
+              <div className="space-y-1.5">
+                <label className={LBL}>Supplier / Vendor Name *</label>
+                <input type="text" required
+                  value={supplierFormData.name}
+                  onChange={e => setSupplierFormData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g. Metro Veggie Hub, Al-Razi Meat"
+                  className="w-full px-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-sm font-bold outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className={LBL}>Category</label>
+                  <select value={supplierFormData.category}
+                    onChange={e => setSupplierFormData(prev => ({ ...prev, category: e.target.value }))}
+                    className={INPUT}>
+                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className={LBL}>Contact Person</label>
+                  <input type="text"
+                    value={supplierFormData.contactPerson}
+                    onChange={e => setSupplierFormData(prev => ({ ...prev, contactPerson: e.target.value }))}
+                    placeholder="e.g. Abdul, Ramesh"
+                    className={INPUT}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className={LBL}>Phone Number</label>
+                  <input type="tel"
+                    value={supplierFormData.phone}
+                    onChange={e => setSupplierFormData(prev => ({ ...prev, phone: e.target.value }))}
+                    placeholder="10-digit number"
+                    className={INPUT}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={LBL}>Email (Optional)</label>
+                  <input type="email"
+                    value={supplierFormData.email}
+                    onChange={e => setSupplierFormData(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder="vendor@example.com"
+                    className={INPUT}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className={LBL}>Address / Shop Location</label>
+                <input type="text"
+                  value={supplierFormData.address}
+                  onChange={e => setSupplierFormData(prev => ({ ...prev, address: e.target.value }))}
+                  placeholder="e.g. Market Yard, Shop No 4, City"
+                  className={INPUT}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className={LBL}>Payment Terms / Notes</label>
+                <textarea rows={2}
+                  value={supplierFormData.notes}
+                  onChange={e => setSupplierFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="e.g. Weekly settlement on Saturday, accepts UPI..."
+                  className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-medium outline-none resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="p-4 sm:p-6 border-t border-border-light flex space-x-3 shrink-0 bg-background-card">
+              <button type="button" onClick={() => setIsSupplierModalOpen(false)}
+                className="flex-1 px-5 py-2.5 border border-border-main text-text-primary rounded-xl font-black text-xs uppercase tracking-widest hover:bg-background-muted/30 transition-all">
+                Cancel
+              </button>
+              <button type="submit"
+                className="flex-1 px-5 py-2.5 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all">
+                {isEditingSupplier ? 'Update Supplier' : 'Save Supplier'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </Modal>
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          MODAL 4: Edit Expense Details
+      ═══════════════════════════════════════════════════════════════════════ */}
+      <Modal isOpen={isEditExpenseOpen} onClose={() => setIsEditExpenseOpen(false)} zIndex="z-[105]">
+        <div className="bg-background-card w-full max-w-lg max-h-[90vh] rounded-[2rem] sm:rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden flex flex-col my-auto animate-in zoom-in-95 duration-200">
+          <div className="p-5 sm:p-6 border-b border-border-light flex items-center justify-between shrink-0 bg-background-card">
+            <div className="flex items-center space-x-3">
+              <span className="p-2 rounded-xl bg-primary/10 text-primary"><Edit2 size={20} /></span>
+              <div>
+                <h3 className="text-lg font-black text-text-primary">Edit Transaction</h3>
+                {editingTx?.supplier?.name && (
+                  <p className="text-[10px] text-text-secondary">{editingTx.supplier.name}</p>
+                )}
+              </div>
+            </div>
+            <button onClick={() => setIsEditExpenseOpen(false)} className="text-text-muted hover:text-text-primary transition-all">
+              <XCircle size={24} />
+            </button>
+          </div>
+
+          {editingTx && (
+            <form onSubmit={handleSaveEditExpense} className="flex flex-col min-h-0 flex-1 overflow-hidden">
+              <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 overscroll-contain">
+
+                {/* Bill Number & Date */}
                 <div className="grid grid-cols-2 gap-4">
-                  {/* Amount */}
                   <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                        {txFormData.type === 'expense'
-                          ? isEditingTx ? 'Total Bill Amount (₹) *' : 'Total Bill Amount (₹)'
-                          : 'Total Advance Amount (₹) *'}
-                      </label>
-                      {!isEditingTx && txFormData.type === 'advance' && (() => {
-                        const curSelectedSup = suppliers.find(s => s._id === txFormData.supplier);
-                        if (curSelectedSup && curSelectedSup.balance > 0) {
-                          return (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const bal = curSelectedSup.balance;
-                                setTxFormData(prev => ({
-                                  ...prev,
-                                  amount: bal,
-                                  paidAmount: bal,
-                                  status: 'settled'
-                                }));
-                              }}
-                              className="text-[9px] font-black text-amber-500 hover:underline uppercase"
-                            >
-                              Fill Outstanding: ₹{curSelectedSup.balance.toLocaleString()}
-                            </button>
-                          );
-                        }
-                        return null;
-                      })()}
-                    </div>
+                    <label className={LBL}>Bill / Invoice No</label>
+                    <input type="text"
+                      value={editTxForm.billNumber}
+                      onChange={e => setEditTxForm(prev => ({ ...prev, billNumber: e.target.value }))}
+                      placeholder="e.g. INV-2026-01"
+                      className={INPUT}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className={LBL}>Date *</label>
+                    <input type="date" required
+                      value={editTxForm.date}
+                      onChange={e => setEditTxForm(prev => ({ ...prev, date: e.target.value }))}
+                      className={INPUT}
+                    />
+                  </div>
+                </div>
+
+                {/* Amount & Paid Amount */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className={LBL}>Total Bill Amount (₹)</label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted font-bold text-xs">₹</span>
-                      <input
-                        type="number"
-                        min="1"
-                        step="any"
-                        required={txFormData.type === 'advance' || isEditingTx}
-                        value={txFormData.amount}
-                        onChange={(e) => {
-                          const newAmt = e.target.value;
-                          setTxFormData(prev => {
-                            const curPaid = Number(prev.paidAmount) || 0;
-                            const totalVal = Number(newAmt) || 0;
-                            let newStat = prev.status;
-                            if (curPaid >= totalVal && totalVal > 0) newStat = 'settled';
-                            else if (curPaid > 0) newStat = 'partially_paid';
-                            else newStat = 'pending';
-                            return { ...prev, amount: newAmt, status: newStat };
-                          });
-                        }}
-                        placeholder={!isEditingTx && txFormData.type === 'expense' ? 'Optional — if unknown' : '0.00'}
+                      <input type="number" min="0" step="any"
+                        value={editTxForm.amount}
+                        onChange={e => setEditTxForm(prev => ({ ...prev, amount: e.target.value }))}
                         className="w-full pl-8 pr-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-sm font-black outline-none"
                       />
                     </div>
                   </div>
-
-                  {/* Date */}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                      Date *
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={txFormData.date}
-                      onChange={(e) => setTxFormData({ ...txFormData, date: e.target.value })}
-                      className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-bold outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Paid Amount & Live Balance Section */}
-                <div className="p-4 bg-background-muted/40 rounded-2xl border border-border-light space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                      Amount Paid Now (₹)
-                    </label>
-                    <div className="flex items-center space-x-1.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTxFormData(prev => ({
-                            ...prev,
-                            paidAmount: 0,
-                            status: 'pending'
-                          }));
+                    <label className={LBL}>Paid Amount (₹)</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 font-bold text-xs">₹</span>
+                      <input type="number" min="0" step="any"
+                        value={editTxForm.paidAmount}
+                        onChange={e => {
+                          const pVal = Number(e.target.value) || 0;
+                          const tVal = Number(editTxForm.amount) || 0;
+                          let s = 'pending';
+                          if (pVal >= tVal && tVal > 0) s = 'settled';
+                          else if (pVal > 0) s = 'partially_paid';
+                          setEditTxForm(prev => ({ ...prev, paidAmount: e.target.value, status: s }));
                         }}
-                        className="text-[9px] font-black uppercase px-2 py-0.5 rounded-lg bg-background-card border border-border-main text-text-secondary hover:text-text-primary transition-all"
-                      >
-                        Unpaid (₹0)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const full = Number(txFormData.amount) || 0;
-                          setTxFormData(prev => ({
-                            ...prev,
-                            paidAmount: full,
-                            status: full > 0 ? 'settled' : 'pending'
-                          }));
-                        }}
-                        className="text-[9px] font-black uppercase px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-all font-bold"
-                      >
-                        Paid Full
-                      </button>
+                        className="w-full pl-8 pr-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-emerald-500 text-emerald-600 dark:text-emerald-400 text-sm font-black outline-none"
+                      />
                     </div>
                   </div>
-
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-emerald-400 font-bold text-xs">₹</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max={txFormData.amount || undefined}
-                      step="any"
-                      value={txFormData.paidAmount}
-                      onChange={(e) => {
-                        const paidVal = e.target.value;
-                        setTxFormData(prev => {
-                          const pNum = Number(paidVal) || 0;
-                          const tNum = Number(prev.amount) || 0;
-                          let s = 'pending';
-                          if (pNum >= tNum && tNum > 0) s = 'settled';
-                          else if (pNum > 0) s = 'partially_paid';
-                          return { ...prev, paidAmount: paidVal, status: s };
-                        });
-                      }}
-                      placeholder="0.00 (leave empty if unpaid)"
-                      className="w-full pl-8 pr-4 py-2.5 bg-background-card rounded-xl border border-border-main focus:border-emerald-500 text-emerald-600 dark:text-emerald-400 text-sm font-black outline-none"
-                    />
-                  </div>
-
-                  {/* Calculated Balance Preview */}
-                  {(() => {
-                    const t = Number(txFormData.amount) || 0;
-                    const p = Number(txFormData.paidAmount) || 0;
-                    const bal = t > 0 ? Math.max(0, t - p) : 0;
-                    // No total entered yet — just show what will be recorded
-                    if (t === 0 && p > 0 && txFormData.type === 'expense' && !isEditingTx) {
-                      return (
-                        <div className="p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between bg-blue-500/10 border-blue-500/30 text-blue-600">
-                          <span>Recording payment of:</span>
-                          <span className="font-black text-sm">₹{p.toLocaleString()} <span className="text-[10px] font-bold opacity-70">(total = paid)</span></span>
-                        </div>
-                      );
-                    }
-                    return (
-                      <div className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between ${
-                        bal === 0
-                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
-                          : 'bg-amber-500/10 border-amber-500/30 text-amber-600'
-                      }`}>
-                        <span>Remaining Balance to Pay:</span>
-                        <span className="font-black text-sm">
-                          ₹{bal.toLocaleString()} {bal === 0 && t > 0 ? '(Fully Cleared)' : ''}
-                        </span>
-                      </div>
-                    );
-                  })()}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Payment Method */}
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                      Payment Mode
-                    </label>
-                    <select
-                      value={txFormData.paymentMethod}
-                      onChange={(e) => setTxFormData({ ...txFormData, paymentMethod: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-bold outline-none"
-                    >
-                      {PAYMENT_METHODS.map(m => (
-                        <option key={m} value={m}>{m}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Bill / Invoice Number */}
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                      Bill / Invoice No
-                    </label>
-                    <input
-                      type="text"
-                      value={txFormData.billNumber}
-                      onChange={(e) => setTxFormData({ ...txFormData, billNumber: e.target.value })}
-                      placeholder="e.g. INV-2026-01"
-                      className="w-full px-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-medium outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Status Indicator */}
+                {/* Payment Method */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                    Payment Status
-                  </label>
+                  <label className={LBL}>Payment Mode</label>
+                  <select value={editTxForm.paymentMethod}
+                    onChange={e => setEditTxForm(prev => ({ ...prev, paymentMethod: e.target.value }))}
+                    className={INPUT}>
+                    {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+
+                {/* Status */}
+                <div className="space-y-1.5">
+                  <label className={LBL}>Payment Status</label>
                   <div className="grid grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setTxFormData({ ...txFormData, status: 'pending', paidAmount: 0 })}
-                      className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider border transition-all ${
-                        txFormData.status === 'pending'
-                          ? 'bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/20'
-                          : 'bg-background-muted/50 text-text-secondary border-border-main hover:border-amber-400 hover:text-amber-500'
-                      }`}
-                    >
-                      <Clock size={12} />
-                      Pending
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTxFormData(prev => ({
-                        ...prev,
-                        status: 'partially_paid',
-                        paidAmount: prev.paidAmount && Number(prev.paidAmount) > 0 ? prev.paidAmount : Math.round((Number(prev.amount) || 0) / 2)
-                      }))}
-                      className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider border transition-all ${
-                        txFormData.status === 'partially_paid'
-                          ? 'bg-blue-500 text-white border-blue-500 shadow-md shadow-blue-500/20'
-                          : 'bg-background-muted/50 text-text-secondary border-border-main hover:border-blue-400 hover:text-blue-500'
-                      }`}
-                    >
-                      <Clock size={12} />
-                      Partial
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTxFormData(prev => ({
-                        ...prev,
-                        status: 'settled',
-                        paidAmount: Number(prev.amount) || 0
-                      }))}
-                      className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider border transition-all ${
-                        txFormData.status === 'settled'
-                          ? 'bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-500/20'
-                          : 'bg-background-muted/50 text-text-secondary border-border-main hover:border-emerald-400 hover:text-emerald-500'
-                      }`}
-                    >
-                      <CheckCircle2 size={12} />
-                      Settled
-                    </button>
+                    {[
+                      { val: 'pending', label: 'Pending', cls: 'amber' },
+                      { val: 'partially_paid', label: 'Partial', cls: 'orange' },
+                      { val: 'settled', label: 'Settled', cls: 'emerald' }
+                    ].map(opt => (
+                      <button key={opt.val} type="button"
+                        onClick={() => setEditTxForm(prev => ({ ...prev, status: opt.val }))}
+                        className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider border transition-all ${
+                          editTxForm.status === opt.val
+                            ? opt.val === 'settled'
+                              ? 'bg-emerald-500 text-white border-emerald-500 shadow-md'
+                              : opt.val === 'partially_paid'
+                              ? 'bg-orange-500 text-white border-orange-500 shadow-md'
+                              : 'bg-amber-500 text-white border-amber-500 shadow-md'
+                            : 'bg-background-muted/50 text-text-secondary border-border-main hover:border-primary/40'
+                        }`}>
+                        {opt.val === 'settled' ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+                        {opt.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                {/* Description / Items purchased */}
+                {/* Description */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                    Description / Items / Notes
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={txFormData.description}
-                    onChange={(e) => setTxFormData({ ...txFormData, description: e.target.value })}
-                    placeholder="e.g. 50kg Onions, 20kg Tomatoes, weekly advance payment..."
+                  <label className={LBL}>Description / Notes</label>
+                  <textarea rows={2}
+                    value={editTxForm.description}
+                    onChange={e => setEditTxForm(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="e.g. 50kg Onions, weekly supply..."
                     className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-medium outline-none resize-none"
                   />
                 </div>
               </div>
 
-              {/* Modal Footer */}
-              <div className="p-4 sm:p-6 bg-background-muted/30 border-t border-border-light flex space-x-3 shrink-0 bg-background-card">
-                <button
-                  type="button"
-                  onClick={() => setIsTxModalOpen(false)}
-                  className="flex-1 px-5 py-2.5 border border-border-main text-text-primary rounded-xl font-black text-xs uppercase tracking-widest hover:bg-background-card transition-all"
-                >
+              <div className="p-4 sm:p-6 border-t border-border-light flex space-x-3 shrink-0 bg-background-card">
+                <button type="button" onClick={() => setIsEditExpenseOpen(false)}
+                  className="flex-1 px-5 py-2.5 border border-border-main text-text-primary rounded-xl font-black text-xs uppercase tracking-widest hover:bg-background-muted/30 transition-all">
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className={`flex-1 px-5 py-2.5 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-xl transition-all ${
-                    txFormData.type === 'expense'
-                      ? 'bg-rose-500 shadow-rose-500/20 hover:bg-rose-600'
-                      : 'bg-emerald-600 shadow-emerald-600/20 hover:bg-emerald-700'
-                  }`}
-                >
-                  {isEditingTx ? 'Update Transaction' : txFormData.type === 'expense' ? 'Save Expense' : 'Save Advance'}
+                <button type="submit"
+                  className="flex-1 px-5 py-2.5 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 transition-all">
+                  Update Transaction
                 </button>
               </div>
             </form>
-          </div>
+          )}
+        </div>
       </Modal>
 
-      {/* QUICK PAYMENT MODAL (Pay Partial or Full Balance) */}
-      <Modal
-        isOpen={isPayModalOpen}
-        onClose={() => setIsPayModalOpen(false)}
-        zIndex="z-[105]"
-      >
+      {/* ═══════════════════════════════════════════════════════════════════════
+          QUICK PAY MODAL (per-bill partial/full payment — existing flow)
+      ═══════════════════════════════════════════════════════════════════════ */}
+      <Modal isOpen={isPayModalOpen} onClose={() => setIsPayModalOpen(false)} zIndex="z-[110]">
         <div className="bg-background-card w-full max-w-md max-h-[90vh] rounded-[2rem] sm:rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden flex flex-col my-auto animate-in zoom-in-95 duration-200">
           <div className="p-5 sm:p-6 border-b border-border-light flex items-center justify-between shrink-0 bg-background-card">
             <div className="flex items-center space-x-3">
-              <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                <CreditCard size={20} />
-              </span>
+              <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"><CreditCard size={20} /></span>
               <div>
-                <h3 className="text-lg font-black text-text-primary">
-                  Settle Supplier Balance
-                </h3>
-                <p className="text-[10px] text-text-secondary">
-                  Pending amount is automatically shown to settle
-                </p>
+                <h3 className="text-lg font-black text-text-primary">Record Bill Payment</h3>
+                <p className="text-[10px] text-text-secondary">Pay partial or full balance for this bill</p>
               </div>
             </div>
-            <button
-              onClick={() => setIsPayModalOpen(false)}
-              className="text-text-muted hover:text-text-primary transition-all"
-            >
+            <button onClick={() => setIsPayModalOpen(false)} className="text-text-muted hover:text-text-primary transition-all">
               <XCircle size={24} />
             </button>
           </div>
@@ -1823,36 +1686,26 @@ const SupplierSection = ({ onNavigateTab }) => {
             return (
               <form onSubmit={handleConfirmPayment} className="flex flex-col min-h-0 flex-1 overflow-hidden">
                 <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 overscroll-contain">
-                  {/* Pending Balance Banner */}
+
+                  {/* Outstanding Banner */}
                   <div className="p-3.5 bg-amber-500/10 border border-amber-500/25 rounded-2xl flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block">
-                        Pending Balance to Settle
-                      </span>
-                      <span className="text-base font-black text-amber-600">
-                        ₹{currentBal.toLocaleString()}
-                      </span>
+                      <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block">Pending Balance</span>
+                      <span className="text-xl font-black text-amber-500">₹{currentBal.toLocaleString()}</span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setPayAmount(currentBal)}
-                      className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm"
-                    >
-                      Pay Full (₹{currentBal.toLocaleString()})
+                    <button type="button" onClick={() => setPayAmount(currentBal)}
+                      className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm">
+                      Pay Full
                     </button>
                   </div>
 
-                  {/* Supplier Info Pill */}
+                  {/* Supplier info */}
                   <div className="p-3 bg-background-muted/40 rounded-2xl border border-border-light flex items-center justify-between">
                     <div>
                       <span className="text-[10px] font-black uppercase text-text-muted block">Supplier</span>
-                      <span className="font-black text-sm text-text-primary">
-                        {payModalTx.supplier?.name || 'Selected Supplier'}
-                      </span>
+                      <span className="font-black text-sm text-text-primary">{payModalTx.supplier?.name || 'Selected Supplier'}</span>
                       {payModalTx.billNumber && (
-                        <span className="text-[10px] text-text-secondary block font-mono">
-                          Bill #{payModalTx.billNumber}
-                        </span>
+                        <span className="text-[10px] text-text-secondary block font-mono">Bill #{payModalTx.billNumber}</span>
                       )}
                     </div>
                     <span className="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-bold">
@@ -1860,129 +1713,84 @@ const SupplierSection = ({ onNavigateTab }) => {
                     </span>
                   </div>
 
-                  {/* Financial Breakdown Cards */}
+                  {/* Summary */}
                   <div className="grid grid-cols-3 gap-2">
                     <div className="p-3 bg-background-muted/30 rounded-xl border border-border-light text-center">
                       <span className="text-[9px] font-bold text-text-muted uppercase block">Total Bill</span>
-                      <span className="font-black text-xs text-text-primary block mt-0.5">
-                        ₹{payModalTx.amount?.toLocaleString()}
-                      </span>
+                      <span className="font-black text-xs text-text-primary block mt-0.5">₹{payModalTx.amount?.toLocaleString()}</span>
                     </div>
                     <div className="p-3 bg-emerald-500/5 rounded-xl border border-emerald-500/20 text-center">
                       <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase block">Already Paid</span>
-                      <span className="font-black text-xs text-emerald-600 dark:text-emerald-400 block mt-0.5">
-                        ₹{paidNow.toLocaleString()}
-                      </span>
+                      <span className="font-black text-xs text-emerald-600 dark:text-emerald-400 block mt-0.5">₹{paidNow.toLocaleString()}</span>
                     </div>
                     <div className="p-3 bg-amber-500/5 rounded-xl border border-amber-500/20 text-center">
                       <span className="text-[9px] font-bold text-amber-500 uppercase block">Balance Due</span>
-                      <span className="font-black text-xs text-amber-500 block mt-0.5">
-                        ₹{currentBal.toLocaleString()}
-                      </span>
+                      <span className="font-black text-xs text-amber-500 block mt-0.5">₹{currentBal.toLocaleString()}</span>
                     </div>
                   </div>
 
-                  {/* Payment Amount Input */}
+                  {/* Amount Input */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                        Pending Amount to Settle (₹) *
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setPayAmount(currentBal)}
-                        className="text-[10px] font-black text-primary hover:underline uppercase"
-                      >
-                        Settle Full Balance (₹{currentBal.toLocaleString()})
+                      <label className={LBL}>Amount to Pay (₹) *</label>
+                      <button type="button" onClick={() => setPayAmount(currentBal)}
+                        className="text-[10px] font-black text-primary hover:underline uppercase">
+                        Pay Full (₹{currentBal.toLocaleString()})
                       </button>
                     </div>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted font-bold text-xs">₹</span>
-                      <input
-                        type="number"
-                        min="1"
-                        max={currentBal}
-                        step="any"
-                        required
+                      <input type="number" min="1" max={currentBal} step="any" required
                         value={payAmount}
-                        onChange={(e) => setPayAmount(e.target.value)}
-                        placeholder="Enter amount to pay..."
+                        onChange={e => setPayAmount(e.target.value)}
+                        placeholder="Enter amount..."
                         className="w-full pl-8 pr-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-emerald-500 text-text-primary text-base font-black outline-none"
                       />
                     </div>
                   </div>
 
-                  {/* Live Balance Preview */}
+                  {/* Balance Preview */}
                   <div className={`p-3 rounded-xl border text-xs font-bold flex items-center justify-between ${
                     newBal === 0
                       ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
                       : 'bg-amber-500/10 border-amber-500/30 text-amber-600'
                   }`}>
-                    <span>Balance After This Payment:</span>
-                    <span className="font-black text-sm">
-                      ₹{newBal.toLocaleString()} {newBal === 0 ? '(Fully Cleared!)' : ''}
-                    </span>
+                    <span>Balance After Payment:</span>
+                    <span className="font-black text-sm">₹{newBal.toLocaleString()} {newBal === 0 ? '(Fully Cleared!)' : ''}</span>
                   </div>
 
-                  {/* Payment Method & Date */}
+                  {/* Method & Date */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                        Payment Mode
-                      </label>
-                      <select
-                        value={payMethod}
-                        onChange={(e) => setPayMethod(e.target.value)}
-                        className="w-full px-3 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-emerald-500 text-text-primary text-xs font-bold outline-none"
-                      >
-                        {PAYMENT_METHODS.map(m => (
-                          <option key={m} value={m}>{m}</option>
-                        ))}
+                      <label className={LBL}>Payment Mode</label>
+                      <select value={payMethod} onChange={e => setPayMethod(e.target.value)}
+                        className="w-full px-3 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-emerald-500 text-text-primary text-xs font-bold outline-none">
+                        {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
                       </select>
                     </div>
-
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                        Payment Date
-                      </label>
-                      <input
-                        type="date"
-                        value={payDate}
-                        onChange={(e) => setPayDate(e.target.value)}
-                        className="w-full px-3 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-emerald-500 text-text-primary text-xs font-bold outline-none"
-                      />
+                      <label className={LBL}>Payment Date</label>
+                      <input type="date" value={payDate} onChange={e => setPayDate(e.target.value)}
+                        className="w-full px-3 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-emerald-500 text-text-primary text-xs font-bold outline-none" />
                     </div>
                   </div>
 
-                  {/* Payment Notes */}
+                  {/* Notes */}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                      Payment Notes / Ref
-                    </label>
-                    <input
-                      type="text"
-                      value={payNotes}
-                      onChange={(e) => setPayNotes(e.target.value)}
+                    <label className={LBL}>Payment Notes / Ref</label>
+                    <input type="text" value={payNotes} onChange={e => setPayNotes(e.target.value)}
                       placeholder="e.g. Paid via GPay / UPI ref #12345"
-                      className="w-full px-3 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-emerald-500 text-text-primary text-xs font-medium outline-none"
-                    />
+                      className="w-full px-3 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-emerald-500 text-text-primary text-xs font-medium outline-none" />
                   </div>
                 </div>
 
-                {/* Modal Footer */}
-                <div className="p-4 sm:p-6 bg-background-muted/30 border-t border-border-light flex space-x-3 shrink-0 bg-background-card">
-                  <button
-                    type="button"
-                    onClick={() => setIsPayModalOpen(false)}
-                    className="flex-1 px-5 py-2.5 border border-border-main text-text-primary rounded-xl font-black text-xs uppercase tracking-widest hover:bg-background-card transition-all"
-                  >
+                <div className="p-4 sm:p-6 border-t border-border-light flex space-x-3 shrink-0 bg-background-card">
+                  <button type="button" onClick={() => setIsPayModalOpen(false)}
+                    className="flex-1 px-5 py-2.5 border border-border-main text-text-primary rounded-xl font-black text-xs uppercase tracking-widest hover:bg-background-muted/30 transition-all">
                     Cancel
                   </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmittingPay}
-                    className="flex-1 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-600/20 transition-all flex items-center justify-center space-x-2"
-                  >
+                  <button type="submit" disabled={isSubmittingPay}
+                    className="flex-1 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-600/20 transition-all flex items-center justify-center space-x-2">
                     <span>{isSubmittingPay ? 'Recording...' : `Settle ₹${(Number(payAmount) || currentBal).toLocaleString()}`}</span>
                   </button>
                 </div>
@@ -1992,158 +1800,6 @@ const SupplierSection = ({ onNavigateTab }) => {
         </div>
       </Modal>
 
-      {/* MODAL 2: Add / Edit Supplier */}
-      <Modal
-        isOpen={isSupplierModalOpen}
-        onClose={() => setIsSupplierModalOpen(false)}
-        zIndex="z-[105]"
-      >
-        <div className="bg-background-card w-full max-w-lg max-h-[90vh] rounded-[2rem] sm:rounded-[2.5rem] border border-border-light shadow-2xl overflow-hidden flex flex-col my-auto animate-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="p-5 sm:p-6 border-b border-border-light flex items-center justify-between shrink-0 bg-background-card">
-              <div className="flex items-center space-x-3">
-                <span className="p-2 rounded-xl bg-primary/10 text-primary">
-                  <Building2 size={20} />
-                </span>
-                <h3 className="text-lg font-black text-text-primary">
-                  {isEditingSupplier ? 'Edit Supplier' : 'Add New Supplier'}
-                </h3>
-              </div>
-              <button
-                onClick={() => setIsSupplierModalOpen(false)}
-                className="text-text-muted hover:text-text-primary transition-all"
-              >
-                <XCircle size={24} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveSupplier} className="flex flex-col min-h-0 flex-1 overflow-hidden">
-              <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 overscroll-contain">
-                {/* Supplier Name */}
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                    Supplier / Vendor Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={supplierFormData.name}
-                    onChange={(e) => setSupplierFormData({ ...supplierFormData, name: e.target.value })}
-                    placeholder="e.g. Metro Veggie Hub, Al-Razi Meat, etc."
-                    className="w-full px-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-sm font-bold outline-none"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Category */}
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                      Category
-                    </label>
-                    <select
-                      value={supplierFormData.category}
-                      onChange={(e) => setSupplierFormData({ ...supplierFormData, category: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-bold outline-none"
-                    >
-                      {CATEGORIES.map(c => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Contact Person */}
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                      Contact Person
-                    </label>
-                    <input
-                      type="text"
-                      value={supplierFormData.contactPerson}
-                      onChange={(e) => setSupplierFormData({ ...supplierFormData, contactPerson: e.target.value })}
-                      placeholder="e.g. Abdul, Ramesh"
-                      className="w-full px-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-medium outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Phone */}
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                      Phone Number
-                    </label>
-                    <input
-                      type="tel"
-                      value={supplierFormData.phone}
-                      onChange={(e) => setSupplierFormData({ ...supplierFormData, phone: e.target.value })}
-                      placeholder="10-digit number"
-                      className="w-full px-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-medium outline-none"
-                    />
-                  </div>
-
-                  {/* Email */}
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                      Email (Optional)
-                    </label>
-                    <input
-                      type="email"
-                      value={supplierFormData.email}
-                      onChange={(e) => setSupplierFormData({ ...supplierFormData, email: e.target.value })}
-                      placeholder="vendor@example.com"
-                      className="w-full px-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-medium outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Address */}
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                    Address / Shop Location
-                  </label>
-                  <input
-                    type="text"
-                    value={supplierFormData.address}
-                    onChange={(e) => setSupplierFormData({ ...supplierFormData, address: e.target.value })}
-                    placeholder="e.g. Market Yard, Shop No 4, City"
-                    className="w-full px-4 py-2.5 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-medium outline-none"
-                  />
-                </div>
-
-                {/* Notes */}
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                    Payment Terms / Notes
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={supplierFormData.notes}
-                    onChange={(e) => setSupplierFormData({ ...supplierFormData, notes: e.target.value })}
-                    placeholder="e.g. Weekly settlement on Saturday, accepts UPI..."
-                    className="w-full px-4 py-2 bg-background-muted/50 rounded-xl border border-border-main focus:border-primary text-text-primary text-xs font-medium outline-none resize-none"
-                  />
-                </div>
-              </div>
-
-              {/* Modal Footer */}
-              <div className="p-4 sm:p-6 bg-background-muted/30 border-t border-border-light flex space-x-3 shrink-0 bg-background-card">
-                <button
-                  type="button"
-                  onClick={() => setIsSupplierModalOpen(false)}
-                  className="flex-1 px-5 py-2.5 border border-border-main text-text-primary rounded-xl font-black text-xs uppercase tracking-widest hover:bg-background-card transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-5 py-2.5 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
-                >
-                  {isEditingSupplier ? 'Update Supplier' : 'Save Supplier'}
-                </button>
-              </div>
-            </form>
-          </div>
-      </Modal>
     </div>
   );
 };

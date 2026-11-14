@@ -602,3 +602,105 @@ export const getWageAdvanceSummary = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// POST /api/wages/employees/:employeeId/settle
+export const settleEmployeeWages = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+    const { amount, paymentMethod, date, notes } = req.body;
+
+    if (!employeeId || !mongoose.Types.ObjectId.isValid(employeeId)) {
+      return res.status(400).json({ success: false, message: 'Invalid employee ID' });
+    }
+    const payAmt = Number(amount);
+    if (isNaN(payAmt) || payAmt <= 0) {
+      return res.status(400).json({ success: false, message: 'Valid payment amount is required' });
+    }
+
+    const employee = await WageEmployee.findById(employeeId);
+    if (!employee) {
+      return res.status(404).json({ success: false, message: 'Employee not found' });
+    }
+
+    // Get pending wage records (type:'wage' or any pending record), FIFO
+    const pendingWages = await WageAdvance.find({
+      employee: employeeId,
+      type: { $in: ['wage', null, undefined] },
+      status: { $ne: 'settled' },
+    }).sort({ date: 1, createdAt: 1 });
+
+    // Fallback: also get all pending records regardless of type
+    const allPending = pendingWages.length > 0 ? pendingWages : await WageAdvance.find({
+      employee: employeeId,
+      status: { $ne: 'settled' },
+    }).sort({ date: 1, createdAt: 1 });
+
+    let remaining = payAmt;
+    const updatedRecords = [];
+
+    for (const rec of allPending) {
+      if (remaining <= 0) break;
+      const recBalance = Math.max(0, rec.amount - (rec.paidAmount || 0));
+      if (recBalance <= 0) continue;
+
+      const payThis = Math.min(recBalance, remaining);
+      rec.paidAmount = (rec.paidAmount || 0) + payThis;
+      rec.balanceAmount = Math.max(0, rec.amount - rec.paidAmount);
+      rec.status = rec.balanceAmount === 0 ? 'settled' : 'partially_paid';
+      if (rec.status === 'settled') rec.settledDate = new Date();
+      if (!rec.payments) rec.payments = [];
+      rec.payments.push({
+        amount: payThis,
+        paymentMethod: paymentMethod || 'Cash',
+        date: date ? new Date(date) : new Date(),
+        notes: notes?.trim() || 'Wage settlement payment',
+        recordedBy: req.user?._id,
+      });
+      await rec.save();
+      updatedRecords.push(rec);
+      remaining -= payThis;
+    }
+
+    // Overpayment → record as advance/credit
+    let advanceRecord = null;
+    if (remaining > 0) {
+      advanceRecord = await WageAdvance.create({
+        employee: employeeId,
+        date: date ? new Date(date) : new Date(),
+        amount: remaining,
+        paidAmount: remaining,
+        balanceAmount: 0,
+        paymentMethod: paymentMethod || 'Cash',
+        reason: notes?.trim() || 'Advance (excess from wage settlement)',
+        status: 'settled',
+        settledDate: new Date(),
+        payments: [{
+          amount: remaining,
+          paymentMethod: paymentMethod || 'Cash',
+          date: date ? new Date(date) : new Date(),
+          notes: 'Excess amount auto-recorded as advance',
+          recordedBy: req.user?._id,
+        }],
+        recordedBy: req.user?._id,
+      });
+    }
+
+    const appliedAmount = payAmt - remaining;
+
+    res.status(200).json({
+      success: true,
+      message: remaining > 0
+        ? `₹${appliedAmount.toLocaleString()} applied. ₹${remaining.toLocaleString()} recorded as advance.`
+        : `₹${payAmt.toLocaleString()} payment applied successfully.`,
+      data: {
+        appliedAmount,
+        excessAmount: remaining > 0 ? remaining : 0,
+        advanceRecord,
+        updatedRecordsCount: updatedRecords.length,
+      },
+    });
+  } catch (error) {
+    console.error('Error settling employee wages:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

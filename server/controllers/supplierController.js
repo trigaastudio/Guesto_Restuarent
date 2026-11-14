@@ -632,3 +632,98 @@ export const getSupplierSummary = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// POST /api/suppliers/:supplierId/settle
+export const settleSupplierPayment = async (req, res) => {
+  try {
+    const { supplierId } = req.params;
+    const { amount, paymentMethod, date, notes } = req.body;
+
+    if (!supplierId || !mongoose.Types.ObjectId.isValid(supplierId)) {
+      return res.status(400).json({ success: false, message: 'Invalid supplier ID' });
+    }
+    const payAmt = Number(amount);
+    if (isNaN(payAmt) || payAmt <= 0) {
+      return res.status(400).json({ success: false, message: 'Valid payment amount is required' });
+    }
+
+    const supplier = await Supplier.findById(supplierId);
+    if (!supplier) {
+      return res.status(404).json({ success: false, message: 'Supplier not found' });
+    }
+
+    // Get all pending/partially-paid expense bills for this supplier, oldest first
+    const pendingBills = await SupplierTransaction.find({
+      supplier: supplierId,
+      type: 'expense',
+      status: { $ne: 'settled' },
+    }).sort({ date: 1, createdAt: 1 });
+
+    let remaining = payAmt;
+    const updatedBills = [];
+
+    for (const bill of pendingBills) {
+      if (remaining <= 0) break;
+      const billBalance = Math.max(0, bill.amount - (bill.paidAmount || 0));
+      if (billBalance <= 0) continue;
+
+      const payThis = Math.min(billBalance, remaining);
+      bill.paidAmount = (bill.paidAmount || 0) + payThis;
+      bill.balanceAmount = Math.max(0, bill.amount - bill.paidAmount);
+      bill.status = bill.balanceAmount === 0 ? 'settled' : 'partially_paid';
+      if (!bill.payments) bill.payments = [];
+      bill.payments.push({
+        amount: payThis,
+        paymentMethod: paymentMethod || 'Cash',
+        date: date ? new Date(date) : new Date(),
+        notes: notes?.trim() || `Settlement payment`,
+        recordedBy: req.user?._id,
+      });
+      await bill.save();
+      updatedBills.push(bill);
+      remaining -= payThis;
+    }
+
+    // If overpayment (remaining > 0), record as advance
+    let advanceRecord = null;
+    if (remaining > 0) {
+      advanceRecord = await SupplierTransaction.create({
+        supplier: supplierId,
+        date: date ? new Date(date) : new Date(),
+        type: 'advance',
+        amount: remaining,
+        paidAmount: remaining,
+        balanceAmount: 0,
+        paymentMethod: paymentMethod || 'Cash',
+        description: notes?.trim() || `Advance payment (excess from settlement)`,
+        status: 'settled',
+        payments: [{
+          amount: remaining,
+          paymentMethod: paymentMethod || 'Cash',
+          date: date ? new Date(date) : new Date(),
+          notes: 'Excess amount auto-recorded as advance',
+          recordedBy: req.user?._id,
+        }],
+        recordedBy: req.user?._id,
+      });
+    }
+
+    const appliedAmount = payAmt - remaining;
+
+    res.status(200).json({
+      success: true,
+      message: remaining > 0
+        ? `₹${appliedAmount.toLocaleString()} applied to bills. ₹${remaining.toLocaleString()} recorded as advance.`
+        : `₹${payAmt.toLocaleString()} payment applied successfully.`,
+      data: {
+        appliedAmount,
+        excessAmount: remaining > 0 ? remaining : 0,
+        advanceRecord,
+        updatedBillsCount: updatedBills.length,
+      },
+    });
+  } catch (error) {
+    console.error('Error settling supplier payment:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

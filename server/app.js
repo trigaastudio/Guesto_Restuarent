@@ -146,6 +146,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/tables', tableRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/wage-advances', wageAdvanceRoutes);
+app.use('/api/wages', wageAdvanceRoutes);
 app.use('/api/expenses', expenseRoutes);
 
 app.get('/health', (req, res) => {
