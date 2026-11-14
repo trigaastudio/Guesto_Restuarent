@@ -30,7 +30,7 @@ const wageAdvanceSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['Cash', 'UPI', 'Bank Transfer', 'Other'],
+    enum: ['Cash', 'UPI', 'Card', 'Bank Transfer', 'Other'],
     default: 'Cash',
   },
   reason: {

@@ -54,7 +54,7 @@ const REASON_PRESETS = [
   'Other'
 ];
 
-const PAYMENT_METHODS = ['Cash', 'UPI', 'Bank Transfer', 'Other'];
+const PAYMENT_METHODS = ['Cash', 'UPI', 'Card', 'Bank Transfer', 'Other'];
 
 const WageAdvanceSection = ({ onNavigateTab }) => {
   const [activeTab, setActiveTab] = useState('advances'); // 'advances' | 'employees'

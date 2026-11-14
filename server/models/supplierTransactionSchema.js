@@ -36,7 +36,7 @@ const supplierTransactionSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['Cash', 'UPI', 'Bank Transfer', 'Cheque', 'Credit', 'Other'],
+    enum: ['Cash', 'UPI', 'Card', 'Bank Transfer', 'Cheque', 'Credit', 'Other'],
     default: 'Cash',
   },
   billNumber: {

@@ -47,7 +47,7 @@ const CATEGORIES = [
   'Other'
 ];
 
-const PAYMENT_METHODS = ['Cash', 'UPI', 'Bank Transfer', 'Cheque', 'Other'];
+const PAYMENT_METHODS = ['Cash', 'UPI', 'Card', 'Bank Transfer', 'Cheque', 'Credit', 'Other'];
 
 const TODAY = new Date().toISOString().split('T')[0];
 
