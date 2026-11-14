@@ -99,7 +99,9 @@ const SupplierSection = ({ onNavigateTab }) => {
     date: TODAY,
     amount: '',
     billNumber: '',
-    description: ''
+    description: '',
+    status: 'pending',
+    paymentMethod: 'Cash'
   });
 
   // ── Modal 2: Settle Supplier Payment ──────────────────────────────────────────
@@ -233,7 +235,9 @@ const SupplierSection = ({ onNavigateTab }) => {
       date: TODAY,
       amount: '',
       billNumber: '',
-      description: ''
+      description: '',
+      status: 'pending',
+      paymentMethod: 'Cash'
     });
     setIsExpenseModalOpen(true);
   };
@@ -244,17 +248,20 @@ const SupplierSection = ({ onNavigateTab }) => {
     if (!expenseForm.amount || Number(expenseForm.amount) <= 0) { showToast('warning', 'Please enter a valid bill amount'); return; }
     if (!expenseForm.date) { showToast('warning', 'Please enter a date'); return; }
     try {
+      const isSettled = expenseForm.status === 'settled';
+      const billAmount = Number(expenseForm.amount);
       await api.post('/api/suppliers/transactions', {
         supplier: expenseForm.supplier,
         type: 'expense',
-        amount: Number(expenseForm.amount),
+        amount: billAmount,
         date: expenseForm.date,
         billNumber: expenseForm.billNumber || '',
         description: expenseForm.description || '',
-        paidAmount: 0,
-        status: 'pending'
+        paidAmount: isSettled ? billAmount : 0,
+        paymentMethod: expenseForm.paymentMethod || 'Cash',
+        status: isSettled ? 'settled' : 'pending'
       });
-      showToast('success', 'Bill recorded successfully');
+      showToast('success', isSettled ? 'Settled expense recorded successfully' : 'Pending bill recorded successfully');
       setIsExpenseModalOpen(false);
       refreshAll();
     } catch (err) {
@@ -1199,6 +1206,51 @@ const SupplierSection = ({ onNavigateTab }) => {
                 </div>
               </div>
 
+              {/* Payment Status: Pending vs Settled */}
+              <div className="space-y-1.5">
+                <label className={LBL}>Payment Status *</label>
+                <div className="grid grid-cols-2 gap-2 p-1.5 bg-background-muted/60 rounded-2xl border border-border-light">
+                  <button
+                    type="button"
+                    onClick={() => setExpenseForm(prev => ({ ...prev, status: 'pending' }))}
+                    className={`py-2 text-xs font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                      expenseForm.status === 'pending'
+                        ? 'bg-amber-500 text-white shadow-md'
+                        : 'text-text-secondary hover:text-text-primary'
+                    }`}
+                  >
+                    <Clock size={13} />
+                    <span>Pending (Pay Later)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExpenseForm(prev => ({ ...prev, status: 'settled' }))}
+                    className={`py-2 text-xs font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                      expenseForm.status === 'settled'
+                        ? 'bg-emerald-600 text-white shadow-md'
+                        : 'text-text-secondary hover:text-text-primary'
+                    }`}
+                  >
+                    <CheckCircle2 size={13} />
+                    <span>Settled (Paid Full)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Payment Mode (shown if Settled) */}
+              {expenseForm.status === 'settled' && (
+                <div className="space-y-1.5 animate-in fade-in duration-200">
+                  <label className={LBL}>Payment Mode *</label>
+                  <select
+                    value={expenseForm.paymentMethod}
+                    onChange={e => setExpenseForm(prev => ({ ...prev, paymentMethod: e.target.value }))}
+                    className={INPUT}
+                  >
+                    {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+              )}
+
               {/* Bill Number */}
               <div className="space-y-1.5">
                 <label className={LBL}>Invoice / Bill Number (Optional)</label>
@@ -1224,11 +1276,26 @@ const SupplierSection = ({ onNavigateTab }) => {
               </div>
 
               {/* Info callout */}
-              <div className="flex items-start gap-2 px-3 py-2.5 bg-blue-500/5 border border-blue-500/15 rounded-xl">
-                <Info size={13} className="text-blue-500 shrink-0 mt-0.5" />
-                <p className="text-[10px] text-text-secondary font-medium">
-                  Bill will be recorded as <strong>PENDING</strong>. Use <em>Settle Payment</em> to mark it as paid.
-                </p>
+              <div className={`flex items-start gap-2 px-3 py-2.5 rounded-xl border ${
+                expenseForm.status === 'settled'
+                  ? 'bg-emerald-500/8 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-amber-500/8 border-amber-500/20 text-amber-600'
+              }`}>
+                {expenseForm.status === 'settled' ? (
+                  <>
+                    <CheckCircle2 size={14} className="text-emerald-500 shrink-0 mt-0.5" />
+                    <p className="text-[10px] font-bold">
+                      Expense will be recorded as <strong>FULLY SETTLED</strong> via {expenseForm.paymentMethod || 'Cash'}. No outstanding debt added.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Clock size={14} className="text-amber-500 shrink-0 mt-0.5" />
+                    <p className="text-[10px] font-bold">
+                      Bill will be recorded as <strong>PENDING</strong>. Outstanding balance will increase by ₹{(Number(expenseForm.amount) || 0).toLocaleString()}.
+                    </p>
+                  </>
+                )}
               </div>
             </div>
 
