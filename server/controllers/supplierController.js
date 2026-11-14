@@ -194,7 +194,7 @@ export const getTransactions = async (req, res) => {
       query.supplier = supplierId;
     }
 
-    if (type && ['expense', 'advance'].includes(type)) {
+    if (type && ['expense', 'advance', 'payment'].includes(type)) {
       query.type = type;
     }
 
@@ -268,8 +268,8 @@ export const createTransaction = async (req, res) => {
     if (!supplier) {
       return res.status(400).json({ success: false, message: 'Supplier is required' });
     }
-    if (!type || !['expense', 'advance'].includes(type)) {
-      return res.status(400).json({ success: false, message: 'Transaction type must be expense or advance' });
+    if (!type || !['expense', 'advance', 'payment'].includes(type)) {
+      return res.status(400).json({ success: false, message: 'Transaction type must be expense, advance or payment' });
     }
     const numAmount = Number(amount);
     if (!amount || isNaN(numAmount) || numAmount <= 0) {
@@ -432,6 +432,29 @@ export const recordTransactionPayment = async (req, res) => {
     });
 
     await transaction.save();
+
+    // Create a separate 'payment' entry in the ledger so the settlement appears as its own row
+    const billRef = transaction.billNumber ? `for #${transaction.billNumber}` : 'for bill';
+    await SupplierTransaction.create({
+      supplier: transaction.supplier,
+      date: date ? new Date(date) : new Date(),
+      type: 'payment',
+      amount: actualPayment,
+      paidAmount: actualPayment,
+      balanceAmount: 0,
+      paymentMethod: paymentMethod || transaction.paymentMethod || 'Cash',
+      description: notes?.trim() || `Payment ${billRef}`,
+      billNumber: transaction.billNumber || '',
+      status: 'settled',
+      payments: [{
+        amount: actualPayment,
+        paymentMethod: paymentMethod || transaction.paymentMethod || 'Cash',
+        date: date ? new Date(date) : new Date(),
+        notes: notes?.trim() || `Payment ${billRef}`,
+        recordedBy: req.user?._id,
+      }],
+      recordedBy: req.user?._id,
+    });
 
     const populated = await SupplierTransaction.findById(transaction._id)
       .populate('supplier', 'name category phone contactPerson');
@@ -710,14 +733,47 @@ export const settleSupplierPayment = async (req, res) => {
 
     const appliedAmount = payAmt - remaining;
 
+    // Create a dedicated 'payment' transaction record in the ledger table
+    let paymentRecord = null;
+    if (appliedAmount > 0) {
+      const billNumbers = updatedBills
+        .map(b => b.billNumber ? `#${b.billNumber}` : '')
+        .filter(Boolean)
+        .join(', ');
+      const desc = notes?.trim()
+        ? `${notes.trim()}${billNumbers ? ` (Settled ${billNumbers})` : ''}`
+        : `Payment settled against bill${updatedBills.length > 1 ? 's' : ''}${billNumbers ? `: ${billNumbers}` : ''}`;
+
+      paymentRecord = await SupplierTransaction.create({
+        supplier: supplierId,
+        date: date ? new Date(date) : new Date(),
+        type: 'payment',
+        amount: appliedAmount,
+        paidAmount: appliedAmount,
+        balanceAmount: 0,
+        paymentMethod: paymentMethod || 'Cash',
+        description: desc,
+        status: 'settled',
+        payments: [{
+          amount: appliedAmount,
+          paymentMethod: paymentMethod || 'Cash',
+          date: date ? new Date(date) : new Date(),
+          notes: desc,
+          recordedBy: req.user?._id,
+        }],
+        recordedBy: req.user?._id,
+      });
+    }
+
     res.status(200).json({
       success: true,
       message: remaining > 0
         ? `₹${appliedAmount.toLocaleString()} applied to bills. ₹${remaining.toLocaleString()} recorded as advance.`
-        : `₹${payAmt.toLocaleString()} payment applied successfully.`,
+        : `₹${payAmt.toLocaleString()} payment recorded successfully.`,
       data: {
         appliedAmount,
         excessAmount: remaining > 0 ? remaining : 0,
+        paymentRecord,
         advanceRecord,
         updatedBillsCount: updatedBills.length,
       },

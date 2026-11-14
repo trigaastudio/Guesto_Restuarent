@@ -784,6 +784,7 @@ const SupplierSection = ({ onNavigateTab }) => {
                   className="bg-background-muted/40 text-text-primary border border-border-main rounded-xl px-3 py-2 text-xs font-bold outline-none cursor-pointer">
                   <option value="all">All Types</option>
                   <option value="expense">Bills / Expenses</option>
+                  <option value="payment">Payments / Settled</option>
                   <option value="advance">Advances</option>
                 </select>
 
@@ -891,9 +892,11 @@ const SupplierSection = ({ onNavigateTab }) => {
                           <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
                             tx.type === 'expense'
                               ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
+                              : tx.type === 'payment'
+                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                               : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
                           }`}>
-                            {tx.type === 'expense' ? 'Bill' : 'Advance'}
+                            {tx.type === 'expense' ? 'Bill' : tx.type === 'payment' ? 'Payment' : 'Advance'}
                           </span>
                         </td>
 

@@ -15,7 +15,7 @@ const supplierTransactionSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['expense', 'advance'], // expense = bill / purchase, advance = advance / payment paid
+    enum: ['expense', 'advance', 'payment'], // expense = bill / purchase, advance = advance given, payment = settlement paid against bills
     required: [true, 'Transaction type is required'],
     index: true,
   },
