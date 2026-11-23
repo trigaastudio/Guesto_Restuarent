@@ -976,10 +976,23 @@ class OrderController {
         return res.status(400).json({ success: false, message: 'Price mismatch detected. Order rejected due to tampered total amount.' });
       }
 
-      let paymentStatus = req.body.paymentStatus || 'unpaid';
-      if ((paymentMethod === 'cash' || paymentMethod === 'upi/card') && cashReceived >= actualTotalAmount) {
+      let paymentStatus = 'unpaid';
+      if (paymentMethod === 'online') {
+        paymentStatus = 'paid';
+      } else if ((paymentMethod === 'cash' || paymentMethod === 'upi/card') && (cashReceived >= actualTotalAmount && actualTotalAmount > 0)) {
+        paymentStatus = 'paid';
+      } else if (cashReceived > 0 && cashReceived < actualTotalAmount) {
+        paymentStatus = 'partially_paid';
+      } else if (req.body.paymentStatus === 'paid' && (cashReceived >= actualTotalAmount || paymentMethod === 'online')) {
         paymentStatus = 'paid';
       }
+
+      const initialPaidAmount = paymentStatus === 'paid' ? actualTotalAmount : (cashReceived > 0 ? Math.min(cashReceived, actualTotalAmount) : 0);
+      const initialHistory = initialPaidAmount > 0 ? [{
+        method: paymentMethod || 'cash',
+        amount: initialPaidAmount,
+        date: new Date()
+      }] : [];
 
       const newOrder = new Order({
         orderNumber,
@@ -1000,10 +1013,11 @@ class OrderController {
         discount: actualDiscount,
         appliedOffers: req.body.appliedOffers || [],
         totalAmount: actualTotalAmount,
-        paidAmount: paymentStatus === 'paid' ? actualTotalAmount : 0,
+        paidAmount: initialPaidAmount,
+        paymentHistory: initialHistory,
         paymentMethod,
         cashReceived: cashReceived || 0,
-        balance: balance || 0,
+        balance: Math.max(0, actualTotalAmount - initialPaidAmount),
         paymentStatus
       });
 
@@ -1192,21 +1206,46 @@ class OrderController {
       if (req.body.paymentAmount !== undefined) {
         const amount = Number(req.body.paymentAmount);
         const method = req.body.paymentMethod || originalOrder.paymentMethod || 'cash';
-        const recordedBy = req.user._id;
+        const recordedBy = req.user?._id;
+
+        const total = updateData.totalAmount ?? originalOrder.totalAmount ?? 0;
+        const currentPaid = (Array.isArray(originalOrder.paymentHistory) && originalOrder.paymentHistory.length > 0)
+          ? originalOrder.paymentHistory.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+          : (originalOrder.paidAmount || 0);
+
+        const remainingBalance = Math.max(0, total - currentPaid);
 
         if (amount > 0) {
           if (!originalOrder.paymentHistory) originalOrder.paymentHistory = [];
-          originalOrder.paymentHistory.push({ method, amount, recordedBy });
-          
-          originalOrder.paidAmount = (originalOrder.paidAmount || 0) + amount;
-          updateData.paymentMethod = originalOrder.paymentHistory.length > 1 && originalOrder.paymentHistory.some(p => p.method !== method) ? 'split' : method;
+
+          // Deduplicate rapid double clicks (< 5s for identical method & amount)
+          const isRecentDup = originalOrder.paymentHistory.some(p => 
+            p.method === method &&
+            p.amount === amount &&
+            p.date && (Date.now() - new Date(p.date).getTime() < 5000)
+          );
+
+          if (!isRecentDup && remainingBalance > 0) {
+            const actualAmount = Math.min(amount, remainingBalance);
+            originalOrder.paymentHistory.push({ method, amount: actualAmount, recordedBy });
+            originalOrder.paidAmount = currentPaid + actualAmount;
+            updateData.paymentMethod = originalOrder.paymentHistory.length > 1 && originalOrder.paymentHistory.some(p => p.method !== method) ? 'split' : method;
+          }
         }
 
-        const total = updateData.totalAmount ?? originalOrder.totalAmount;
-        if (originalOrder.paidAmount >= total && total > 0) {
+        const newPaid = (Array.isArray(originalOrder.paymentHistory) && originalOrder.paymentHistory.length > 0)
+          ? originalOrder.paymentHistory.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+          : (originalOrder.paidAmount || 0);
+
+        if (newPaid >= total && total > 0) {
           updateData.paymentStatus = 'paid';
-        } else if (originalOrder.paidAmount > 0) {
+          updateData.balance = 0;
+        } else if (newPaid > 0) {
           updateData.paymentStatus = 'partially_paid';
+          updateData.balance = total - newPaid;
+        } else {
+          updateData.paymentStatus = 'unpaid';
+          updateData.balance = total;
         }
       } else if (updateData.cashReceived !== undefined || updateData.totalAmount !== undefined) {
         // Fallback for older frontend code
@@ -1539,7 +1578,26 @@ class OrderController {
 
       const subtotal = order.items.reduce((acc, item) => acc + (item.totalPrice || ((item.unitPrice || item.price || 0) * item.quantity)), 0);
       order.subtotal = subtotal;
-      order.totalAmount = subtotal + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0) + (order.outstandingBill || 0);
+      order.totalAmount = Math.max(0, subtotal - (order.discount || 0) + (order.deliveryFee || 0) + (order.platformFee || 0) + (order.tax || 0) + (order.outstandingBill || 0));
+
+      // Re-synchronize payment status and balance with new totalAmount
+      const totalPaid = (Array.isArray(order.paymentHistory) && order.paymentHistory.length > 0)
+        ? order.paymentHistory.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+        : (order.paidAmount || 0);
+      order.paidAmount = totalPaid;
+
+      if (order.paymentStatus !== 'refunded') {
+        if (order.totalAmount <= 0 || order.paidAmount >= order.totalAmount) {
+          order.paymentStatus = 'paid';
+          order.balance = 0;
+        } else if (order.paidAmount > 0) {
+          order.paymentStatus = 'partially_paid';
+          order.balance = order.totalAmount - order.paidAmount;
+        } else {
+          order.paymentStatus = 'unpaid';
+          order.balance = order.totalAmount;
+        }
+      }
 
       if (!["cash", "upi/card", "online", "cod", "Not Specified", "split"].includes(order.paymentMethod)) {
         order.paymentMethod = 'Not Specified';

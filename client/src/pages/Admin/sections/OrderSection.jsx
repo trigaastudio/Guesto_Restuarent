@@ -102,6 +102,7 @@ const OrderSection = () => {
   const [payMethod, setPayMethod] = useState('');
   const [cashInput, setCashInput] = useState('');
   const [isPaymentSubmitting, setIsPaymentSubmitting] = useState(false);
+  const isPaymentSubmittingRef = useRef(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
@@ -796,18 +797,27 @@ const OrderSection = () => {
         return acc + ((original - item.unitPrice) * item.quantity);
       }, 0);
 
-      if (paymentMethod === 'cash') {
+      if (paymentMethod === 'cash' && cashReceived) {
         const received = parseFloat(cashReceived) || 0;
-        if (received < totalAmount) {
+        if (received < totalAmount && received > 0) {
           showToast('warning', `Cash received (₹${received}) is less than the total amount (₹${totalAmount})`);
           setIsSubmitting(false);
           return;
         }
       }
 
-      const received = paymentMethod === 'cash' ? (parseFloat(cashReceived) || 0) : (paymentMethod === 'upi/card' ? totalAmount : 0);
+      const received = paymentMethod === 'cash' ? (parseFloat(cashReceived) || 0) : 0;
       const bal = paymentMethod === 'cash' ? Math.max(0, received - totalAmount) : 0;
-      const status = paymentMethod === 'Not Specified' ? 'unpaid' : 'paid';
+      let status = 'unpaid';
+      if (paymentMethod === 'online') {
+        status = 'paid';
+      } else if (received >= totalAmount && totalAmount > 0) {
+        status = 'paid';
+      } else if (received > 0 && received < totalAmount) {
+        status = 'partially_paid';
+      } else {
+        status = 'unpaid';
+      }
 
       const orderData = {
         customerDetails: {
@@ -1169,6 +1179,7 @@ const OrderSection = () => {
   };
 
   const handleConfirmPayment = async () => {
+    if (isPaymentSubmittingRef.current) return;
     if (!payMethod) {
       showToast('warning', 'Please select a payment method');
       return;
@@ -1189,6 +1200,7 @@ const OrderSection = () => {
       }
     }
 
+    isPaymentSubmittingRef.current = true;
     setIsPaymentSubmitting(true);
     try {
       const change = payMethod === 'cash' ? Math.max(0, paymentAmount - balanceToCollect) : 0;
@@ -1210,6 +1222,7 @@ const OrderSection = () => {
     } catch (error) {
       showToast('error', error.response?.data?.message || 'Failed to accept payment');
     } finally {
+      isPaymentSubmittingRef.current = false;
       setIsPaymentSubmitting(false);
     }
   };
@@ -2447,7 +2460,7 @@ const OrderSection = () => {
                         })()}
                       </td>
                       <td className="px-2 py-2.5 text-center">
-                        {activeTab !== 'history' && (order.paymentStatus === 'unpaid' || (order.paidAmount > 0 && (order.totalAmount || order.subtotal) > order.paidAmount)) ? (
+                        {((order.paymentStatus === 'unpaid' || order.paymentStatus === 'partially_paid') || (order.paidAmount !== undefined && (order.totalAmount || order.subtotal) > (order.paidAmount || 0))) && order.paymentStatus !== 'refunded' ? (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -2455,15 +2468,16 @@ const OrderSection = () => {
                             }}
                             className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-[9px] font-black uppercase tracking-wider rounded-full shadow-md shadow-emerald-500/20 transition-all border border-emerald-600/20 cursor-pointer"
                           >
-                            {order.paidAmount > 0 ? 'Pay Balance' : 'Pay Now'}
+                            {(order.paidAmount > 0 || order.paymentStatus === 'partially_paid') ? 'Pay Balance' : 'Pay Now'}
                           </button>
                         ) : (
                           <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${(order.paymentStatus === 'paid' || order.paymentStatus === 'completed') ? 'bg-status-on/10 text-status-available border-status-on/20' :
-                            order.paymentStatus === 'unpaid' ? 'bg-status-off/10 text-status-unavailable border-status-off/20' :
-                              order.paymentStatus === 'refunded' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                                'bg-status-off/10 text-status-unavailable border-status-off/20'
+                            order.paymentStatus === 'partially_paid' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                              order.paymentStatus === 'unpaid' ? 'bg-status-off/10 text-status-unavailable border-status-off/20' :
+                                order.paymentStatus === 'refunded' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                  'bg-status-off/10 text-status-unavailable border-status-off/20'
                             }`}>
-                            {order.paymentStatus}
+                            {order.paymentStatus === 'partially_paid' ? 'Partially Paid' : order.paymentStatus}
                           </span>
                         )}
                       </td>
@@ -2721,8 +2735,14 @@ const OrderSection = () => {
                     <p className="text-[10px] text-text-primary font-bold uppercase tracking-widest mb-1">
                       {selectedOrder.orderStatus === 'processing' ? 'Order Accepted' : selectedOrder.orderStatus}
                     </p>
-                    <p className={`text-[11px] font-black uppercase tracking-tight mb-1 ${selectedOrder.paymentStatus === 'paid' ? 'text-status-available' : 'text-amber-500'}`}>
-                      PAYMENT - {selectedOrder.paymentStatus}
+                    <p className={`text-[11px] font-black uppercase tracking-tight mb-1 ${
+                      selectedOrder.paymentStatus === 'paid'
+                        ? 'text-status-available'
+                        : selectedOrder.paymentStatus === 'partially_paid'
+                          ? 'text-amber-500'
+                          : 'text-rose-500'
+                    }`}>
+                      PAYMENT - {selectedOrder.paymentStatus === 'partially_paid' ? 'PARTIALLY PAID' : selectedOrder.paymentStatus}
                     </p>
                     <p className="text-[10px] font-bold text-text-muted uppercase mb-1">
                       {selectedOrder.paymentMethod === 'split' ? 'MULTIPLE' : selectedOrder.paymentMethod}
@@ -3017,7 +3037,7 @@ const OrderSection = () => {
                 )}
               </div>
               <div className="flex flex-wrap items-center justify-end gap-3 w-full sm:w-auto mt-4 sm:mt-0">
-                {(selectedOrder.paymentStatus === 'unpaid' || ((selectedOrder.totalAmount || selectedOrder.subtotal) > (selectedOrder.paidAmount || 0))) && (
+                {(selectedOrder.paymentStatus === 'unpaid' || selectedOrder.paymentStatus === 'partially_paid' || ((selectedOrder.totalAmount || selectedOrder.subtotal) > (selectedOrder.paidAmount || 0))) && selectedOrder.paymentStatus !== 'refunded' && (
                   <button
                     onClick={() => {
                       handlePayNow(selectedOrder);
@@ -3026,7 +3046,7 @@ const OrderSection = () => {
                     className="flex flex-1 sm:flex-none items-center justify-center space-x-2 bg-emerald-500 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-emerald-500/20"
                   >
                     <CreditCard size={16} />
-                    <span>{selectedOrder.paidAmount > 0 ? 'Pay Balance' : 'Pay Now'}</span>
+                    <span>{(selectedOrder.paidAmount > 0 || selectedOrder.paymentStatus === 'partially_paid') ? 'Pay Balance' : 'Pay Now'}</span>
                   </button>
                 )}
 

@@ -169,27 +169,57 @@ orderSchema.pre('save', async function () {
 orderSchema.pre('validate', async function () {
   
   if (this.isModified('items') || this.isModified('tax') || this.isModified('discount') || this.isModified('deliveryFee') || this.isModified('platformFee') || this.isModified('outstandingBill')) {
-    this.subtotal = this.items.reduce((acc, item) =>
-      acc + (item.totalPrice || (item.price * item.quantity) || 0), 0
+    this.subtotal = (this.items || []).reduce((acc, item) =>
+      acc + (item.totalPrice || ((item.unitPrice || item.price || 0) * (item.quantity || 1)) || 0), 0
     );
     this.totalAmount = Math.max(0, this.subtotal - (this.discount || 0) + (this.tax || 0) + (this.deliveryFee || 0) + (this.platformFee || 0) + (this.outstandingBill || 0));
   }
 
-  
-  if (this.paymentMethod === 'cash' || this.paymentMethod === 'cod') {
-    this.balance = (this.cashReceived || 0) - this.totalAmount;
-  }
-  
-  if (this.paidAmount > 0 && this.paidAmount < this.totalAmount) {
-    this.balance = this.totalAmount - this.paidAmount;
-  } else if (this.paidAmount >= this.totalAmount && this.totalAmount > 0) {
-    this.balance = 0;
+  // Deduplicate rapid double-click payments in paymentHistory if present
+  if (Array.isArray(this.paymentHistory) && this.paymentHistory.length > 1) {
+    const dedupedHistory = [];
+    for (const ph of this.paymentHistory) {
+      const isDup = dedupedHistory.some(existing => 
+        existing.method === ph.method &&
+        existing.amount === ph.amount &&
+        ph.date && existing.date &&
+        Math.abs(new Date(ph.date).getTime() - new Date(existing.date).getTime()) < 3000
+      );
+      if (!isDup) dedupedHistory.push(ph);
+    }
+    if (dedupedHistory.length !== this.paymentHistory.length) {
+      this.paymentHistory = dedupedHistory;
+    }
   }
 
-  
-  if (this.paymentMethod === 'wallet') {
-    if (this.paymentStatus === 'unpaid') {
+  // Synchronize paidAmount with paymentHistory
+  if (Array.isArray(this.paymentHistory) && this.paymentHistory.length > 0) {
+    const historyPaid = this.paymentHistory.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    this.paidAmount = historyPaid;
+  } else if (this.paymentStatus === 'paid' && (!this.paidAmount || this.paidAmount === 0) && this.totalAmount > 0) {
+    this.paidAmount = this.totalAmount;
+  } else {
+    this.paidAmount = Number(this.paidAmount) || 0;
+  }
+
+  // Maintain strict consistency between totalAmount, paidAmount, balance, and paymentStatus
+  if (this.paymentStatus !== 'refunded') {
+    if (this.paymentMethod === 'wallet') {
+      this.paidAmount = this.totalAmount;
+      this.balance = 0;
       this.paymentStatus = 'paid';
+    } else if (this.totalAmount <= 0) {
+      this.balance = 0;
+      this.paymentStatus = 'paid';
+    } else if (this.paidAmount >= this.totalAmount && this.totalAmount > 0) {
+      this.balance = 0;
+      this.paymentStatus = 'paid';
+    } else if (this.paidAmount > 0 && this.paidAmount < this.totalAmount) {
+      this.balance = this.totalAmount - this.paidAmount;
+      this.paymentStatus = 'partially_paid';
+    } else {
+      this.balance = this.totalAmount;
+      this.paymentStatus = 'unpaid';
     }
   }
 
