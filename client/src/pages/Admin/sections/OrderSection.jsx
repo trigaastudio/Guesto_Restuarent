@@ -182,6 +182,10 @@ const OrderSection = () => {
   const [userSuggestions, setUserSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [allUsers, setAllUsers] = useState([]);
+  const allUsersRef = useRef([]);
+  useEffect(() => {
+    allUsersRef.current = allUsers;
+  }, [allUsers]);
   const [deliveryStaff, setDeliveryStaff] = useState([]);
   const [errors, setErrors] = useState({});
   const [selectedItemToView, setSelectedItemToView] = useState(null);
@@ -219,6 +223,7 @@ const OrderSection = () => {
     fetchMenu();
     fetchDeliveryStaff();
     fetchOffers();
+    fetchUsers();
 
     // Auto-refresh orders list on new order arrivals or status changes
     const handleNewOrder = () => scheduleSilentFetch();
@@ -1247,12 +1252,32 @@ const OrderSection = () => {
     }
   }, [selectedOrder]);
 
+  const cleanPhoneNumber = (raw) => {
+    if (!raw) return '';
+    let digits = String(raw).replace(/\D/g, '');
+    if (digits.length === 12 && digits.startsWith('91')) {
+      digits = digits.slice(2);
+    } else if (digits.length === 11 && digits.startsWith('0')) {
+      digits = digits.slice(1);
+    } else if (digits.length > 10 && digits.startsWith('91')) {
+      digits = digits.slice(2);
+      if (digits.length === 11 && digits.startsWith('0')) {
+        digits = digits.slice(1);
+      }
+    }
+    return digits;
+  };
+
   const fetchUsers = async () => {
     try {
       const response = await api.get(`/api/users`);
-      setAllUsers(response.data.data || []);
+      const users = response.data.data || [];
+      setAllUsers(users);
+      allUsersRef.current = users;
+      return users;
     } catch (error) {
       console.error('Error fetching users:', error);
+      return [];
     }
   };
 
@@ -1268,27 +1293,68 @@ const OrderSection = () => {
   };
 
   const handleCustomerSearch = (field, value) => {
-    setCustomer(prev => ({ ...prev, [field]: value }));
+    let normalizedValue = value;
+    if (field === 'phone') {
+      const cleaned = cleanPhoneNumber(value);
+      if (cleaned && (value.includes('+') || value.includes(' ') || value.includes('-') || (value.startsWith('0') && value.length > 1))) {
+        normalizedValue = cleaned;
+      }
+    }
 
-    if (allUsers.length === 0) fetchUsers();
-
+    setCustomer(prev => ({ ...prev, [field]: normalizedValue }));
 
     if (window.searchTimer) clearTimeout(window.searchTimer);
 
-    window.searchTimer = setTimeout(() => {
-      if (value.length >= 1) {
-        const filtered = allUsers.filter(u => {
-          const nameMatch = u.name?.toLowerCase().includes(value.toLowerCase());
-          const phoneMatch = u.phone?.includes(value);
-          return nameMatch || phoneMatch;
-        });
-
-        setUserSuggestions(filtered.slice(0, 5));
-        setShowSuggestions(true);
-      } else {
+    window.searchTimer = setTimeout(async () => {
+      const trimmedVal = String(normalizedValue || '').trim();
+      if (!trimmedVal) {
         setShowSuggestions(false);
+        setUserSuggestions([]);
+        return;
       }
-    }, 150);
+
+      let usersList = allUsersRef.current;
+      if (!usersList || usersList.length === 0) {
+        usersList = await fetchUsers();
+      }
+
+      const cleanSearchPhone = cleanPhoneNumber(trimmedVal);
+      const searchLower = trimmedVal.toLowerCase();
+
+      const filtered = (usersList || []).filter(u => {
+        const nameMatch = u.name?.toLowerCase().includes(searchLower);
+        const cleanUserPhone = cleanPhoneNumber(u.phone);
+        const rawUserPhone = (u.phone || '').trim();
+
+        const phoneMatch = Boolean(
+          (cleanSearchPhone && cleanUserPhone && (
+            cleanUserPhone.includes(cleanSearchPhone) || cleanSearchPhone.includes(cleanUserPhone)
+          )) ||
+          (rawUserPhone && rawUserPhone.includes(trimmedVal))
+        );
+        return nameMatch || phoneMatch;
+      });
+
+      // Sort exact phone or name matches to top
+      filtered.sort((a, b) => {
+        const aPhoneClean = cleanPhoneNumber(a.phone);
+        const bPhoneClean = cleanPhoneNumber(b.phone);
+        const aExactPhone = cleanSearchPhone && aPhoneClean === cleanSearchPhone;
+        const bExactPhone = cleanSearchPhone && bPhoneClean === cleanSearchPhone;
+        if (aExactPhone && !bExactPhone) return -1;
+        if (!aExactPhone && bExactPhone) return 1;
+
+        const aExactName = a.name?.toLowerCase() === searchLower;
+        const bExactName = b.name?.toLowerCase() === searchLower;
+        if (aExactName && !bExactName) return -1;
+        if (!aExactName && bExactName) return 1;
+
+        return 0;
+      });
+
+      setUserSuggestions(filtered.slice(0, 5));
+      setShowSuggestions(true);
+    }, 120);
   };
 
   const resetOrderForm = () => {
@@ -1316,7 +1382,7 @@ const OrderSection = () => {
     setSelectedUserId(user._id);
     setCustomer({
       name: user.name,
-      phone: user.phone || ''
+      phone: cleanPhoneNumber(user.phone) || user.phone || ''
     });
 
     // Find default address or use the first one
@@ -1934,6 +2000,7 @@ const OrderSection = () => {
               onClick={() => {
                 resetOrderForm();
                 setPosOrderType(activeTab === 'all' || activeTab === 'history' ? 'takeaway' : activeTab);
+                fetchUsers();
                 setIsModalOpen(true);
               }}
               className="bg-primary text-white px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-primary/20 hover:bg-primary-light transition-all flex items-center space-x-2"
@@ -3950,8 +4017,21 @@ const OrderSection = () => {
                       placeholder="Phone Number (optional)"
                       value={customer.phone}
                       onChange={e => {
-                        handleCustomerSearch('phone', e.target.value);
+                        const val = e.target.value;
+                        const cleaned = (val.includes('+') || val.includes(' ') || val.includes('-') || (val.startsWith('0') && val.length > 1))
+                          ? cleanPhoneNumber(val)
+                          : val;
+                        handleCustomerSearch('phone', cleaned);
                         if (errors.customerPhone) setErrors({ ...errors, customerPhone: false });
+                      }}
+                      onPaste={e => {
+                        const pasteData = e.clipboardData?.getData('text');
+                        if (pasteData) {
+                          e.preventDefault();
+                          const cleaned = cleanPhoneNumber(pasteData) || pasteData.trim();
+                          handleCustomerSearch('phone', cleaned);
+                          if (errors.customerPhone) setErrors(prev => ({ ...prev, customerPhone: false }));
+                        }
                       }}
                       onFocus={() => customer.phone.length > 1 && setShowSuggestions(true)}
                       className="bg-transparent text-[11px] font-bold text-text-primary outline-none w-full placeholder:text-text-muted/40"
