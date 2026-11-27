@@ -90,6 +90,9 @@ export const getDailyExpenses = async (req, res) => {
         todaySupplierExpenses += amt;
         todaySupplierExpensesSettled += paid;
         todaySupplierExpensesPending += pending;
+      } else if (tx.type === 'payment') {
+        todaySupplierExpenses += amt;
+        todaySupplierExpensesSettled += amt;
       } else if (tx.type === 'advance') {
         todaySupplierAdvances += amt;
         todaySupplierAdvancesSettled += paid;
@@ -150,6 +153,9 @@ export const getDailyExpenses = async (req, res) => {
         dayData.supplierExpenses += amt;
         dayData.supplierExpensesSettled += paid;
         dayData.supplierExpensesPending += pending;
+      } else if (tx.type === 'payment') {
+        dayData.supplierExpenses += amt;
+        dayData.supplierExpensesSettled += amt;
       } else {
         dayData.supplierAdvances += amt;
         dayData.supplierAdvancesSettled += paid;
@@ -159,19 +165,25 @@ export const getDailyExpenses = async (req, res) => {
 
       dayData.items.push({
         _id: tx._id,
-        categoryType: tx.type === 'expense' ? 'supplier_expense' : 'supplier_advance',
-        categoryLabel: tx.type === 'expense' ? 'Supplier Bill / Expense' : 'Supplier Advance',
+        categoryType: (tx.type === 'expense' || tx.type === 'payment') ? 'supplier_expense' : 'supplier_advance',
+        categoryLabel: tx.type === 'expense'
+          ? 'Supplier Bill / Expense'
+          : tx.type === 'payment'
+          ? 'Supplier Bill Payment'
+          : 'Supplier Advance',
         entityType: 'supplier',
         entityName: tx.supplier?.name || 'Unknown Supplier',
         subText: tx.supplier?.category || 'Vendor',
         phone: tx.supplier?.phone || '',
         amount: tx.amount,
-        paidAmount: paid,
-        balanceAmount: pending,
+        paidAmount: tx.type === 'payment' ? amt : paid,
+        balanceAmount: tx.type === 'payment' ? 0 : pending,
         paymentMethod: tx.paymentMethod || 'Cash',
-        reference: tx.billNumber ? `Bill #${tx.billNumber}` : '',
+        reference: tx.type === 'payment'
+          ? (tx.billNumber ? `Bill #${tx.billNumber} (Settled)` : 'Bill Settlement')
+          : (tx.billNumber ? `Bill #${tx.billNumber}` : ''),
         description: tx.description || '',
-        status: tx.status || 'pending',
+        status: tx.type === 'payment' ? 'settled' : (tx.status || 'pending'),
         date: tx.date,
       });
     });

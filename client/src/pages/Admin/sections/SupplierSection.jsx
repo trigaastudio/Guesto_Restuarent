@@ -917,11 +917,10 @@ const SupplierSection = ({ onNavigateTab }) => {
                         {/* Status */}
                         <td className="px-4 py-4">
                           {balAmt === 0 ? (
-                            <button type="button" onClick={() => handleToggleSettle(tx)}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 transition-all"
-                              title="Fully Settled — click to reopen">
+                            <span
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
                               <CheckCircle2 size={10} /><span>Settled</span>
-                            </button>
+                            </span>
                           ) : paidAmt > 0 ? (
                             <button type="button" onClick={() => handleOpenPayModal(tx)}
                               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border bg-orange-500/10 text-orange-600 border-orange-500/20 hover:bg-orange-500/20 transition-all">
