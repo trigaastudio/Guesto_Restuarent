@@ -671,29 +671,53 @@ const OrderSection = () => {
     }
     setErrors({});
 
-    // ── Pre-flight stock check before creating order ──
+    // ── Pre-flight stock check before creating / updating order ──
+    // When editing an existing order, its items already have their stock deducted.
+    // Only check stock for the net additional quantity needed beyond what's already in selectedOrder.
+    const originalQtyMap = {};
+    if (selectedOrder && Array.isArray(selectedOrder.items)) {
+      for (const origItem of selectedOrder.items) {
+        const origId = (origItem.menuItem?._id || origItem.menuItem || '').toString();
+        const origSize = origItem.size || 'Standard';
+        const key = `${origId}__${origSize}`;
+        originalQtyMap[key] = (originalQtyMap[key] || 0) + (origItem.quantity || 0);
+      }
+    }
+
     const stockWarnings = [];
     for (const cartItem of cart) {
-      const fullMenuItem = menuItems.find(m => m._id === cartItem.menuItem);
+      const itemIdStr = (cartItem.menuItem?._id || cartItem.menuItem || '').toString();
+      const sizeKey = `${itemIdStr}__${cartItem.size || 'Standard'}`;
+      const alreadyOrderedQty = originalQtyMap[sizeKey] || 0;
+      const coveredQty = Math.min(cartItem.quantity, alreadyOrderedQty);
+      if (alreadyOrderedQty > 0) {
+        originalQtyMap[sizeKey] = alreadyOrderedQty - coveredQty;
+      }
+      const netQtyNeeded = cartItem.quantity - coveredQty;
+
+      // Item is fully covered by the existing order's already-deducted stock
+      if (netQtyNeeded <= 0) continue;
+
+      const fullMenuItem = menuItems.find(m => m._id === itemIdStr);
       if (!fullMenuItem) continue;
 
-      // Check main item stock
+      // Check main item stock for net additional quantity
       if (!fullMenuItem.isCombo) {
         const variant = (fullMenuItem.variants || []).find(v => v.size === cartItem.size);
         const mult = variant?.stockValue || 1;
         const availableStock = getEffectiveStock(fullMenuItem);
         const effectiveStock = Math.floor(availableStock / mult);
-        if (effectiveStock < cartItem.quantity) {
-          stockWarnings.push(`"${cartItem.name}" (${cartItem.size || 'Standard'}): only ${effectiveStock} available, ${cartItem.quantity} in cart`);
+        if (effectiveStock < netQtyNeeded) {
+          stockWarnings.push(`"${cartItem.name}" (${cartItem.size || 'Standard'}): only ${effectiveStock} available, ${netQtyNeeded} ${selectedOrder ? 'additional ' : ''}in cart`);
         }
 
-        // Check includedItems (variant add-ons) stock
+        // Check includedItems (variant add-ons) stock for net additional quantity
         if (variant?.includedItems && variant.includedItems.length > 0) {
           for (const included of variant.includedItems) {
             const addonDoc = menuItems.find(m => m._id === (included.menuItem?._id || included.menuItem));
             if (addonDoc) {
               const addonStock = getEffectiveStock(addonDoc);
-              const addonNeeded = cartItem.quantity * (included.quantity || 1);
+              const addonNeeded = netQtyNeeded * (included.quantity || 1);
               if (addonStock < addonNeeded) {
                 const addonName = included.name || addonDoc.name || 'Add-on';
                 stockWarnings.push(`Add-on "${addonName}" for "${cartItem.name}": out of stock (needed ${addonNeeded}, available ${addonStock})`);
@@ -705,7 +729,7 @@ const OrderSection = () => {
         // Check combo sub-item stock
         for (const ci of fullMenuItem.comboItems) {
           const subDoc = menuItems.find(m => m._id === (ci.menuItem?._id || ci.menuItem));
-          if (subDoc && getEffectiveStock(subDoc) <= 0) {
+          if (subDoc && getEffectiveStock(subDoc) < netQtyNeeded * (ci.quantity || 1)) {
             stockWarnings.push(`Combo item "${subDoc.name}" in "${cartItem.name}" is out of stock`);
           }
         }
@@ -1486,11 +1510,19 @@ const OrderSection = () => {
       const mult = variant?.stockValue || 1;
       const effectiveVariantStock = Math.floor(availableStock / mult);
 
+      const originalQtyInOrder = selectedOrder?.items
+        ? selectedOrder.items
+            .filter(oi => (oi.menuItem?._id || oi.menuItem) === item._id && (oi.size || 'Standard') === (variant?.size || 'Standard'))
+            .reduce((acc, oi) => acc + (oi.quantity || 0), 0)
+        : 0;
+
       const currentInCart = cart
         .filter(c => c.menuItem === item._id && c.size === (variant?.size || 'Standard'))
         .reduce((acc, c) => acc + c.quantity, 0);
 
-      if (currentInCart + qty > effectiveVariantStock) {
+      const netNewInCart = Math.max(0, currentInCart - originalQtyInOrder);
+
+      if (netNewInCart + qty > effectiveVariantStock) {
         showToast('error', `Out of stock: Only ${effectiveVariantStock} portions of ${variant?.size || 'Standard'} are available`);
         return;
       }
@@ -1592,11 +1624,19 @@ const OrderSection = () => {
         const mult = variant?.stockValue || 1;
         const effectiveVariantStock = Math.floor(availableStock / mult);
 
+        const originalQtyInOrder = selectedOrder?.items
+          ? selectedOrder.items
+              .filter(oi => (oi.menuItem?._id || oi.menuItem) === targetCartItem.menuItem && (oi.size || 'Standard') === (targetCartItem.size || 'Standard'))
+              .reduce((acc, oi) => acc + (oi.quantity || 0), 0)
+          : 0;
+
         const currentInCart = cart
           .filter(c => c.menuItem === targetCartItem.menuItem && c.size === targetCartItem.size)
           .reduce((acc, c) => acc + c.quantity, 0);
 
-        if (currentInCart + delta > effectiveVariantStock) {
+        const netNewInCart = Math.max(0, currentInCart - originalQtyInOrder);
+
+        if (netNewInCart + delta > effectiveVariantStock) {
           showToast('error', `Out of stock: Only ${effectiveVariantStock} portions of ${targetCartItem.size || 'Standard'} are available`);
           return;
         }
